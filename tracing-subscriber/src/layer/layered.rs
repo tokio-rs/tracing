@@ -25,11 +25,42 @@ use std::{
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone)]
 pub struct Layered<L, I, S = I> {
+    /// The layer.
     layer: L,
+
+    /// The inner value that `self.layer` was layered onto.
+    ///
+    /// If this is also a `Layer`, then this `Layered` will implement `Layer`.
+    /// If this is a `Subscriber`, then this `Layered` will implement
+    /// `Subscriber` instead.
     inner: I,
 
+    // These booleans are used to determine how to combine `Interest`s and max
+    // level hints when per-layer filters are in use.
+    /// Is `self.inner` a `Registry`?
+    ///
+    /// If so, when combining `Interest`s, we want to "bubble up" its
+    /// `Interest`.
     inner_is_registry: bool,
+
+    /// Does `self.layer` have per-layer filters?
+    ///
+    /// This will be true if:
+    /// - `self.inner` is a `Filtered`.
+    /// - `self.inner` is a tree of `Layered`s where _all_ arms of those
+    ///   `Layered`s have per-layer filters.
+    ///
+    /// Otherwise, if it's a `Layered` with one per-layer filter in one branch,
+    /// but a non-per-layer-filtered layer in the other branch, this will be
+    /// _false_, because the `Layered` is already handling the combining of
+    /// per-layer filter `Interest`s and max level hints with its non-filtered
+    /// `Layer`.
     has_layer_filter: bool,
+
+    /// Does `self.inner` have per-layer filters?
+    ///
+    /// This is determined according to the same rules as
+    /// `has_layer_filter` above.
     inner_has_layer_filter: bool,
     _s: PhantomData<fn(S)>,
 }
@@ -136,12 +167,44 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+        match id {
+            // If downcasting to `Self`, return a pointer to `self`.
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+
+            // Oh, we're looking for per-layer filters!
+            //
+            // This should only happen if we are inside of another `Layered`,
+            // and it's trying to determine how it should combine `Interest`s
+            // and max level hints.
+            //
+            // In that case, we should be considered to be "per-layer filtered"
+            // if *both* the outer layer and the inner layer/subscriber have
+            // per-layer filters. Otherwise, we should be considered to *not* be
+            // per-layer filtered (even if one or the other has per layer
+            // filters). This is because *we* are expected to handle the
+            // `Interest`/level hint combining at this level, and will be
+            // propagating a non-PLF hint/interest.
+            //
+            // Yes, this rule *is* slightly counter-intuitive, but it's
+            // necessary due to a weird edge case that can occur when two
+            // `Layered`s where one side is per-layer filtered and the other
+            // isn't are `Layered` together to form a tree. If we didn't have
+            // this rule, we would actually end up *ignoring* `Interest`s from
+            // the non-per-layer-filtered layers, since both branches would
+            // claim to have PLF.
+            //
+            // If you don't understand this...that's fine, just don't mess with
+            // it. :)
+            id if id == TypeId::of::<filter::MagicPlfDowncastMarker>() => {
+                self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
+            }
+
+            // Otherwise, try to downcast both branches normally...
+            _ => self
+                .layer
+                .downcast_raw(id)
+                .or_else(|| self.inner.downcast_raw(id)),
         }
-        self.layer
-            .downcast_raw(id)
-            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
@@ -175,9 +238,6 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
-
-    // #[doc(hidden)]
-    // const HAS_PER_LAYER_FILTERS: bool = A::HAS_PER_LAYER_FILTERS || B::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
@@ -229,15 +289,25 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+        match id {
+            // If downcasting to `Self`, return a pointer to `self`.
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+
+            // Oh, we're looking for per-layer filters!
+            //
+            // There's a slightly weird rule for how this works; see the comment
+            // on the similar match arm in the `Subscriber::downcast_raw` impl
+            // for `Layered` for details.
+            id if id == TypeId::of::<filter::MagicPlfDowncastMarker>() => {
+                self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
+            }
+
+            // Otherwise, try to downcast both branches normally...
+            _ => self
+                .layer
+                .downcast_raw(id)
+                .or_else(|| self.inner.downcast_raw(id)),
         }
-        if id == TypeId::of::<filter::MagicPlfDowncastMarker>() {
-            return self.layer.downcast_raw(id).and(self.inner.downcast_raw(id));
-        }
-        self.layer
-            .downcast_raw(id)
-            .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
@@ -344,13 +414,6 @@ where
     }
 }
 
-// impl<L, S> Layered<L, S> {
-//     // TODO(eliza): is there a compelling use-case for this being public?
-//     pub(crate) fn into_inner(self) -> S {
-//         self.inner
-//     }
-// }
-
 impl<A, B, S> fmt::Debug for Layered<A, B, S>
 where
     A: fmt::Debug,
@@ -365,12 +428,13 @@ where
         // for internal debugging purposes, so only print them if alternate mode
         // is enabled.
         if alt {
-            s.field(
-                "subscriber",
-                &format_args!("PhantomData<{}>", type_name::<S>()),
-            )
-            .field("has_layer_filter", &self.has_layer_filter)
-            .field("inner_has_layer_filter", &self.inner_has_layer_filter);
+            s.field("inner_is_registry", &self.inner_is_registry)
+                .field("has_layer_filter", &self.has_layer_filter)
+                .field("inner_has_layer_filter", &self.inner_has_layer_filter)
+                .field(
+                    "subscriber",
+                    &format_args!("PhantomData<{}>", type_name::<S>()),
+                );
         }
 
         s.finish()
