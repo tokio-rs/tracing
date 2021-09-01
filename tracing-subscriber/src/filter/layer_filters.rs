@@ -68,7 +68,7 @@ pub trait LayerFilter<S> {
     /// [`Interest::never()`][never] for a given [`Metadata`], its [`enabled`]
     /// method is then *guaranteed* to never be called for that callsite. On the
     /// other hand, when a `LayerFilter` returns [`Interest::always()`][always] or
-    /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`s] may have
+    /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`]s may have
     /// differing interests in that callsite. If this is the case, the callsite
     /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
     /// method will still be called for that callsite when it records a span or
@@ -87,7 +87,7 @@ pub trait LayerFilter<S> {
     /// For example, if a [`Subscriber`] consists of two [`Filtered`] layers,
     /// and both of those layers return [`Interest::never()`][never], that
     /// callsite *will* never be enabled, and the [`enabled`] methods of those
-    /// [`LayerFilter`s] will not be called.
+    /// [`LayerFilter`]s will not be called.
     ///
     /// ## Default Implementation
     ///
@@ -610,6 +610,8 @@ where
     ///     .with(my_layer.with_filter(my_filter))
     ///     .init();
     /// ```
+    ///
+    /// [`Level`]: tracing_core::Level
     pub fn with_max_level_hint(self, max_level_hint: LevelFilter) -> Self {
         Self {
             max_level_hint: Some(max_level_hint),
@@ -617,6 +619,10 @@ where
         }
     }
 
+    /// Adds a function for filtering callsites to this filter.
+    ///
+    /// When this filter's [`LayerFilter::callsite_enabled`] method is called,
+    /// the provided function will be used rather than the default.
     pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> FilterFn<S, F, R2>
     where
         R2: Fn(&'static Metadata<'static>) -> Interest,
