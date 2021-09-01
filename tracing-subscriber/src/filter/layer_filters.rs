@@ -527,15 +527,22 @@ where
 /// # Examples
 ///
 /// ```
-/// use tracing_subscriber::filter;
+/// use tracing_subscriber::{
+///     layer::{Layer, SubscriberExt},
+///     filter,
+///     util::SubscriberInitExt,
+/// };
 ///
 /// let my_filter = filter::filter_fn(|metadata, _| {
 ///     // Only enable spans or events with the target "interesting_target"
 ///     metadata.target() == "interesting_target"
 /// });
 ///
-/// let my_layer = /* ... */ # filter::LevelFilter::INFO;
+/// let my_layer = // ...
+///    # filter::LevelFilter::INFO;
+///
 /// tracing_subscriber::registry()
+///     // Add the filter to the layer
 ///     .with(my_layer.with_filter(my_filter))
 ///     .init();
 /// ```
@@ -556,14 +563,20 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_subscriber::filter::FilterFn;
+    /// use tracing_subscriber::{
+    ///     layer::{Layer, SubscriberExt},
+    ///     filter::FilterFn,
+    ///     util::SubscriberInitExt,
+    /// };
     ///
     /// let my_filter = FilterFn::new(|metadata, _| {
     ///     // Only enable spans or events with the target "interesting_target"
     ///     metadata.target() == "interesting_target"
     /// });
     ///
-    /// let my_layer = /* ... */ # tracing_subscriber::filter::LevelFilter::INFO;
+    /// let my_layer = // ...
+    ///     # tracing_subscriber::filter::LevelFilter::INFO;
+    ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
     ///     .init();
@@ -594,18 +607,24 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    /// use tracing_subscriber::{
+    ///     layer::{Layer, SubscriberExt},
+    ///     filter::{filter_fn, LevelFilter},
+    ///     util::SubscriberInitExt,
+    /// };
+    /// use tracing_core::Level;
     ///
     /// let my_filter = filter_fn(|metadata, _| {
     ///     // Only enable spans or events with targets starting with `my_crate`
     ///     // and levels at or below `INFO`.
-    ///     metadata.level() <= Level::INFO && metadata.target().starts_with("my_crate")
+    ///     metadata.level() <= &Level::INFO && metadata.target().starts_with("my_crate")
     /// })
     ///     // Since the filter closure will only enable the `INFO` level and
     ///     // below, set the max level hint
     ///     .with_max_level_hint(LevelFilter::INFO);
     ///
-    /// let my_layer = /* ... */ # filter::LevelFilter::INFO;
+    /// let my_layer = //
+    ///     # LevelFilter::INFO;
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
     ///     .init();

@@ -233,7 +233,8 @@ use std::{
 /// use tracing_subscriber::{filter, prelude::*};
 ///
 /// // Generates an HTTP access log.
-/// let access_log = /* ... */ # filter::LevelFilter::INFO;
+/// let access_log = // ...
+///     # filter::LevelFilter::INFO;
 ///
 /// // Add a filter to the access log layer so that it only observes
 /// // spans and events with the `http_access` target.
@@ -244,7 +245,8 @@ use std::{
 /// }));
 ///
 /// // A general-purpose logging layer.
-/// let log_layer = /* ... */ # filter::LevelFilter::INFO;
+/// let log_layer = // ...
+///     # filter::LevelFilter::INFO;
 ///
 /// // Build a subscriber that combines the access log and stdout log
 /// // layers.
@@ -262,8 +264,10 @@ use std::{
 /// ```
 /// use tracing_subscriber::{filter::{filter_fn, LevelFilter}, prelude::*};
 ///
-/// let access_log = /* ... */ # filter::LevelFilter::INFO;
-/// let log_layer = /* ... */ # filter::LevelFilter::INFO;
+/// let access_log = // ...
+///     # LevelFilter::INFO;
+/// let log_layer = // ...
+///     # LevelFilter::INFO;
 ///
 /// tracing_subscriber::registry()
 ///     // Add the filter for the "http_access" target to the access
