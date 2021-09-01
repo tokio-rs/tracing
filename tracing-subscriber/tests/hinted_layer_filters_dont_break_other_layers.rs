@@ -1,7 +1,7 @@
 #![cfg(feature = "registry")]
 mod support;
 use self::support::*;
-use tracing::{Level, Metadata};
+use tracing::{Level, Metadata, Subscriber};
 use tracing_subscriber::{filter::FilterFn, layer::Context, prelude::*};
 
 #[test]
@@ -9,10 +9,11 @@ fn layer_filters() {
     let (unfiltered, unfiltered_handle) = unfiltered("unfiltered");
     let (filtered, filtered_handle) = filtered("filtered");
 
-    let _subscriber = tracing_subscriber::registry()
+    let subscriber = tracing_subscriber::registry()
         .with(unfiltered)
-        .with(filtered.with_filter(filter()))
-        .set_default();
+        .with(filtered.with_filter(filter()));
+    assert_eq!(subscriber.max_level_hint(), None);
+    let _subscriber = subscriber.set_default();
 
     events();
 
@@ -32,10 +33,11 @@ fn layered_layer_filters() {
         .with_filter(filter())
         .and_then(filtered2.with_filter(filter()));
 
-    let _subscriber = tracing_subscriber::registry()
+    let subscriber = tracing_subscriber::registry()
         .with(unfiltered)
-        .with(filtered)
-        .set_default();
+        .with(filtered);
+    assert_eq!(subscriber.max_level_hint(), None);
+    let _subscriber = subscriber.set_default();
 
     events();
 
@@ -53,13 +55,13 @@ fn out_of_order() {
     let (filtered1, filtered1_handle) = filtered("filtered_1");
     let (filtered2, filtered2_handle) = filtered("filtered_2");
 
-    let _subscriber = tracing_subscriber::registry()
+    let subscriber = tracing_subscriber::registry()
         .with(unfiltered1)
         .with(filtered1.with_filter(filter()))
         .with(unfiltered2)
-        .with(filtered2.with_filter(filter()))
-        .set_default();
-    events();
+        .with(filtered2.with_filter(filter()));
+    assert_eq!(subscriber.max_level_hint(), None);
+    let _subscriber = subscriber.set_default();
 
     unfiltered1_handle.assert_finished();
     unfiltered2_handle.assert_finished();
@@ -77,18 +79,9 @@ fn mixed_layered() {
     let layered1 = filtered1.with_filter(filter()).and_then(unfiltered1);
     let layered2 = unfiltered2.and_then(filtered2.with_filter(filter()));
 
-    let _subscriber = tracing_subscriber::registry()
-        .with(layered1)
-        .with(layered2)
-        .set_default();
-
-    events();
-
-    unfiltered1_handle.assert_finished();
-    unfiltered2_handle.assert_finished();
-    filtered1_handle.assert_finished();
-    filtered2_handle.assert_finished();
-}
+    let subscriber = tracing_subscriber::registry().with(layered1).with(layered2);
+    assert_eq!(subscriber.max_level_hint(), None);
+    let _subscriber = subscriber.set_default();
 
 fn events() {
     tracing::trace!("hello trace");
