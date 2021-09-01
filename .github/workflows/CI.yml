@@ -85,6 +85,7 @@ jobs:
         - log-always
         - std log-always
         - std
+      fail-fast: false
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
@@ -128,6 +129,7 @@ jobs:
     strategy:
       matrix:
         rust: [stable, beta, nightly]
+      fail-fast: false
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
@@ -160,6 +162,7 @@ jobs:
         - tracing-serde
         - tracing-subscriber
         - tracing-tower
+      fail-fast: false
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
