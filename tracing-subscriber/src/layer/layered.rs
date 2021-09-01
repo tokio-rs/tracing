@@ -27,11 +27,7 @@ use std::{
 pub struct Layered<L, I, S = I> {
     layer: L,
     inner: I,
-    /// Does this layer follow special per-layer filter rules for `Interest`s
-    /// and `max_level_hint`s?
-    ///
-    /// If this is set, then:
-    has_plf_filter_rules: bool,
+
     inner_is_registry: bool,
     has_layer_filter: bool,
     inner_has_layer_filter: bool,
@@ -282,13 +278,11 @@ where
 
         let inner_has_layer_filter = inner_has_layer_filter || inner_is_registry;
         let has_layer_filter = filter::layer_has_plf(&layer);
-        let has_plf_filter_rules = has_layer_filter && !inner_has_layer_filter;
         Self {
             layer,
             inner,
             has_layer_filter,
             inner_has_layer_filter,
-            has_plf_filter_rules,
             inner_is_registry,
             _s: PhantomData,
         }
@@ -375,7 +369,6 @@ where
                 "subscriber",
                 &format_args!("PhantomData<{}>", type_name::<S>()),
             )
-            .field("has_plf_filter_rules", &self.has_plf_filter_rules)
             .field("has_layer_filter", &self.has_layer_filter)
             .field("inner_has_layer_filter", &self.inner_has_layer_filter);
         }
