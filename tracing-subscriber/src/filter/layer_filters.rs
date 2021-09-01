@@ -37,6 +37,7 @@ pub struct FilterFn<
     enabled: F,
     register_callsite: Option<R>,
     max_level_hint: Option<LevelFilter>,
+    cacheable: bool,
     _s: PhantomData<fn(S)>,
 }
 
@@ -414,7 +415,99 @@ where
             enabled,
             register_callsite: None,
             max_level_hint: None,
+            cacheable: false,
             _s: PhantomData,
+        }
+    }
+
+    /// Indicates that the result of the [`enabled`] can be cached.
+    ///
+    /// By default, a `FilterFn` assumes that the supplied [`Filter::enabled`]
+    /// function _may_ be dynamic: it may decide whether a given span or event
+    /// is enabled based not only on its [`Metadata`], but also based on the
+    /// current [span context] in which a particular instance of that event
+    /// occurs. Therefore, the default [`Filter::callsite_enabled`]
+    /// implementation will always return [`Interest::sometimes`], indicating
+    /// that the [`Filter::enabled`] method must be called *every* time a span
+    /// or event is recorded at that callsite.
+    ///
+    /// However, if the value returned by the [`Filter::enabled`] function will
+    /// never change for a particular [`Metadata`], regardless of the current
+    /// runtime context it's called in, then [`Filter::callsite_enabled`] may
+    /// instead return [`Interest::always`] if the callsite is enabled, or
+    /// [`Interest::never`] if it is not. This will potentially allow the
+    /// filtering result to be cached, which can improve performance, as the
+    /// filter may not need to be evaluated multiple times. Calling this method
+    /// changes the `FilterFn`'s default behavior to assume that the
+    /// [`Filter::enabled`] function *can* be cached in this manner.
+    ///
+    /// # Examples
+    ///
+    /// A valid use of `cacheable`, where the [`Filter::enabled`] function will
+    /// always return the same value for a given [`Metadata`]:
+    ///
+    /// ```
+    /// use tracing_subscriber::{filter, Layer};
+    ///
+    /// let target_filter_fn = filter::filter_fn(|metadata, _| {
+    ///     metadata.target() == "interesting_target"
+    /// })
+    ///     // This is VALID: the return value of the function will always
+    ///     // be the same for a particular `Metadata`.
+    ///     .cacheable();
+    ///
+    /// let my_layer = // some layer ...
+    ///     # filter::LevelFilter::INFO
+    ///     .with_filter(target_filter_fn);
+    /// # // just so that types are inferred correctly...
+    /// # drop(my_layer.with_subscriber(tracing_subscriber::registry()));
+    /// ```
+    ///
+    /// On the other hand, if the function depends on both the [`Metadata`] _and_
+    /// the [`Context`], it is *not* cacheable:
+    /// ```
+    /// use tracing_subscriber::{filter, Layer};
+    ///
+    /// let span_name_filter_fn = filter::filter_fn(|metadata, context| {
+    ///     // If the metadata describes a span, enable it if its name is
+    ///     // `interesting_span`.
+    ///     if metadata.is_span() && metadata.name() == "interesting_span" {
+    ///         return true;
+    ///     }
+    ///
+    ///     // Enable events if and only if we are currently inside a span
+    ///     // named `interesting_span`.
+    ///     match context.lookup_current() {
+    ///         Some(span) => span.name() == "interesting_span",
+    ///         None => false,
+    ///     }
+    /// })
+    ///     // This is INVALID: the return value of the function depends on
+    ///     // whether or not we are inside a span called `interesting_span`.
+    ///     // Therefore, it will NOT always be the same for the same
+    ///     // `Metadata`.
+    ///     .cacheable();
+    ///
+    /// let my_layer = // some layer ...
+    ///     # filter::LevelFilter::INFO
+    ///     .with_filter(span_name_filter_fn);
+    /// # // just so that types are inferred correctly...
+    /// # drop(my_layer.with_subscriber(tracing_subscriber::registry()));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If a user-provided `callsite_enabled` function has already been added to
+    /// this `FilterFn` (by calling [`with_callsite_filter`]).
+    pub fn cacheable(self) -> Self {
+        assert!(
+            self.register_callsite.is_none(),
+            "`FilterFn::cachable` does nothing if a user-provided \
+            `callsite_enabled` function has been supplied"
+        );
+        Self {
+            cacheable: true,
+            ..self
         }
     }
 }
@@ -470,10 +563,20 @@ where
     ///
     /// When this filter's [`Filter::callsite_enabled`] method is called,
     /// the provided function will be used rather than the default.
+    ///
+    /// # Panics
+    ///
+    /// If this `FilterFn`'s [`enabled`] method has been previously marked as
+    /// [`cachable`].
     pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> FilterFn<S, F, R2>
     where
         R2: Fn(&'static Metadata<'static>) -> Interest,
     {
+        assert!(
+            !self.cacheable,
+            "`FilterFn::with_callsite_filter` will override the default `callsite_enabled` \
+            behavior set by calling `FilterFn::cacheable",
+        );
         let register_callsite = Some(callsite_enabled);
         let FilterFn {
             enabled,
@@ -485,6 +588,7 @@ where
             enabled,
             register_callsite,
             max_level_hint,
+            cacheable: false,
             _s,
         }
     }
@@ -497,6 +601,15 @@ where
     }
 
     fn default_callsite_enabled(&self, metadata: &Metadata<'_>) -> Interest {
+        // If the user indicated that the `enabled` function's result is
+        // cacheable, just return that.
+        if self.cacheable {
+            return match (self.enabled)(metadata, &Context::none()) {
+                true => Interest::always(),
+                false => Interest::never(),
+            };
+        }
+
         // If it's below the configured max level, assume that `enabled` will
         // never enable it...
         if !self.is_below_max_level(metadata) {
@@ -600,6 +713,7 @@ where
             enabled: self.enabled.clone(),
             register_callsite: self.register_callsite.clone(),
             max_level_hint: self.max_level_hint,
+            cacheable: self.cacheable,
             _s: PhantomData,
         }
     }
