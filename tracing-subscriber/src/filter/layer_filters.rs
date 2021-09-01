@@ -17,7 +17,7 @@ use tracing_core::{
     Event, Metadata,
 };
 
-/// A [`Layer`] that wraps an inner [`Layer`] and adds a [`LayerFilter`] which
+/// A [`Layer`] that wraps an inner [`Layer`] and adds a [`Filter`] which
 /// controls what spans and events are enabled for that layer.
 #[derive(Clone)]
 pub struct Filtered<L, F, S> {
@@ -27,7 +27,7 @@ pub struct Filtered<L, F, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// A [`LayerFilter`] implemented by a closure or function pointer.
+/// A [`Filter`] implemented by a closure or function pointer.
 pub struct FilterFn<
     S,
     // TODO(eliza): should these just be boxed functions?
@@ -40,13 +40,13 @@ pub struct FilterFn<
     _s: PhantomData<fn(S)>,
 }
 
-/// Uniquely identifies an individual [`LayerFilter`] instance in the context of
+/// Uniquely identifies an individual [`Filter`] instance in the context of
 /// a [`Subscriber`].
 ///
 /// When adding a [`Filtered`] [`Layer`] to a [`Subscriber`], the [`Subscriber`]
 /// generates a `FilterId` for that [`Filtered`] layer. The [`Filtered`] layer
 /// will then use the generated ID to query whether a particular span was
-/// previously enabled by that layer's [`LayerFilter`].
+/// previously enabled by that layer's [`Filter`].
 ///
 /// **Note**: Currently, the [`Registry`] type provided by this crate is the
 /// **only** [`Subscriber`] implementation capable of participating in per-layer
@@ -67,7 +67,7 @@ pub struct FilterId(u64);
 ///
 /// This is currently a private type that's used exclusively by the
 /// [`Registry`]. However, in the future, this may become a public API, in order
-/// to allow user subscribers to host [`LayerFilter`]s.
+/// to allow user subscribers to host [`Filter`]s.
 #[derive(Default, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct FilterMap {
     bits: u64,
@@ -122,7 +122,7 @@ thread_local! {
 
 // === impl Filter ===
 
-impl<S> layer::LayerFilter<S> for LevelFilter {
+impl<S> layer::Filter<S> for LevelFilter {
     fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
         meta.level() <= self
     }
@@ -140,7 +140,7 @@ impl<S> layer::LayerFilter<S> for LevelFilter {
     }
 }
 
-impl<S> layer::LayerFilter<S> for Arc<dyn layer::LayerFilter<S> + Send + Sync + 'static> {
+impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
     #[inline]
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
         (**self).enabled(meta, cx)
@@ -157,7 +157,7 @@ impl<S> layer::LayerFilter<S> for Arc<dyn layer::LayerFilter<S> + Send + Sync + 
     }
 }
 
-impl<S> layer::LayerFilter<S> for Box<dyn layer::LayerFilter<S> + Send + Sync + 'static> {
+impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
     #[inline]
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
         (**self).enabled(meta, cx)
@@ -200,7 +200,7 @@ impl<L, F, S> Filtered<L, F, S> {
 impl<S, L, F> Layer<S> for Filtered<L, F, S>
 where
     S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
-    F: layer::LayerFilter<S> + 'static,
+    F: layer::Filter<S> + 'static,
     L: Layer<S>,
 {
     fn on_layer(&mut self, subscriber: &mut S) {
@@ -347,7 +347,7 @@ where
 
 // === impl FilterFn ===
 
-/// Constructs a [`FilterFn`], which implements the [`LayerFilter`] trait, from
+/// Constructs a [`FilterFn`], which implements the [`Filter`] trait, from
 /// a function or closure that returns `true` if a span or event should be enabled.
 ///
 /// This is equivalent to calling [`FilterFn::new`].
@@ -385,7 +385,7 @@ impl<S, F> FilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
-    /// Constructs a [`LayerFilter`] from a function or closure that returns `true`
+    /// Constructs a [`Filter`] from a function or closure that returns `true`
     /// if a span or event should be enabled.
     ///
     /// # Examples
@@ -426,7 +426,7 @@ where
     /// Sets the highest verbosity [`Level`] the filter function will enable.
     ///
     /// The value passed to this method will be returned by this `FilterFn`'s
-    /// [`LayerFilter::max_level_hint`] method.
+    /// [`Filter::max_level_hint`] method.
     ///
     /// If the provided function will not enable all levels, it is recommended
     /// to call this method to configure it with the most verbose level it will
@@ -468,7 +468,7 @@ where
 
     /// Adds a function for filtering callsites to this filter.
     ///
-    /// When this filter's [`LayerFilter::callsite_enabled`] method is called,
+    /// When this filter's [`Filter::callsite_enabled`] method is called,
     /// the provided function will be used rather than the default.
     pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> FilterFn<S, F, R2>
     where
@@ -520,7 +520,7 @@ where
     }
 }
 
-impl<S, F, R> layer::LayerFilter<S> for FilterFn<S, F, R>
+impl<S, F, R> layer::Filter<S> for FilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     R: Fn(&'static Metadata<'static>) -> Interest,

@@ -133,10 +133,10 @@ pub trait LookupSpan<'a> {
         })
     }
 
-    /// Registers a [`LayerFilter`] for [per-layer filtering] with this
+    /// Registers a [`Filter`] for [per-layer filtering] with this
     /// [`Subscriber`].
     ///
-    /// The [`LayerFilter`] can then use the returned [`FilterId`] to
+    /// The [`Filter`] can then use the returned [`FilterId`] to
     /// [check if it previously enabled a span][check].
     ///
     /// # Panics
@@ -144,7 +144,7 @@ pub trait LookupSpan<'a> {
     /// If this `Subscriber` does not support [per-layer filtering].
     ///
     ///
-    /// [`LayerFilter`]: crate::filter::LayerFilter
+    /// [`Filter`]: crate::filter::Filter
     /// [per-layer filtering]: crate::layer::Layer#per-layer-filtering
     /// [`Subscriber`]: tracing_core::Subscriber
     /// [`FilterId`]: crate::filter::FilterId

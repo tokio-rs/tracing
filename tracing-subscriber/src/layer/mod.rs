@@ -214,14 +214,14 @@ pub use self::{context::*, layered::*};
 ///   from others, such as by generating an HTTP access log from a span that
 ///   tracks the lifetime of an HTTP request.
 ///
-/// The [`LayerFilter`] trait is used to control what spans and events are
+/// The [`Filter`] trait is used to control what spans and events are
 /// observed by an individual `Layer`, while still allowing other `Layer`s to
 /// potentially record them. The [`Layer::with_filter`] method combines a
-/// `Layer` with a [`LayerFilter`], returning a [`Filtered`] layer.
+/// `Layer` with a [`Filter`], returning a [`Filtered`] layer.
 ///
 /// For example, to generate an HTTP access log based on spans with
 /// the `http_access` target, while logging other spans and events to
-/// standard out, a [`LayerFilter`] can be added to the access log layer:
+/// standard out, a [`Filter`] can be added to the access log layer:
 ///
 /// ```
 /// use tracing_subscriber::{filter, prelude::*};
@@ -298,7 +298,7 @@ pub use self::{context::*, layered::*};
 /// [`Layer::register_callsite`]: #method.register_callsite
 /// [`Layer::enabled`]: #method.enabled
 /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-/// [`LayerFilter`]: crate::filter::LayerFilter
+/// [`Filter`]: crate::filter::Filter
 /// [`Filtered`]: crate::filter::Filtered
 pub trait Layer<S>
 where
@@ -628,19 +628,19 @@ where
         Layered::new(self, inner, inner_has_layer_filter)
     }
 
-    /// Combines `self` with a [`LayerFilter`], returning a [`Filtered`] layer.
+    /// Combines `self` with a [`Filter`], returning a [`Filtered`] layer.
     ///
-    /// The [`LayerFilter`] will control which spans and events are enabled for
+    /// The [`Filter`] will control which spans and events are enabled for
     /// this layer. See [the trait-level documentation][plf] for details on
     /// per-layer filtering.
     ///
-    /// [`LayerFilter`]: crate::filter::LayerFilter
+    /// [`Filter`]: crate::filter::Filter
     /// [`Filtered`]: crate::filter::Filtered
     /// [plf]: #per-layer-filtering
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
     where
         Self: Sized,
-        F: LayerFilter<S>,
+        F: Filter<S>,
     {
         filter::Filtered::new(self, filter)
     }
@@ -658,7 +658,7 @@ where
 /// A per-[`Layer`] filter that determines whether a span or event is enabled
 /// for an individual layer.
 #[cfg_attr(docsrs, doc(notable_trait))]
-pub trait LayerFilter<S> {
+pub trait Filter<S> {
     /// Returns `true` if this layer is interested in a span or event with the
     /// given [`Metadata`] in the current [`Context`], similarly to
     /// [`Subscriber::enabled`].
@@ -682,7 +682,7 @@ pub trait LayerFilter<S> {
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: If a <code>LayerFilter</code> will perform
+    /// <strong>Note</strong>: If a <code>Filter</code> will perform
     /// <em>dynamic filtering</em> that depends on the current context in which
     /// a span or event was observered (e.g. only enabling an event when it
     /// occurs within a particular span), it <strong>must</strong> return
@@ -699,7 +699,7 @@ pub trait LayerFilter<S> {
     /// If a [`Subscriber`] returns [`Interest::always()`][always] or
     /// [`Interest::never()`][never] for a given [`Metadata`], its [`enabled`]
     /// method is then *guaranteed* to never be called for that callsite. On the
-    /// other hand, when a `LayerFilter` returns [`Interest::always()`][always] or
+    /// other hand, when a `Filter` returns [`Interest::always()`][always] or
     /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`]s may have
     /// differing interests in that callsite. If this is the case, the callsite
     /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
@@ -707,43 +707,40 @@ pub trait LayerFilter<S> {
     /// event.
     ///
     /// Returning [`Interest::always()`][always] or [`Interest::never()`][never] from
-    /// `LayerFilter::callsite_enabled` will permanently enable or disable a
+    /// `Filter::callsite_enabled` will permanently enable or disable a
     /// callsite (without requiring subsequent calls to [`enabled`]) if and only
     /// if the following is true:
     ///
-    /// - all [`Layer`]s that comprise the subscriber include `LayerFilter`s
+    /// - all [`Layer`]s that comprise the subscriber include `Filter`s
     ///   (this includes a tree of [`Layered`] layers that share the same
-    ///   `LayerFilter`)
-    /// - all those `LayerFilter`s return the same [`Interest`].
+    ///   `Filter`)
+    /// - all those `Filter`s return the same [`Interest`].
     ///
     /// For example, if a [`Subscriber`] consists of two [`Filtered`] layers,
     /// and both of those layers return [`Interest::never()`][never], that
     /// callsite *will* never be enabled, and the [`enabled`] methods of those
-    /// [`LayerFilter`]s will not be called.
+    /// [`Filter`]s will not be called.
     ///
     /// ## Default Implementation
     ///
     /// The default implementation of this method assumes that the
-    /// `LayerFilter`'s [`enabled`] method _may_ perform dynamic filtering, and
+    /// `Filter`'s [`enabled`] method _may_ perform dynamic filtering, and
     /// returns [`Interest::sometimes()`][sometimes], to ensure that [`enabled`]
     /// is called to determine whether a particular _instance_ of the callsite
     /// is enabled in the current context. If this is *not* the case, and the
-    /// `LayerFilter`'s [`enabled`] method will always return the same result
+    /// `Filter`'s [`enabled`] method will always return the same result
     /// for a particular [`Metadata`], this method can be overridden as
     /// follows:
     ///
     /// ```
-    /// use tracing_subscriber::{
-    ///     layer::Context,
-    ///     filter::LayerFilter,
-    /// };
+    /// use tracing_subscriber::layer;
     /// use tracing_core::{Metadata, subscriber::Interest};
     ///
-    /// struct MyLayerFilter {
+    /// struct MyFilter {
     ///     // ...
     /// }
     ///
-    /// impl MyLayerFilter {
+    /// impl MyFilter {
     ///     // The actual logic for determining whether a `Metadata` is enabled
     ///     // must be factored out from the `enabled` method, so that it can be
     ///     // called without a `Context` (which is not provided to the
@@ -754,8 +751,8 @@ pub trait LayerFilter<S> {
     ///     }
     /// }
     ///
-    /// impl<S> LayerFilter<S> for MyLayerFilter {
-    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+    /// impl<S> layer::Filter<S> for MyFilter {
+    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
     ///         self.is_enabled(metadata)
     ///     }
     ///
@@ -779,14 +776,14 @@ pub trait LayerFilter<S> {
     /// [never]: tracing_core::Interest::never
     /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite
     /// [`Subscriber`]: tracing_core::Subscriber
-    /// [`enabled`]: LayerFilter::enabled
+    /// [`enabled`]: Filter::enabled
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
         let _ = meta;
         Interest::sometimes()
     }
 
     /// Returns an optional hint of the highest [verbosity level][level] that
-    /// this `LayerFilter` will enable.
+    /// this `Filter` will enable.
     ///
     /// If this method returns a [`LevelFilter`], it will be used as a hint to
     /// determine the most verbose level that will be enabled. This will allow
@@ -794,13 +791,13 @@ pub trait LayerFilter<S> {
     /// more efficiently. An implementation of this method is optional, but
     /// strongly encouraged.
     ///
-    /// If the maximum level the `LayerFilter` will enable can change over the
+    /// If the maximum level the `Filter` will enable can change over the
     /// course of its lifetime, it is free to return a different value from
     /// multiple invocations of this method. However, note that changes in the
     /// maximum level will **only** be reflected after the callsite [`Interest`]
     /// cache is rebuilt, by calling the
     /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
-    /// Therefore, if the `LayerFilter will change the value returned by this
+    /// Therefore, if the `Filter will change the value returned by this
     /// method, it is responsible for ensuring that
     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
     /// level changes.
