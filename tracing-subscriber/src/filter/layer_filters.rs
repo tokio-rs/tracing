@@ -844,10 +844,6 @@ impl FilterState {
         }
     }
 
-    // pub(crate) fn set_interest(&self, interest: &Interest) {
-    //     let mut current = self.interest.borrow_mut().unwrap();
-    // }
-
     fn set(&self, filter: FilterId, enabled: bool) {
         #[cfg(debug_assertions)]
         {
@@ -957,13 +953,6 @@ impl FilterState {
             debug_assert_eq!(map, FilterMap::default());
         }
 
-        // if map.all_disabled() {
-        //     // Nothing enabled this callsite, we won't tick back down the
-        //     // counter in `did_enable`. Reset it.
-        //     #[cfg(debug_assertions)]
-        //     self.in_current_filter_pass.set(0);
-        //     self.enabled.set(FilterMap::default());
-        // }
         map
     }
 }
@@ -1063,6 +1052,22 @@ mod tests {
         }
 
         #[test]
+        fn plf_only_unhinted_nested() {
+            let subscriber = crate::registry()
+                .with(
+                    NopLayer
+                        .with_filter(LevelFilter::INFO)
+                        .and_then(NopLayer.with_filter(LevelFilter::WARN)),
+                )
+                .with(
+                    NopLayer
+                        .with_filter(filter_fn(|_, _| true))
+                        .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                );
+            assert_eq!(subscriber.max_level_hint(), None);
+        }
+
+        #[test]
         fn plf_only_picks_max() {
             let subscriber = crate::registry()
                 .with(NopLayer.with_filter(LevelFilter::WARN))
@@ -1077,6 +1082,24 @@ mod tests {
                 .with(NopLayer.with_filter(LevelFilter::DEBUG))
                 .with(NopLayer.with_filter(LevelFilter::INFO))
                 .with(NopLayer.with_filter(LevelFilter::ERROR));
+            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+        }
+
+        #[test]
+        fn nested_plf_only_picks_max() {
+            let subscriber = crate::registry()
+                .with(
+                    NopLayer.with_filter(LevelFilter::INFO).and_then(
+                        NopLayer
+                            .with_filter(LevelFilter::WARN)
+                            .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                    ),
+                )
+                .with(
+                    NopLayer
+                        .with_filter(LevelFilter::INFO)
+                        .and_then(NopLayer.with_filter(LevelFilter::ERROR)),
+                );
             assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
         }
     }
