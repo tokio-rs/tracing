@@ -241,7 +241,7 @@ pub use self::{context::*, layered::*};
 ///
 /// // Add a filter to the access log layer so that it only observes
 /// // spans and events with the `http_access` target.
-/// let access_log = access_log.with_filter(filter::filter_fn(|metadata, _| {
+/// let access_log = access_log.with_filter(filter::filter_fn(|metadata| {
 ///     // Returns `true` if and only if the span or event's target is
 ///     // "http_access".
 ///     metadata.target() == "http_access"
@@ -273,7 +273,7 @@ pub use self::{context::*, layered::*};
 /// tracing_subscriber::registry()
 ///     // Add the filter for the "http_access" target to the access
 ///     // log layer, like before.
-///     .with(access_log.with_filter(filter_fn(|metadata, _| {
+///     .with(access_log.with_filter(filter_fn(|metadata| {
 ///         metadata.target() == "http_access"
 ///     })))
 ///     // Add a filter for spans and events with the INFO level

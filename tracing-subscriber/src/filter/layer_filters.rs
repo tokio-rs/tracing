@@ -62,10 +62,13 @@ pub struct Filtered<L, F, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// A per-layer [`Filter`] implemented by a closure or function pointer.
+/// A per-layer [`Filter`] implemented by a closure or function pointer that
+/// determines whether a given span or event is enabled _dynamically_,
+/// potentially based on the current [span context].
 ///
 /// See the [documentation on per-layer filtering][plf] for details.
 ///
+/// [span context]: crate::layer::Context
 /// [`Filter`]: crate::layer::Filter
 /// [plf]: crate::Layer#per-layer-filtering
 pub struct DynFilterFn<
@@ -449,6 +452,63 @@ where
     FilterFn::new(f)
 }
 
+/// Constructs a [`DynFilterFn`], which implements the [`Filter`] trait, from
+/// a function or closure that returns `true` if a span or event should be
+/// enabled within a particular [span context].
+///
+/// This is equivalent to calling [`DynFilterFn::new`].
+///
+/// See the [documentation on per-layer filtering][plf] for details on using
+/// [`Filter`]s.
+///
+/// # Examples
+///
+/// ```
+/// use tracing_subscriber::{
+///     layer::{Layer, SubscriberExt},
+///     filter,
+///     util::SubscriberInitExt,
+/// };
+///
+/// // Only enable spans or events within a span named "interesting_span".
+/// let my_filter = filter::dynamic_filter_fn(|metadata, cx| {
+///     // If this *is* "interesting_span", make sure to enable it.
+///     if metadata.is_span() && metadata.name() == "interesting_span" {
+///         return true;
+///     }
+///
+///     // Otherwise, are we in an interesting span?
+///     if let Some(current_span) = cx.lookup_current() {
+///         return current.name() == "interesting_span";
+///     }
+///
+///     false
+/// });
+///
+/// let my_layer = tracing_subscriber::fmt::layer();
+///
+/// tracing_subscriber::registry()
+///     .with(my_layer.with_filter(my_filter))
+///     .init();
+///
+/// // This event will not be enabled.
+/// tracing::info!("something happened");
+///
+/// tracing::info_span!("interesting_span").in_scope(|| {
+///     // This event will be enabled.
+///     tracing::debug!("something else happened");
+/// });
+/// ```
+/// [`Filter`]: crate::layer::Filter
+/// [plf]: crate::Layer#per-layer-filtering
+/// [span context]: crate::layer::Context
+pub fn dynamic_filter_fn<S, F>(f: F) -> DynFilterFn<S, F>
+where
+    F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
+{
+    DynFilterFn::new(f)
+}
+
 impl<F> FilterFn<F>
 where
     F: Fn(&Metadata<'_>) -> bool,
@@ -616,26 +676,37 @@ where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
     /// Constructs a [`Filter`] from a function or closure that returns `true`
-    /// if a span or event should be enabled.
+    /// if a span or event should be enabled within a particular [`Context`].
     ///
     /// See the [documentation on per-layer filtering][plf] for details on using
     /// [`Filter`]s.
     ///
     /// [`Filter`]: crate::layer::Filter
     /// [plf]: crate::Layer#per-layer-filtering
+    /// [`Context`]: crate::layer::Context
     ///
     /// # Examples
     ///
     /// ```
     /// use tracing_subscriber::{
     ///     layer::{Layer, SubscriberExt},
-    ///     filter::FilterFn,
+    ///     filter::DynamicFilterFn,
     ///     util::SubscriberInitExt,
     /// };
     ///
-    /// let my_filter = FilterFn::new(|metadata, _| {
-    ///     // Only enable spans or events with the target "interesting_target"
-    ///     metadata.target() == "interesting_target"
+    /// // Only enable spans or events within a span named "interesting_span".
+    /// let my_filter = DynFilterFn::new(|metadata, cx| {
+    ///     // If this *is* "interesting_span", make sure to enable it.
+    ///     if metadata.is_span() && metadata.name() == "interesting_span" {
+    ///         return true;
+    ///     }
+    ///
+    ///     // Otherwise, are we in an interesting span?
+    ///     if let Some(current_span) = cx.lookup_current() {
+    ///         return current.name() == "interesting_span";
+    ///     }
+    ///
+    ///     false
     /// });
     ///
     /// let my_layer = tracing_subscriber::fmt::layer();
@@ -643,6 +714,14 @@ where
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
     ///     .init();
+    ///
+    /// // This event will not be enabled.
+    /// tracing::info!("something happened");
+    ///
+    /// tracing::info_span!("interesting_span").in_scope(|| {
+    ///     // This event will be enabled.
+    ///     tracing::debug!("something else happened");
+    /// });
     /// ```
     pub fn new(enabled: F) -> Self {
         Self {
@@ -859,7 +938,7 @@ where
 
         // If it's below the configured max level, assume that `enabled` will
         // never enable it...
-        if !self.is_below_max_level(metadata) {
+        if is_below_max_level(&self.max_level_hint, metadata) {
             debug_assert!(
                 !(self.enabled)(metadata, &Context::none()),
                 "DynFilterFn<{}> claimed it would only enable {:?} and below, \
@@ -1276,6 +1355,11 @@ impl fmt::Debug for FmtBitset {
     }
 }
 
+fn is_below_max_level(hint: &Option<LevelFilter>, metadata: &Metadata<'_>) -> bool {
+    hint.as_ref()
+        .map(|hint| metadata.level() <= hint)
+        .unwrap_or(true)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
