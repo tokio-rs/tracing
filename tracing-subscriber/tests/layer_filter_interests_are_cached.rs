@@ -1,3 +1,4 @@
+#![cfg(feature = "registry")]
 mod support;
 use self::support::*;
 
