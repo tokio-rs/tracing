@@ -1,4 +1,5 @@
-use tracing_futures::{Instrument, WithCollector};
+#![cfg(feature = "registry")]
+use tracing_futures::{Instrument, WithSubscriber};
 use tracing_subscriber::prelude::*;
 
 #[tokio::test]
