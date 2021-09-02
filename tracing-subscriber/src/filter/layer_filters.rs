@@ -68,7 +68,7 @@ pub struct Filtered<L, F, S> {
 ///
 /// [`Filter`]: crate::layer::Filter
 /// [plf]: crate::Layer#per-layer-filtering
-pub struct FilterFn<
+pub struct DynFilterFn<
     S,
     // TODO(eliza): should these just be boxed functions?
     F = fn(&Metadata<'_>, &Context<'_, S>) -> bool,
@@ -79,6 +79,12 @@ pub struct FilterFn<
     max_level_hint: Option<LevelFilter>,
     cacheable: bool,
     _s: PhantomData<fn(S)>,
+}
+
+#[derive(Copy, Clone)]
+pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
+    enabled: F,
+    max_level_hint: Option<LevelFilter>,
 }
 
 /// Uniquely identifies an individual [`Filter`] instance in the context of
@@ -419,26 +425,193 @@ where
 ///     util::SubscriberInitExt,
 /// };
 ///
-/// let my_filter = filter::filter_fn(|metadata, _| {
-///     // Only enable spans or events with the target "interesting_target"
-///     metadata.target() == "interesting_target"
+/// let my_filter = filter::filter_fn(|metadata| {
+///     // Only enable spans or events with the target "interesting_things"
+///     metadata.target() == "interesting_things"
 /// });
 ///
 /// let my_layer = tracing_subscriber::fmt::layer();
 ///
 /// tracing_subscriber::registry()
-///     // Add the filter to the layer
 ///     .with(my_layer.with_filter(my_filter))
 ///     .init();
+///
+/// // This event will not be enabled.
+/// tracing::warn!("something important but uninteresting happened!");
+///
+/// // This event will be enabled.
+/// tracing::debug!(target: "interesting_things", "an interesting minor detail...");
 /// ```
-pub fn filter_fn<S, F>(f: F) -> FilterFn<S, F>
+pub fn filter_fn<F>(f: F) -> FilterFn<F>
 where
-    F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
+    F: Fn(&Metadata<'_>) -> bool,
 {
     FilterFn::new(f)
 }
 
-impl<S, F> FilterFn<S, F>
+impl<F> FilterFn<F>
+where
+    F: Fn(&Metadata<'_>) -> bool,
+{
+    /// Constructs a [`Filter`] from a function or closure that returns `true`
+    /// if a span or event should be enabled.
+    ///
+    /// See the [documentation on per-layer filtering][plf] for details on using
+    /// [`Filter`]s.
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [plf]: crate::Layer#per-layer-filtering
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     layer::{Layer, SubscriberExt},
+    ///     filter::FilterFn,
+    ///     util::SubscriberInitExt,
+    /// };
+    ///
+    /// let my_filter = FilterFn::new(|metadata| {
+    ///     // Only enable spans or events with the target "interesting_things"
+    ///     metadata.target() == "interesting_things"
+    /// });
+    ///
+    /// let my_layer = tracing_subscriber::fmt::layer();
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(my_layer.with_filter(my_filter))
+    ///     .init();
+    ///
+    /// // This event will not be enabled.
+    /// tracing::warn!("something important but uninteresting happened!");
+    ///
+    /// // This event will be enabled.
+    /// tracing::debug!(target: "interesting_things", "an interesting minor detail...");
+    /// ```
+    pub fn new(enabled: F) -> Self {
+        Self {
+            enabled,
+            max_level_hint: None,
+        }
+    }
+
+    /// Sets the highest verbosity [`Level`] the filter function will enable.
+    ///
+    /// The value passed to this method will be returned by this `FilterFn`'s
+    /// [`Filter::max_level_hint`] method.
+    ///
+    /// If the provided function will not enable all levels, it is recommended
+    /// to call this method to configure it with the most verbose level it will
+    /// enable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     layer::{Layer, SubscriberExt},
+    ///     filter::{filter_fn, LevelFilter},
+    ///     util::SubscriberInitExt,
+    /// };
+    /// use tracing_core::Level;
+    ///
+    /// let my_filter = filter_fn(|metadata| {
+    ///     // Only enable spans or events with targets starting with `my_crate`
+    ///     // and levels at or below `INFO`.
+    ///     metadata.level() <= &Level::INFO && metadata.target().starts_with("my_crate")
+    /// })
+    ///     // Since the filter closure will only enable the `INFO` level and
+    ///     // below, set the max level hint
+    ///     .with_max_level_hint(LevelFilter::INFO);
+    ///
+    /// let my_layer = tracing_subscriber::fmt::layer();
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(my_layer.with_filter(my_filter))
+    ///     .init();
+    /// ```
+    ///
+    /// [`Level`]: tracing_core::Level
+    /// [`Filter::max_level_hint`]: crate::layer::Filter::max_level_hint
+    pub fn with_max_level_hint(self, max_level_hint: impl Into<LevelFilter>) -> Self {
+        Self {
+            max_level_hint: Some(max_level_hint.into()),
+            ..self
+        }
+    }
+
+    fn is_below_max_level(&self, metadata: &Metadata<'_>) -> bool {
+        self.max_level_hint
+            .as_ref()
+            .map(|hint| metadata.level() <= hint)
+            .unwrap_or(true)
+    }
+}
+
+impl<S, F> layer::Filter<S> for FilterFn<F>
+where
+    F: Fn(&Metadata<'_>) -> bool,
+{
+    fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+        let enabled = (self.enabled)(metadata);
+        debug_assert!(
+            !enabled || self.is_below_max_level(metadata),
+            "FilterFn<{}> claimed it would only enable {:?} and below, \
+            but it enabled metadata with the {:?} level\nmetadata={:#?}",
+            type_name::<F>(),
+            self.max_level_hint.unwrap(),
+            metadata.level(),
+            metadata,
+        );
+
+        enabled
+    }
+
+    fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+        // Because `self.enabled` takes a `Metadata` only (and no `Context`
+        // parameter), we can reasonably assume its results are cachable, and
+        // just return `Interest::always`/`Interest::never`.
+        if (self.enabled)(metadata) {
+            debug_assert!(
+                self.is_below_max_level(metadata),
+                "FilterFn<{}> claimed it was only interested in {:?} and below, \
+                but it enabled metadata with the {:?} level\nmetadata={:#?}",
+                type_name::<F>(),
+                self.max_level_hint.unwrap(),
+                metadata.level(),
+                metadata,
+            );
+            return Interest::always();
+        }
+
+        Interest::never()
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.max_level_hint
+    }
+}
+
+impl<F> From<F> for FilterFn<F>
+where
+    F: Fn(&Metadata<'_>) -> bool,
+{
+    fn from(enabled: F) -> Self {
+        Self::new(enabled)
+    }
+}
+
+impl<F> fmt::Debug for FilterFn<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FilterFn")
+            .field("enabled", &format_args!("{}", type_name::<F>()))
+            .field("max_level_hint", &self.max_level_hint)
+            .finish()
+    }
+}
+
+// === impl DynFilterFn ==
+
+impl<S, F> DynFilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
@@ -581,7 +754,7 @@ where
     }
 }
 
-impl<S, F, R> FilterFn<S, F, R>
+impl<S, F, R> DynFilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
@@ -642,23 +815,23 @@ where
     /// [`Filter::callsite_enabled`]: crate::layer::Filter::callsite_enabled
     /// [`enabled`]: crate::layer::Filter::enabled
     /// [`cacheable`]: FilterFn::cacheable
-    pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> FilterFn<S, F, R2>
+    pub fn with_callsite_filter<R2>(self, callsite_enabled: R2) -> DynFilterFn<S, F, R2>
     where
         R2: Fn(&'static Metadata<'static>) -> Interest,
     {
         assert!(
             !self.cacheable,
-            "`FilterFn::with_callsite_filter` will override the default `callsite_enabled` \
+            "`DynFilterFn::with_callsite_filter` will override the default `callsite_enabled` \
             behavior set by calling `FilterFn::cacheable",
         );
         let register_callsite = Some(callsite_enabled);
-        let FilterFn {
+        let DynFilterFn {
             enabled,
             max_level_hint,
             _s,
             ..
         } = self;
-        FilterFn {
+        DynFilterFn {
             enabled,
             register_callsite,
             max_level_hint,
@@ -689,7 +862,7 @@ where
         if !self.is_below_max_level(metadata) {
             debug_assert!(
                 !(self.enabled)(metadata, &Context::none()),
-                "FilterFn<{}> claimed it would only enable {:?} and below, \
+                "DynFilterFn<{}> claimed it would only enable {:?} and below, \
                 but it enabled metadata with the {:?} level\nmetadata={:#?}",
                 type_name::<F>(),
                 self.max_level_hint.unwrap(),
@@ -707,7 +880,7 @@ where
     }
 }
 
-impl<S, F, R> layer::Filter<S> for FilterFn<S, F, R>
+impl<S, F, R> layer::Filter<S> for DynFilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     R: Fn(&'static Metadata<'static>) -> Interest,
@@ -716,7 +889,7 @@ where
         let enabled = (self.enabled)(metadata, cx);
         debug_assert!(
             !enabled || self.is_below_max_level(metadata),
-            "FilterFn<{}> claimed it would only enable {:?} and below, \
+            "DynFilterFn<{}> claimed it would only enable {:?} and below, \
             but it enabled metadata with the {:?} level\nmetadata={:#?}",
             type_name::<F>(),
             self.max_level_hint.unwrap(),
@@ -735,7 +908,7 @@ where
             .unwrap_or_else(|| self.default_callsite_enabled(metadata));
         debug_assert!(
             interest.is_never() || self.is_below_max_level(metadata),
-            "FilterFn<{}, {}> claimed it was only interested in {:?} and below, \
+            "DynFilterFn<{}, {}> claimed it was only interested in {:?} and below, \
             but it enabled metadata with the {:?} level\nmetadata={:#?}",
             type_name::<F>(),
             type_name::<R>(),
@@ -752,10 +925,10 @@ where
     }
 }
 
-impl<S, F, R> fmt::Debug for FilterFn<S, F, R> {
+impl<S, F, R> fmt::Debug for DynFilterFn<S, F, R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alt = f.alternate();
-        let mut s = f.debug_struct("FilterFn");
+        let mut s = f.debug_struct("DynFilterFn");
         s.field("enabled", &format_args!("{}", type_name::<F>()));
         if self.register_callsite.is_some() {
             s.field(
@@ -777,7 +950,7 @@ impl<S, F, R> fmt::Debug for FilterFn<S, F, R> {
     }
 }
 
-impl<S, F, R> Clone for FilterFn<S, F, R>
+impl<S, F, R> Clone for DynFilterFn<S, F, R>
 where
     F: Clone,
     R: Clone,
@@ -793,7 +966,7 @@ where
     }
 }
 
-impl<F, S> From<F> for FilterFn<S, F>
+impl<F, S> From<F> for DynFilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
 {
@@ -1155,7 +1328,7 @@ mod tests {
         fn plf_only_unhinted() {
             let subscriber = crate::registry()
                 .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer.with_filter(filter_fn(|_, _| true)));
+                .with(NopLayer.with_filter(filter_fn(|_| true)));
             assert_eq!(subscriber.max_level_hint(), None);
         }
 
@@ -1169,7 +1342,7 @@ mod tests {
                 )
                 .with(
                     NopLayer
-                        .with_filter(filter_fn(|_, _| true))
+                        .with_filter(filter_fn(|_| true))
                         .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
                 );
             assert_eq!(subscriber.max_level_hint(), None);

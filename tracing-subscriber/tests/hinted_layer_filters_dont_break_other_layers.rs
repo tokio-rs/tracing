@@ -2,7 +2,7 @@
 mod support;
 use self::support::*;
 use tracing::{Level, Metadata, Subscriber};
-use tracing_subscriber::{filter::FilterFn, layer::Context, prelude::*};
+use tracing_subscriber::{filter::DynFilterFn, layer::Context, prelude::*};
 
 #[test]
 fn layer_filters() {
@@ -101,8 +101,8 @@ fn events() {
     tracing::error!("hello error");
 }
 
-fn filter<S>() -> FilterFn<S> {
-    FilterFn::new(
+fn filter<S>() -> DynFilterFn<S> {
+    DynFilterFn::new(
         (|metadata: &Metadata<'_>, _: &tracing_subscriber::layer::Context<'_, S>| {
             metadata.level() <= &Level::INFO
         }) as fn(&Metadata<'_>, &Context<'_, S>) -> bool,

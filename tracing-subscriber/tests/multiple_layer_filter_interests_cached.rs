@@ -6,10 +6,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tracing::{
-    subscriber::{Interest, Subscriber},
-    Level,
-};
+use tracing::{Level, Subscriber};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
@@ -17,25 +14,13 @@ fn multiple_layer_filter_interests_are_cached() {
     // This layer will return Interest::always for INFO and lower.
     let seen_info = Arc::new(Mutex::new(HashMap::new()));
     let seen_info2 = seen_info.clone();
-    let filter = filter::filter_fn(move |meta, _| {
+    let filter = filter::filter_fn(move |meta| {
         *seen_info
             .lock()
             .unwrap()
             .entry(*meta.level())
             .or_insert(0usize) += 1;
         meta.level() <= &Level::INFO
-    });
-    let seen_info = seen_info2.clone();
-    let filter = filter.with_callsite_filter(move |meta| {
-        *seen_info
-            .lock()
-            .unwrap()
-            .entry(*meta.level())
-            .or_insert(0usize) += 1;
-        if meta.level() <= &Level::INFO {
-            return Interest::always();
-        }
-        Interest::never()
     });
     let seen_info = seen_info2;
 
@@ -53,25 +38,13 @@ fn multiple_layer_filter_interests_are_cached() {
     // This layer will return Interest::always for WARN and lower.
     let seen_warn = Arc::new(Mutex::new(HashMap::new()));
     let seen_warn2 = seen_warn.clone();
-    let filter = filter::filter_fn(move |meta, _| {
+    let filter = filter::filter_fn(move |meta| {
         *seen_warn
             .lock()
             .unwrap()
             .entry(*meta.level())
             .or_insert(0usize) += 1;
         meta.level() <= &Level::WARN
-    });
-    let seen_warn = seen_warn2.clone();
-    let filter = filter.with_callsite_filter(move |meta| {
-        *seen_warn
-            .lock()
-            .unwrap()
-            .entry(*meta.level())
-            .or_insert(0usize) += 1;
-        if meta.level() <= &Level::WARN {
-            return Interest::always();
-        }
-        Interest::never()
     });
     let seen_warn = seen_warn2;
 

@@ -105,11 +105,11 @@ fn filters_interleaved_span_scopes() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(all_layer.with_filter(LevelFilter::INFO))
-        .with(a_layer.with_filter(filter::filter_fn(|meta, _| {
+        .with(a_layer.with_filter(filter::filter_fn(|meta| {
             let target = meta.target();
             target == "a" || target == module_path!()
         })))
-        .with(b_layer.with_filter(filter::filter_fn(|meta, _| {
+        .with(b_layer.with_filter(filter::filter_fn(|meta| {
             let target = meta.target();
             target == "b" || target == module_path!()
         })))

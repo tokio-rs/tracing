@@ -34,9 +34,9 @@ fn basic_trees() {
         .run_with_handle();
 
     let info_tree = info
-        .and_then(with_target.with_filter(filter::filter_fn(|meta, _| {
-            dbg!(meta.target()) == "my_target"
-        })))
+        .and_then(
+            with_target.with_filter(filter::filter_fn(|meta| dbg!(meta.target()) == "my_target")),
+        )
         .with_filter(LevelFilter::INFO);
 
     let subscriber = tracing_subscriber::registry().with(info_tree).with(all);
@@ -109,12 +109,12 @@ fn filter_span_scopes() {
         .done()
         .run_with_handle();
 
-    let a_layer = a_layer.with_filter(filter::filter_fn(|meta, _| {
+    let a_layer = a_layer.with_filter(filter::filter_fn(|meta| {
         let target = meta.target();
         target == "a" || target == module_path!()
     }));
 
-    let b_layer = b_layer.with_filter(filter::filter_fn(|meta, _| {
+    let b_layer = b_layer.with_filter(filter::filter_fn(|meta| {
         let target = meta.target();
         target == "b" || target == module_path!()
     }));

@@ -110,7 +110,7 @@ fn global_filter_interests_are_cached() {
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
-        .with(expect.with_filter(filter::filter_fn(|meta, _| {
+        .with(expect.with_filter(filter::filter_fn(|meta| {
             assert!(
                 meta.level() <= &Level::INFO,
                 "enabled should not be called for callsites disabled by the global filter"
@@ -172,12 +172,8 @@ fn filter_fn() {
 
     let _subscriber = tracing_subscriber::registry()
         .with(all)
-        .with(foo.with_filter(filter::filter_fn(|meta, _| {
-            meta.target().starts_with("foo")
-        })))
-        .with(bar.with_filter(filter::filter_fn(|meta, _| {
-            meta.target().starts_with("bar")
-        })))
+        .with(foo.with_filter(filter::filter_fn(|meta| meta.target().starts_with("foo"))))
+        .with(bar.with_filter(filter::filter_fn(|meta| meta.target().starts_with("bar"))))
         .set_default();
 
     tracing::trace!(target: "foo", "hello foo");

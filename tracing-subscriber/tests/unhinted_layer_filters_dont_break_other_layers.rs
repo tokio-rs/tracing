@@ -2,7 +2,7 @@
 mod support;
 use self::support::*;
 use tracing::Level;
-use tracing_subscriber::{filter::FilterFn, prelude::*};
+use tracing_subscriber::{filter::DynFilterFn, prelude::*};
 
 #[test]
 fn layer_filters() {
@@ -98,8 +98,8 @@ fn events() {
     tracing::error!("hello error");
 }
 
-fn filter<S>() -> FilterFn<S> {
-    FilterFn::new(|metadata, _| metadata.level() <= &Level::INFO)
+fn filter<S>() -> DynFilterFn<S> {
+    DynFilterFn::new(|metadata, _| metadata.level() <= &Level::INFO)
 }
 
 fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {

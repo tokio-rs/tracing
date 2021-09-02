@@ -6,35 +6,20 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tracing::{
-    subscriber::{Interest, Subscriber},
-    Level,
-};
+use tracing::{Level, Subscriber};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
 fn layer_filter_interests_are_cached() {
     let seen = Arc::new(Mutex::new(HashMap::new()));
     let seen2 = seen.clone();
-    let filter = filter::filter_fn(move |meta, _| {
+    let filter = filter::filter_fn(move |meta| {
         *seen
             .lock()
             .unwrap()
             .entry(meta.callsite())
             .or_insert(0usize) += 1;
-        true
-    });
-    let seen = seen2.clone();
-    let filter = filter.with_callsite_filter(move |meta| {
-        *seen
-            .lock()
-            .unwrap()
-            .entry(meta.callsite())
-            .or_insert(0usize) += 1;
-        if meta.level() == &Level::INFO {
-            return Interest::always();
-        }
-        Interest::never()
+        meta.level() == &Level::INFO
     });
 
     let (expect, handle) = layer::mock()
