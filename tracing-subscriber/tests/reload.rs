@@ -1,3 +1,4 @@
+#![cfg(feature = "reload")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     collect::Interest,
