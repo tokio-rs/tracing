@@ -1,3 +1,4 @@
+#![cfg(all(feature = "env-filter", feature = "tracing-log"))]
 mod support;
 use self::support::*;
 use tracing::{self, Level};

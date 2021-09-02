@@ -1,3 +1,4 @@
+#![cfg(all(feature = "env-filter", feature = "fmt"))]
 mod support;
 use tracing::{self, subscriber::with_default, Span};
 use tracing_subscriber::{filter::EnvFilter, FmtSubscriber};
