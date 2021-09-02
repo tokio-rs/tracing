@@ -270,7 +270,7 @@ mod tests {
     use crate::ErrorSubscriber;
     use tracing::collect::with_default;
     use tracing::{span, Level};
-    use tracing_subscriber::{prelude::*, registry::Registry};
+    use tracing_subscriber::registry::Registry;
 
     #[test]
     fn capture_supported() {

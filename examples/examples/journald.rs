@@ -1,7 +1,5 @@
 #![deny(rust_2018_idioms)]
 use tracing::{error, info};
-use tracing_subscriber::prelude::*;
-
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 

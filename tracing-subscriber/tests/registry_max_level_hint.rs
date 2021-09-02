@@ -1,4 +1,4 @@
-use tracing_subscriber::{filter::LevelFilter, prelude::*};
+use tracing_subscriber::filter::LevelFilter;
 
 #[test]
 fn registry_sets_max_level_hint() {

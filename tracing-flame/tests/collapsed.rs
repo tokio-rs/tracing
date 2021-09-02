@@ -2,7 +2,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use tracing::{span, Level};
 use tracing_flame::FlameSubscriber;
-use tracing_subscriber::{prelude::*, registry::Registry};
+use tracing_subscriber::registry::Registry;
 
 #[test]
 fn capture_supported() {

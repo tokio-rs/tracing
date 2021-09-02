@@ -285,7 +285,10 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 use std::{any::TypeId, error::Error, io, ptr::NonNull};
-use tracing_core::{collect::Interest, span, Event, Metadata};
+use tracing_core::{
+    collect::{Collect, Interest},
+    span, Event, Metadata,
+};
 
 mod fmt_subscriber;
 pub mod format;
@@ -293,11 +296,11 @@ pub mod time;
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
-use crate::subscribe::Subscribe as _;
 use crate::{
     filter::LevelFilter,
-    registry::{LookupSpan, Registry},
+    registry::{self, LookupSpan, Registry},
     reload, subscribe,
+    subscribe::{Layered, Subscribe},
 };
 
 #[doc(inline)]
@@ -317,13 +320,8 @@ pub struct Collector<
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
-    inner: subscribe::Layered<F, Formatter<N, E, W>>,
+    inner: Registry<Layered<F, Layered<Subscriber<N, E, W>, subscribe::Identity>>>,
 }
-
-/// A collector that logs formatted representations of `tracing` events.
-/// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
-    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
@@ -334,7 +332,7 @@ pub struct CollectorBuilder<
     W = fn() -> io::Stdout,
 > {
     filter: F,
-    inner: Subscriber<Registry, N, E, W>,
+    inner: Subscriber<N, E, W>,
 }
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
@@ -411,7 +409,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<C>() -> Subscriber<C> {
+pub fn subscriber() -> Subscriber {
     Subscriber::default()
 }
 
@@ -447,10 +445,10 @@ impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
+    F: Subscribe<crate::registry::SpanStore> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
+    Subscriber<N, E, W>: Subscribe<Registry>,
+    Registry<Layered<F, Layered<Subscriber<N, E, W>>>>: Collect + 'static,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -524,9 +522,9 @@ where
 
 impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
 where
-    subscribe::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    Registry<Layered<F, Layered<Subscriber<N, E, W>>>>: LookupSpan<'a>,
 {
-    type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <Registry<Layered<F, Layered<Subscriber<N, E, W>>>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -547,18 +545,16 @@ impl Default for CollectorBuilder {
 impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<Registry, N> + 'static,
+    E: FormatEvent<registry::SpanStore, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscribe::Subscribe<Registry> + Send + Sync + 'static,
+    F: Subscribe<registry::SpanStore> + Send + Sync + 'static,
+    Registry<Layered<F, Subscriber<N, E, W>>>: Collect + Send + Sync + 'static,
+    tracing_core::Dispatch: From<Collector<N, E, F, W>>,
 {
     /// Finish the builder, returning a new `FmtCollector`.
     pub fn finish(self) -> Collector<N, E, F, W> {
-        let collector = self.inner.with_collector(Registry::default());
-        Collector {
-            inner: self.filter.with_collector(collector),
-        }
+        let inner = Registry::default().with(self.inner).with(self.filter);
+        Collector { inner }
     }
 
     /// Install this collector as the global default if one is
@@ -594,11 +590,14 @@ where
 impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
 where
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<Registry, N> + 'static,
+    E: FormatEvent<registry::SpanStore, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscribe::Subscribe<Registry> + Send + Sync + 'static,
+    Collector<N, E, F, W>: tracing_core::Collect + Send + Sync + 'static,
+    Registry<Layered<F, Subscriber<N, E, W>>>: Collect + Send + Sync + 'static,
+    F: Subscribe<registry::SpanStore> + Send + Sync + 'static,
+    //     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
+    //     fmt_subscriber::Subscriber<Registry, N, E, W>:
+    //         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(builder.finish())
@@ -830,8 +829,8 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
-where
-    Formatter<N, E, W>: tracing_core::Collect + 'static,
+// where
+// Formatter<N, E, W>: tracing_core::Collect + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed collector's
     /// filter.
@@ -925,8 +924,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         self,
         filter: impl Into<crate::EnvFilter>,
     ) -> CollectorBuilder<N, E, crate::EnvFilter, W>
-    where
-        Formatter<N, E, W>: tracing_core::Collect + 'static,
+// where
+    //     Formatter<N, E, W>: tracing_core::Collect + 'static,
     {
         let filter = filter.into();
         CollectorBuilder {

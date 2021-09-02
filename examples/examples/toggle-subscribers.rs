@@ -11,7 +11,6 @@
 ///
 use argh::FromArgs;
 use tracing::info;
-use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt};
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;

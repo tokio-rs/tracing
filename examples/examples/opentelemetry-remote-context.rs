@@ -3,7 +3,6 @@ use opentelemetry::{global, Context};
 use std::collections::HashMap;
 use tracing::span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::subscribe::CollectExt;
 use tracing_subscriber::Registry;
 
 fn make_request(_cx: Context) {

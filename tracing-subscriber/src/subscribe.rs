@@ -8,8 +8,8 @@ use tracing_core::{
 };
 
 #[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData, ptr::NonNull};
+use crate::registry::{self, LookupSpan, SpanRef};
+use std::{any::TypeId, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
 ///
@@ -206,6 +206,10 @@ where
     C: Collect,
     Self: 'static,
 {
+    fn register(&mut self, collector: &mut C) {
+        let _ = collector;
+    }
+
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly
     /// to [`Collect::register_callsite`].
@@ -424,15 +428,13 @@ where
     ///     .and_then(BazSubscriber::new())
     ///     .with_collector(MyCollector::new());
     /// ```
-    fn and_then<S>(self, subscriber: S) -> Layered<S, Self, C>
+    fn and_then<S>(self, subscriber: S) -> Layered<S, Self>
     where
-        S: Subscribe<C>,
         Self: Sized,
     {
         Layered {
             subscriber,
             inner: self,
-            _s: PhantomData,
         }
     }
 
@@ -488,7 +490,6 @@ where
         Layered {
             subscriber: self,
             inner,
-            _s: PhantomData,
         }
     }
 
@@ -549,10 +550,9 @@ pub struct Context<'a, C> {
 /// [subscriber]: super::subscribe::Subscribe
 /// [collector]: tracing_core::Collect
 #[derive(Clone, Debug)]
-pub struct Layered<S, I, C = I> {
+pub struct Layered<S, I = Identity> {
     subscriber: S,
     inner: I,
-    _s: PhantomData<fn(C)>,
 }
 
 /// A Subscriber that does nothing.
@@ -562,6 +562,25 @@ pub struct Identity {
 }
 
 // === impl Layered ===
+
+impl<S, I> Layered<S, I> {
+    pub(crate) fn new(subscriber: S, inner: I) -> Self {
+        Self { subscriber, inner }
+    }
+}
+
+impl<S, C> Layered<S, C>
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    #[inline]
+    fn ctx(&self) -> Context<'_, C> {
+        Context {
+            collector: Some(&self.inner),
+        }
+    }
+}
 
 impl<S, C> Collect for Layered<S, C>
 where
@@ -652,21 +671,21 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        #[cfg(feature = "registry")]
-        let subscriber = &self.inner as &dyn Collect;
-        #[cfg(feature = "registry")]
-        let mut guard = subscriber
-            .downcast_ref::<Registry>()
-            .map(|registry| registry.start_close(id.clone()));
+        // #[cfg(feature = "registry")]
+        // let subscriber = &self.inner as &dyn Collect;
+        // #[cfg(feature = "registry")]
+        // let mut guard = subscriber
+        //     .downcast_ref::<Registry>()
+        //     .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
-            #[cfg(feature = "registry")]
-            {
-                if let Some(g) = guard.as_mut() {
-                    g.is_closing()
-                };
-            }
+            // #[cfg(feature = "registry")]
+            // {
+            //     if let Some(g) = guard.as_mut() {
+            //         g.is_closing()
+            //     };
+            // }
 
             self.subscriber.on_close(id, self.ctx());
             true
@@ -691,7 +710,7 @@ where
     }
 }
 
-impl<C, A, B> Subscribe<C> for Layered<A, B, C>
+impl<C, A, B> Subscribe<C> for Layered<A, B>
 where
     A: Subscribe<C>,
     B: Subscribe<C>,
@@ -727,6 +746,21 @@ where
             // otherwise, the callsite is disabled by this subscriber
             false
         }
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        // TODO(eliza): per-layer filtering
+        self.subscriber
+            .max_level_hint()
+            .map(|outer_hint| {
+                if let Some(inner_hint) = self.inner.max_level_hint() {
+                    std::cmp::max(outer_hint, inner_hint)
+                } else {
+                    outer_hint
+                }
+            })
+            .or_else(|| self.inner.max_level_hint())
     }
 
     #[inline]
@@ -884,30 +918,6 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
-where
-    C: Collect + LookupSpan<'a>,
-{
-    type Data = C::Data;
-
-    fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
-        self.inner.span_data(id)
-    }
-}
-
-impl<S, C> Layered<S, C>
-where
-    C: Collect,
-{
-    fn ctx(&self) -> Context<'_, C> {
-        Context {
-            collector: Some(&self.inner),
-        }
-    }
-}
-
 // impl<L, S> Layered<L, S> {
 //     // TODO(eliza): is there a compelling use-case for this being public?
 //     pub(crate) fn into_inner(self) -> S {
@@ -926,6 +936,12 @@ impl<'a, C> Context<'a, C>
 where
     C: Collect,
 {
+    pub(crate) fn new(collector: &'a C) -> Self {
+        Self {
+            collector: Some(collector),
+        }
+    }
+
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
@@ -1310,38 +1326,42 @@ pub(crate) mod tests {
 
     #[test]
     fn two_subscribers_are_collector() {
-        let s = NopSubscriber
-            .and_then(NopSubscriber)
-            .with_collector(NopCollector);
-        assert_collector(s)
+        // let s = NopSubscriber
+        //     .and_then(NopSubscriber)
+        //     .with_collector(NopCollector);
+        // assert_collector(s)
+
+        todo!("eliza")
     }
 
     #[test]
     fn three_subscribers_are_collector() {
-        let s = NopSubscriber
-            .and_then(NopSubscriber)
-            .and_then(NopSubscriber)
-            .with_collector(NopCollector);
-        assert_collector(s)
+        // let s = NopSubscriber
+        //     .and_then(NopSubscriber)
+        //     .and_then(NopSubscriber)
+        //     .with_collector(NopCollector);
+        // assert_collector(s)
+        todo!("eliza")
     }
 
     #[test]
     fn downcasts_to_collector() {
-        let s = NopSubscriber
-            .and_then(NopSubscriber)
-            .and_then(NopSubscriber)
-            .with_collector(StringCollector("collector".into()));
-        let collector =
-            <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
-        assert_eq!(&collector.0, "collector");
+        // let s = NopSubscriber
+        //     .and_then(NopSubscriber)
+        //     .and_then(NopSubscriber)
+        //     .with_collector(StringCollector("collector".into()));
+        // let collector =
+        //     <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
+        // assert_eq!(&collector.0, "collector");
+        todo!("eliza")
     }
 
     #[test]
     fn downcasts_to_subscriber() {
-        let s = StringSubscriber("subscriber_1".into())
-            .and_then(StringSubscriber2("subscriber_2".into()))
-            .and_then(StringSubscriber3("subscriber_3".into()))
-            .with_collector(NopCollector);
+        let s = crate::registry()
+            .with(StringSubscriber("subscriber_1".into()))
+            .with(StringSubscriber2("subscriber_2".into()))
+            .with(StringSubscriber3("subscriber_3".into()));
         let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber>(&s)
             .expect("subscriber 2 should downcast");
         assert_eq!(&subscriber.0, "subscriber_1");

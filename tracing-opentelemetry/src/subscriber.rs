@@ -632,7 +632,6 @@ mod tests {
     use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
-    use tracing_subscriber::prelude::*;
 
     #[derive(Debug, Clone)]
     struct TestTracer(Arc<Mutex<Option<otel::SpanBuilder>>>);

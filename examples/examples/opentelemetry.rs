@@ -1,7 +1,6 @@
 use std::{error::Error, thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
-use tracing_subscriber::prelude::*;
 
 #[instrument]
 #[inline]

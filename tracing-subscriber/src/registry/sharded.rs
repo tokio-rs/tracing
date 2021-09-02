@@ -10,7 +10,7 @@ use crate::{
     sync::RwLock,
 };
 use std::{
-    cell::{Cell, RefCell},
+    cell::RefCell,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -87,7 +87,7 @@ cfg_feature!("registry", {
     /// [fields]: https://docs.rs/tracing-core/latest/tracing-core/field/index.html
     /// [stored span data]: crate::registry::SpanData::extensions_mut
     #[derive(Debug)]
-    pub struct Registry {
+    pub struct SpanStore {
         spans: Pool<DataInner>,
         current_spans: ThreadLocal<RefCell<SpanStack>>,
     }
@@ -126,7 +126,7 @@ struct DataInner {
 
 // === impl Registry ===
 
-impl Default for Registry {
+impl Default for SpanStore {
     fn default() -> Self {
         Self {
             spans: Pool::new(),
@@ -145,64 +145,13 @@ fn id_to_idx(id: &Id) -> usize {
     id.into_u64() as usize - 1
 }
 
-/// A guard that tracks how many [`Registry`]-backed `Subscriber`s have
-/// processed an `on_close` event.
-///
-/// This is needed to enable a [`Registry`]-backed Subscriber to access span
-/// data after the subscriber has received the `on_close` callback.
-///
-/// Once all subscribers have processed this event, the [`Registry`] knows
-/// that is able to safely remove the span tracked by `id`. `CloseGuard`
-/// accomplishes this through a two-step process:
-/// 1. Whenever a [`Registry`]-backed `Subscriber::on_close` method is
-///    called, `Registry::start_close` is closed.
-///    `Registry::start_close` increments a thread-local `CLOSE_COUNT`
-///    by 1 and returns a `CloseGuard`.
-/// 2. The `CloseGuard` is dropped at the end of `Subscribe::on_close`. On
-///    drop, `CloseGuard` checks thread-local `CLOSE_COUNT`. If
-///    `CLOSE_COUNT` is 0, the `CloseGuard` removes the span with the
-///    `id` from the registry, as all subscribers that might have seen the
-///    `on_close` notification have processed it. If `CLOSE_COUNT` is
-///    greater than 0, `CloseGuard` decrements the counter by one and
-///    _does not_ remove the span from the [`Registry`].
-///
-pub(crate) struct CloseGuard<'a> {
-    id: Id,
-    registry: &'a Registry,
-    is_closing: bool,
-}
-
-impl Registry {
+impl SpanStore {
     fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
         self.spans.get(id_to_idx(id))
     }
-
-    /// Returns a guard which tracks how many `Subscriber`s have
-    /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
-    /// For additional details, see [`CloseGuard`].
-    ///
-    pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
-        CLOSE_COUNT.with(|count| {
-            let c = count.get();
-            count.set(c + 1);
-        });
-        CloseGuard {
-            id,
-            registry: self,
-            is_closing: false,
-        }
-    }
 }
 
-thread_local! {
-    /// `CLOSE_COUNT` is the thread-local counter used by `CloseGuard` to
-    /// track how many subscribers have processed the close.
-    /// For additional details, see [`CloseGuard`].
-    ///
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
-}
-
-impl Collect for Registry {
+impl Collect for SpanStore {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::always()
     }
@@ -325,45 +274,16 @@ impl Collect for Registry {
     }
 }
 
-impl<'a> LookupSpan<'a> for Registry {
+impl<'a> LookupSpan<'a> for SpanStore {
     type Data = Data<'a>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         let inner = self.get(id)?;
         Some(Data { inner })
     }
-}
 
-// === impl CloseGuard ===
-
-impl<'a> CloseGuard<'a> {
-    pub(crate) fn is_closing(&mut self) {
-        self.is_closing = true;
-    }
-}
-
-impl<'a> Drop for CloseGuard<'a> {
-    fn drop(&mut self) {
-        // If this returns with an error, we are already panicking. At
-        // this point, there's nothing we can really do to recover
-        // except by avoiding a double-panic.
-        let _ = CLOSE_COUNT.try_with(|count| {
-            let c = count.get();
-            // Decrement the count to indicate that _this_ guard's
-            // `on_close` callback has completed.
-            //
-            // Note that we *must* do this before we actually remove the span
-            // from the registry, since dropping the `DataInner` may trigger a
-            // new close, if this span is the last reference to a parent span.
-            count.set(c - 1);
-
-            // If the current close count is 1, this stack frame is the last
-            // `on_close` call. If the span is closing, it's okay to remove the
-            // span.
-            if c == 1 && self.is_closing {
-                self.registry.spans.clear(id_to_idx(&self.id));
-            }
-        });
+    fn finish_close(&self, id: Id) {
+        self.spans.clear(id_to_idx(&id));
     }
 }
 
@@ -477,8 +397,12 @@ impl Clear for DataInner {
 
 #[cfg(test)]
 mod tests {
-    use super::Registry;
-    use crate::{registry::LookupSpan, subscribe::Context, Subscribe};
+    use super::SpanStore;
+    use crate::{
+        registry::{LookupSpan, Registry},
+        subscribe::{self, Context},
+        Subscribe,
+    };
     use std::{
         collections::HashMap,
         sync::{Arc, Mutex, Weak},
@@ -501,9 +425,13 @@ mod tests {
         }
     }
 
+    fn registry() -> Registry<subscribe::Identity, SpanStore> {
+        Registry::with_span_store(SpanStore::default())
+    }
+
     #[test]
     fn single_subscriber_can_access_closed_span() {
-        let subscriber = AssertionSubscriber.with_collector(Registry::default());
+        let subscriber = registry().with(AssertionSubscriber);
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -513,9 +441,9 @@ mod tests {
 
     #[test]
     fn multiple_subscribers_can_access_closed_span() {
-        let subscriber = AssertionSubscriber
-            .and_then(AssertionSubscriber)
-            .with_collector(Registry::default());
+        let subscriber = registry()
+            .with(AssertionSubscriber)
+            .with(AssertionSubscriber);
 
         with_default(subscriber, || {
             let span = tracing::debug_span!("span");
@@ -694,16 +622,14 @@ mod tests {
     #[test]
     fn spans_are_removed_from_registry() {
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = AssertionSubscriber
-            .and_then(close_subscriber)
-            .with_collector(Registry::default());
+        let collector = registry().with(AssertionSubscriber).with(close_subscriber);
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatch::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(collector);
 
         dispatch::with_default(&dispatch, || {
             let span = tracing::debug_span!("span1");
@@ -722,16 +648,14 @@ mod tests {
     #[test]
     fn spans_are_only_closed_when_the_last_ref_drops() {
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = AssertionSubscriber
-            .and_then(close_subscriber)
-            .with_collector(Registry::default());
+        let collector = registry().with(AssertionSubscriber).with(close_subscriber);
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatch::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(collector);
 
         let span2 = dispatch::with_default(&dispatch, || {
             let span = tracing::debug_span!("span1");
@@ -755,16 +679,14 @@ mod tests {
     #[test]
     fn span_enter_guards_are_dropped_out_of_order() {
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = AssertionSubscriber
-            .and_then(close_subscriber)
-            .with_collector(Registry::default());
+        let collector = registry().with(AssertionSubscriber).with(close_subscriber);
 
         // Create a `Dispatch` (which is internally reference counted) so that
         // the subscriber lives to the end of the test. Otherwise, if we just
         // passed the subscriber itself to `with_default`, we could see the span
         // be dropped when the subscriber itself is dropped, destroying the
         // registry.
-        let dispatch = dispatch::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(collector);
 
         dispatch::with_default(&dispatch, || {
             let span1 = tracing::debug_span!("span1");
@@ -795,9 +717,9 @@ mod tests {
         // closes, and will then be closed.
 
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = close_subscriber.with_collector(Registry::default());
+        let collector = registry().with(close_subscriber);
 
-        let dispatch = dispatch::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(collector);
 
         dispatch::with_default(&dispatch, || {
             let span1 = tracing::info_span!("parent");
@@ -822,9 +744,9 @@ mod tests {
         // is *itself* kept open by a child, closing the grandchild will close
         // both the parent *and* the grandparent.
         let (close_subscriber, state) = CloseSubscriber::new();
-        let subscriber = close_subscriber.with_collector(Registry::default());
+        let collector = registry().with(close_subscriber);
 
-        let dispatch = dispatch::Dispatch::new(subscriber);
+        let dispatch = dispatch::Dispatch::new(collector);
 
         dispatch::with_default(&dispatch, || {
             let span1 = tracing::info_span!("grandparent");

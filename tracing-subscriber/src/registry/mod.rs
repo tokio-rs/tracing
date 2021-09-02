@@ -58,9 +58,14 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
-use std::fmt::Debug;
-
-use tracing_core::{field::FieldSet, span::Id, Metadata};
+use crate::subscribe::{self, Layered, Subscribe};
+use std::{any::TypeId, fmt::Debug, ptr::NonNull};
+use tracing_core::{
+    dispatch,
+    field::FieldSet,
+    span::{self, Id},
+    Collect, Metadata,
+};
 
 /// A module containing a type map of span extensions.
 mod extensions;
@@ -70,7 +75,7 @@ cfg_feature!("registry", {
     mod stack;
 
     pub use sharded::Data;
-    pub use sharded::Registry;
+    pub use sharded::SpanStore;
 });
 
 pub use extensions::{Extensions, ExtensionsMut};
@@ -123,6 +128,19 @@ pub trait LookupSpan<'a> {
             data,
         })
     }
+
+    /// Called when all [subscribers] attached to a [`Registry`] have completed
+    /// their [`Subscribe::on_close`] callbacks for the span with the given
+    /// [`Id`].
+    ///
+    /// If data stored for that span was kept for the duration of the `on_close`
+    /// callbacks, the data may now be removed.
+    ///
+    /// This method will only be called _after_ the `LookupSpan`'s
+    /// [`Collect::try_close`] method returned `true` for that span.
+    fn finish_close(&self, id: Id) {
+        drop(id)
+    }
 }
 
 /// A stored representation of data associated with a span.
@@ -147,6 +165,12 @@ pub trait SpanData<'a> {
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
+}
+
+#[derive(Debug)]
+pub struct Registry<S = subscribe::Identity, T = sharded::SpanStore> {
+    spans: T,
+    subscribers: S,
 }
 
 /// A reference to [span data] and the associated [registry].
@@ -390,7 +414,6 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        prelude::*,
         registry::LookupSpan,
         subscribe::{Context, Subscribe},
     };
@@ -469,5 +492,231 @@ mod tests {
             &*last_entered_scope.lock().unwrap(),
             &["root", "child", "leaf"]
         );
+    }
+}
+
+// === impl Registry ===
+
+impl<'a, S, T> LookupSpan<'a> for Registry<S, T>
+where
+    T: LookupSpan<'a>,
+{
+    type Data = T::Data;
+
+    #[inline]
+    fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
+        self.spans.span_data(id)
+    }
+}
+
+impl<T> Registry<subscribe::Identity, T>
+where
+    T: Collect + for<'a> LookupSpan<'a> + 'static,
+{
+    pub fn with_span_store(spans: T) -> Self {
+        Self {
+            spans,
+            subscribers: subscribe::Identity::default(),
+        }
+    }
+}
+
+impl<S, T> Registry<S, T>
+where
+    S: Subscribe<T>,
+    T: Collect + for<'a> LookupSpan<'a>,
+{
+    pub fn with<S2>(mut self, mut subscriber: S2) -> Registry<Layered<S2, S>, T>
+    where
+        S2: Subscribe<T>,
+    {
+        subscriber.register(&mut self.spans);
+        Registry {
+            subscribers: subscribe::Layered::new(subscriber, self.subscribers),
+            spans: self.spans,
+        }
+    }
+
+    #[inline]
+    fn ctx(&self) -> subscribe::Context<'_, T> {
+        subscribe::Context::new(&self.spans)
+    }
+}
+
+impl<S, T> Registry<S, T>
+where
+    S: Subscribe<T> + Send + Sync + 'static,
+    T: Collect + for<'a> LookupSpan<'a> + Send + Sync + 'static,
+{
+    /// Sets `self` as the [default subscriber] in the current scope, returning a
+    /// guard that will unset it when dropped.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also initialize
+    /// a [`log`] compatibility subscriber. This allows the subscriber to consume
+    /// `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// [default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn set_default(self) -> dispatch::DefaultGuard {
+        #[cfg(feature = "tracing-log")]
+        let _ = tracing_log::LogTracer::init();
+
+        dispatch::set_default(&dispatch::Dispatch::from(self))
+    }
+
+    /// Attempts to set `self` as the [global default subscriber] in the current
+    /// scope, returning an error if one is already set.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also attempt to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
+    /// consume `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// This method returns an error if a global default subscriber has already
+    /// been set, or if a `log` logger has already been set (when the
+    /// "tracing-log" feature is enabled).
+    ///
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn try_init(self) -> Result<(), crate::util::TryInitError> {
+        #[cfg(feature = "tracing-log")]
+        use tracing_log::AsLog;
+
+        use crate::util::TryInitError;
+
+        dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
+
+        // Since we are setting the global default subscriber, we can
+        // opportunistically go ahead and set its global max level hint as
+        // the max level for the `log` crate as well. This should make
+        // skipping `log` diagnostics much faster.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::LogTracer::builder()
+            // Note that we must call this *after* setting the global default
+            // subscriber, so that we get its max level hint.
+            .with_max_level(tracing_core::LevelFilter::current().as_log())
+            .init()
+            .map_err(TryInitError::new)?;
+
+        Ok(())
+    }
+
+    /// Attempts to set `self` as the [global default subscriber] in the current
+    /// scope, panicking if this fails.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also attempt to
+    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
+    /// consume `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// This method panics if a global default subscriber has already been set,
+    /// or if a `log` logger has already been set (when the "tracing-log"
+    /// feature is enabled).
+    ///
+    /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    pub fn init(self) {
+        self.try_init()
+            .expect("failed to set global default subscriber")
+    }
+}
+
+impl<S, T> Collect for Registry<S, T>
+where
+    S: Subscribe<T> + 'static,
+    T: Collect + for<'a> LookupSpan<'a> + 'static,
+{
+    fn register_callsite(
+        &self,
+        metadata: &'static Metadata<'static>,
+    ) -> tracing_core::collect::Interest {
+        self.spans.register_callsite(metadata);
+        self.subscribers.register_callsite(metadata)
+    }
+
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        if !self.spans.enabled(metadata) {
+            return false;
+        }
+
+        // TODO(eliza): per-layer filtering goes here
+        self.subscribers.enabled(metadata, self.ctx())
+    }
+
+    fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
+        self.subscribers.max_level_hint()
+    }
+
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        let id = self.spans.new_span(span);
+        self.subscribers.new_span(span, &id, self.ctx());
+        id
+    }
+
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.spans.record(span, values);
+        self.subscribers.on_record(span, values, self.ctx());
+    }
+
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.spans.record_follows_from(span, follows);
+        self.subscribers.on_follows_from(span, follows, self.ctx())
+    }
+
+    fn event(&self, event: &tracing_core::Event<'_>) {
+        // XXX(eliza): should we assume the subscriber nops?
+        self.spans.event(event);
+        self.subscribers.on_event(event, self.ctx());
+    }
+
+    fn enter(&self, span: &span::Id) {
+        self.spans.enter(span);
+        self.subscribers.on_enter(span, self.ctx());
+    }
+
+    fn exit(&self, span: &span::Id) {
+        self.spans.exit(span);
+        self.subscribers.on_exit(span, self.ctx());
+    }
+
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        let new_id = self.spans.clone_span(id);
+        if id != &new_id {
+            self.subscribers.on_id_change(id, &new_id, self.ctx());
+        }
+        new_id
+    }
+
+    fn try_close(&self, id: span::Id) -> bool {
+        if !self.spans.try_close(id.clone()) {
+            return false;
+        }
+
+        // Run the subscribers' on-close logic.
+        self.subscribers.on_close(id.clone(), self.ctx());
+        // Tell the span store that the close has been processed and the span
+        // can be removed.
+        self.spans.finish_close(id);
+
+        true
+    }
+
+    fn current_span(&self) -> span::Current {
+        self.spans.current_span()
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        match id {
+            _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast::<()>()),
+            _ if id == TypeId::of::<T>() => Some(NonNull::from(&self.spans).cast::<()>()),
+            _ => self.subscribers.downcast_raw(id),
+        }
+    }
+}
+
+impl Default for Registry {
+    fn default() -> Self {
+        Self {
+            spans: sharded::SpanStore::default(),
+            subscribers: subscribe::Identity::new(),
+        }
     }
 }
