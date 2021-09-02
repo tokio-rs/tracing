@@ -1301,7 +1301,6 @@ impl Identity {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use std::sync::{Arc, Mutex};
 
     use super::*;
 
@@ -1419,7 +1418,9 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[cfg(feature = "registry")]
     fn context_event_span() {
+        use std::sync::{Arc, Mutex};
         let last_event_span = Arc::new(Mutex::new(None));
 
         struct RecordingLayer {

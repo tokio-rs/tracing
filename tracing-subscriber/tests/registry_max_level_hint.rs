@@ -1,3 +1,4 @@
+#![cfg(all(feature = "registry", feature = "fmt"))]
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
 
 #[test]

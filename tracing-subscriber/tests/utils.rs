@@ -19,6 +19,7 @@ fn init_ext_works() {
 }
 
 #[test]
+#[cfg(feature = "fmt")]
 fn builders_are_init_ext() {
     tracing_subscriber::fmt().set_default();
     let _ = tracing_subscriber::fmt()
@@ -28,6 +29,7 @@ fn builders_are_init_ext() {
 }
 
 #[test]
+#[cfg(all(feature = "fmt", feature = "env-filter"))]
 fn layered_is_init_ext() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())

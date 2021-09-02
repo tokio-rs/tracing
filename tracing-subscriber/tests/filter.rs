@@ -1,3 +1,5 @@
+#![cfg(feature = "env-filter")]
+
 mod support;
 use self::support::*;
 use tracing::{self, subscriber::with_default, Level};
