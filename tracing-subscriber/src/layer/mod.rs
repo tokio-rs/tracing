@@ -248,13 +248,12 @@ pub use self::{context::*, layered::*};
 /// }));
 ///
 /// // A general-purpose logging layer.
-/// let log_layer = // ...
-///     # filter::LevelFilter::INFO;
+/// let fmt_layer = tracing_subscriber::fmt::layer();
 ///
 /// // Build a subscriber that combines the access log and stdout log
 /// // layers.
 /// tracing_subscriber::registry()
-///     .with(log_layer)
+///     .with(fmt_layer)
 ///     .with(access_log)
 ///     .init();
 /// ```
@@ -269,8 +268,7 @@ pub use self::{context::*, layered::*};
 ///
 /// let access_log = // ...
 ///     # LevelFilter::INFO;
-/// let log_layer = // ...
-///     # LevelFilter::INFO;
+/// let fmt_layer = tracing_subscriber::fmt::layer();
 ///
 /// tracing_subscriber::registry()
 ///     // Add the filter for the "http_access" target to the access
@@ -280,7 +278,7 @@ pub use self::{context::*, layered::*};
 ///     })))
 ///     // Add a filter for spans and events with the INFO level
 ///     // and below to the logging layer.
-///     .with(log_layer.with_filter(LevelFilter::INFO))
+///     .with(fmt_layer.with_filter(LevelFilter::INFO))
 ///     .init();
 ///
 /// // Neither layer will observe this event

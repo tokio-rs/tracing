@@ -424,8 +424,7 @@ where
 ///     metadata.target() == "interesting_target"
 /// });
 ///
-/// let my_layer = // ...
-///    # filter::LevelFilter::INFO;
+/// let my_layer = tracing_subscriber::fmt::layer();
 ///
 /// tracing_subscriber::registry()
 ///     // Add the filter to the layer
@@ -466,8 +465,7 @@ where
     ///     metadata.target() == "interesting_target"
     /// });
     ///
-    /// let my_layer = // ...
-    ///     # tracing_subscriber::filter::LevelFilter::INFO;
+    /// let my_layer = tracing_subscriber::fmt::layer();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
@@ -520,8 +518,7 @@ where
     ///     // be the same for a particular `Metadata`.
     ///     .cacheable();
     ///
-    /// let my_layer = // some layer ...
-    ///     # filter::LevelFilter::INFO
+    /// let my_layer = tracing_subscriber::fmt::layer()
     ///     .with_filter(target_filter_fn);
     /// # // just so that types are inferred correctly...
     /// # drop(my_layer.with_subscriber(tracing_subscriber::registry()));
@@ -552,8 +549,7 @@ where
     ///     // `Metadata`.
     ///     .cacheable();
     ///
-    /// let my_layer = // some layer ...
-    ///     # filter::LevelFilter::INFO
+    /// let my_layer = tracing_subscriber::fmt::layer()
     ///     .with_filter(span_name_filter_fn);
     /// # // just so that types are inferred correctly...
     /// # drop(my_layer.with_subscriber(tracing_subscriber::registry()));
@@ -617,8 +613,8 @@ where
     ///     // below, set the max level hint
     ///     .with_max_level_hint(LevelFilter::INFO);
     ///
-    /// let my_layer = //
-    ///     # LevelFilter::INFO;
+    /// let my_layer = tracing_subscriber::fmt::layer();
+    ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
     ///     .init();
