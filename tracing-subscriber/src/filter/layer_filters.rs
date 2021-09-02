@@ -807,17 +807,10 @@ where
         }
     }
 
-    fn is_below_max_level(&self, metadata: &Metadata<'_>) -> bool {
-        self.max_level_hint
-            .as_ref()
-            .map(|hint| metadata.level() <= hint)
-            .unwrap_or(true)
-    }
-
     fn default_callsite_enabled(&self, metadata: &Metadata<'_>) -> Interest {
         // If it's below the configured max level, assume that `enabled` will
         // never enable it...
-        if is_below_max_level(&self.max_level_hint, metadata) {
+        if !is_below_max_level(&self.max_level_hint, metadata) {
             debug_assert!(
                 !(self.enabled)(metadata, &Context::none()),
                 "DynFilterFn<{}> claimed it would only enable {:?} and below, \
@@ -846,7 +839,7 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
         let enabled = (self.enabled)(metadata, cx);
         debug_assert!(
-            !enabled || self.is_below_max_level(metadata),
+            !enabled || is_below_max_level(&self.max_level_hint, metadata),
             "DynFilterFn<{}> claimed it would only enable {:?} and below, \
             but it enabled metadata with the {:?} level\nmetadata={:#?}",
             type_name::<F>(),
@@ -865,7 +858,7 @@ where
             .map(|callsite_enabled| callsite_enabled(metadata))
             .unwrap_or_else(|| self.default_callsite_enabled(metadata));
         debug_assert!(
-            interest.is_never() || self.is_below_max_level(metadata),
+            interest.is_never() || is_below_max_level(&self.max_level_hint, metadata),
             "DynFilterFn<{}, {}> claimed it was only interested in {:?} and below, \
             but it enabled metadata with the {:?} level\nmetadata={:#?}",
             type_name::<F>(),
