@@ -387,7 +387,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "registry"))]
 mod tests {
     use crate::{
         prelude::*,
