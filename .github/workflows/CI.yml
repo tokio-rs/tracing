@@ -230,6 +230,10 @@ jobs:
       run: (cd tracing-core && cargo test --no-default-features)
     - name: "Test tracing no-std support"
       run: (cd tracing && cargo test --no-default-features)
+      # this skips running doctests under the `--no-default-features` flag,
+      # as rustdoc isn't aware of cargo's feature flags.
+    - name: "Test tracing-subscriber with all features disabled"
+      run: (cd tracing-subscriber && cargo test --lib --tests --no-default-features)
   style:
     # Check style.
     needs: check
