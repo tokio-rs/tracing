@@ -1030,6 +1030,11 @@ where
 impl FilterId {
     const DISABLED: FilterId = FilterId(u64::MAX);
 
+    /// Returns a `FilterId` that will consider _all_ spans enabled.
+    pub(crate) const fn none() -> Self {
+        Self(0)
+    }
+
     pub(crate) fn new(id: u8) -> Self {
         assert!(id < 64, "filter IDs may not be greater than 64");
         Self(1 << id as usize)

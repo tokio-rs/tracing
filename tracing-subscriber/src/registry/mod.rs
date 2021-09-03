@@ -129,7 +129,7 @@ pub trait LookupSpan<'a> {
         Some(SpanRef {
             registry: self,
             data,
-            filter: None,
+            filter: FilterId::none(),
         })
     }
 
@@ -207,7 +207,7 @@ pub trait SpanData<'a> {
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
     data: R::Data,
-    filter: Option<FilterId>,
+    filter: FilterId,
 }
 
 /// An iterator over the parents of a span, ordered from leaf to root.
@@ -216,7 +216,7 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 #[derive(Debug)]
 pub struct Scope<'a, R> {
     registry: &'a R,
-    filter: Option<FilterId>,
+    filter: FilterId,
     next: Option<Id>,
 }
 
@@ -262,12 +262,10 @@ where
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
-            if let Some(filter) = self.filter {
-                if !curr.is_enabled_for(filter) {
-                    // The current span in the chain is disabled for this
-                    // filter. Try its parent.
-                    continue;
-                }
+            if !curr.is_enabled_for(self.filter) {
+                // The current span in the chain is disabled for this
+                // filter. Try its parent.
+                continue;
             }
 
             return Some(curr);
@@ -425,11 +423,7 @@ where
         let mut data = self.registry.span_data(&id)?;
         loop {
             // Is this parent enabled by our filter?
-            if self
-                .filter
-                .map(|filter| data.is_enabled_for(filter))
-                .unwrap_or(true)
-            {
+            if data.is_enabled_for(self.filter) {
                 return Some(Self {
                     registry: self.registry,
                     filter: self.filter,
@@ -568,18 +562,12 @@ where
         self.data.extensions_mut()
     }
 
-    pub(crate) fn try_with_filter(self, filter: Option<FilterId>) -> Option<Self> {
-        match filter {
-            // If there's no filter, just return the span ref, clearing any
-            // previous filters.
-            None => Some(self.with_filter(None)),
-            // If the span ref is enabled for that filter, return it, but add
-            // the filter.
-            Some(id) if self.is_enabled_for(id) => Some(self.with_filter(filter)),
-            // If there's a filter, and the span ref is not enabled for it,
-            // return `None`.
-            Some(_) => None,
+    pub(crate) fn try_with_filter(self, filter: FilterId) -> Option<Self> {
+        if self.is_enabled_for(filter) {
+            return Some(self.with_filter(filter));
         }
+
+        None
     }
 
     #[inline]
@@ -588,7 +576,7 @@ where
     }
 
     #[inline]
-    fn with_filter(self, filter: Option<FilterId>) -> Self {
+    fn with_filter(self, filter: FilterId) -> Self {
         Self { filter, ..self }
     }
 }

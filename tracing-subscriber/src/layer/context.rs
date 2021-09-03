@@ -34,7 +34,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
-    filter: Option<FilterId>,
+    filter: FilterId,
 }
 
 /// An iterator over the [stored data] for all the spans in the
@@ -72,7 +72,7 @@ where
     pub(super) fn new(subscriber: &'a S) -> Self {
         Self {
             subscriber: Some(subscriber),
-            filter: None,
+            filter: FilterId::none(),
         }
     }
 
@@ -422,10 +422,7 @@ where
         // layers "above" us in the stack.
         //
         // See the doc comment for `FilterId::and` for details.
-        let filter = self
-            .filter
-            .map(|my_filter| my_filter.and(filter))
-            .or(Some(filter));
+        let filter = self.filter.and(filter);
         Self { filter, ..self }
     }
 
@@ -459,7 +456,7 @@ impl<'a, S> Context<'a, S> {
     pub(crate) fn none() -> Self {
         Self {
             subscriber: None,
-            filter: None,
+            filter: FilterId::none(),
         }
     }
 }
