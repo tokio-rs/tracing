@@ -416,6 +416,12 @@ where
     }
 
     pub(crate) fn with_filter(self, filter: FilterId) -> Self {
+        // If we already have our own `FilterId`, combine it with the provided
+        // one. That way, the new `FilterId` will consider a span to be disabled
+        // if it was disabled by the given `FilterId` *or* any `FilterId`s for
+        // layers "above" us in the stack.
+        //
+        // See the doc comment for `FilterId::and` for details.
         let filter = self
             .filter
             .map(|my_filter| my_filter.and(filter))
