@@ -171,10 +171,20 @@ pub(crate) struct FilterState {
     interest: RefCell<Option<Interest>>,
 
     #[cfg(debug_assertions)]
-    in_current_filter_pass: Cell<usize>,
+    counters: DebugCounters,
+}
 
-    #[cfg(debug_assertions)]
-    in_current_interest_pass: Cell<usize>,
+/// Extra counters added to `FilterState` used only to make debug assertions.
+#[cfg(debug_assertions)]
+#[derive(Debug, Default)]
+struct DebugCounters {
+    /// How many per-layer filters have participated in the current `enabled`
+    /// call?
+    in_filter_pass: Cell<usize>,
+
+    /// How many per-layer filters have participated in the current `register_callsite`
+    /// call?
+    in_interest_pass: Cell<usize>,
 }
 
 thread_local! {
@@ -1219,23 +1229,20 @@ impl FilterState {
             interest: RefCell::new(None),
 
             #[cfg(debug_assertions)]
-            in_current_filter_pass: Cell::new(0),
-
-            #[cfg(debug_assertions)]
-            in_current_interest_pass: Cell::new(0),
+            counters: DebugCounters::default(),
         }
     }
 
     fn set(&self, filter: FilterId, enabled: bool) {
         #[cfg(debug_assertions)]
         {
-            let in_current_pass = self.in_current_filter_pass.get();
+            let in_current_pass = self.counters.in_filter_pass.get();
             if in_current_pass == 0 {
                 debug_assert_eq!(self.enabled.get(), FilterMap::default());
             }
-            self.in_current_filter_pass.set(in_current_pass + 1);
+            self.counters.in_filter_pass.set(in_current_pass + 1);
             debug_assert_eq!(
-                self.in_current_interest_pass.get(),
+                self.counters.in_interest_pass.get(),
                 0,
                 "if we are in or starting a filter pass, we must not be in an interest pass."
             )
@@ -1249,11 +1256,11 @@ impl FilterState {
 
         #[cfg(debug_assertions)]
         {
-            let in_current_pass = self.in_current_interest_pass.get();
+            let in_current_pass = self.counters.in_interest_pass.get();
             if in_current_pass == 0 {
                 debug_assert!(curr_interest.is_none());
             }
-            self.in_current_interest_pass.set(in_current_pass + 1);
+            self.counters.in_interest_pass.set(in_current_pass + 1);
         }
 
         if let Some(curr_interest) = curr_interest.as_mut() {
@@ -1275,14 +1282,14 @@ impl FilterState {
                 let enabled = this.enabled.get().any_enabled();
                 #[cfg(debug_assertions)]
                 {
-                    if this.in_current_filter_pass.get() == 0 {
+                    if this.counters.in_filter_pass.get() == 0 {
                         debug_assert_eq!(this.enabled.get(), FilterMap::default());
                     }
 
                     // Nothing enabled this event, we won't tick back down the
                     // counter in `did_enable`. Reset it.
                     if !enabled {
-                        this.in_current_filter_pass.set(0);
+                        this.counters.in_filter_pass.set(0);
                     }
                 }
                 enabled
@@ -1299,14 +1306,15 @@ impl FilterState {
         }
         #[cfg(debug_assertions)]
         {
-            let in_current_pass = self.in_current_filter_pass.get();
+            let in_current_pass = self.counters.in_filter_pass.get();
             if in_current_pass <= 1 {
                 debug_assert_eq!(self.enabled.get(), FilterMap::default());
             }
-            self.in_current_filter_pass
+            self.counters
+                .in_filter_pass
                 .set(in_current_pass.saturating_sub(1));
             debug_assert_eq!(
-                self.in_current_interest_pass.get(),
+                self.counters.in_interest_pass.get(),
                 0,
                 "if we are in a filter pass, we must not be in an interest pass."
             )
@@ -1318,10 +1326,10 @@ impl FilterState {
             .try_with(|filtering| {
                 #[cfg(debug_assertions)]
                 {
-                    if filtering.in_current_interest_pass.get() == 0 {
+                    if filtering.counters.in_interest_pass.get() == 0 {
                         debug_assert!(filtering.interest.try_borrow().ok()?.is_none());
                     }
-                    filtering.in_current_interest_pass.set(0);
+                    filtering.counters.in_interest_pass.set(0);
                 }
                 filtering.interest.try_borrow_mut().ok()?.take()
             })
@@ -1331,7 +1339,7 @@ impl FilterState {
     pub(crate) fn filter_map(&self) -> FilterMap {
         let map = self.enabled.get();
         #[cfg(debug_assertions)]
-        if self.in_current_filter_pass.get() == 0 {
+        if self.counters.in_filter_pass.get() == 0 {
             debug_assert_eq!(map, FilterMap::default());
         }
 
