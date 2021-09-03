@@ -919,137 +919,84 @@ where
     }
 }
 
+macro_rules! layer_impl_body {
+    () => {
+        #[inline]
+        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().new_span(attrs, id, ctx)
+        }
+
+        #[inline]
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            self.deref().register_callsite(metadata)
+        }
+
+        #[inline]
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+            self.deref().enabled(metadata, ctx)
+        }
+
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.deref().max_level_hint()
+        }
+
+        #[inline]
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+            self.deref().on_record(span, values, ctx)
+        }
+
+        #[inline]
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_follows_from(span, follows, ctx)
+        }
+
+        #[inline]
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+            self.deref().on_event(event, ctx)
+        }
+
+        #[inline]
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_enter(id, ctx)
+        }
+
+        #[inline]
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_exit(id, ctx)
+        }
+
+        #[inline]
+        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+            self.deref().on_close(id, ctx)
+        }
+
+        #[inline]
+        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_id_change(old, new, ctx)
+        }
+
+        #[doc(hidden)]
+        #[inline]
+        unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+            self.deref().downcast_raw(id)
+        }
+    };
+}
+
 impl<L, S> Layer<S> for Arc<L>
 where
     L: Layer<S>,
     S: Subscriber,
 {
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().new_span(attrs, id, ctx)
-    }
-
-    #[inline]
-    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.deref().register_callsite(metadata)
-    }
-
-    #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        self.deref().enabled(metadata, ctx)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.deref().max_level_hint()
-    }
-
-    #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        self.deref().on_record(span, values, ctx)
-    }
-
-    #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_follows_from(span, follows, ctx)
-    }
-
-    #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        self.deref().on_event(event, ctx)
-    }
-
-    #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_enter(id, ctx)
-    }
-
-    #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_exit(id, ctx)
-    }
-
-    #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        self.deref().on_close(id, ctx)
-    }
-
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_id_change(old, new, ctx)
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        self.deref().downcast_raw(id)
-    }
+    layer_impl_body! {}
 }
 
 impl<S> Layer<S> for Arc<dyn Layer<S>>
 where
     S: Subscriber,
 {
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().new_span(attrs, id, ctx)
-    }
-
-    #[inline]
-    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.deref().register_callsite(metadata)
-    }
-
-    #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        self.deref().enabled(metadata, ctx)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.deref().max_level_hint()
-    }
-
-    #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        self.deref().on_record(span, values, ctx)
-    }
-
-    #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_follows_from(span, follows, ctx)
-    }
-
-    #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        self.deref().on_event(event, ctx)
-    }
-
-    #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_enter(id, ctx)
-    }
-
-    #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_exit(id, ctx)
-    }
-
-    #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        self.deref().on_close(id, ctx)
-    }
-
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_id_change(old, new, ctx)
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        self.deref().downcast_raw(id)
-    }
+    layer_impl_body! {}
 }
 
 impl<L, S> Layer<S> for Box<L>
@@ -1057,132 +1004,14 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().new_span(attrs, id, ctx)
-    }
-
-    #[inline]
-    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.deref().register_callsite(metadata)
-    }
-
-    #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        self.deref().enabled(metadata, ctx)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.deref().max_level_hint()
-    }
-
-    #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        self.deref().on_record(span, values, ctx)
-    }
-
-    #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_follows_from(span, follows, ctx)
-    }
-
-    #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        self.deref().on_event(event, ctx)
-    }
-
-    #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_enter(id, ctx)
-    }
-
-    #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_exit(id, ctx)
-    }
-
-    #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        self.deref().on_close(id, ctx)
-    }
-
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_id_change(old, new, ctx)
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        self.deref().downcast_raw(id)
-    }
+    layer_impl_body! {}
 }
 
 impl<S> Layer<S> for Box<dyn Layer<S>>
 where
     S: Subscriber,
 {
-    #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().new_span(attrs, id, ctx)
-    }
-
-    #[inline]
-    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.deref().register_callsite(metadata)
-    }
-
-    #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-        self.deref().enabled(metadata, ctx)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.deref().max_level_hint()
-    }
-
-    #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-        self.deref().on_record(span, values, ctx)
-    }
-
-    #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_follows_from(span, follows, ctx)
-    }
-
-    #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        self.deref().on_event(event, ctx)
-    }
-
-    #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_enter(id, ctx)
-    }
-
-    #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_exit(id, ctx)
-    }
-
-    #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        self.deref().on_close(id, ctx)
-    }
-
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-        self.deref().on_id_change(old, new, ctx)
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        self.deref().downcast_raw(id)
-    }
+    layer_impl_body! {}
 }
 
 impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
