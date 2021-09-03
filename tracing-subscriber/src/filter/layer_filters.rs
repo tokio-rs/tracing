@@ -1050,7 +1050,7 @@ impl FilterId {
     /// This is necessary for cases where we have a tree of nested [`Filtered`]
     /// layers, like this:
     ///
-    /// ```ignore
+    /// ```text
     /// Filtered {
     ///     filter1,
     ///     Layered {
