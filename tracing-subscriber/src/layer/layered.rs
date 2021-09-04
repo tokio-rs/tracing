@@ -261,10 +261,7 @@ where
     S: Subscriber,
 {
     fn ctx(&self) -> Context<'_, S> {
-        Context {
-            subscriber: Some(&self.inner),
-            filter: None,
-        }
+        Context::new(&self.inner)
     }
 }
 
