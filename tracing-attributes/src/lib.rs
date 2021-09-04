@@ -1067,7 +1067,7 @@ enum RecordType {
 
 impl RecordType {
     /// Array of primitive types which should be recorded as [RecordType::Value].
-    const TYPES_FOR_VALUE: [&'static str; 23] = [
+    const TYPES_FOR_VALUE: &'static [&'static str] = &[
         "bool",
         "str",
         "u8",
@@ -1078,6 +1078,8 @@ impl RecordType {
         "i32",
         "u64",
         "i64",
+        "f32",
+        "f64",
         "usize",
         "isize",
         "NonZeroU8",

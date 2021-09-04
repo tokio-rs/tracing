@@ -900,6 +900,135 @@ impl Span {
         }
     }
 
+    /// Returns this span, if it was [enabled] by the current [`Subscriber`], or
+    /// the [current span] (whose lexical distance may be further than expected),
+    ///  if this span [is disabled].
+    ///
+    /// This method can be useful when propagating spans to spawned threads or
+    /// [async tasks]. Consider the following:
+    ///
+    /// ```
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// let child_span = tracing::debug_span!("child");
+    ///
+    /// std::thread::spawn(move || {
+    ///     let _entered = child_span.entered();
+    ///
+    ///     tracing::info!("spawned a thread!");
+    ///
+    ///     // ...
+    /// });
+    /// ```
+    ///
+    /// If the current [`Subscriber`] enables the [`DEBUG`] level, then both
+    /// the "parent" and "child" spans will be enabled. Thus, when the "spawaned
+    /// a thread!" event occurs, it will be inside of the "child" span. Because
+    /// "parent" is the parent of "child", the event will _also_ be inside of
+    /// "parent".
+    ///
+    /// However, if the [`Subscriber`] only enables the [`INFO`] level, the "child"
+    /// span will be disabled. When the thread is spawned, the
+    /// `child_span.entered()` call will do nothing, since "child" is not
+    /// enabled. In this case, the "spawned a thread!" event occurs outside of
+    /// *any* span, since the "child" span was responsible for propagating its
+    /// parent to the spawned thread.
+    ///
+    /// If this is not the desired behavior, `Span::or_current` can be used to
+    /// ensure that the "parent" span is propagated in both cases, either as a
+    /// parent of "child" _or_ directly. For example:
+    ///
+    /// ```
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// // If DEBUG is enabled, then "child" will be enabled, and `or_current`
+    /// // returns "child". Otherwise, if DEBUG is not enabled, "child" will be
+    /// // disabled, and `or_current` returns "parent".
+    /// let child_span = tracing::debug_span!("child").or_current();
+    ///
+    /// std::thread::spawn(move || {
+    ///     let _entered = child_span.entered();
+    ///
+    ///     tracing::info!("spawned a thread!");
+    ///
+    ///     // ...
+    /// });
+    /// ```
+    ///
+    /// When spawning [asynchronous tasks][async tasks], `Span::or_current` can
+    /// be used similarly, in combination with [`instrument`]:
+    ///
+    /// ```
+    /// use tracing::Instrument;
+    /// # // lol
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    ///
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// let child_span = tracing::debug_span!("child");
+    ///
+    /// tokio::spawn(
+    ///     async {
+    ///         tracing::info!("spawned a task!");
+    ///
+    ///         // ...
+    ///
+    ///     }.instrument(child_span.or_current())
+    /// );
+    /// ```
+    ///
+    /// In general, `or_current` should be preferred over nesting an
+    /// [`instrument`]  call inside of an [`in_current_span`] call, as using
+    /// `or_current` will be more efficient.
+    ///
+    /// ```
+    /// use tracing::Instrument;
+    /// # // lol
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    /// async fn my_async_fn() {
+    ///     // ...
+    /// }
+    ///
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // Do this:
+    /// tokio::spawn(
+    ///     my_async_fn().instrument(tracing::debug_span!("child").or_current())
+    /// );
+    ///
+    /// // ...rather than this:
+    /// tokio::spawn(
+    ///     my_async_fn()
+    ///         .instrument(tracing::debug_span!("child"))
+    ///         .in_current_span()
+    /// );
+    /// ```
+    ///
+    /// [enabled]: crate::Subscriber::enabled
+    /// [`Subscriber`]: crate::Subscriber
+    /// [current span]: Span::current
+    /// [is disabled]: Span::is_disabled
+    /// [`INFO`]: crate::Level::INFO
+    /// [`DEBUG`]: crate::Level::DEBUG
+    /// [async tasks]: std::task
+    /// [`instrument`]: crate::instrument::Instrument
+    pub fn or_current(self) -> Self {
+        if self.is_disabled() {
+            return Self::current();
+        }
+        self
+    }
+
     #[inline]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {

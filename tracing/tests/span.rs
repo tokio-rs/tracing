@@ -458,6 +458,28 @@ fn move_field_out_of_struct() {
     handle.assert_finished();
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn float_values() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            span::mock().named("foo").with_field(
+                field::mock("x")
+                    .with_value(&3.234)
+                    .and(field::mock("y").with_value(&-1.223))
+                    .only(),
+            ),
+        )
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        let foo = span!(Level::TRACE, "foo", x = 3.234, y = -1.223);
+        foo.in_scope(|| {});
+    });
+
+    handle.assert_finished();
+}
+
 // TODO(#1138): determine a new syntax for uninitialized span fields, and
 // re-enable these.
 /*
