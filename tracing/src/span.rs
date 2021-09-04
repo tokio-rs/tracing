@@ -902,10 +902,10 @@ impl Span {
     }
 
     /// Returns this span, if it was [enabled] by the current [collector], or
-    /// the [current span], if this span [is disabled].
+    /// the [current span] (whose lexical distance may be further than expected), if this span [is disabled].
     ///
     /// This method can be useful when propagating spans to spawned threads or
-    /// [async tasks]. For example, consider the following:
+    /// [async tasks]. Consider the following:
     ///
     /// ```
     /// let _parent_span = tracing::info_span!("parent").entered();
@@ -927,7 +927,7 @@ impl Span {
     /// the "parent" and "child" spans will be enabled. Thus, when the "spawaned
     /// a thread!" event occurs, it will be inside of the "child" span. Because
     /// "parent" is the parent of "child", the event will _also_ be inside of
-    /// "child".
+    /// "parent".
     ///
     /// However, if the collector only enables the [`INFO`] level, the "child"
     /// span will be disabled. When the thread is spawned, the
@@ -966,7 +966,7 @@ impl Span {
     /// use tracing::Instrument;
     /// # // lol
     /// # mod tokio {
-    /// #     pub(super) fn spawn(_ impl std::future::Future) {}
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
     /// # }
     ///
     /// let _parent_span = tracing::info_span!("parent").entered();
@@ -993,7 +993,7 @@ impl Span {
     /// use tracing::Instrument;
     /// # // lol
     /// # mod tokio {
-    /// #     pub(super) fn spawn(_ impl std::future::Future) {}
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
     /// # }
     /// async fn my_async_fn() {
     ///     // ...
