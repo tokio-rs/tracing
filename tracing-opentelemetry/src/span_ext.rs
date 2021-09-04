@@ -138,9 +138,9 @@ impl OpenTelemetrySpanExt for tracing::Span {
         if cx.is_valid() {
             let mut cx = Some(cx);
             let mut att = Some(attributes);
-            self.with_subscriber(move |(id, collector)| {
-                if let Some(get_context) = collector.downcast_ref::<WithContext>() {
-                    get_context.with_context(collector, id, move |builder, _tracer| {
+            self.with_subscriber(move |(id, subscriber)| {
+                if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
+                    get_context.with_context(subscriber, id, move |builder, _tracer| {
                         if let Some(cx) = cx.take() {
                             let attr = att.take().unwrap_or_default();
                             let follows_link = opentelemetry::trace::Link::new(cx, attr);

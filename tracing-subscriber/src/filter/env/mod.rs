@@ -261,7 +261,7 @@ impl EnvFilter {
             #[cfg(feature = "ansi_term")]
             use ansi_term::{Color, Style};
             // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
-            // has no knowledge of any underlying subscriber or collector, which
+            // has no knowledge of any underlying subscriber or subscriber, which
             // may or may not use a `MakeWriter`.
             let warn = |msg: &str| {
                 #[cfg(not(feature = "ansi_term"))]
