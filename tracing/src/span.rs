@@ -947,8 +947,8 @@ impl Span {
     /// // ...
     ///
     /// // If DEBUG is enabled, then "child" will be enabled, and `or_current`
-    /// returns "child". Otherwise, if DEBUG is not enabled, "child" will be
-    /// disabled, and `or_current` returns "parent".
+    /// // returns "child". Otherwise, if DEBUG is not enabled, "child" will be
+    /// // disabled, and `or_current` returns "parent".
     /// let child_span = tracing::debug_span!("child").or_current();
     ///
     /// std::thread::spawn(move || {
