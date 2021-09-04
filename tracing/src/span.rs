@@ -902,7 +902,8 @@ impl Span {
     }
 
     /// Returns this span, if it was [enabled] by the current [collector], or
-    /// the [current span] (whose lexical distance may be further than expected), if this span [is disabled].
+    /// the [current span] (whose lexical distance may be further than expected),
+    ///  if this span [is disabled].
     ///
     /// This method can be useful when propagating spans to spawned threads or
     /// [async tasks]. Consider the following:
