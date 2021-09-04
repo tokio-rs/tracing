@@ -132,7 +132,6 @@ fn one_with_everything() {
         .event(
             event::mock()
                 .with_fields(
-
                     field::mock("message")
                         .with_value(&tracing::field::debug(format_args!(
                             "{:#x} make me one with{what:.>20}",
