@@ -901,10 +901,4 @@ mod tests {
             state.assert_closed_in_order(&["child", "parent", "grandparent"]);
         });
     }
-
-    // fn as_registry<S: Subscriber>(registry: &S) -> &Registry {
-    //     (registry as &dyn Subscriber)
-    //         .downcast_ref::<Registry>()
-    //         .expect("must downcast to registry!")
-    // }
 }

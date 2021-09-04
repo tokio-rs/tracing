@@ -444,9 +444,6 @@ where
         None
     }
 
-    // #[doc(hidden)]
-    // const HAS_PER_LAYER_FILTERS: bool = false;
-
     /// Notifies this layer that a span with the given `Id` recorded the given
     /// `values`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
@@ -883,9 +880,6 @@ where
             None => None,
         }
     }
-
-    // #[doc(hidden)]
-    // const HAS_PER_LAYER_FILTERS: bool = L::HAS_PER_LAYER_FILTERS;
 
     #[inline]
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {

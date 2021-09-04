@@ -209,27 +209,11 @@ where
     }
 
     fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, S>) {
-        // let spans = self.spans.lock().unwrap();
-        // let mut expected = self.expected.lock().unwrap();
-        // let span = spans
-        //     .get(id)
-        //     .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
-        // println!(
-        //     "[{}] record: {}; id={:?}; values={:?};",
-        //     self.name, span.name, id, values
-        // );
-        // let was_expected = matches!(expected.front(), Some(Expect::Visit(_, _)));
-        // if was_expected {
-        //     if let Expect::Visit(expected_span, mut expected_values) = expected.pop_front().unwrap()
-        //     {
-        //         if let Some(name) = expected_span.name() {
-        //             assert_eq!(name, span.name);
-        //         }
-        //         let mut checker = expected_values.checker(format!("span {}: ", span.name));
-        //         values.record(&mut checker);
-        //         checker.finish();
-        //     }
-        // }
+        unimplemented!(
+            "so far, we don't have any tests that need an `on_record` \
+            implementation.\nif you just wrote one that does, feel free to \
+            implement it!"
+        );
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
