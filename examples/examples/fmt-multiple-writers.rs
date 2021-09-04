@@ -17,7 +17,7 @@ fn main() {
         .with(EnvFilter::from_default_env().add_directive(tracing::Level::TRACE.into()))
         .with(fmt::Layer::new().with_writer(io::stdout))
         .with(fmt::Layer::new().with_writer(non_blocking));
-    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global collector");
+    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global subscriber");
 
     let number_of_yaks = 3;
     // this creates a new event, outside of any spans.

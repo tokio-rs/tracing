@@ -461,7 +461,7 @@ fn move_field_out_of_struct() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn float_values() {
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(
             span::mock().named("foo").with_field(
                 field::mock("x")
@@ -472,7 +472,7 @@ fn float_values() {
         )
         .run_with_handle();
 
-    with_default(collector, || {
+    with_default(subscriber, || {
         let foo = span!(Level::TRACE, "foo", x = 3.234, y = -1.223);
         foo.in_scope(|| {});
     });

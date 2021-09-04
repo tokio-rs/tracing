@@ -8,7 +8,7 @@ fn main() {
         .with_thread_names(true)
         // enable everything
         .with_max_level(tracing::Level::TRACE)
-        // sets this to be the default, global collector for this application.
+        // sets this to be the default, global subscriber for this application.
         .init();
 
     let number_of_yaks = 3;

@@ -27,7 +27,7 @@
 //!
 //! ## Filtering Events with Environment Variables
 //!
-//! The default collector installed by `init` enables you to filter events
+//! The default subscriber installed by `init` enables you to filter events
 //! at runtime using environment variables (using the [`EnvFilter`]).
 //!
 //! The filter syntax is a superset of the [`env_logger`] syntax.
@@ -52,7 +52,7 @@
 //! You can create one by calling:
 //!
 //! ```rust
-//! let collector = tracing_subscriber::fmt()
+//! let subscriber = tracing_subscriber::fmt()
 //!     // ... add configuration
 //!     .finish();
 //! ```
@@ -336,7 +336,7 @@ pub struct SubscriberBuilder<
 ///     .with_target(false)
 ///     .with_timer(tracing_subscriber::fmt::time::uptime())
 ///     .with_level(true)
-///     // Set the collector as the default.
+///     // Set the subscriber as the default.
 ///     .init();
 /// ```
 ///
@@ -347,11 +347,11 @@ pub struct SubscriberBuilder<
 ///
 /// fn init_subscriber() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 ///     tracing_subscriber::fmt()
-///         // Configure the collector to emit logs in JSON format.
+///         // Configure the subscriber to emit logs in JSON format.
 ///         .json()
-///         // Configure the collector to flatten event fields in the output JSON objects.
+///         // Configure the subscriber to flatten event fields in the output JSON objects.
 ///         .flatten_event(true)
-///         // Set the collector as the default, returning an error if this fails.
+///         // Set the subscriber as the default, returning an error if this fails.
 ///         .try_init()?;
 ///
 ///     Ok(())
