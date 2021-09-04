@@ -226,17 +226,23 @@ jobs:
         profile: minimal
         override: true
     - name: "Test log support"
-      run: (cd tracing/test-log-support && cargo test)
+      run: cargo test
+      working-directory: "tracing/test-log-support"
     - name: "Test static max level"
-      run: (cd tracing/test_static_max_level_features && cargo test)
+      run: cargo test
+      working-directory: "tracing/test_static_max_level_features"
     - name: "Test tracing-core no-std support"
-      run: (cd tracing-core && cargo test --no-default-features)
+      run: cargo test --no-default-features
+      working-directory: tracing
     - name: "Test tracing no-std support"
-      run: (cd tracing && cargo test --no-default-features)
+      run: cargo test --no-default-features
+      working-directory: tracing
       # this skips running doctests under the `--no-default-features` flag,
       # as rustdoc isn't aware of cargo's feature flags.
     - name: "Test tracing-subscriber with all features disabled"
-      run: (cd tracing-subscriber && cargo test --lib --tests --no-default-features)
+      run: cargo test --lib --tests --no-default-features
+      working-directory: tracing-subscriber
+
   style:
     # Check style.
     needs: check
