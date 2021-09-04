@@ -34,7 +34,46 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
+    /// The [`Span::or_current`] combinator can be used in combination with
+    /// `instrument` to ensure that the [current span] is attached to the
+    /// future if the span passed to `instrument` is [disabled]:
+    ///
+    /// ```W
+    /// use tracing::Instrument;
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    ///
+    /// let my_future = async {
+    ///     // ...
+    /// };
+    ///
+    /// let outer_span = tracing::info_span!("outer").entered();
+    ///
+    /// // If the "my_future" span is enabled, then the spawned task will
+    /// // be within both "my_future" *and* "outer", since "outer" is
+    /// // "my_future"'s parent. However, if "my_future" is disabled,
+    /// // the spawned task will *not* be in any span.
+    /// tokio::spawn(
+    ///     my_future
+    ///         .instrument(tracing::debug_span!("my_future"))
+    /// );
+    ///
+    /// // Using `Span::or_current` ensures the spawned task is instrumented
+    /// // with the current span, if the new span passed to `instrument` is
+    /// // not enabled. This means that if the "my_future"  span is disabled,
+    /// // the spawned task will still be instrumented with the "outer" span:
+    /// # let my_future = async {};
+    /// tokio::spawn(
+    ///    my_future
+    ///         .instrument(tracing::debug_span!("my_future").or_current())
+    /// );
+    /// ```
+    ///
     /// [entered]: super::Span::enter()
+    /// [`Span::or_current`]: super::Span::or_current()
+    /// [current span]: super::Span::current()
+    /// [disabled]: super::Span::is_disabled()
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
