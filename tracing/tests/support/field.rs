@@ -184,7 +184,7 @@ pub struct CheckVisitor<'a> {
 impl<'a> Visit for CheckVisitor<'a> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.expect
-            .compare_or_panic(field.name(), &value, &self.ctx[..])
+            .compare_or_panic(field.name(), &value, self.ctx, self.subscriber_name)
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
