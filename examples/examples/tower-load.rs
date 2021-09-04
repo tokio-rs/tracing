@@ -41,7 +41,9 @@ use std::{
 };
 use tokio::{time, try_join};
 use tower::{Service, ServiceBuilder, ServiceExt};
-use tracing::{self, debug, error, info, span, trace, warn, Instrument as _, Level, Span};
+use tracing::{
+    self, debug, error, info, info_span, span, trace, warn, Instrument as _, Level, Span,
+};
 use tracing_subscriber::{filter::EnvFilter, reload::Handle};
 use tracing_tower::{request_span, request_span::make};
 
@@ -359,7 +361,7 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
             .instrument(span)
             .await
         }
-        .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
+        .instrument(info_span!(target: "gen", "generated_request", remote.addr=%addr).or_current());
         tokio::spawn(f);
     }
 }
