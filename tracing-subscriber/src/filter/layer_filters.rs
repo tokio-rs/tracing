@@ -1,4 +1,4 @@
-//! Per-Layer Filtering
+//! ## Per-Layer Filtering
 //!
 //! Per-layer filters permit individual `Layer`s to have their own filter
 //! configurations without interfering with other `Layer`s.
@@ -10,7 +10,7 @@
 //! well as the, see the `Layer` trait documentation's [per-layer filtering
 //! section]][1].
 //!
-//! So, how does per-layer filtering work?
+//! ## How does per-layer filtering work?
 //!
 //! As described in the API documentation, the [`Filter`] trait defines a
 //! filtering strategy for a per-layer filter. We expect there will be a variety
