@@ -282,7 +282,7 @@ pub use self::{context::*, layered::*};
 ///     .init();
 ///
 /// // Neither layer will observe this event
-/// tracing::debug!(does_anyone_care = false, "something unimportant happened");
+/// tracing::debug!(does_anyone_care = false, "a tree fell in the forest");
 ///
 /// // This event will be observed by the logging layer, but not
 /// // by the access log layer.
