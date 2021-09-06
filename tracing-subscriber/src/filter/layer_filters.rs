@@ -121,7 +121,7 @@ pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
 #[derive(Copy, Clone)]
 pub struct FilterId(u64);
 
-/// A bitmap tracking which [`FilterId`]s have implemented a given span or
+/// A bitmap tracking which [`FilterId`]s have enabled a given span or
 /// event.
 ///
 /// This is currently a private type that's used exclusively by the
