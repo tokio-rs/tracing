@@ -258,7 +258,7 @@ where
                 .registry
                 .span(self.next.as_ref()?)?
                 .with_filter(self.filter);
-            self.next = curr.parent_id().cloned();
+            self.next = curr.data.parent().cloned();
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
