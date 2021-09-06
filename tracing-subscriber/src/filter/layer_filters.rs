@@ -1072,7 +1072,7 @@ impl FilterId {
     /// }
     /// ```
     ///
-    /// We want `layer2` to be effected by both `filter1` _and_ `filter2`.
+    /// We want `layer2` to be affected by both `filter1` _and_ `filter2`.
     /// Without combining `FilterId`s, this works fine when filtering
     /// `on_event`/`new_span`, because the outer `Filtered` layer (`filter1`)
     /// won't call the inner layer's `on_event` or `new_span` callbacks if it
