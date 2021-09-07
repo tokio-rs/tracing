@@ -1233,7 +1233,7 @@ pub(crate) mod tests {
                     .with_filter(LevelFilter::INFO)
                     .and_then(NopLayer.with_filter(LevelFilter::TRACE)),
             );
-            assert_eq!(subscriber.max_level_hint(), None);
+            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
@@ -1243,7 +1243,7 @@ pub(crate) mod tests {
                 .with(NopLayer.with_filter(LevelFilter::INFO))
                 .with(NopLayer)
                 .with(NopLayer.with_filter(LevelFilter::INFO));
-            assert_eq!(subscriber.max_level_hint(), None);
+            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
@@ -1251,7 +1251,7 @@ pub(crate) mod tests {
             let subscriber = crate::registry()
                 .with(NopLayer.with_filter(LevelFilter::INFO).and_then(NopLayer))
                 .with(NopLayer.and_then(NopLayer.with_filter(LevelFilter::INFO)));
-            assert_eq!(subscriber.max_level_hint(), None);
+            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
@@ -1259,14 +1259,14 @@ pub(crate) mod tests {
             let subscriber = crate::registry()
                 .with(NopLayer.with_filter(LevelFilter::INFO))
                 .with(NopLayer.with_filter(filter_fn(|_| true)));
-            assert_eq!(subscriber.max_level_hint(), None);
+            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
         fn plf_only_unhinted_nested_outer() {
             // if a nested tree of per-layer filters has an _outer_ filter with
             // no max level hint, it should return `None`.
-            let subscriber = dbg!(crate::registry()
+            let subscriber = crate::registry()
                 .with(
                     NopLayer
                         .with_filter(LevelFilter::INFO)
@@ -1276,8 +1276,8 @@ pub(crate) mod tests {
                     NopLayer
                         .with_filter(filter_fn(|_| true))
                         .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
-                ));
-            assert_eq!(subscriber.max_level_hint(), None);
+                );
+            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
@@ -1293,7 +1293,7 @@ pub(crate) mod tests {
                     .and_then(NopLayer.with_filter(filter_fn(|_| true)))
                     .with_filter(LevelFilter::INFO),
             ));
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
         }
 
         #[test]
@@ -1306,7 +1306,7 @@ pub(crate) mod tests {
                         .and_then(NopLayer.with_filter(filter_fn(|_| true)))
                         .with_filter(LevelFilter::WARN),
                 ));
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
         }
 
         #[test]
@@ -1323,7 +1323,7 @@ pub(crate) mod tests {
                         .and_then(NopLayer.with_filter(filter_fn(|_| true)))
                         .with_filter(LevelFilter::WARN),
                 ));
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
         }
 
         #[test]
@@ -1331,7 +1331,7 @@ pub(crate) mod tests {
             let subscriber = crate::registry()
                 .with(NopLayer.with_filter(LevelFilter::WARN))
                 .with(NopLayer.with_filter(LevelFilter::DEBUG));
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
 
         #[test]
@@ -1341,7 +1341,7 @@ pub(crate) mod tests {
                 .with(NopLayer.with_filter(LevelFilter::DEBUG))
                 .with(NopLayer.with_filter(LevelFilter::INFO))
                 .with(NopLayer.with_filter(LevelFilter::ERROR));
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
 
         #[test]
@@ -1359,7 +1359,7 @@ pub(crate) mod tests {
                         .with_filter(LevelFilter::INFO)
                         .and_then(NopLayer.with_filter(LevelFilter::ERROR)),
                 );
-            assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
     }
 }
