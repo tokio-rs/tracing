@@ -120,8 +120,6 @@ pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
 /// [`Registry`]: crate::registry::Registry
 #[derive(Copy, Clone)]
 pub struct FilterId(u64);
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub(crate) struct FilterMask(u64);
 
 /// A bitmap tracking which [`FilterId`]s have enabled a given span or
 /// event.
