@@ -1080,6 +1080,7 @@ pub(crate) mod tests {
         fn exit(&self, _: &span::Id) {}
     }
 
+    #[derive(Debug)]
     pub(crate) struct NopLayer;
     impl<S: Subscriber> Layer<S> for NopLayer {}
 
