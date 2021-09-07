@@ -12,11 +12,7 @@ use crate::{
     layer::{Context, Layer},
     registry::LookupSpan,
 };
-use std::{
-    any::{type_name, TypeId},
-    fmt,
-    marker::PhantomData,
-};
+use std::{any::TypeId, fmt, marker::PhantomData};
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
 /// [`Layer`]s.
@@ -441,21 +437,17 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alt = f.alternate();
         let mut s = f.debug_struct("Layered");
-        s.field("layer", &self.layer).field("inner", &self.inner);
-
         // These additional fields are more verbose and usually only necessary
         // for internal debugging purposes, so only print them if alternate mode
         // is enabled.
         if alt {
             s.field("inner_is_registry", &self.inner_is_registry)
                 .field("has_layer_filter", &self.has_layer_filter)
-                .field("inner_has_layer_filter", &self.inner_has_layer_filter)
-                .field(
-                    "subscriber",
-                    &format_args!("PhantomData<{}>", type_name::<S>()),
-                );
+                .field("inner_has_layer_filter", &self.inner_has_layer_filter);
         }
 
-        s.finish()
+        s.field("layer", &self.layer)
+            .field("inner", &self.inner)
+            .finish()
     }
 }

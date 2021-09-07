@@ -409,18 +409,11 @@ where
     L: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let alt = f.alternate();
-        let mut s = f.debug_struct("Filtered");
-        s.field("filter", &self.filter)
+        f.debug_struct("Filtered")
+            .field("filter", &self.filter)
             .field("layer", &self.layer)
-            .field("id", &self.id);
-        if alt {
-            s.field(
-                "subscriber",
-                &format_args!("PhantomData<{}>", type_name::<S>()),
-            );
-        }
-        s.finish()
+            .field("id", &self.id)
+            .finish()
     }
 }
 
@@ -988,7 +981,6 @@ where
 
 impl<S, F, R> fmt::Debug for DynFilterFn<S, F, R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let alt = f.alternate();
         let mut s = f.debug_struct("DynFilterFn");
         s.field("enabled", &format_args!("{}", type_name::<F>()));
         if self.register_callsite.is_some() {
@@ -1000,14 +992,7 @@ impl<S, F, R> fmt::Debug for DynFilterFn<S, F, R> {
             s.field("register_callsite", &format_args!("None"));
         }
 
-        s.field("max_level_hint", &self.max_level_hint);
-        if alt {
-            s.field(
-                "subscriber",
-                &format_args!("PhantomData<{}>", type_name::<S>()),
-            );
-        }
-        s.finish()
+        s.field("max_level_hint", &self.max_level_hint).finish()
     }
 }
 
