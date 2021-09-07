@@ -120,6 +120,8 @@ pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
 /// [`Registry`]: crate::registry::Registry
 #[derive(Copy, Clone)]
 pub struct FilterId(u64);
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(crate) struct FilterMask(u64);
 
 /// A bitmap tracking which [`FilterId`]s have enabled a given span or
 /// event.
@@ -261,7 +263,7 @@ impl<L, F, S> Filtered<L, F, S> {
         Self {
             layer,
             filter,
-            id: MagicPlfDowncastMarker(FilterId::DISABLED),
+            id: MagicPlfDowncastMarker(FilterId::disabled()),
             _s: PhantomData,
         }
     }
@@ -324,10 +326,25 @@ where
         let cx = cx.with_filter(self.id());
         let enabled = self.filter.enabled(metadata, &cx);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));
-        // don't short circuit, keep filtering
+
         if enabled {
+            // If the filter enabled this metadata, ask the wrapped layer if
+            // _it_ wants it --- it might have a global filter.
             self.layer.enabled(metadata, cx)
         } else {
+            // Otherwise, return `true`. The _per-layer_ filter disabled this
+            // metadata, but returning `false` in `Layer::enabled` will
+            // short-circuit and globally disable the span or event. This is
+            // *not* what we want for per-layer filters, as other layers may
+            // still want this event. Returning `true` here means we'll continue
+            // asking the next layer in the stack.
+            //
+            // Once all per-layer filters have been evaluated, the `Registry`
+            // at the root of the stack will return `false` from its `enabled`
+            // method if *every* per-layer  filter disabled this metadata.
+            // Otherwise, the individual per-layer filters will skip the next
+            // `new_span` or `on_event` call for their layer if *they* disabled
+            // the span or event, but it was not globally disabled.
             true
         }
     }
@@ -926,10 +943,9 @@ where
             return Interest::never();
         }
 
-        // Otherwise, we can't really guarantee if the `enabled` is dynamic or
-        // not, so don't assume it will always enable this callsite, and just
-        // ask it dynamically.
-        // TODO(eliza): is it better to assume this or not??
+        // Otherwise, since this `enabled` function is dynamic and depends on
+        // the current context, we don't know whether this span or event will be
+        // enabled or not. Ask again every time it's recorded!
         Interest::sometimes()
     }
 }
@@ -1023,7 +1039,9 @@ where
 // === impl FilterId ===
 
 impl FilterId {
-    const DISABLED: FilterId = FilterId(u64::MAX);
+    const fn disabled() -> Self {
+        Self(u64::MAX)
+    }
 
     /// Returns a `FilterId` that will consider _all_ spans enabled.
     pub(crate) const fn none() -> Self {
@@ -1116,7 +1134,7 @@ impl FilterId {
     pub(crate) fn and(self, FilterId(other): Self) -> Self {
         // If this mask is disabled, just return the other --- otherwise, we
         // would always see that every span is disabled.
-        if self.0 == Self::DISABLED.0 {
+        if self.0 == Self::disabled().0 {
             return Self(other);
         }
 
@@ -1127,7 +1145,7 @@ impl FilterId {
 impl fmt::Debug for FilterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // don't print a giant set of the numbers 0..63 if the filter ID is disabled.
-        if self.0 == Self::DISABLED.0 {
+        if self.0 == Self::disabled().0 {
             return f
                 .debug_tuple("FilterId")
                 .field(&format_args!("DISABLED"))
@@ -1282,11 +1300,23 @@ impl FilterState {
             .unwrap_or(true)
     }
 
-    pub(crate) fn did_enable(&self, filter: FilterId, f: impl FnOnce()) {
+    /// Executes a closure if the filter with the provided ID did not disable
+    /// the current span/event.
+    ///
+    /// This is used to implement the `on_event` and `new_span` methods for
+    /// `Filtered`.
+    fn did_enable(&self, filter: FilterId, f: impl FnOnce()) {
         let map = self.enabled.get();
         if map.is_enabled(filter) {
+            // If the filter didn't disable the current span/event, run the
+            // callback.
             f();
         } else {
+            // Otherwise, if this filter _did_ disable the span or event
+            // currently being processed, clear its bit from this thread's
+            // `FilterState`. The bit has already been "consumed" by skipping
+            // this callback, and we need to ensure that the `FilterMap` for
+            // this thread is reset when the *next* `enabled` call occurs.
             self.enabled.set(map.set(filter, true));
         }
         #[cfg(debug_assertions)]
