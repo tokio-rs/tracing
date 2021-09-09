@@ -1,33 +1,50 @@
 #[cfg(feature = "registry")]
 use crate::layer::Filter;
-use crate::{filter::LevelFilter, layer::Context};
+use crate::{
+    filter::LevelFilter,
+    layer::{Context, Layer},
+};
 use std::{any::type_name, fmt, marker::PhantomData};
-use tracing_core::{Interest, Metadata};
+use tracing_core::{Interest, Metadata, Subscriber};
 
-/// A per-layer [`Filter`] implemented by a closure or function pointer that
+/// A filter implemented by a closure or function pointer that
 /// determines whether a given span or event is enabled, based on its
 /// [`Metadata`].
 ///
-/// See the [documentation on per-layer filtering][plf] for details.
+/// This type can be used for both [per-layer filtering][plf] (using its
+/// [`Filter`] implementation) and [global filtering][global] (using its
+/// [`Layer`] implementation).
+///
+/// See the [documentation on filtering with layers][filtering] for details.
 ///
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Filter`]: crate::layer::Filter
+/// [`Layer`]: crate::layer::Layer
 /// [plf]: crate::layer#per-layer-filtering
+/// [global]: crate::layer#global-filtering
+/// [filtering]: crate::layer#filtering-with-layers
 #[derive(Clone)]
 pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
     enabled: F,
     max_level_hint: Option<LevelFilter>,
 }
 
-/// A per-layer [`Filter`] implemented by a closure or function pointer that
+/// A filter implemented by a closure or function pointer that
 /// determines whether a given span or event is enabled _dynamically_,
 /// potentially based on the current [span context].
 ///
-/// See the [documentation on per-layer filtering][plf] for details.
+/// This type can be used for both [per-layer filtering][plf] (using its
+/// [`Filter`] implementation) and [global filtering][global] (using its
+/// [`Layer`] implementation).
+///
+/// See the [documentation on filtering with layers][filtering] for details.
 ///
 /// [span context]: crate::layer::Context
 /// [`Filter`]: crate::layer::Filter
+/// [`Layer`]: crate::layer::Layer
 /// [plf]: crate::layer#per-layer-filtering
+/// [global]: crate::layer#global-filtering
+/// [filtering]: crate::layer#filtering-with-layers
 pub struct DynFilterFn<
     S,
     // TODO(eliza): should these just be boxed functions?
@@ -42,16 +59,23 @@ pub struct DynFilterFn<
 
 // === impl FilterFn ===
 
-/// Constructs a [`FilterFn`], which implements the [`Filter`] trait, from
-/// a function or closure that returns `true` if a span or event should be enabled.
+/// Constructs a [`FilterFn`], from a function or closure that returns `true` if
+/// a span or event should be enabled, based on its [`Metadata`].
+///
+/// The returned [`FilterFn`] can be used for both [per-layer filtering][plf]
+/// (using its [`Filter`] implementation) and [global filtering][global] (using
+/// its  [`Layer`] implementation).
+///
+/// See the [documentation on filtering with layers][filtering] for details.
 ///
 /// This is equivalent to calling [`FilterFn::new`].
 ///
-/// See the [documentation on per-layer filtering][plf] for details on using
-/// [`Filter`]s.
-///
+/// [`Metadata`]: tracing_core::Metadata
 /// [`Filter`]: crate::layer::Filter
+/// [`Layer`]: crate::layer::Layer
 /// [plf]: crate::layer#per-layer-filtering
+/// [global]: crate::layer#global-filtering
+/// [filtering]: crate::layer#filtering-with-layers
 ///
 /// # Examples
 ///
@@ -86,9 +110,8 @@ where
     FilterFn::new(f)
 }
 
-/// Constructs a [`DynFilterFn`], which implements the [`Filter`] trait, from
-/// a function or closure that returns `true` if a span or event should be
-/// enabled within a particular [span context][`Context`].
+/// Constructs a [`DynFilterFn`] from a function or closure that returns `true`
+/// if a span or event should be enabled within a particular [span context][`Context`].
 ///
 /// This is equivalent to calling [`DynFilterFn::new`].
 ///
@@ -99,8 +122,11 @@ where
 ///
 /// If this is *not* necessary, use [`filter_fn`] instead.
 ///
-/// See the [documentation on per-layer filtering][plf] for details on using
-/// [`Filter`]s.
+/// The returned [`DynFilterFn`] can be used for both [per-layer filtering][plf]
+/// (using its [`Filter`] implementation) and [global filtering][global] (using
+/// its  [`Layer`] implementation).
+///
+/// See the [documentation on filtering with layers][filtering] for details.
 ///
 /// # Examples
 ///
@@ -142,7 +168,10 @@ where
 /// ```
 ///
 /// [`Filter`]: crate::layer::Filter
+/// [`Layer`]: crate::layer::Layer
 /// [plf]: crate::layer#per-layer-filtering
+/// [global]: crate::layer#global-filtering
+/// [filtering]: crate::layer#filtering-with-layers
 /// [`Context`]: crate::layer::Context
 /// [`Metadata`]: tracing_core::Metadata
 pub fn dynamic_filter_fn<S, F>(f: F) -> DynFilterFn<S, F>
@@ -156,7 +185,7 @@ impl<F> FilterFn<F>
 where
     F: Fn(&Metadata<'_>) -> bool,
 {
-    /// Constructs a [`Filter`] from a function or closure that returns `true`
+    /// Constructs a [`FilterFn`] from a function or closure that returns `true`
     /// if a span or event should be enabled, based on its [`Metadata`].
     ///
     /// If determining whether a span or event should be enabled also requires
@@ -305,6 +334,24 @@ where
     }
 
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.is_callsite_enabled(metadata)
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.max_level_hint
+    }
+}
+
+impl<S, F> Layer<S> for FilterFn<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+    S: Subscriber,
+{
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+        self.is_enabled(metadata)
+    }
+
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.is_callsite_enabled(metadata)
     }
 
@@ -626,6 +673,25 @@ where
     }
 
     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.is_callsite_enabled(metadata)
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.max_level_hint
+    }
+}
+
+impl<S, F, R> Layer<S> for DynFilterFn<S, F, R>
+where
+    F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool + 'static,
+    R: Fn(&'static Metadata<'static>) -> Interest + 'static,
+    S: Subscriber,
+{
+    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
+        self.is_enabled(metadata, &cx)
+    }
+
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.is_callsite_enabled(metadata)
     }
 
