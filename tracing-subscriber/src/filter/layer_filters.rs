@@ -25,7 +25,7 @@
 //! [`Filtered`] struct. Therefore, most of the implementation details live
 //! there.
 //!
-//! [1]: crate::Layer#per-layer-filtering
+//! [1]: crate::layer#per-layer-filtering
 //! [`Filter`]: crate::layer::Filter
 use crate::{
     filter::LevelFilter,
@@ -53,7 +53,7 @@ use tracing_core::{
 /// [documentation on per-layer filtering][plf] for details.
 ///
 /// [`Filter`]: crate::layer::Filter
-/// [plf]: crate::Layer#per-layer-filtering
+/// [plf]: crate::layer#per-layer-filtering
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Clone)]
 pub struct Filtered<L, F, S> {
@@ -71,7 +71,7 @@ pub struct Filtered<L, F, S> {
 ///
 /// [span context]: crate::layer::Context
 /// [`Filter`]: crate::layer::Filter
-/// [plf]: crate::Layer#per-layer-filtering
+/// [plf]: crate::layer#per-layer-filtering
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct DynFilterFn<
     S,
@@ -93,7 +93,7 @@ pub struct DynFilterFn<
 ///
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Filter`]: crate::layer::Filter
-/// [plf]: crate::Layer#per-layer-filtering
+/// [plf]: crate::layer#per-layer-filtering
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Clone)]
 pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
@@ -262,7 +262,7 @@ impl<L, F, S> Filtered<L, F, S> {
     /// See the [documentation on per-layer filtering][plf] for details.
     ///
     /// [`Filter`]: crate::layer::Filter
-    /// [plf]: crate::Layer#per-layer-filtering
+    /// [plf]: crate::layer#per-layer-filtering
     pub fn new(layer: L, filter: F) -> Self {
         Self {
             layer,
@@ -449,7 +449,7 @@ where
 /// [`Filter`]s.
 ///
 /// [`Filter`]: crate::layer::Filter
-/// [plf]: crate::Layer#per-layer-filtering
+/// [plf]: crate::layer#per-layer-filtering
 ///
 /// # Examples
 ///
@@ -541,7 +541,7 @@ where
 /// ```
 ///
 /// [`Filter`]: crate::layer::Filter
-/// [plf]: crate::Layer#per-layer-filtering
+/// [plf]: crate::layer#per-layer-filtering
 /// [`Context`]: crate::layer::Context
 /// [`Metadata`]: tracing_core::Metadata
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
@@ -566,7 +566,7 @@ where
     /// [`Filter`]s.
     ///
     /// [`Filter`]: crate::layer::Filter
-    /// [plf]: crate::Layer#per-layer-filtering
+    /// [plf]: crate::layer#per-layer-filtering
     /// [`Metadata`]: tracing_core::Metadata
     ///
     /// # Examples
@@ -738,7 +738,7 @@ where
     /// [`Filter`]s.
     ///
     /// [`Filter`]: crate::layer::Filter
-    /// [plf]: crate::Layer#per-layer-filtering
+    /// [plf]: crate::layer#per-layer-filtering
     /// [`Context`]: crate::layer::Context
     /// [`Metadata`]: tracing_core::Metadata
     ///
