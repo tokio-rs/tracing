@@ -282,9 +282,12 @@
 //! combining them into a [`Layered`] layer using [`Layer::and_then`], and then
 //! calling [`Layer::with_filter`] on the resulting [`Layered`] layer.
 //!
-//! For example, if two layers `layer_a` and `layer_b` should only recieve the
-//! [`INFO`] [level] and above, but a third `layer_c` should recieve spans and
-//! events with the [`DEBUG`] [level]:
+//! Consider the following:
+//! - `layer_a` and `layer_b`, which should only receive spans and events at
+//!    the [`INFO`] [level] and above.
+//! - A third layer, `layer_c`, which should receive spans and events at
+//!    the [`DEBUG`] [level] as well.
+//! The layers and filters would be composed thusly:
 //!
 //! ```
 //! use tracing_subscriber::{filter::LevelFilter, prelude::*};
@@ -311,19 +314,22 @@
 //!
 //! If a [`Filtered`] [`Layer`] is combined with another [`Layer`]
 //! [`Layer::and_then`], and a filter is added to the [`Layered`] layer, that
-//! layer will be filtered by *both* the inner filter and the outer filter
-//! &mdash; only spans and events that are enabled by *both* filters will be
+//! layer will be filtered by *both* the inner filter and the outer filter.
+//! Only spans and events that are enabled by *both* filters will be
 //! observed by that layer. This can be used to implement complex filtering
 //! trees.
 //!
-//! For example, suppose a particular [target] is used to indicate events that
-//! should be counted as part of a metrics system. A layer that collects metrics
-//! should observe only those events. Meanwhile, a log of high-priority events
-//! ([`INFO`] and above) should be logged to stdout, while more verbose events
-//! should be logged to a debugging log file. Suppose that it is desired that
-//! the metrics events *not* be included in either log. In that case, it is
-//! possible to apply a filter to both logging layers to exclude the metrics
-//! events, while additionally adding a [`LevelFilter`] to the stdout log.
+//! As an example, consider the following constraints:
+//! - Suppose that a particular [target] is used to indicate events that
+//!   should be counted as part of a metrics system, which should be only
+//!   observed by a layer that collects metrics.
+//! - A log of high-priority events ([`INFO`] and above) should be logged 
+//!   to stdout, while more verbose events should be logged to a debugging log file.
+//! - Metrics-focused events should *not* be included in either log output.
+//! 
+//! In that case, it is possible to apply a filter to both logging layers to
+//! exclude the metrics events, while additionally adding a [`LevelFilter`]
+//! to the stdout log:
 //!
 //! ```
 //! # // wrap this in a function so we don't actually create `debug.log` when
