@@ -119,6 +119,7 @@ type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
