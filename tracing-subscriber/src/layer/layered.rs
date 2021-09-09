@@ -5,13 +5,13 @@ use tracing_core::{
     Event, LevelFilter,
 };
 
-#[cfg(feature = "registry")]
-use crate::registry::Registry;
 use crate::{
-    filter::{self, FilterId},
+    filter,
     layer::{Context, Layer},
     registry::LookupSpan,
 };
+#[cfg(feature = "registry")]
+use crate::{filter::FilterId, registry::Registry};
 use std::{any::TypeId, fmt, marker::PhantomData};
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
@@ -305,7 +305,7 @@ where
             //
             // If you don't understand this...that's fine, just don't mess with
             // it. :)
-            id if id == TypeId::of::<filter::MagicPlfDowncastMarker>() => {
+            id if filter::is_plf_downcast_marker(id) => {
                 self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
             }
 
@@ -328,6 +328,7 @@ where
         self.inner.span_data(id)
     }
 
+    #[cfg(feature = "registry")]
     fn register_filter(&mut self) -> FilterId {
         self.inner.register_filter()
     }
@@ -435,11 +436,13 @@ where
     B: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[cfg(feature = "registry")]
         let alt = f.alternate();
         let mut s = f.debug_struct("Layered");
         // These additional fields are more verbose and usually only necessary
         // for internal debugging purposes, so only print them if alternate mode
         // is enabled.
+        #[cfg(feature = "registry")]
         if alt {
             s.field("inner_is_registry", &self.inner_is_registry)
                 .field("has_layer_filter", &self.has_layer_filter)

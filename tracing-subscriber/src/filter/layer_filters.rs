@@ -54,6 +54,7 @@ use tracing_core::{
 ///
 /// [`Filter`]: crate::layer::Filter
 /// [plf]: crate::Layer#per-layer-filtering
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Clone)]
 pub struct Filtered<L, F, S> {
     filter: F,
@@ -71,6 +72,7 @@ pub struct Filtered<L, F, S> {
 /// [span context]: crate::layer::Context
 /// [`Filter`]: crate::layer::Filter
 /// [plf]: crate::Layer#per-layer-filtering
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct DynFilterFn<
     S,
     // TODO(eliza): should these just be boxed functions?
@@ -92,6 +94,7 @@ pub struct DynFilterFn<
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Filter`]: crate::layer::Filter
 /// [plf]: crate::Layer#per-layer-filtering
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Clone)]
 pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
     enabled: F,
@@ -118,6 +121,8 @@ pub struct FilterFn<F = fn(&Metadata<'_>) -> bool> {
 /// [`Subscriber`]: tracing_core::Subscriber
 /// [`Layer`]: crate::layer::Layer
 /// [`Registry`]: crate::registry::Registry
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Copy, Clone)]
 pub struct FilterId(u64);
 
@@ -192,7 +197,8 @@ thread_local! {
 }
 
 // === impl Filter ===
-
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<S> layer::Filter<S> for LevelFilter {
     fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
         meta.level() <= self
@@ -471,6 +477,7 @@ where
 /// // This event will be enabled.
 /// tracing::debug!(target: "interesting_things", "an interesting minor detail...");
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub fn filter_fn<F>(f: F) -> FilterFn<F>
 where
     F: Fn(&Metadata<'_>) -> bool,
@@ -537,6 +544,7 @@ where
 /// [plf]: crate::Layer#per-layer-filtering
 /// [`Context`]: crate::layer::Context
 /// [`Metadata`]: tracing_core::Metadata
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub fn dynamic_filter_fn<S, F>(f: F) -> DynFilterFn<S, F>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
@@ -1383,7 +1391,7 @@ impl FilterState {
 /// Don't worry, this isn't on the test. :)
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub(crate) struct MagicPlfDowncastMarker(FilterId);
+struct MagicPlfDowncastMarker(FilterId);
 impl fmt::Debug for MagicPlfDowncastMarker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Just pretend that `MagicPlfDowncastMarker` doesn't exist for
@@ -1391,6 +1399,10 @@ impl fmt::Debug for MagicPlfDowncastMarker {
         // they don't have to know I thought this code would be a good idea.
         fmt::Debug::fmt(&self.0, f)
     }
+}
+
+pub(crate) fn is_plf_downcast_marker(type_id: TypeId) -> bool {
+    type_id == TypeId::of::<MagicPlfDowncastMarker>()
 }
 
 /// Does a type implementing `Subscriber` contain any per-layer filters?

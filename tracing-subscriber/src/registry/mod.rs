@@ -64,6 +64,7 @@
 //! [`SpanData`]: trait.SpanData.html
 use std::fmt::Debug;
 
+#[cfg(feature = "registry")]
 use crate::filter::FilterId;
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
@@ -129,6 +130,7 @@ pub trait LookupSpan<'a> {
         Some(SpanRef {
             registry: self,
             data,
+            #[cfg(feature = "registry")]
             filter: FilterId::none(),
         })
     }
@@ -148,6 +150,8 @@ pub trait LookupSpan<'a> {
     /// [`Subscriber`]: tracing_core::Subscriber
     /// [`FilterId`]: crate::filter::FilterId
     /// [check]: SpanData::is_enabled_for
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     fn register_filter(&mut self) -> FilterId {
         panic!(
             "{} does not currently support filters",
@@ -189,6 +193,8 @@ pub trait SpanData<'a> {
     ///
     /// [plf]: crate::layer::Layer#per-layer-filtering
     /// [`FilterId`]: crate::filter::FilterId
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     fn is_enabled_for(&self, filter: FilterId) -> bool {
         let _ = filter;
         true
@@ -207,6 +213,8 @@ pub trait SpanData<'a> {
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
     data: R::Data,
+
+    #[cfg(feature = "registry")]
     filter: FilterId,
 }
 
@@ -216,8 +224,10 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 #[derive(Debug)]
 pub struct Scope<'a, R> {
     registry: &'a R,
-    filter: FilterId,
     next: Option<Id>,
+
+    #[cfg(feature = "registry")]
+    filter: FilterId,
 }
 
 impl<'a, R> Scope<'a, R>
@@ -254,14 +264,16 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let curr = self
-                .registry
-                .span(self.next.as_ref()?)?
-                .with_filter(self.filter);
+            let curr = self.registry.span(self.next.as_ref()?)?;
+
+            #[cfg(feature = "registry")]
+            let curr = curr.with_filter(self.filter);
             self.next = curr.data.parent().cloned();
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
+
+            #[cfg(feature = "registry")]
             if !curr.is_enabled_for(self.filter) {
                 // The current span in the chain is disabled for this
                 // filter. Try its parent.
@@ -424,21 +436,37 @@ where
 
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
+
     pub fn parent(&self) -> Option<Self> {
-        let mut id = self.data.parent().cloned()?;
-        let mut data = self.registry.span_data(&id)?;
-        loop {
-            // Is this parent enabled by our filter?
-            if data.is_enabled_for(self.filter) {
-                return Some(Self {
-                    registry: self.registry,
-                    filter: self.filter,
-                    data,
-                });
+        let id = self.data.parent()?;
+        let data = self.registry.span_data(id)?;
+
+        #[cfg(feature = "registry")]
+        {
+            // move these into mut bindings if the registry feature is enabled,
+            // since they may be mutated in the loop.
+            let mut data = data;
+            loop {
+                // Is this parent enabled by our filter?
+                if data.is_enabled_for(self.filter) {
+                    return Some(Self {
+                        registry: self.registry,
+                        filter: self.filter,
+                        data,
+                    });
+                }
+
+                // It's not enabled. If the disabled span has a parent, try that!
+                let id = data.parent()?;
+                data = self.registry.span_data(id)?;
             }
-            id = data.parent().cloned()?;
-            data = self.registry.span_data(&id)?;
         }
+
+        #[cfg(not(feature = "registry"))]
+        Some(Self {
+            registry: self.registry,
+            data,
+        })
     }
 
     /// Returns an iterator over all parents of this span, starting with this span,
@@ -512,6 +540,8 @@ where
         Scope {
             registry: self.registry,
             next: Some(self.id()),
+
+            #[cfg(feature = "registry")]
             filter: self.filter,
         }
     }
@@ -530,6 +560,8 @@ where
         Parents(Scope {
             registry: self.registry,
             next: self.parent_id().cloned(),
+
+            #[cfg(feature = "registry")]
             filter: self.filter,
         })
     }
@@ -568,6 +600,7 @@ where
         self.data.extensions_mut()
     }
 
+    #[cfg(feature = "registry")]
     pub(crate) fn try_with_filter(self, filter: FilterId) -> Option<Self> {
         if self.is_enabled_for(filter) {
             return Some(self.with_filter(filter));
@@ -577,11 +610,13 @@ where
     }
 
     #[inline]
+    #[cfg(feature = "registry")]
     pub(crate) fn is_enabled_for(&self, filter: FilterId) -> bool {
         self.data.is_enabled_for(filter)
     }
 
     #[inline]
+    #[cfg(feature = "registry")]
     fn with_filter(self, filter: FilterId) -> Self {
         Self { filter, ..self }
     }

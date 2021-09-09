@@ -640,6 +640,8 @@ where
     ///
     /// [`Filtered`]: crate::filter::Filtered
     /// [plf]: #per-layer-filtering
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
     where
         Self: Sized,
@@ -660,7 +662,8 @@ where
 
 /// A per-[`Layer`] filter that determines whether a span or event is enabled
 /// for an individual layer.
-#[cfg_attr(docsrs, doc(notable_trait))]
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry"), notable_trait))]
 pub trait Filter<S> {
     /// Returns `true` if this layer is interested in a span or event with the
     /// given [`Metadata`] in the current [`Context`], similarly to
@@ -1066,9 +1069,7 @@ impl Identity {
 
 #[cfg(test)]
 pub(crate) mod tests {
-
     use super::*;
-    use crate::registry::LookupSpan;
 
     pub(crate) struct NopSubscriber;
 
@@ -1184,194 +1185,199 @@ pub(crate) mod tests {
         assert_eq!(&layer.0, "layer_3");
     }
 
-    #[test]
     #[cfg(feature = "registry")]
-    fn context_event_span() {
-        use std::sync::{Arc, Mutex};
-        let last_event_span = Arc::new(Mutex::new(None));
-
-        struct RecordingLayer {
-            last_event_span: Arc<Mutex<Option<&'static str>>>,
-        }
-
-        impl<S> Layer<S> for RecordingLayer
-        where
-            S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-        {
-            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-                let span = ctx.event_span(event);
-                *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
-            }
-        }
-
-        tracing::subscriber::with_default(
-            crate::registry().with(RecordingLayer {
-                last_event_span: last_event_span.clone(),
-            }),
-            || {
-                tracing::info!("no span");
-                assert_eq!(*last_event_span.lock().unwrap(), None);
-
-                let parent = tracing::info_span!("explicit");
-                tracing::info!(parent: &parent, "explicit span");
-                assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
-
-                let _guard = tracing::info_span!("contextual").entered();
-                tracing::info!("contextual span");
-                assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
-            },
-        );
-    }
-
-    #[cfg(feature = "registry")]
-    mod max_level_hints {
-        //! Tests for how max-level hints are calculated when combining layers
-        //! with and without per-layer filtering.
+    mod registry_tests {
         use super::*;
-        use crate::filter::*;
+        use crate::registry::LookupSpan;
 
         #[test]
-        fn mixed_with_unfiltered() {
-            let subscriber = crate::registry()
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO));
-            assert_eq!(subscriber.max_level_hint(), None);
-        }
+        fn context_event_span() {
+            use std::sync::{Arc, Mutex};
+            let last_event_span = Arc::new(Mutex::new(None));
 
-        #[test]
-        fn mixed_with_unfiltered_layered() {
-            let subscriber = crate::registry().with(NopLayer).with(
-                NopLayer
-                    .with_filter(LevelFilter::INFO)
-                    .and_then(NopLayer.with_filter(LevelFilter::TRACE)),
+            struct RecordingLayer {
+                last_event_span: Arc<Mutex<Option<&'static str>>>,
+            }
+
+            impl<S> Layer<S> for RecordingLayer
+            where
+                S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+            {
+                fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+                    let span = ctx.event_span(event);
+                    *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
+                }
+            }
+
+            tracing::subscriber::with_default(
+                crate::registry().with(RecordingLayer {
+                    last_event_span: last_event_span.clone(),
+                }),
+                || {
+                    tracing::info!("no span");
+                    assert_eq!(*last_event_span.lock().unwrap(), None);
+
+                    let parent = tracing::info_span!("explicit");
+                    tracing::info!(parent: &parent, "explicit span");
+                    assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
+
+                    let _guard = tracing::info_span!("contextual").entered();
+                    tracing::info!("contextual span");
+                    assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
+                },
             );
-            assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
-        #[test]
-        fn mixed_interleaved() {
-            let subscriber = crate::registry()
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO));
-            assert_eq!(dbg!(subscriber).max_level_hint(), None);
-        }
+        /// Tests for how max-level hints are calculated when combining layers
+        /// with and without per-layer filtering.
+        mod max_level_hints {
 
-        #[test]
-        fn mixed_layered() {
-            let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::INFO).and_then(NopLayer))
-                .with(NopLayer.and_then(NopLayer.with_filter(LevelFilter::INFO)));
-            assert_eq!(dbg!(subscriber).max_level_hint(), None);
-        }
+            use super::*;
+            use crate::filter::*;
 
-        #[test]
-        fn plf_only_unhinted() {
-            let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer.with_filter(filter_fn(|_| true)));
-            assert_eq!(dbg!(subscriber).max_level_hint(), None);
-        }
+            #[test]
+            fn mixed_with_unfiltered() {
+                let subscriber = crate::registry()
+                    .with(NopLayer)
+                    .with(NopLayer.with_filter(LevelFilter::INFO));
+                assert_eq!(subscriber.max_level_hint(), None);
+            }
 
-        #[test]
-        fn plf_only_unhinted_nested_outer() {
-            // if a nested tree of per-layer filters has an _outer_ filter with
-            // no max level hint, it should return `None`.
-            let subscriber = crate::registry()
-                .with(
+            #[test]
+            fn mixed_with_unfiltered_layered() {
+                let subscriber = crate::registry().with(NopLayer).with(
                     NopLayer
                         .with_filter(LevelFilter::INFO)
-                        .and_then(NopLayer.with_filter(LevelFilter::WARN)),
-                )
-                .with(
-                    NopLayer
-                        .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                        .and_then(NopLayer.with_filter(LevelFilter::TRACE)),
                 );
-            assert_eq!(dbg!(subscriber).max_level_hint(), None);
-        }
+                assert_eq!(dbg!(subscriber).max_level_hint(), None);
+            }
 
-        #[test]
-        fn plf_only_unhinted_nested_inner() {
-            // If a nested tree of per-layer filters has an _inner_ filter with
-            // no max-level hint, but the _outer_ filter has a max level hint,
-            // it should pick the outer hint. This is because the outer filter
-            // will disable the spans/events before they make it to the inner
-            // filter.
-            let subscriber = dbg!(crate::registry().with(
-                NopLayer
-                    .with_filter(filter_fn(|_| true))
-                    .and_then(NopLayer.with_filter(filter_fn(|_| true)))
-                    .with_filter(LevelFilter::INFO),
-            ));
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
-        }
+            #[test]
+            fn mixed_interleaved() {
+                let subscriber = crate::registry()
+                    .with(NopLayer)
+                    .with(NopLayer.with_filter(LevelFilter::INFO))
+                    .with(NopLayer)
+                    .with(NopLayer.with_filter(LevelFilter::INFO));
+                assert_eq!(dbg!(subscriber).max_level_hint(), None);
+            }
 
-        #[test]
-        fn unhinted_nested_inner() {
-            let subscriber = dbg!(crate::registry()
-                .with(NopLayer.and_then(NopLayer).with_filter(LevelFilter::INFO))
-                .with(
-                    NopLayer
-                        .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
-                        .with_filter(LevelFilter::WARN),
-                ));
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
-        }
+            #[test]
+            fn mixed_layered() {
+                let subscriber = crate::registry()
+                    .with(NopLayer.with_filter(LevelFilter::INFO).and_then(NopLayer))
+                    .with(NopLayer.and_then(NopLayer.with_filter(LevelFilter::INFO)));
+                assert_eq!(dbg!(subscriber).max_level_hint(), None);
+            }
 
-        #[test]
-        fn unhinted_nested_inner_mixed() {
-            let subscriber = dbg!(crate::registry()
-                .with(
-                    NopLayer
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
-                        .with_filter(LevelFilter::INFO)
-                )
-                .with(
-                    NopLayer
-                        .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
-                        .with_filter(LevelFilter::WARN),
-                ));
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
-        }
+            #[test]
+            fn plf_only_unhinted() {
+                let subscriber = crate::registry()
+                    .with(NopLayer.with_filter(LevelFilter::INFO))
+                    .with(NopLayer.with_filter(filter_fn(|_| true)));
+                assert_eq!(dbg!(subscriber).max_level_hint(), None);
+            }
 
-        #[test]
-        fn plf_only_picks_max() {
-            let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::WARN))
-                .with(NopLayer.with_filter(LevelFilter::DEBUG));
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
-        }
-
-        #[test]
-        fn many_plf_only_picks_max() {
-            let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::WARN))
-                .with(NopLayer.with_filter(LevelFilter::DEBUG))
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer.with_filter(LevelFilter::ERROR));
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
-        }
-
-        #[test]
-        fn nested_plf_only_picks_max() {
-            let subscriber = crate::registry()
-                .with(
-                    NopLayer.with_filter(LevelFilter::INFO).and_then(
+            #[test]
+            fn plf_only_unhinted_nested_outer() {
+                // if a nested tree of per-layer filters has an _outer_ filter with
+                // no max level hint, it should return `None`.
+                let subscriber = crate::registry()
+                    .with(
                         NopLayer
-                            .with_filter(LevelFilter::WARN)
+                            .with_filter(LevelFilter::INFO)
+                            .and_then(NopLayer.with_filter(LevelFilter::WARN)),
+                    )
+                    .with(
+                        NopLayer
+                            .with_filter(filter_fn(|_| true))
                             .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
-                    ),
-                )
-                .with(
+                    );
+                assert_eq!(dbg!(subscriber).max_level_hint(), None);
+            }
+
+            #[test]
+            fn plf_only_unhinted_nested_inner() {
+                // If a nested tree of per-layer filters has an _inner_ filter with
+                // no max-level hint, but the _outer_ filter has a max level hint,
+                // it should pick the outer hint. This is because the outer filter
+                // will disable the spans/events before they make it to the inner
+                // filter.
+                let subscriber = dbg!(crate::registry().with(
                     NopLayer
-                        .with_filter(LevelFilter::INFO)
-                        .and_then(NopLayer.with_filter(LevelFilter::ERROR)),
-                );
-            assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
+                        .with_filter(filter_fn(|_| true))
+                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                        .with_filter(LevelFilter::INFO),
+                ));
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
+            }
+
+            #[test]
+            fn unhinted_nested_inner() {
+                let subscriber = dbg!(crate::registry()
+                    .with(NopLayer.and_then(NopLayer).with_filter(LevelFilter::INFO))
+                    .with(
+                        NopLayer
+                            .with_filter(filter_fn(|_| true))
+                            .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                            .with_filter(LevelFilter::WARN),
+                    ));
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
+            }
+
+            #[test]
+            fn unhinted_nested_inner_mixed() {
+                let subscriber = dbg!(crate::registry()
+                    .with(
+                        NopLayer
+                            .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                            .with_filter(LevelFilter::INFO)
+                    )
+                    .with(
+                        NopLayer
+                            .with_filter(filter_fn(|_| true))
+                            .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                            .with_filter(LevelFilter::WARN),
+                    ));
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
+            }
+
+            #[test]
+            fn plf_only_picks_max() {
+                let subscriber = crate::registry()
+                    .with(NopLayer.with_filter(LevelFilter::WARN))
+                    .with(NopLayer.with_filter(LevelFilter::DEBUG));
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
+            }
+
+            #[test]
+            fn many_plf_only_picks_max() {
+                let subscriber = crate::registry()
+                    .with(NopLayer.with_filter(LevelFilter::WARN))
+                    .with(NopLayer.with_filter(LevelFilter::DEBUG))
+                    .with(NopLayer.with_filter(LevelFilter::INFO))
+                    .with(NopLayer.with_filter(LevelFilter::ERROR));
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
+            }
+
+            #[test]
+            fn nested_plf_only_picks_max() {
+                let subscriber = crate::registry()
+                    .with(
+                        NopLayer.with_filter(LevelFilter::INFO).and_then(
+                            NopLayer
+                                .with_filter(LevelFilter::WARN)
+                                .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                        ),
+                    )
+                    .with(
+                        NopLayer
+                            .with_filter(LevelFilter::INFO)
+                            .and_then(NopLayer.with_filter(LevelFilter::ERROR)),
+                    );
+                assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
+            }
         }
     }
 }

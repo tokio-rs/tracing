@@ -1,11 +1,8 @@
 use tracing_core::{metadata::Metadata, span, subscriber::Subscriber, Event};
 
+use crate::registry::{self, LookupSpan, SpanRef};
 #[cfg(feature = "registry")]
-use crate::registry::Registry;
-use crate::{
-    filter::FilterId,
-    registry::{self, LookupSpan, SpanRef},
-};
+use crate::{filter::FilterId, registry::Registry};
 /// Represents information about the current context provided to [`Layer`]s by the
 /// wrapped [`Subscriber`].
 ///
@@ -44,6 +41,7 @@ pub struct Context<'a, S> {
     /// [`Filtered`]: crate::filter::Filtered
     /// [`FilterId`]: crate::filter::FilterId
     /// [`and`]: crate::filter::FilterId::and
+    #[cfg(feature = "registry")]
     filter: FilterId,
 }
 
@@ -82,6 +80,8 @@ where
     pub(super) fn new(subscriber: &'a S) -> Self {
         Self {
             subscriber: Some(subscriber),
+
+            #[cfg(feature = "registry")]
             filter: FilterId::none(),
         }
     }
@@ -237,10 +237,13 @@ where
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber
-            .as_ref()?
-            .span(id)?
-            .try_with_filter(self.filter)
+        let span = self.subscriber.as_ref()?.span(id)?;
+
+        #[cfg(feature = "registry")]
+        return span.try_with_filter(self.filter);
+
+        #[cfg(not(feature = "registry"))]
+        Some(span)
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
@@ -289,26 +292,27 @@ where
             id,
         );
 
-        // If we found a span, and our per-layer filter enables it, return that span!
+        // If we found a span, and our per-layer filter enables it, return that
+        // span!
+        #[cfg(feature = "registry")]
         if let Some(span) = span?.try_with_filter(self.filter) {
-            return Some(span);
+            Some(span)
+        } else {
+            // Otherwise, the span at the *top* of the stack is disabled by
+            // per-layer filtering, but there may be additional spans in the stack.
+            //
+            // Currently, `LookupSpan` doesn't have a nice way of exposing access to
+            // the whole span stack. However, if we can downcast the innermost
+            // subscriber to a a `Registry`, we can iterate over its current span
+            // stack.
+            //
+            // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
+            // implemented, change this to use that instead...
+            self.lookup_current_filtered(subscriber)
         }
 
-        // Otherwise, the span at the *top* of the stack is disabled by
-        // per-layer filtering, but there may be additional spans in the stack.
-        //
-        // Currently, `LookupSpan` doesn't have a nice way of exposing access to
-        // the whole span stack. However, if we can downcast the innermost
-        // subscriber to a a `Registry`, we can iterate over its current span
-        // stack.
-        //
-        // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
-        // implemented, change this to use that instead...
-        #[cfg(feature = "registry")]
-        return self.lookup_current_filtered(subscriber);
-
         #[cfg(not(feature = "registry"))]
-        None
+        span
     }
 
     /// Slow path for when the current span is disabled by PLF and we have a
@@ -429,6 +433,7 @@ where
         Some(self.event_span(event)?.scope())
     }
 
+    #[cfg(feature = "registry")]
     pub(crate) fn with_filter(self, filter: FilterId) -> Self {
         // If we already have our own `FilterId`, combine it with the provided
         // one. That way, the new `FilterId` will consider a span to be disabled
@@ -440,6 +445,7 @@ where
         Self { filter, ..self }
     }
 
+    #[cfg(feature = "registry")]
     pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -447,6 +453,7 @@ where
         self.is_enabled_inner(span, filter).unwrap_or(false)
     }
 
+    #[cfg(feature = "registry")]
     pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -458,6 +465,7 @@ where
         }
     }
 
+    #[cfg(feature = "registry")]
     fn is_enabled_inner(&self, span: &span::Id, filter: FilterId) -> Option<bool>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -470,6 +478,8 @@ impl<'a, S> Context<'a, S> {
     pub(crate) fn none() -> Self {
         Self {
             subscriber: None,
+
+            #[cfg(feature = "registry")]
             filter: FilterId::none(),
         }
     }
@@ -481,6 +491,8 @@ impl<'a, S> Clone for Context<'a, S> {
         let subscriber = self.subscriber.as_ref().copied();
         Context {
             subscriber,
+
+            #[cfg(feature = "registry")]
             filter: self.filter,
         }
     }
