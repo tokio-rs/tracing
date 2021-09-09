@@ -435,6 +435,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// `and` can be used in conjunction with filtering combinators. For
     /// example, if we want to write to a number of outputs depending on
+    ///
+    /// [writers]: std::io::Write
     fn and<B>(self, other: B) -> Tee<Self, B>
     where
         Self: Sized,
@@ -463,6 +465,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
     /// ```
+    ///
+    /// [`make_writer`]: MakeWriter::make_writer
     fn or_else<W, B>(self, other: B) -> OrElse<Self, B>
     where
         Self: MakeWriter<'a, Writer = OptionalWriter<W>> + Sized,
@@ -594,7 +598,7 @@ pub struct WithMinLevel<M> {
 }
 
 /// A [`MakeWriter`] combinator that wraps a [`MakeWriter`] with a predicate for
-/// span and event [`Metadata`], so that the [`MakeWriterExt::make_writer_for`]
+/// span and event [`Metadata`], so that the [`MakeWriter::make_writer_for`]
 /// method returns [`OptionalWriter::some`] when the predicate returns `true`,
 /// and [`OptionalWriter::none`] when the predicate returns `false`.
 ///
