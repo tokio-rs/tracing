@@ -115,6 +115,7 @@ pub(crate) struct MatchPattern {
 
 /// Indicates that a field name specified in a filter directive was invalid.
 #[derive(Clone, Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct BadName {
     name: String,
 }
