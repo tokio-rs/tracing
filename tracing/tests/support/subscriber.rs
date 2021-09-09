@@ -3,7 +3,6 @@ use super::{
     event::MockEvent,
     field as mock_field,
     span::{MockSpan, NewSpan},
-    Parent,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -22,7 +21,7 @@ use tracing::{
 };
 
 #[derive(Debug, Eq, PartialEq)]
-enum Expect {
+pub enum Expect {
     Event(MockEvent),
     Enter(MockSpan),
     Exit(MockSpan),
@@ -220,7 +219,8 @@ where
                 if let Some(name) = expected_span.name() {
                     assert_eq!(name, span.name);
                 }
-                let mut checker = expected_values.checker(format!("span {}: ", span.name));
+                let context = format!("span {}: ", span.name);
+                let mut checker = expected_values.checker(&context, &self.name);
                 values.record(&mut checker);
                 checker.finish();
             }
@@ -233,69 +233,18 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
-                let spans = self.spans.lock().unwrap();
-                expected.check(event);
-                match expected.parent {
-                    Some(Parent::ExplicitRoot) => {
-                        assert!(
-                            event.is_root(),
-                            "[{}] expected {:?} to be an explicit root event",
-                            self.name,
-                            name
-                        );
-                    }
-                    Some(Parent::Explicit(expected_parent)) => {
-                        let actual_parent =
-                            event.parent().and_then(|id| spans.get(id)).map(|s| s.name);
-                        assert_eq!(
-                            Some(expected_parent.as_ref()),
-                            actual_parent,
-                            "[{}] expected {:?} to have explicit parent {:?}",
-                            self.name,
-                            name,
-                            expected_parent,
-                        );
-                    }
-                    Some(Parent::ContextualRoot) => {
-                        assert!(
-                            event.is_contextual(),
-                            "[{}] expected {:?} to have a contextual parent",
-                            self.name,
-                            name
-                        );
-                        assert!(
-                            self.current.lock().unwrap().last().is_none(),
-                            "[{}] expected {:?} to be a root, but we were inside a span",
-                            self.name,
-                            name
-                        );
-                    }
-                    Some(Parent::Contextual(expected_parent)) => {
-                        assert!(
-                            event.is_contextual(),
-                            "[{}] expected {:?} to have a contextual parent",
-                            self.name,
-                            name
-                        );
-                        let stack = self.current.lock().unwrap();
-                        let actual_parent =
-                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
-                        assert_eq!(
-                            Some(expected_parent.as_ref()),
-                            actual_parent,
-                            "[{}] expected {:?} to have contextual parent {:?}",
-                            self.name,
-                            name,
-                            expected_parent,
-                        );
-                    }
-                    None => {}
-                }
+                let get_parent_name = || {
+                    let stack = self.current.lock().unwrap();
+                    let spans = self.spans.lock().unwrap();
+                    event
+                        .parent()
+                        .and_then(|id| spans.get(id))
+                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
+                        .map(|s| s.name.to_string())
+                };
+                expected.check(event, get_parent_name, &self.name);
             }
-            Some(ex) => ex.bad(
-                &self.name,
-                format_args!("[{}] observed event {:?}", self.name, event),
-            ),
+            Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
     }
 
@@ -319,70 +268,14 @@ where
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let name = meta.name();
-                expected
-                    .span
-                    .metadata
-                    .check(meta, format_args!("span `{}`", name));
-                let mut checker = expected.fields.checker(name.to_string());
-                span.record(&mut checker);
-                checker.finish();
-                match expected.parent {
-                    Some(Parent::ExplicitRoot) => {
-                        assert!(
-                            span.is_root(),
-                            "[{}] expected {:?} to be an explicit root span",
-                            self.name,
-                            name
-                        );
-                    }
-                    Some(Parent::Explicit(expected_parent)) => {
-                        let actual_parent =
-                            span.parent().and_then(|id| spans.get(id)).map(|s| s.name);
-                        assert_eq!(
-                            Some(expected_parent.as_ref()),
-                            actual_parent,
-                            "[{}] expected {:?} to have explicit parent {:?}",
-                            self.name,
-                            name,
-                            expected_parent,
-                        );
-                    }
-                    Some(Parent::ContextualRoot) => {
-                        assert!(
-                            span.is_contextual(),
-                            "[{}] expected {:?} to have a contextual parent",
-                            self.name,
-                            name
-                        );
-                        assert!(
-                            self.current.lock().unwrap().last().is_none(),
-                            "[{}] expected {:?} to be a root, but we were inside a span",
-                            self.name,
-                            name
-                        );
-                    }
-                    Some(Parent::Contextual(expected_parent)) => {
-                        assert!(
-                            span.is_contextual(),
-                            "[{}] expected {:?} to have a contextual parent",
-                            self.name,
-                            name
-                        );
-                        let stack = self.current.lock().unwrap();
-                        let actual_parent =
-                            stack.last().and_then(|id| spans.get(id)).map(|s| s.name);
-                        assert_eq!(
-                            Some(expected_parent.as_ref()),
-                            actual_parent,
-                            "[{}] expected {:?} to have contextual parent {:?}",
-                            self.name,
-                            name,
-                            expected_parent,
-                        );
-                    }
-                    None => {}
-                }
+                let get_parent_name = || {
+                    let stack = self.current.lock().unwrap();
+                    span.parent()
+                        .and_then(|id| spans.get(id))
+                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
+                        .map(|s| s.name.to_string())
+                };
+                expected.check(span, get_parent_name, &self.name);
             }
         }
         spans.insert(
@@ -523,11 +416,15 @@ where
 }
 
 impl MockHandle {
+    pub fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
+        Self(expected, name)
+    }
+
     pub fn assert_finished(&self) {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
                 !expected.iter().any(|thing| thing != &Expect::Nothing),
-                "[{}] more notifications expected: {:?}",
+                "\n[{}] more notifications expected: {:#?}",
                 self.1,
                 **expected
             );
@@ -536,26 +433,44 @@ impl MockHandle {
 }
 
 impl Expect {
-    fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
+    pub fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
-            Expect::Event(e) => panic!("[{}] expected event {}, but {} instead", name, e, what,),
-            Expect::Enter(e) => panic!("[{}] expected to enter {} but {} instead", name, e, what,),
-            Expect::Exit(e) => panic!("[{}] expected to exit {} but {} instead", name, e, what,),
+            Expect::Event(e) => panic!(
+                "\n[{}] expected event {}\n[{}] but instead {}",
+                name, e, name, what,
+            ),
+            Expect::Enter(e) => panic!(
+                "\n[{}] expected to enter {}\n[{}] but instead {}",
+                name, e, name, what,
+            ),
+            Expect::Exit(e) => panic!(
+                "\n[{}] expected to exit {}\n[{}] but instead {}",
+                name, e, name, what,
+            ),
             Expect::CloneSpan(e) => {
-                panic!("[{}] expected to clone {} but {} instead", name, e, what,)
+                panic!(
+                    "\n[{}] expected to clone {}\n[{}] but instead {}",
+                    name, e, name, what,
+                )
             }
             Expect::DropSpan(e) => {
-                panic!("[{}] expected to drop {} but {} instead", name, e, what,)
+                panic!(
+                    "\n[{}] expected to drop {}\n[{}] but instead {}",
+                    name, e, name, what,
+                )
             }
             Expect::Visit(e, fields) => panic!(
-                "[{}] expected {} to record {} but {} instead",
-                name, e, fields, what,
+                "\n[{}] expected {} to record {}\n[{}] but instead {}",
+                name, e, fields, name, what,
             ),
-            Expect::NewSpan(e) => panic!("[{}] expected {} but {} instead", name, e, what),
+            Expect::NewSpan(e) => panic!(
+                "\n[{}] expected {}\n[{}] but instead {}",
+                name, e, name, what
+            ),
             Expect::Nothing => panic!(
-                "[{}] expected nothing else to happen, but {} instead",
-                name, what,
+                "\n[{}] expected nothing else to happen\n[{}] but {} instead",
+                name, name, what,
             ),
         }
     }

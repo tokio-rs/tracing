@@ -60,8 +60,9 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 #[test]
 fn event_with_message() {
     let (subscriber, handle) = subscriber::mock()
-        .event(event::mock().with_fields(field::mock("message").with_value(
-            &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
+        .event(event::msg(format_args!(
+            "hello from my event! yak shaved = {:?}",
+            true
         )))
         .done()
         .run_with_handle();
@@ -82,12 +83,10 @@ fn message_without_delims() {
                 field::mock("answer")
                     .with_value(&42)
                     .and(field::mock("question").with_value(&"life, the universe, and everything"))
-                    .and(
-                        field::mock("message").with_value(&tracing::field::debug(format_args!(
-                            "hello from my event! tricky? {:?}!",
-                            true
-                        ))),
-                    )
+                    .and(field::msg(format_args!(
+                        "hello from my event! tricky? {:?}!",
+                        true
+                    )))
                     .only(),
             ),
         )
@@ -111,11 +110,7 @@ fn string_message_without_delims() {
                 field::mock("answer")
                     .with_value(&42)
                     .and(field::mock("question").with_value(&"life, the universe, and everything"))
-                    .and(
-                        field::mock("message").with_value(&tracing::field::debug(format_args!(
-                            "hello from my event"
-                        ))),
-                    )
+                    .and(field::msg(format_args!("hello from my event")))
                     .only(),
             ),
         )
