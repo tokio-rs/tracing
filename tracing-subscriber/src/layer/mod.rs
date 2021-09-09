@@ -181,6 +181,9 @@
 //!
 //! ### Per-Layer Filtering
 //!
+//! **Note**: per-layer filtering APIs currently require the [`"registry"` crate
+//! feature flag][feat] to be enabled.
+//!
 //! Sometimes, it may be desirable for one `Layer` to record a particular subset
 //! of spans and events, while a different subset of spans and events are
 //! recorded by other `Layer`s. For example:
@@ -392,6 +395,7 @@
 //! [`DEBUG`]: tracing_core::Level::DEBUG
 //! [target]: tracing_core::Metadata::target
 //! [`LevelFilter`]: crate::filter::LevelFilter
+//! [feat]: crate#feature-flags
 use crate::filter;
 use std::{any::TypeId, ops::Deref, sync::Arc};
 use tracing_core::{
