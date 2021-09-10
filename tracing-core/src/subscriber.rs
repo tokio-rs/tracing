@@ -569,7 +569,14 @@ impl Interest {
 /// [`NoSubscriber`] implements the [`Subscriber`] trait by never being enabled,
 /// never being interested in any callsite, and drops all spans and events.
 #[derive(Debug, Copy, Clone)]
-pub struct NoSubscriber;
+pub struct NoSubscriber(());
+
+impl Default for NoSubscriber {
+    fn default() -> Self {
+        NoSubscriber(())
+    }
+}
+
 impl Subscriber for NoSubscriber {
     #[inline]
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {

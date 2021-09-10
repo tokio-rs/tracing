@@ -404,7 +404,7 @@ impl Dispatch {
     #[inline]
     pub fn none() -> Self {
         Dispatch {
-            subscriber: Arc::new(NoSubscriber),
+            subscriber: Arc::new(NoSubscriber::default()),
         }
     }
 
@@ -763,13 +763,13 @@ mod test {
 
     #[test]
     fn dispatch_is() {
-        let dispatcher = Dispatch::new(NoSubscriber);
+        let dispatcher = Dispatch::new(NoSubscriber::default());
         assert!(dispatcher.is::<NoSubscriber>());
     }
 
     #[test]
     fn dispatch_downcasts() {
-        let dispatcher = Dispatch::new(NoSubscriber);
+        let dispatcher = Dispatch::new(NoSubscriber::default());
         assert!(dispatcher.downcast_ref::<NoSubscriber>().is_some());
     }
 
