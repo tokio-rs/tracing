@@ -10,10 +10,12 @@
 //! [`Subscribe`]: crate::subscribe
 #[cfg(feature = "env-filter")]
 mod env;
+mod filter_fn;
 mod level;
 #[cfg(feature = "registry")]
 mod subscriber_filters;
 
+pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_psf_stubs::*;
 #[cfg(feature = "registry")]
