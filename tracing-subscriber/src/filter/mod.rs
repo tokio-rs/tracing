@@ -6,6 +6,7 @@
 //!
 //! [`layer`  module documentation]: crate::layer#filtering-with-layers
 //! [`Layer`]: crate::layer
+mod directive;
 #[cfg(feature = "env-filter")]
 mod env;
 mod filter_fn;
