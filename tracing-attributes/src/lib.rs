@@ -166,16 +166,25 @@ use syn::{
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
+/// You can also use `skip_all` to skip all arguments.
+///
 /// ## Examples
 ///
 /// ```
 /// # use tracing_attributes::instrument;
+/// # use std::collections::HashMap;
 /// // This type doesn't implement `fmt::Debug`!
 /// struct NonDebug;
 ///
 /// // `arg` will be recorded, while `non_debug` will not.
 /// #[instrument(skip(non_debug))]
 /// fn my_function(arg: usize, non_debug: NonDebug) {
+///     // ...
+/// }
+///
+/// // These arguments are huge
+/// #[instrument(skip_all)]
+/// fn my_big_data_function(large: Vec<u8>, also_large: HashMap<String, String>) {
 ///     // ...
 /// }
 /// ```
@@ -257,8 +266,8 @@ use syn::{
 /// }
 /// ```
 ///
-/// This can be used in conjunction with `skip` to record only some fields of a
-/// struct:
+/// This can be used in conjunction with `skip` or `skip_all` to record only
+/// some fields of a struct:
 /// ```
 /// # use tracing_attributes::instrument;
 /// // Remember the struct with the very large `data` field from the earlier
@@ -644,7 +653,7 @@ fn gen_block(
         let quoted_fields: Vec<_> = param_names
             .iter()
             .filter(|(param, _)| {
-                if args.skips.contains(param) {
+                if args.skip_all || args.skips.contains(param) {
                     return false;
                 }
 
@@ -754,6 +763,7 @@ struct InstrumentArgs {
     name: Option<LitStr>,
     target: Option<LitStr>,
     skips: HashSet<Ident>,
+    skip_all: bool,
     fields: Option<Fields>,
     err: bool,
     /// Errors describing any unrecognized parse inputs that we skipped.
@@ -872,8 +882,20 @@ impl Parse for InstrumentArgs {
                 if !args.skips.is_empty() {
                     return Err(input.error("expected only a single `skip` argument"));
                 }
+                if args.skip_all {
+                    return Err(input.error("expected either `skip` or `skip_all` argument"));
+                }
                 let Skips(skips) = input.parse()?;
                 args.skips = skips;
+            } else if lookahead.peek(kw::skip_all) {
+                if args.skip_all {
+                    return Err(input.error("expected only a single `skip_all` argument"));
+                }
+                if !args.skips.is_empty() {
+                    return Err(input.error("expected either `skip` or `skip_all` argument"));
+                }
+                let _ = input.parse::<kw::skip_all>()?;
+                args.skip_all = true;
             } else if lookahead.peek(kw::fields) {
                 if args.fields.is_some() {
                     return Err(input.error("expected only a single `fields` argument"));
@@ -1158,6 +1180,7 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
 mod kw {
     syn::custom_keyword!(fields);
     syn::custom_keyword!(skip);
+    syn::custom_keyword!(skip_all);
     syn::custom_keyword!(level);
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);

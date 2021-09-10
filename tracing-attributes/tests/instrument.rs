@@ -96,6 +96,9 @@ fn skip() {
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
+    #[instrument(target = "my_target", level = "debug", skip_all)]
+    fn my_fn2(_arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
+
     let span = span::mock()
         .named("my_fn")
         .at_level(Level::DEBUG)
