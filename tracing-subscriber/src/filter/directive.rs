@@ -18,7 +18,7 @@ pub(in crate::filter) type FilterVec<T> = Vec<T>;
 
 #[derive(Debug, PartialEq)]
 pub(in crate::filter) struct DirectiveSet<T> {
-    directives: Vec<T>,
+    directives: FilterVec<T>,
     pub(in crate::filter) max_level: LevelFilter,
 }
 
@@ -42,7 +42,7 @@ impl<T> DirectiveSet<T> {
 impl<T: Ord> Default for DirectiveSet<T> {
     fn default() -> Self {
         Self {
-            directives: Vec::new(),
+            directives: FilterVec::new(),
             max_level: LevelFilter::OFF,
         }
     }
