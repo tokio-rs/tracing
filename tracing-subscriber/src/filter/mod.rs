@@ -8,16 +8,17 @@
 //! [`Layer`]: crate::layer
 #[cfg(feature = "env-filter")]
 mod env;
+mod filter_fn;
 #[cfg(feature = "registry")]
 mod layer_filters;
 mod level;
 
+pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_plf_stubs::*;
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub use self::layer_filters::*;
-
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
 
 #[cfg(feature = "env-filter")]
