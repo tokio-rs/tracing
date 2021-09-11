@@ -204,9 +204,9 @@ impl Targets {
     /// ```
     ///
     /// [target]: tracing_core::Metadata::target
-    pub fn with_target(mut self, target: impl ToString, level: impl Into<LevelFilter>) -> Self {
+    pub fn with_target(mut self, target: impl Into<String>, level: impl Into<LevelFilter>) -> Self {
         self.0.add(StaticDirective::new(
-            Some(target.to_string()),
+            Some(target.into()),
             Default::default(),
             level.into(),
         ));
@@ -278,8 +278,8 @@ impl Targets {
 
 impl<T, L> Extend<(T, L)> for Targets
 where
-    String: From<T>,
-    LevelFilter: From<L>,
+    T: Into<String>,
+    L: Into<LevelFilter>,
 {
     fn extend<I: IntoIterator<Item = (T, L)>>(&mut self, iter: I) {
         let iter = iter.into_iter().map(|(target, level)| {
@@ -291,8 +291,8 @@ where
 
 impl<T, L> FromIterator<(T, L)> for Targets
 where
-    String: From<T>,
-    LevelFilter: From<L>,
+    T: Into<String>,
+    L: Into<LevelFilter>,
 {
     fn from_iter<I: IntoIterator<Item = (T, L)>>(iter: I) -> Self {
         let mut this = Self::default();
