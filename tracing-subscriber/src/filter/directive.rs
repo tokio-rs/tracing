@@ -261,12 +261,24 @@ impl fmt::Display for StaticDirective {
 
 impl FromStr for StaticDirective {
     type Err = DirectiveParseError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // This method parses a filtering directive in one of the following
+        // forms:
+        //
+        // * `foo=trace` (TARGET=LEVEL)
+        // * `foo[{bar,baz}]=info` (TARGET[{FIELD,+}]=LEVEL)
+        // * `trace` (bare LEVEL)
+        // * `foo` (bare TARGET)
         let mut split = s.split('=');
         let part0 = split
             .next()
             .ok_or_else(|| DirectiveParseError::msg("string must not be empty"))?;
 
+        // Directive includes an `=`:
+        // * `foo=trace`
+        // * `foo[{bar}]=trace`
+        // * `foo[{bar,baz}]=trace`
         if let Some(part1) = split.next() {
             if split.next().is_some() {
                 return Err(DirectiveParseError::msg(
@@ -277,6 +289,9 @@ impl FromStr for StaticDirective {
             let mut split = part0.split("[{");
             let target = split.next().map(String::from);
             let mut field_names = FilterVec::new();
+            // Directive includes fields:
+            // * `foo[{bar}]=trace`
+            // * `foo[{bar,baz}]=trace`
             if let Some(maybe_fields) = split.next() {
                 if split.next().is_some() {
                     return Err(DirectiveParseError::msg(
@@ -305,15 +320,18 @@ impl FromStr for StaticDirective {
 
         // Okay, the part after the `=` was empty, the directive is either a
         // bare level or a bare target.
+        // * `foo`
+        // * `info`
         Ok(match part0.parse::<LevelFilter>() {
             Ok(level) => Self {
                 level,
-                ..Default::default()
+                target: None,
+                field_names: FilterVec::new(),
             },
             Err(_) => Self {
                 target: Some(String::from(part0)),
                 level: LevelFilter::TRACE,
-                ..Default::default()
+                field_names: FilterVec::new(),
             },
         })
     }
