@@ -99,6 +99,55 @@ use tracing_core::{Interest, Metadata, Subscriber};
 /// This is particularly useful when the list of enabled targets is configurable
 /// by the user at runtime.
 ///
+/// The `Targets` filter can be used as a [per-layer filter][plf] *and* as a
+/// [global filter]:
+///
+/// ```rust
+/// use tracing_subscriber::{
+///     fmt,
+///     filter::{Targets, LevelFilter},
+///     prelude::*,
+/// };
+/// use tracing_core::Level;
+/// use std::{sync::Arc, fs::File};
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+///
+/// // A layer that logs events to stdout using the human-readable "pretty"
+/// // format.
+/// let stdout_log = fmt::layer().pretty();
+///
+/// // A layer that logs events to a file, using the JSON format.
+/// let file = File::create("debug_log.json")?;
+/// let debug_log = fmt::layer()
+///     .with_writer(Arc::new(file))
+///     .json();
+///
+/// tracing_subscriber::registry()
+///     // Only log INFO and above to stdout, unless the span or event
+///     // has the `my_crate::cool_module` target prefix.
+///     .with(stdout_log
+///         .with_filter(
+///             Targets::default()
+///                 .with_target("my_crate::cool_module", Level::DEBUG)
+///                 .with_default(Level::INFO)
+///        )
+///     )
+///     // Log everything enabled by the global filter to `debug_log.json`.
+///     .with(debug_log)
+///     // Configure a global filter for the whole subscriber stack. This will
+///     // control what spans and events are recorded by both the `debug_log`
+///     // and the `stdout_log` layers, and `stdout_log` will *additionally* be
+///     // filtered by its per-layer filter.
+///     .with(
+///         Targets::default()
+///             .with_target("my_crate", Level::TRACE)
+///             .with_target("other_crate", Level::INFO)
+///             .with_target("other_crate::annoying_module", LevelFilter::OFF)
+///             .with_target("third_crate", Level::DEBUG)
+///     ).init();
+/// # Ok(()) }
+///```
+///
 /// [target]: tracing_core::Metadata::target
 /// [level]: tracing_core::Level
 /// [`Filter`]: crate::layer::Filter
