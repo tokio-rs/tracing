@@ -1,13 +1,13 @@
 use super::FilterVec;
-pub(super) use crate::filter::directive::StaticDirective;
+pub(super) use crate::filter::directive::{ParseError, StaticDirective};
 use crate::filter::{
     directive::{DirectiveSet, Match},
     env::{field, FieldMap},
-    level::{self, LevelFilter},
+    level::LevelFilter,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
+use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
@@ -33,18 +33,6 @@ pub(crate) type SpanMatcher = MatchSet<field::SpanMatch>;
 pub(crate) struct MatchSet<T> {
     field_matches: FilterVec<T>,
     base_level: LevelFilter,
-}
-/// Indicates that a string could not be parsed as a filtering directive.
-#[derive(Debug)]
-pub struct ParseError {
-    kind: ParseErrorKind,
-}
-
-#[derive(Debug)]
-enum ParseErrorKind {
-    Field(Box<dyn Error + Send + Sync>),
-    Level(level::ParseError),
-    Other,
 }
 
 impl Directive {
@@ -407,56 +395,6 @@ impl Dynamics {
     pub(crate) fn has_value_filters(&self) -> bool {
         self.directives()
             .any(|d| d.fields.iter().any(|f| f.value.is_some()))
-    }
-}
-
-// ===== impl ParseError =====
-
-impl ParseError {
-    fn new() -> Self {
-        ParseError {
-            kind: ParseErrorKind::Other,
-        }
-    }
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            ParseErrorKind::Other => f.pad("invalid filter directive"),
-            ParseErrorKind::Level(ref l) => l.fmt(f),
-            ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
-        }
-    }
-}
-
-impl Error for ParseError {
-    fn description(&self) -> &str {
-        "invalid filter directive"
-    }
-
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self.kind {
-            ParseErrorKind::Other => None,
-            ParseErrorKind::Level(ref l) => Some(l),
-            ParseErrorKind::Field(ref n) => Some(n.as_ref()),
-        }
-    }
-}
-
-impl From<Box<dyn Error + Send + Sync>> for ParseError {
-    fn from(e: Box<dyn Error + Send + Sync>) -> Self {
-        Self {
-            kind: ParseErrorKind::Field(e),
-        }
-    }
-}
-
-impl From<level::ParseError> for ParseError {
-    fn from(l: level::ParseError) -> Self {
-        Self {
-            kind: ParseErrorKind::Level(l),
-        }
     }
 }
 

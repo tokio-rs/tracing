@@ -1,14 +1,19 @@
-use crate::filter::level::LevelFilter;
-use std::{cmp::Ordering, fmt, iter::FromIterator};
+use crate::filter::level::{self, LevelFilter};
+use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::Metadata;
+/// Indicates that a string could not be parsed as a filtering directive.
+#[derive(Debug)]
+pub struct ParseError {
+    kind: ParseErrorKind,
+}
 /// A directive which will statically enable or disable a given callsite.
 ///
 /// Unlike a dynamic directive, this can be cached by the callsite.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct StaticDirective {
-    target: Option<String>,
-    field_names: FilterVec<String>,
-    level: LevelFilter,
+    pub(in crate::filter) target: Option<String>,
+    pub(in crate::filter) field_names: FilterVec<String>,
+    pub(in crate::filter) level: LevelFilter,
 }
 
 #[cfg(feature = "smallvec")]
@@ -16,7 +21,7 @@ pub(in crate::filter) type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
 #[cfg(not(feature = "smallvec"))]
 pub(in crate::filter) type FilterVec<T> = Vec<T>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(in crate::filter) struct DirectiveSet<T> {
     directives: FilterVec<T>,
     pub(in crate::filter) max_level: LevelFilter,
@@ -25,6 +30,13 @@ pub(in crate::filter) struct DirectiveSet<T> {
 pub(in crate::filter) trait Match {
     fn cares_about(&self, meta: &Metadata<'_>) -> bool;
     fn level(&self) -> &LevelFilter;
+}
+
+#[derive(Debug)]
+enum ParseErrorKind {
+    Field(Box<dyn Error + Send + Sync>),
+    Level(level::ParseError),
+    Other(Option<&'static str>),
 }
 
 // === impl DirectiveSet ===
@@ -75,6 +87,11 @@ impl<T: Match + Ord> DirectiveSet<T> {
             Ok(i) => self.directives[i] = directive,
             Err(i) => self.directives.insert(i, directive),
         }
+    }
+
+    #[cfg(test)]
+    pub(in crate::filter) fn into_vec(self) -> FilterVec<T> {
+        self.directives
     }
 }
 
@@ -238,5 +255,110 @@ impl fmt::Display for StaticDirective {
         }
 
         fmt::Display::fmt(&self.level, f)
+    }
+}
+
+impl FromStr for StaticDirective {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split('=');
+        let part0 = split
+            .next()
+            .ok_or_else(|| ParseError::msg("string must not be empty"))?;
+
+        if let Some(part1) = split.next() {
+            let mut split = part0.split("[{");
+            let target = split.next().map(String::from);
+            let mut field_names = FilterVec::new();
+            if let Some(maybe_fields) = split.next() {
+                let fields = maybe_fields
+                    .strip_suffix("}]")
+                    .ok_or_else(|| ParseError::msg("expected fields list to end with '}]'"))?;
+                field_names.extend(fields.split(',').filter_map(|s| {
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(String::from(s))
+                    }
+                }));
+            };
+            let level = part1.parse()?;
+            return Ok(Self {
+                level,
+                field_names,
+                target,
+            });
+        }
+
+        // Okay, the part after the `=` was empty, the directive is either a
+        // bare level or a bare target.
+        Ok(match part0.parse::<LevelFilter>() {
+            Ok(level) => Self {
+                level,
+                ..Default::default()
+            },
+            Err(_) => Self {
+                target: Some(String::from(part0)),
+                level: LevelFilter::TRACE,
+                ..Default::default()
+            },
+        })
+    }
+}
+
+// === impl ParseError ===
+
+impl ParseError {
+    pub(crate) fn new() -> Self {
+        ParseError {
+            kind: ParseErrorKind::Other(None),
+        }
+    }
+
+    pub(crate) fn msg(s: &'static str) -> Self {
+        ParseError {
+            kind: ParseErrorKind::Other(Some(s)),
+        }
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
+            ParseErrorKind::Other(Some(msg)) => write!(f, "invalid filter directive: {}", msg),
+            ParseErrorKind::Level(ref l) => l.fmt(f),
+            ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
+        }
+    }
+}
+
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        "invalid filter directive"
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self.kind {
+            ParseErrorKind::Other(_) => None,
+            ParseErrorKind::Level(ref l) => Some(l),
+            ParseErrorKind::Field(ref n) => Some(n.as_ref()),
+        }
+    }
+}
+
+impl From<Box<dyn Error + Send + Sync>> for ParseError {
+    fn from(e: Box<dyn Error + Send + Sync>) -> Self {
+        Self {
+            kind: ParseErrorKind::Field(e),
+        }
+    }
+}
+
+impl From<level::ParseError> for ParseError {
+    fn from(l: level::ParseError) -> Self {
+        Self {
+            kind: ParseErrorKind::Level(l),
+        }
     }
 }
