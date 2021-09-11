@@ -434,7 +434,6 @@ mod tests {
     }
 
     #[test]
-
     fn parse_level_directives() {
         expect_parse_level_directives(
             "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
