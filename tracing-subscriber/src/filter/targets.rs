@@ -45,7 +45,7 @@ use tracing_core::{Interest, Metadata, Subscriber};
 /// levels to enable:
 ///
 /// ```
-/// use tracing_subscriber::filter;
+/// use tracing_subscriber::{filter, prelude::*};
 /// use tracing_core::Level;
 ///
 /// let filter = filter::Targets::new()
@@ -80,6 +80,7 @@ use tracing_core::{Interest, Metadata, Subscriber};
 /// ```rust
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use tracing_subscriber::filter;
+/// use tracing_core::Level;
 ///
 /// let filter = "my_crate=info,my_crate::interesting_module=trace,other_crate=debug"
 ///     .parse::<filter::Targets>()?;
@@ -107,7 +108,7 @@ use tracing_core::{Interest, Metadata, Subscriber};
 /// [filtering]: crate::layer#filtering-with-layers
 /// [`env_logger` crate]: https://docs.rs/env_logger/0.9.0/env_logger/index.html#enabling-logging
 /// [`EnvFilter`]: crate::filter::EnvFilter
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Targets(DirectiveSet<StaticDirective>);
 
 impl Targets {
