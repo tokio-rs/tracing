@@ -268,10 +268,22 @@ impl FromStr for StaticDirective {
             .ok_or_else(|| DirectiveParseError::msg("string must not be empty"))?;
 
         if let Some(part1) = split.next() {
+            if split.next().is_some() {
+                return Err(DirectiveParseError::msg(
+                    "too many '=' in filter directive, expected 0 or 1",
+                ));
+            }
+
             let mut split = part0.split("[{");
             let target = split.next().map(String::from);
             let mut field_names = FilterVec::new();
             if let Some(maybe_fields) = split.next() {
+                if split.next().is_some() {
+                    return Err(DirectiveParseError::msg(
+                        "too many '[{' in filter directive, expected 0 or 1",
+                    ));
+                }
+
                 let fields = maybe_fields.strip_suffix("}]").ok_or_else(|| {
                     DirectiveParseError::msg("expected fields list to end with '}]'")
                 })?;
