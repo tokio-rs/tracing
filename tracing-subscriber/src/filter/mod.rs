@@ -15,7 +15,7 @@ mod layer_filters;
 mod level;
 mod targets;
 
-pub use self::directive::ParseError as DirectiveParseError;
+pub use self::directive::DirectiveParseError;
 pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_plf_stubs::*;

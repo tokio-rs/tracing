@@ -1,6 +1,6 @@
 use crate::{
     filter::{
-        directive::{self, DirectiveSet, StaticDirective},
+        directive::{DirectiveParseError, DirectiveSet, StaticDirective},
         LevelFilter,
     },
     layer,
@@ -302,7 +302,7 @@ where
 }
 
 impl FromStr for Targets {
-    type Err = directive::ParseError;
+    type Err = DirectiveParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.split(',')
             .map(StaticDirective::from_str)

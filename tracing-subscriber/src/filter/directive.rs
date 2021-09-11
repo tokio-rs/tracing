@@ -3,9 +3,10 @@ use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::Metadata;
 /// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
-pub struct ParseError {
+pub struct DirectiveParseError {
     kind: ParseErrorKind,
 }
+
 /// A directive which will statically enable or disable a given callsite.
 ///
 /// Unlike a dynamic directive, this can be cached by the callsite.
@@ -259,21 +260,21 @@ impl fmt::Display for StaticDirective {
 }
 
 impl FromStr for StaticDirective {
-    type Err = ParseError;
+    type Err = DirectiveParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split('=');
         let part0 = split
             .next()
-            .ok_or_else(|| ParseError::msg("string must not be empty"))?;
+            .ok_or_else(|| DirectiveParseError::msg("string must not be empty"))?;
 
         if let Some(part1) = split.next() {
             let mut split = part0.split("[{");
             let target = split.next().map(String::from);
             let mut field_names = FilterVec::new();
             if let Some(maybe_fields) = split.next() {
-                let fields = maybe_fields
-                    .strip_suffix("}]")
-                    .ok_or_else(|| ParseError::msg("expected fields list to end with '}]'"))?;
+                let fields = maybe_fields.strip_suffix("}]").ok_or_else(|| {
+                    DirectiveParseError::msg("expected fields list to end with '}]'")
+                })?;
                 field_names.extend(fields.split(',').filter_map(|s| {
                     if s.is_empty() {
                         None
@@ -308,21 +309,21 @@ impl FromStr for StaticDirective {
 
 // === impl ParseError ===
 
-impl ParseError {
+impl DirectiveParseError {
     pub(crate) fn new() -> Self {
-        ParseError {
+        DirectiveParseError {
             kind: ParseErrorKind::Other(None),
         }
     }
 
     pub(crate) fn msg(s: &'static str) -> Self {
-        ParseError {
+        DirectiveParseError {
             kind: ParseErrorKind::Other(Some(s)),
         }
     }
 }
 
-impl fmt::Display for ParseError {
+impl fmt::Display for DirectiveParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
@@ -333,7 +334,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl Error for ParseError {
+impl Error for DirectiveParseError {
     fn description(&self) -> &str {
         "invalid filter directive"
     }
@@ -347,7 +348,7 @@ impl Error for ParseError {
     }
 }
 
-impl From<Box<dyn Error + Send + Sync>> for ParseError {
+impl From<Box<dyn Error + Send + Sync>> for DirectiveParseError {
     fn from(e: Box<dyn Error + Send + Sync>) -> Self {
         Self {
             kind: ParseErrorKind::Field(e),
@@ -355,7 +356,7 @@ impl From<Box<dyn Error + Send + Sync>> for ParseError {
     }
 }
 
-impl From<level::ParseError> for ParseError {
+impl From<level::ParseError> for DirectiveParseError {
     fn from(l: level::ParseError) -> Self {
         Self {
             kind: ParseErrorKind::Level(l),
