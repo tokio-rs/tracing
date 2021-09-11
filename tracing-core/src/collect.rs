@@ -548,6 +548,58 @@ impl Interest {
     }
 }
 
+/// A no-op [collector](Collect).
+///
+/// [`NoCollector`] implements the [`Collect`] trait by never being enabled,
+/// never being interested in any callsite, and drops all spans and events.
+#[derive(Debug, Copy, Clone)]
+pub struct NoCollector(());
+
+impl Default for NoCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl NoCollector {
+    /// Returns a new `NoCollector` instance.
+    ///
+    /// This function is equivalent to calling `NoCollector::default()`, but
+    /// this is usable in `const fn` contexts.
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
+impl Collect for NoCollector {
+    #[inline]
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::never()
+    }
+
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+        span::Id::from_u64(0xDEAD)
+    }
+
+    fn event(&self, _event: &Event<'_>) {}
+
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        false
+    }
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
+
+    fn enter(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::Id) {}
+}
+
 #[cfg(feature = "alloc")]
 impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
     #[inline]

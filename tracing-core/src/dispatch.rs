@@ -136,7 +136,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    collect::{self, Collect},
+    collect::{self, Collect, NoCollector},
     span, Event, LevelFilter, Metadata,
 };
 
@@ -206,7 +206,7 @@ static NONE: Dispatch = Dispatch {
     #[cfg(not(feature = "alloc"))]
     collector: &NO_COLLECTOR,
 };
-static NO_COLLECTOR: NoCollector = NoCollector;
+static NO_COLLECTOR: NoCollector = NoCollector::new();
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
@@ -826,36 +826,6 @@ where
     }
 }
 
-struct NoCollector;
-impl Collect for NoCollector {
-    #[inline]
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
-        collect::Interest::never()
-    }
-
-    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-        span::Id::from_u64(0xDEAD)
-    }
-
-    fn event(&self, _event: &Event<'_>) {}
-
-    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
-
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
-
-    #[inline]
-    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
-        false
-    }
-
-    fn enter(&self, _span: &span::Id) {}
-    fn exit(&self, _span: &span::Id) {}
-
-    fn current_span(&self) -> span::Current {
-        span::Current::none()
-    }
-}
-
 #[cfg(feature = "std")]
 impl Registrar {
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
@@ -964,7 +934,7 @@ mod test {
 
     #[test]
     fn dispatch_downcasts() {
-        let dispatcher = Dispatch::from_static(&NoCollector);
+        let dispatcher = Dispatch::from_static(&NO_COLLECTOR);
         assert!(dispatcher.downcast_ref::<NoCollector>().is_some());
     }
 
