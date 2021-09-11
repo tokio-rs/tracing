@@ -1152,7 +1152,7 @@ where
     layer_impl_body! {}
 }
 
-impl<S> Layer<S> for Arc<dyn Layer<S>>
+impl<S> Layer<S> for Arc<dyn Layer<S> + Send + Sync>
 where
     S: Subscriber,
 {
@@ -1167,7 +1167,7 @@ where
     layer_impl_body! {}
 }
 
-impl<S> Layer<S> for Box<dyn Layer<S>>
+impl<S> Layer<S> for Box<dyn Layer<S> + Send + Sync>
 where
     S: Subscriber,
 {
