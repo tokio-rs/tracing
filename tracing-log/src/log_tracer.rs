@@ -183,7 +183,9 @@ impl log::Log for LogTracer {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        crate::dispatch_record(record);
+        if self.enabled(record.metadata()) {
+            crate::dispatch_record(record);
+        }
     }
 
     fn flush(&self) {}

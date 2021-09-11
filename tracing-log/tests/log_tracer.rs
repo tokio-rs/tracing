@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tracing::subscriber::with_default;
 use tracing_core::span::{Attributes, Record};
-use tracing_core::{span, Event, Level, Metadata, Subscriber};
+use tracing_core::{span, Event, Level, LevelFilter, Metadata, Subscriber};
 use tracing_log::{LogTracer, NormalizeEvent};
 
 struct State {
@@ -24,6 +24,10 @@ impl Subscriber for TestSubscriber {
     fn enabled(&self, meta: &Metadata<'_>) -> bool {
         dbg!(meta);
         true
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        Some(LevelFilter::from_level(Level::INFO))
     }
 
     fn new_span(&self, _span: &Attributes<'_>) -> span::Id {
@@ -63,6 +67,8 @@ fn normalized_metadata() {
     let state = me.clone();
 
     with_default(TestSubscriber(me), || {
+        log::info!("expected info log");
+        log::debug!("unexpected debug log");
         let log = log::Record::builder()
             .args(format_args!("Error!"))
             .level(log::Level::Info)
