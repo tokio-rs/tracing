@@ -96,6 +96,9 @@ fn skip() {
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
+    #[instrument(target = "my_target", level = "debug", skip_all)]
+    fn my_fn2(_arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
+
     let span = span::mock()
         .named("my_fn")
         .at_level(Level::DEBUG)
@@ -105,6 +108,12 @@ fn skip() {
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
+
+    let span3 = span::mock()
+        .named("my_fn2")
+        .at_level(Level::DEBUG)
+        .with_target("my_target");
+
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
@@ -121,12 +130,17 @@ fn skip() {
         .enter(span2.clone())
         .exit(span2.clone())
         .drop_span(span2)
+        .new_span(span3.clone())
+        .enter(span3.clone())
+        .exit(span3.clone())
+        .drop_span(span3)
         .done()
         .run_with_handle();
 
     with_default(subscriber, || {
         my_fn(2, UnDebug(0), UnDebug(1));
         my_fn(3, UnDebug(0), UnDebug(1));
+        my_fn2(2, UnDebug(0), UnDebug(1));
     });
 
     handle.assert_finished();
