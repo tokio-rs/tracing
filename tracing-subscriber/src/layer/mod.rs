@@ -202,6 +202,14 @@
 //! potentially record them. The [`Layer::with_filter`] method combines a
 //! `Layer` with a [`Filter`], returning a [`Filtered`] layer.
 //!
+//! This crate's [`filter`] module provides a number of types which implement
+//! the [`Filter`] trait, such as [`LevelFilter`], [`Targets`], and
+//! [`FilterFn`]. These [`Filter`]s provide ready-made implementations of
+//! common forms of filtering. For custom filtering policies, the [`FilterFn`]
+//! and [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
+//! function pointer. In addition, when more control is required, the [`Filter`]
+//! trait may also be implemented for user-defined types.
+//!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: Currently, the <a href="../struct.Registry.html">
@@ -396,6 +404,10 @@
 //! [`Layer::enabled`]: Layer::enabled
 //! [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
 //! [`Filtered`]: crate::filter::Filtered
+//! [`filter`]: crate::filter
+//! [`Targets`]: crate::filter::Targets
+//! [`FilterFn`]: crate::filter::FilterFn
+//! [`DynFilterFn`]: crate::filter::DynFilterFn
 //! [level]: tracing_core::Level
 //! [`INFO`]: tracing_core::Level::INFO
 //! [`DEBUG`]: tracing_core::Level::DEBUG

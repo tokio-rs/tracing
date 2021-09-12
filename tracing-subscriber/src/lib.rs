@@ -14,6 +14,30 @@
 //!
 //! [msrv]: #supported-rust-versions
 //!
+//! ## `Layer`s and `Filter`s
+//!
+//! The most important component of the `tracing-subscriber` API is the
+//! [`Layer`] trait, which provides a composable abstraction for building
+//! [`Subscriber`]s. Like the [`Subscriber`] trait, a [`Layer`] defines a
+//! particular behavior for collecting trace data. Unlike [`Subscriber`]s,
+//! which implement a *complete* strategy for how trace data is collected,
+//! [`Layer`]s provide *modular* implementations of specific behaviors.
+//! Therefore, they can be [composed together] to form a [`Subscriber`] which is
+//! capable of recording traces in a variety of ways. See the [`layer` module's
+//! documentation][layer] for details on using [`Layer`]s.
+//!
+//! In addition, the [`Filter`] trait defines an interface for filtering what
+//! spans and events are recorded by a particular layer. This allows different
+//! [`Layer`]s to handle separate subsets of the trace data emitted by a
+//! program. See the [documentation on per-layer filtering][plf] for more
+//! information on using [`Filter`]s.
+//!
+//! [`Layer`]: crate::layer::Layer
+//! [composed together]: crate::layer#composing-layers
+//! [layer]: crate::layer
+//! [`Filter`]: crate::layer::Filter
+//! [plf]: crate::layer#per-layer-filtering
+//!
 //! ## Included Subscribers
 //!
 //! The following `Subscriber`s are provided for application authors:
