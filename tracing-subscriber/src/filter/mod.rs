@@ -6,7 +6,7 @@
 //! details on filtering spans and events using [`Layer`]s, see the
 //! [`layer` module's documentation].
 //!
-//! [`layer`  module documentation]: crate::layer#filtering-with-layers
+//! [`layer` module's documentation]: crate::layer#filtering-with-layers
 //! [`Layer`]: crate::layer
 mod directive;
 #[cfg(feature = "env-filter")]
