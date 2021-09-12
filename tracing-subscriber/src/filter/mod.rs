@@ -8,13 +8,16 @@
 //!
 //! [`subscribe` module documentation]: crate::subscribe#filtering-with-subscribers
 //! [`Subscribe`]: crate::subscribe
+mod directive;
 #[cfg(feature = "env-filter")]
 mod env;
 mod filter_fn;
 mod level;
 #[cfg(feature = "registry")]
 mod subscriber_filters;
+mod targets;
 
+pub use self::directive::DirectiveParseError;
 pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_psf_stubs::*;
@@ -27,6 +30,8 @@ pub use self::level::{LevelFilter, ParseError as LevelParseError};
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub use self::env::*;
+
+pub use self::targets::Targets;
 
 /// Stub implementations of the per-subscriber-fitler detection functions for
 /// when the `registry` feature is disabled.
