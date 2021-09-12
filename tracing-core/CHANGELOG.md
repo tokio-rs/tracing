@@ -1,3 +1,23 @@
+# 0.1.20 (September 12, 2021)
+
+This release adds support for `f64` as one of the `tracing-core`
+primitive field values, allowing floating-point values to be recorded as
+typed values rather than with `fmt::Debug`. Additionally, it adds
+`NoSubscriber`, a `Subscriber` implementation that does nothing.
+
+### Added
+
+- **subscriber**: `NoSubscriber`, a no-op `Subscriber` implementation
+  ([#1549])
+- **field**: Added `Visit::record_f64` and support for recording
+  floating-point values ([#1507])
+
+Thanks to new contributors @jsgf and @maxburke for contributing to this
+release!
+
+[#1549]: https://github.com/tokio-rs/tracing/pull/1549 [#1507]:
+https://github.com/tokio-rs/tracing/pull/1507
+
 # 0.1.19 (August 17, 2021)
 ### Added
 
