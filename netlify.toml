@@ -1,7 +1,10 @@
 [build]
-  command = "rustup install nightly --profile minimal && cargo doc --no-deps && cp -r target/doc _netlify_out"
-  environment = { RUSTDOCFLAGS= "--cfg docsrs -D warnings" }
-  publish = "_netlify_out"
+  command = """
+    rustup install nightly --profile minimal \
+      && cargo doc --no-deps
+    """
+  environment = { RUSTDOCFLAGS= "--cfg docsrs" }
+  publish = "target/doc"
 
 [[redirects]]
   from = "/"

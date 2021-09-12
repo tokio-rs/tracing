@@ -564,6 +564,44 @@ impl Interest {
     }
 }
 
+/// A no-op [`Subscriber`]
+///
+/// [`NoSubscriber`] implements the [`Subscriber`] trait by never being enabled,
+/// never being interested in any callsite, and drops all spans and events.
+#[derive(Debug, Copy, Clone)]
+pub struct NoSubscriber(());
+
+impl Default for NoSubscriber {
+    fn default() -> Self {
+        NoSubscriber(())
+    }
+}
+
+impl Subscriber for NoSubscriber {
+    #[inline]
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::never()
+    }
+
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+        span::Id::from_u64(0xDEAD)
+    }
+
+    fn event(&self, _event: &Event<'_>) {}
+
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        false
+    }
+
+    fn enter(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::Id) {}
+}
+
 impl Subscriber for Box<dyn Subscriber + Send + Sync + 'static> {
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
