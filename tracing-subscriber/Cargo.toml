@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.2.20"
+version = "0.2.21"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
@@ -31,7 +31,7 @@ registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.17" }
+tracing-core = { path = "../tracing-core", version = "0.1.20" }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1", default-features = false, features = ["std"] }
