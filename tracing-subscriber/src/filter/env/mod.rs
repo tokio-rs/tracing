@@ -4,10 +4,7 @@
 // these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
-pub use self::{
-    directive::{Directive, ParseError},
-    field::BadName as BadFieldName,
-};
+pub use self::{directive::Directive, field::BadName as BadFieldName};
 mod directive;
 mod field;
 
@@ -16,6 +13,7 @@ use crate::{
     layer::{Context, Layer},
     sync::RwLock,
 };
+use directive::DirectiveParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
@@ -88,6 +86,11 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
+/// The [`Targets`] type implements a similar form of filtering, but without the
+/// ability to dynamically enable events based on the current span context, and
+/// without filtering on field values. When these features are not required,
+/// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
+///
 /// [`Layer`]: ../layer/trait.Layer.html
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
@@ -95,6 +98,7 @@ use tracing_core::{
 /// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
 /// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
 /// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Targets`]: crate::filter::Targets
 #[cfg(feature = "env-filter")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 #[derive(Debug)]
@@ -127,7 +131,7 @@ pub struct FromEnvError {
 
 #[derive(Debug)]
 enum ErrorKind {
-    Parse(ParseError),
+    Parse(DirectiveParseError),
     Env(env::VarError),
 }
 
@@ -166,7 +170,7 @@ impl EnvFilter {
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
-    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::DirectiveParseError> {
         let directives = dirs
             .as_ref()
             .split(',')
@@ -485,7 +489,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 }
 
 impl FromStr for EnvFilter {
-    type Err = ParseError;
+    type Err = directive::DirectiveParseError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
         Self::try_new(spec)
@@ -536,8 +540,8 @@ impl fmt::Display for EnvFilter {
 
 // ===== impl FromEnvError =====
 
-impl From<ParseError> for FromEnvError {
-    fn from(p: ParseError) -> Self {
+impl From<directive::DirectiveParseError> for FromEnvError {
+    fn from(p: directive::DirectiveParseError) -> Self {
         Self {
             kind: ErrorKind::Parse(p),
         }
