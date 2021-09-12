@@ -1,8 +1,10 @@
 //! [`Layer`]s that control which spans and events are enabled by the wrapped
 //! subscriber.
 //!
-//! For details on filtering spans and events using [`Layer`]s, see the [`layer`
-//! module documentation].
+//! This module contains a number of types that provide implementations of
+//! various strategies for filtering which spans and events are enabled. For
+//! details on filtering spans and events using [`Layer`]s, see the
+//! [`layer` module's documentation].
 //!
 //! [`layer`  module documentation]: crate::layer#filtering-with-layers
 //! [`Layer`]: crate::layer
