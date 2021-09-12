@@ -41,7 +41,7 @@
 //!
 //! ## Included Collectors
 //!
-//! The following [ollectors] are provided for application authors:
+//! The following [collector]s are provided for application authors:
 //!
 //! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
 //!
