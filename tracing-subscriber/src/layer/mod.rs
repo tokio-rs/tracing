@@ -796,6 +796,10 @@ where
 
 /// A per-[`Layer`] filter that determines whether a span or event is enabled
 /// for an individual layer.
+///
+/// See [the module-level documentation][plf] for details on using [`Filter`]s.
+///
+/// [plf]: crate::layer#per-layer-filtering
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[cfg_attr(docsrs, doc(notable_trait))]
