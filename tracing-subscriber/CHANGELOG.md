@@ -1,3 +1,15 @@
+# 0.2.22 (September 13, 2021)
+
+This fixes a regression where the `filter::ParseError` type was accidentally
+renamed.
+
+### Fixed
+
+- **filter**: Fix `filter::ParseError` accidentally being renamed to
+  `filter::DirectiveParseError` ([#1558])
+
+[#1558]: https://github.com/tokio-rs/tracing/pull/1558
+
 # 0.2.21 (September 12, 2021)
 
 This release introduces the [`Filter`] trait, a new API for [per-layer
