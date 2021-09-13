@@ -1,26 +1,5 @@
 use super::*;
-
-pub(crate) struct NopSubscriber;
-
-impl Subscriber for NopSubscriber {
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
-        Interest::never()
-    }
-
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
-        false
-    }
-
-    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-        span::Id::from_u64(1)
-    }
-
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
-    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
-    fn event(&self, _: &Event<'_>) {}
-    fn enter(&self, _: &span::Id) {}
-    fn exit(&self, _: &span::Id) {}
-}
+use tracing_core::subscriber::NoSubscriber;
 
 #[derive(Debug)]
 pub(crate) struct NopLayer;
@@ -67,13 +46,15 @@ fn assert_subscriber(_s: impl Subscriber) {}
 
 #[test]
 fn layer_is_subscriber() {
-    let s = NopLayer.with_subscriber(NopSubscriber);
+    let s = NopLayer.with_subscriber(NoSubscriber::default());
     assert_subscriber(s)
 }
 
 #[test]
 fn two_layers_are_subscriber() {
-    let s = NopLayer.and_then(NopLayer).with_subscriber(NopSubscriber);
+    let s = NopLayer
+        .and_then(NopLayer)
+        .with_subscriber(NoSubscriber::default());
     assert_subscriber(s)
 }
 
@@ -82,7 +63,7 @@ fn three_layers_are_subscriber() {
     let s = NopLayer
         .and_then(NopLayer)
         .and_then(NopLayer)
-        .with_subscriber(NopSubscriber);
+        .with_subscriber(NoSubscriber::default());
     assert_subscriber(s)
 }
 
@@ -102,7 +83,7 @@ fn downcasts_to_layer() {
     let s = StringLayer("layer_1".into())
         .and_then(StringLayer2("layer_2".into()))
         .and_then(StringLayer3("layer_3".into()))
-        .with_subscriber(NopSubscriber);
+        .with_subscriber(NoSubscriber::default());
     let layer = <dyn Subscriber>::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
     assert_eq!(&layer.0, "layer_1");
     let layer =
