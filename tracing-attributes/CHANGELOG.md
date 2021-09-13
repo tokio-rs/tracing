@@ -1,3 +1,23 @@
+# 0.1.16 (September 13, 2021)
+
+This release adds a new `#[instrument(skip_all)]` option to skip recording *all*
+arguments to an instrumented function as fields. Additionally, it adds support
+for recording arguments that are `tracing` primitive types as typed values,
+rather than as `fmt::Debug`.
+
+### Added
+
+- add `skip_all` option to `#[instrument]` ([#1548])
+- record primitive types as primitive values rather than as `fmt::Debug`
+  ([#1378])
+- added support for `f64`s as typed values ([#1522])
+
+Thanks to @Folyd and @jsgf for contributing to this release!
+
+[#1548]: https://github.com/tokio-rs/tracing/pull/1548
+[#1378]: https://github.com/tokio-rs/tracing/pull/1378
+[#1522]: https://github.com/tokio-rs/tracing/pull/1524
+
 # 0.1.15 (March 12, 2021)
 
 ### Fixed
