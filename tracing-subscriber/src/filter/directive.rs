@@ -3,7 +3,7 @@ use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::Metadata;
 /// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
-pub struct DirectiveParseError {
+pub struct ParseError {
     kind: ParseErrorKind,
 }
 
@@ -260,7 +260,7 @@ impl fmt::Display for StaticDirective {
 }
 
 impl FromStr for StaticDirective {
-    type Err = DirectiveParseError;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // This method parses a filtering directive in one of the following
@@ -273,7 +273,7 @@ impl FromStr for StaticDirective {
         let mut split = s.split('=');
         let part0 = split
             .next()
-            .ok_or_else(|| DirectiveParseError::msg("string must not be empty"))?;
+            .ok_or_else(|| ParseError::msg("string must not be empty"))?;
 
         // Directive includes an `=`:
         // * `foo=trace`
@@ -281,7 +281,7 @@ impl FromStr for StaticDirective {
         // * `foo[{bar,baz}]=trace`
         if let Some(part1) = split.next() {
             if split.next().is_some() {
-                return Err(DirectiveParseError::msg(
+                return Err(ParseError::msg(
                     "too many '=' in filter directive, expected 0 or 1",
                 ));
             }
@@ -294,14 +294,14 @@ impl FromStr for StaticDirective {
             // * `foo[{bar,baz}]=trace`
             if let Some(maybe_fields) = split.next() {
                 if split.next().is_some() {
-                    return Err(DirectiveParseError::msg(
+                    return Err(ParseError::msg(
                         "too many '[{' in filter directive, expected 0 or 1",
                     ));
                 }
 
-                let fields = maybe_fields.strip_suffix("}]").ok_or_else(|| {
-                    DirectiveParseError::msg("expected fields list to end with '}]'")
-                })?;
+                let fields = maybe_fields
+                    .strip_suffix("}]")
+                    .ok_or_else(|| ParseError::msg("expected fields list to end with '}]'"))?;
                 field_names.extend(fields.split(',').filter_map(|s| {
                     if s.is_empty() {
                         None
@@ -339,21 +339,21 @@ impl FromStr for StaticDirective {
 
 // === impl ParseError ===
 
-impl DirectiveParseError {
+impl ParseError {
     pub(crate) fn new() -> Self {
-        DirectiveParseError {
+        ParseError {
             kind: ParseErrorKind::Other(None),
         }
     }
 
     pub(crate) fn msg(s: &'static str) -> Self {
-        DirectiveParseError {
+        ParseError {
             kind: ParseErrorKind::Other(Some(s)),
         }
     }
 }
 
-impl fmt::Display for DirectiveParseError {
+impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
@@ -364,7 +364,7 @@ impl fmt::Display for DirectiveParseError {
     }
 }
 
-impl Error for DirectiveParseError {
+impl Error for ParseError {
     fn description(&self) -> &str {
         "invalid filter directive"
     }
@@ -378,7 +378,7 @@ impl Error for DirectiveParseError {
     }
 }
 
-impl From<Box<dyn Error + Send + Sync>> for DirectiveParseError {
+impl From<Box<dyn Error + Send + Sync>> for ParseError {
     fn from(e: Box<dyn Error + Send + Sync>) -> Self {
         Self {
             kind: ParseErrorKind::Field(e),
@@ -386,7 +386,7 @@ impl From<Box<dyn Error + Send + Sync>> for DirectiveParseError {
     }
 }
 
-impl From<level::ParseError> for DirectiveParseError {
+impl From<level::ParseError> for ParseError {
     fn from(l: level::ParseError) -> Self {
         Self {
             kind: ParseErrorKind::Level(l),
