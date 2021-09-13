@@ -13,7 +13,7 @@ use crate::{
     subscribe::{Context, Subscribe},
     sync::RwLock,
 };
-use directive::DirectiveParseError;
+use directive::ParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
@@ -133,7 +133,7 @@ pub struct FromEnvError {
 
 #[derive(Debug)]
 enum ErrorKind {
-    Parse(DirectiveParseError),
+    Parse(ParseError),
     Env(env::VarError),
 }
 
@@ -170,7 +170,7 @@ impl EnvFilter {
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
-    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::DirectiveParseError> {
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::ParseError> {
         let directives = dirs
             .as_ref()
             .split(',')
@@ -488,7 +488,7 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
 }
 
 impl FromStr for EnvFilter {
-    type Err = directive::DirectiveParseError;
+    type Err = directive::ParseError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
         Self::try_new(spec)
@@ -539,8 +539,8 @@ impl fmt::Display for EnvFilter {
 
 // ===== impl FromEnvError =====
 
-impl From<directive::DirectiveParseError> for FromEnvError {
-    fn from(p: directive::DirectiveParseError) -> Self {
+impl From<directive::ParseError> for FromEnvError {
+    fn from(p: directive::ParseError) -> Self {
         Self {
             kind: ErrorKind::Parse(p),
         }
