@@ -319,7 +319,7 @@ pub trait MakeWriterExt: MakeWriter {
     /// determine if  a writer should be produced for a given span or event.
     ///
     /// If the predicate returns `false`, the wrapped [`MakeWriter`]'s
-    /// [`make_writer_for`][mwf] will return [`OptionalWriter::none`].
+    /// [`make_writer_for`][mwf] will return [`OptionalWriter::none`][own].
     /// Otherwise, it calls the wrapped [`MakeWriter`]'s
     /// [`make_writer_for`][mwf] method, and returns the produced writer.
     ///
@@ -384,6 +384,7 @@ pub trait MakeWriterExt: MakeWriter {
     ///
     /// [`Metadata`]: tracing_core::Metadata
     /// [mwf]: MakeWriter::make_writer_for
+    /// [own]: EitherWriter::none
     fn with_filter<F>(self, filter: F) -> WithFilter<Self, F>
     where
         Self: Sized,
@@ -449,7 +450,7 @@ pub trait MakeWriterExt: MakeWriter {
 
     /// Combines `self` with another type implementing [`MakeWriter`], returning
     /// a new [`MakeWriter`] that calls `other`'s [`make_writer`] if `self`'s
-    /// `make_writer` returns [`OptionalWriter::none`].
+    /// `make_writer` returns [`OptionalWriter::none`][own].
     ///
     /// # Examples
     ///
@@ -469,6 +470,7 @@ pub trait MakeWriterExt: MakeWriter {
     /// ```
     ///
     /// [`make_writer`]: MakeWriter::make_writer
+    /// [own]: EitherWriter::none
     fn or_else<W, B>(self, other: B) -> OrElse<Self, B>
     where
         Self: MakeWriter<Writer = OptionalWriter<W>> + Sized,
@@ -585,13 +587,15 @@ pub struct WithMinLevel<M> {
 
 /// A [`MakeWriter`] combinator that wraps a [`MakeWriter`] with a predicate for
 /// span and event [`Metadata`], so that the [`MakeWriter::make_writer_for`]
-/// method returns [`OptionalWriter::some`] when the predicate returns `true`,
-/// and [`OptionalWriter::none`] when the predicate returns `false`.
+/// method returns [`OptionalWriter::some`][ows] when the predicate returns `true`,
+/// and [`OptionalWriter::none`][own] when the predicate returns `false`.
 ///
 /// This is returned by the [`MakeWriterExt::with_filter`] method. See the
 /// method documentation for details.
 ///
 /// [`Metadata`]: tracing_core::Metadata
+/// [ows]: EitherWriter::some
+/// [own]: EitherWriter::none
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct WithFilter<M, F> {
     make: M,
@@ -600,10 +604,12 @@ pub struct WithFilter<M, F> {
 
 /// Combines a [`MakeWriter`] that returns an [`OptionalWriter`] with another
 /// [`MakeWriter`], so that the second [`MakeWriter`] is used when the first
-/// [`MakeWriter`] returns [`OptionalWriter::none`].
+/// [`MakeWriter`] returns [`OptionalWriter::none`][own].
 ///
 /// This is returned by the [`MakeWriterExt::or_else] method. See the
 /// method documentation for details.
+///
+/// [own]: EitherWriter::none
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct OrElse<A, B> {
     inner: A,
@@ -818,12 +824,13 @@ impl<T> From<Option<T>> for OptionalWriter<T> {
 
 impl<M> WithMaxLevel<M> {
     /// Wraps the provided [`MakeWriter`] with a maximum [`Level`], so that it
-    /// returns [`OptionalWriter::none`] for spans and events whose level is
+    /// returns [`OptionalWriter::none`][own] for spans and events whose level is
     /// more verbose than the maximum level.
     ///
     /// See [`MakeWriterExt::with_max_level`] for details.
     ///
     /// [`Level`]: tracing_core::Level
+    /// [own]: EitherWriter::none
     pub fn new(make: M, level: tracing_core::Level) -> Self {
         Self { make, level }
     }
@@ -851,12 +858,13 @@ impl<M: MakeWriter> MakeWriter for WithMaxLevel<M> {
 
 impl<M> WithMinLevel<M> {
     /// Wraps the provided [`MakeWriter`] with a minimum [`Level`], so that it
-    /// returns [`OptionalWriter::none`] for spans and events whose level is
+    /// returns [`OptionalWriter::none`][own] for spans and events whose level is
     /// less verbose than the maximum level.
     ///
     /// See [`MakeWriterExt::with_min_level`] for details.
     ///
     /// [`Level`]: tracing_core::Level
+    /// [own]: EitherWriter::none
     pub fn new(make: M, level: tracing_core::Level) -> Self {
         Self { make, level }
     }
