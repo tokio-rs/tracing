@@ -43,6 +43,7 @@ impl Subscriber for StringSubscriber {
 }
 
 fn assert_subscriber(_s: impl Subscriber) {}
+fn assert_layer<S: Subscriber>(_l: &impl Layer<S>) {}
 
 #[test]
 fn layer_is_subscriber() {
@@ -65,6 +66,20 @@ fn three_layers_are_subscriber() {
         .and_then(NopLayer)
         .with_subscriber(NoSubscriber::default());
     assert_subscriber(s)
+}
+
+#[test]
+fn box_layer_is_layer() {
+    let l: Box<dyn Layer<NoSubscriber> + Send + Sync> = Box::new(NopLayer);
+    assert_layer(&l);
+    l.with_subscriber(NoSubscriber::default());
+}
+
+#[test]
+fn arc_layer_is_layer() {
+    let l: Arc<dyn Layer<NoSubscriber> + Send + Sync> = Arc::new(NopLayer);
+    assert_layer(&l);
+    l.with_subscriber(NoSubscriber::default());
 }
 
 #[test]
