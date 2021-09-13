@@ -1,5 +1,5 @@
 use super::FilterVec;
-pub(crate) use crate::filter::directive::{DirectiveParseError, StaticDirective};
+pub(crate) use crate::filter::directive::{ParseError, StaticDirective};
 use crate::filter::{
     directive::{DirectiveSet, Match},
     env::{field, FieldMap},
@@ -145,7 +145,7 @@ impl Match for Directive {
 }
 
 impl FromStr for Directive {
-    type Err = DirectiveParseError;
+    type Err = ParseError;
     fn from_str(from: &str) -> Result<Self, Self::Err> {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
@@ -183,9 +183,7 @@ impl FromStr for Directive {
                 "#).unwrap();
         }
 
-        let caps = DIRECTIVE_RE
-            .captures(from)
-            .ok_or_else(DirectiveParseError::new)?;
+        let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
 
         if let Some(level) = caps
             .name("global_level")
