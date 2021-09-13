@@ -1021,7 +1021,8 @@ impl Span {
     /// [`INFO`]: crate::Level::INFO
     /// [`DEBUG`]: crate::Level::DEBUG
     /// [async tasks]: std::task
-    /// [`instrument`]: crate::instrument::Instrument
+    /// [`instrument`]: crate::instrument::Instrument::instrument
+    /// [`in_current_span`]: crate::instrument::Instrument::in_current_span
     pub fn or_current(self) -> Self {
         if self.is_disabled() {
             return Self::current();

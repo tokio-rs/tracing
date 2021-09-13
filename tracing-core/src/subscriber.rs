@@ -564,10 +564,10 @@ impl Interest {
     }
 }
 
-/// A no-op [`Subscriber`]
+/// A no-op [`Subscriber`].
 ///
 /// [`NoSubscriber`] implements the [`Subscriber`] trait by never being enabled,
-/// never being interested in any callsite, and drops all spans and events.
+/// never being interested in any callsite, and dropping all spans and events.
 #[derive(Debug, Copy, Clone)]
 pub struct NoSubscriber(());
 
