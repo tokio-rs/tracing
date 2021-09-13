@@ -1,3 +1,52 @@
+# 0.1.27 (September 13, 2021)
+
+This release adds a new [`Span::or_current`] method to aid in efficiently
+propagating span contexts to spawned threads or tasks. Additionally, it updates
+the [`tracing-core`] version to [0.1.20] and the [`tracing-attributes`] version to
+[0.1.16], ensuring that a number of new features in those crates are present.
+
+### Fixed
+
+- **instrument**: Added missing `WithSubscriber` implementations for futures and
+  other types ([#1424])
+
+### Added
+
+- `Span::or_current` method, to help with efficient span context propagation
+  ([#1538])
+- **attributes**: add `skip_all` option to `#[instrument]` ([#1548])
+- **attributes**: record primitive types as primitive values rather than as
+  `fmt::Debug` ([#1378])
+- **core**: `NoSubscriber`, a no-op `Subscriber` implementation
+  ([#1549])
+- **core**: Added `Visit::record_f64` and support for recording floating-point
+  values ([#1507], [#1522])
+- A large number of documentation improvements and fixes ([#1369], [#1398],
+  [#1435], [#1442], [#1524], [#1556])
+
+Thanks to new contributors @dzvon and @mbergkvist, as well as @teozkr,
+@maxburke, @LukeMathWalker, and @jsgf, for contributing to this
+release!
+
+[`Span::or_current`]: https://docs.rs/tracing/0.1.27/tracing/struct.Span.html#method.or_current
+[`tracing-core`]: https://crates.io/crates/tracing-core
+[`tracing-attributes`]: https://crates.io/crates/tracing-attributes
+[`tracing-core`]: https://crates.io/crates/tracing-core
+[0.1.20]: https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.20
+[0.1.16]: https://github.com/tokio-rs/tracing/releases/tag/tracing-attributes-0.1.16
+[#1424]: https://github.com/tokio-rs/tracing/pull/1424
+[#1538]: https://github.com/tokio-rs/tracing/pull/1538
+[#1548]: https://github.com/tokio-rs/tracing/pull/1548
+[#1378]: https://github.com/tokio-rs/tracing/pull/1378
+[#1507]: https://github.com/tokio-rs/tracing/pull/1507
+[#1522]: https://github.com/tokio-rs/tracing/pull/1522
+[#1369]: https://github.com/tokio-rs/tracing/pull/1369
+[#1398]: https://github.com/tokio-rs/tracing/pull/1398
+[#1435]: https://github.com/tokio-rs/tracing/pull/1435
+[#1442]: https://github.com/tokio-rs/tracing/pull/1442
+[#1524]: https://github.com/tokio-rs/tracing/pull/1524
+[#1556]: https://github.com/tokio-rs/tracing/pull/1556
+
 # 0.1.26 (April 30, 2021)
 
 ### Fixed
