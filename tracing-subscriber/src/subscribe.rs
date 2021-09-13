@@ -957,7 +957,7 @@ where
     subscriber_impl_body! {}
 }
 
-impl<C> Subscribe<C> for Arc<dyn Subscribe<C>>
+impl<C> Subscribe<C> for Arc<dyn Subscribe<C> + Send + Sync>
 where
     C: Collect,
 {
@@ -972,7 +972,7 @@ where
     subscriber_impl_body! {}
 }
 
-impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
+impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
 where
     C: Collect,
 {
