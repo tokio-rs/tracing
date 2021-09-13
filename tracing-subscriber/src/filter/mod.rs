@@ -17,7 +17,7 @@ mod level;
 mod subscriber_filters;
 mod targets;
 
-pub use self::directive::DirectiveParseError;
+pub use self::directive::ParseError;
 pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_psf_stubs::*;
