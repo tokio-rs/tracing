@@ -15,8 +15,8 @@ typed values rather than with `fmt::Debug`. Additionally, it adds
 Thanks to new contributors @jsgf and @maxburke for contributing to this
 release!
 
-[#1549]: https://github.com/tokio-rs/tracing/pull/1549 [#1507]:
-https://github.com/tokio-rs/tracing/pull/1507
+[#1549]: https://github.com/tokio-rs/tracing/pull/1549 
+[#1507]: https://github.com/tokio-rs/tracing/pull/1507
 
 # 0.1.19 (August 17, 2021)
 ### Added
