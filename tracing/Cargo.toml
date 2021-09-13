@@ -29,7 +29,7 @@ edition = "2018"
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.20", default-features = false }
 log = { version = "0.4", optional = true }
-tracing-attributes = { path = "../tracing-attributes", version = "0.1.15", optional = true }
+tracing-attributes = { path = "../tracing-attributes", version = "0.1.16", optional = true }
 cfg-if = "1.0.0"
 pin-project-lite = "0.2"
 
