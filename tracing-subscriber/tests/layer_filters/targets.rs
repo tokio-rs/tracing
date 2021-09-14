@@ -1,42 +1,33 @@
 use super::*;
-
-use log::*;
-use std::str::FromStr;
 use tracing_subscriber::{
     filter::{filter_fn, Targets},
     prelude::*,
 };
 
 #[test]
-fn default_debug() -> Result<(), std::io::Error> {
+#[cfg_attr(not(feature = "tracing-log"), ignore)]
+fn log_events() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/1563
-
     mod inner {
-        use super::*;
+        pub(super) const MODULE_PATH: &str = module_path!();
 
         #[tracing::instrument]
-        pub fn events(yak: u32) {
-            debug!("inner - yak: {} - this is debug", yak);
-            info!("inner - yak: {} - this is info", yak);
-            warn!("inner - yak: {} - this is warn", yak);
+        pub(super) fn logs() {
+            log::debug!("inner");
         }
     }
 
-    let filter = Targets::from_str("debug,layer_filters::targets::inner=warn").unwrap();
+    let filter = Targets::new()
+        .with_default(LevelFilter::DEBUG)
+        .with_target(inner::MODULE_PATH, LevelFilter::WARN);
 
-    let fmt_layer =
+    let layer =
         tracing_subscriber::layer::Identity::new().with_filter(filter_fn(move |_meta| true));
 
-    tracing_subscriber::registry()
+    let _guard = tracing_subscriber::registry()
         .with(filter)
-        .with(fmt_layer)
-        .init();
+        .with(layer)
+        .set_default();
 
-    debug!("before inner");
-
-    inner::events(11111);
-
-    debug!("after inner");
-
-    Ok(())
+    inner::logs();
 }
