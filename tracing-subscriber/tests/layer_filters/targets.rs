@@ -31,3 +31,29 @@ fn log_events() {
 
     inner::logs();
 }
+
+#[test]
+fn inner_layer_short_circuits() {
+    // This test ensures that when a global filter short-circuits `Interest`
+    // evaluation, we aren't left with a "dirty" per-layer filter state.
+
+    let (layer, handle) = layer::mock()
+        .event(event::msg("hello world"))
+        .done()
+        .run_with_handle();
+
+    let filter = Targets::new().with_target("magic_target", LevelFilter::DEBUG);
+
+    let _guard = tracing_subscriber::registry()
+        // Note: we don't just use a `LevelFilter` for the global filter here,
+        // because it will just return a max level filter, and the chain of
+        // `register_callsite` calls that would trigger the bug never happens...
+        .with(filter::filter_fn(|meta| meta.level() <= &Level::INFO))
+        .with(layer.with_filter(filter))
+        .set_default();
+
+    tracing::debug!("skip me please!");
+    tracing::info!(target: "magic_target", "hello world");
+
+    handle.assert_finished();
+}
