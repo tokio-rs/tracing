@@ -118,11 +118,6 @@ thread_local! {
 
 type FieldMap<T> = HashMap<Field, T>;
 
-#[cfg(feature = "smallvec")]
-type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
-#[cfg(not(feature = "smallvec"))]
-type FilterVec<T> = Vec<T>;
-
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
@@ -712,5 +707,34 @@ mod tests {
         let f2: EnvFilter = format!("{}", f1).parse().unwrap();
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
+    }
+
+    #[test]
+    fn size_of_filters() {
+        fn print_sz(s: &str) {
+            let filter = s.parse::<EnvFilter>().expect("filter should parse");
+            println!(
+                "size_of_val({:?})\n -> {}B",
+                s,
+                std::mem::size_of_val(&filter)
+            );
+        }
+
+        print_sz("info");
+
+        print_sz("foo=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off",
+        );
+
+        print_sz("[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off,[span1{foo=1}]=error,\
+            [span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
+        );
     }
 }
