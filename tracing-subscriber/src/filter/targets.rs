@@ -361,11 +361,11 @@ mod tests {
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("server".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[0].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[0].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[1].target, Some("common".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::INFO);
-        assert_eq!(dirs[1].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[1].field_names, Vec::<String>::new());
     }
 
     fn expect_parse_level_directives(s: &str) {
@@ -374,27 +374,27 @@ mod tests {
 
         assert_eq!(dirs[0].target, Some("crate3::mod2::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::OFF);
-        assert_eq!(dirs[0].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[0].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[1].target, Some("crate1::mod2::mod3".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::INFO);
-        assert_eq!(dirs[1].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[1].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[2].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::WARN);
-        assert_eq!(dirs[2].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[2].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[3].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::ERROR);
-        assert_eq!(dirs[3].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[3].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[4].target, Some("crate3".to_string()));
         assert_eq!(dirs[4].level, LevelFilter::TRACE);
-        assert_eq!(dirs[4].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[4].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[5].target, Some("crate2".to_string()));
         assert_eq!(dirs[5].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[5].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[5].field_names, Vec::<String>::new());
     }
 
     #[test]
@@ -418,19 +418,19 @@ mod tests {
         assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
-        assert_eq!(dirs[0].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[0].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[1].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::ERROR);
-        assert_eq!(dirs[1].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[1].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[2].target, Some("crate3".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::OFF);
-        assert_eq!(dirs[2].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[2].field_names, Vec::<String>::new());
 
         assert_eq!(dirs[3].target, Some("crate2".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[3].field_names, FilterVec::<String>::default());
+        assert_eq!(dirs[3].field_names, Vec::<String>::new());
     }
 
     #[test]
@@ -455,5 +455,26 @@ mod tests {
             "crate1::mod1=1,crate1::mod2=2,crate1::mod2::mod3=3,crate2=4,\
              crate3=5,crate3::mod2::mod1=0",
         )
+    }
+
+    #[test]
+    fn size_of_filters() {
+        fn print_sz(s: &str) {
+            let filter = s.parse::<Targets>().expect("filter should parse");
+            println!(
+                "size_of_val({:?})\n -> {}B",
+                s,
+                std::mem::size_of_val(&filter)
+            );
+        }
+
+        print_sz("info");
+
+        print_sz("foo=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off",
+        );
     }
 }
