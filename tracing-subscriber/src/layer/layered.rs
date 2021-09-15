@@ -374,6 +374,12 @@ where
         // If the outer layer has disabled the callsite, return now so that
         // the inner layer/subscriber doesn't get its hopes up.
         if outer.is_never() {
+            // If per-layer filters are in use, and we are short-circuiting
+            // (rather than calling into the inner type), clear the current
+            // per-layer filter interest state.
+            #[cfg(feature = "registry")]
+            drop(filter::FilterState::take_interest());
+
             return outer;
         }
 
