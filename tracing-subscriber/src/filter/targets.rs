@@ -456,4 +456,25 @@ mod tests {
              crate3=5,crate3::mod2::mod1=0",
         )
     }
+
+    #[test]
+    fn size_of_filters() {
+        fn print_sz(s: &str) {
+            let filter = s.parse::<Targets>().expect("filter should parse");
+            println!(
+                "size_of_val({:?})\n -> {}B",
+                s,
+                std::mem::size_of_val(&filter)
+            );
+        }
+
+        print_sz("info");
+
+        print_sz("foo=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off",
+        );
+    }
 }
