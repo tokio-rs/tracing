@@ -13,14 +13,14 @@ pub struct ParseError {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct StaticDirective {
     pub(in crate::filter) target: Option<String>,
-    pub(in crate::filter) field_names: FilterVec<String>,
+    pub(in crate::filter) field_names: Vec<String>,
     pub(in crate::filter) level: LevelFilter,
 }
 
 #[cfg(feature = "smallvec")]
-pub(in crate::filter) type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
+pub(crate) type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
 #[cfg(not(feature = "smallvec"))]
-pub(in crate::filter) type FilterVec<T> = Vec<T>;
+pub(crate) type FilterVec<T> = Vec<T>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub(in crate::filter) struct DirectiveSet<T> {
@@ -129,7 +129,7 @@ impl DirectiveSet<StaticDirective> {
 impl StaticDirective {
     pub(in crate::filter) fn new(
         target: Option<String>,
-        field_names: FilterVec<String>,
+        field_names: Vec<String>,
         level: LevelFilter,
     ) -> Self {
         Self {
@@ -221,7 +221,7 @@ impl Default for StaticDirective {
     fn default() -> Self {
         StaticDirective {
             target: None,
-            field_names: FilterVec::new(),
+            field_names: Vec::new(),
             level: LevelFilter::ERROR,
         }
     }
@@ -288,7 +288,7 @@ impl FromStr for StaticDirective {
 
             let mut split = part0.split("[{");
             let target = split.next().map(String::from);
-            let mut field_names = FilterVec::new();
+            let mut field_names = Vec::new();
             // Directive includes fields:
             // * `foo[{bar}]=trace`
             // * `foo[{bar,baz}]=trace`
@@ -326,12 +326,12 @@ impl FromStr for StaticDirective {
             Ok(level) => Self {
                 level,
                 target: None,
-                field_names: FilterVec::new(),
+                field_names: Vec::new(),
             },
             Err(_) => Self {
                 target: Some(String::from(part0)),
                 level: LevelFilter::TRACE,
-                field_names: FilterVec::new(),
+                field_names: Vec::new(),
             },
         })
     }
