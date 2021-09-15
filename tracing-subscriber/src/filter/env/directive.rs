@@ -1,5 +1,4 @@
-use super::FilterVec;
-pub(crate) use crate::filter::directive::{ParseError, StaticDirective};
+pub(crate) use crate::filter::directive::{FilterVec, ParseError, StaticDirective};
 use crate::filter::{
     directive::{DirectiveSet, Match},
     env::{field, FieldMap},
@@ -16,7 +15,7 @@ use tracing_core::{span, Level, Metadata};
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
     in_span: Option<String>,
-    fields: FilterVec<field::Match>,
+    fields: Vec<field::Match>,
     pub(crate) target: Option<String>,
     pub(crate) level: LevelFilter,
 }
@@ -216,12 +215,12 @@ impl FromStr for Directive {
                         FIELD_FILTER_RE
                             .find_iter(c.as_str())
                             .map(|c| c.as_str().parse())
-                            .collect::<Result<FilterVec<_>, _>>()
+                            .collect::<Result<Vec<_>, _>>()
                     })
-                    .unwrap_or_else(|| Ok(FilterVec::new()));
+                    .unwrap_or_else(|| Ok(Vec::new()));
                 Some((span, fields))
             })
-            .unwrap_or_else(|| (None, Ok(FilterVec::new())));
+            .unwrap_or_else(|| (None, Ok(Vec::new())));
 
         let level = caps
             .name("level")
@@ -244,7 +243,7 @@ impl Default for Directive {
             level: LevelFilter::OFF,
             target: None,
             in_span: None,
-            fields: FilterVec::new(),
+            fields: Vec::new(),
         }
     }
 }
