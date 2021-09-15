@@ -116,11 +116,6 @@ thread_local! {
 
 type FieldMap<T> = HashMap<Field, T>;
 
-#[cfg(feature = "smallvec")]
-type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
-#[cfg(not(feature = "smallvec"))]
-type FilterVec<T> = Vec<T>;
-
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
