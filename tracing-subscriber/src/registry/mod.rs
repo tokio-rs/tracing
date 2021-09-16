@@ -98,14 +98,13 @@ pub trait LookupSpan<'a> {
 
     /// Returns the [`SpanData`] for a given `Id`, if it exists.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: users of the <code>LookupSpan</code> trait should
     /// typically call the <a href="#method.span"><code>span</code></a> method rather
     /// than this method. The <code>span</code> method is implemented by
     /// <em>calling</em> <code>span_data</code>, but returns a reference which is
     /// capable of performing more sophisiticated queries.
-    /// </pre></div>
+    /// </pre>
     ///
     /// [`SpanData`]: trait.SpanData.html
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;

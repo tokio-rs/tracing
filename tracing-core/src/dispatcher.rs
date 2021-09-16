@@ -108,14 +108,13 @@
 //! // `my_subscriber` is now the default
 //! ```
 //!
-//! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>:the thread-local scoped dispatcher
-//! (<a href="#fn.with_default"><code>with_default</code></a>) requires the
-//! Rust standard library. <code>no_std</code> users should use
-//! <a href="#fn.set_global_default"><code>set_global_default</code></a>
-//! instead.
-//! </pre></div>
+//!     <strong>Note</strong>:the thread-local scoped dispatcher
+//!     (<a href="#fn.with_default"><code>with_default</code></a>) requires the
+//!     Rust standard library. <code>no_std</code> users should use
+//!     <a href="#fn.set_global_default"><code>set_global_default</code></a>
+//!     instead.
+//! </pre>
 //!
 //! ## Accessing the Default Subscriber
 //!
@@ -208,12 +207,11 @@ pub struct DefaultGuard(Option<Dispatch>);
 /// The default dispatcher is used when creating a new [span] or
 /// [`Event`].
 ///
-/// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: This function required the Rust standard library.
-/// <code>no_std</code> users should use <a href="../fn.set_global_default.html">
-/// <code>set_global_default</code></a> instead.
-/// </pre></div>
+///     <strong>Note</strong>: This function required the Rust standard library.
+///     <code>no_std</code> users should use <a href="../fn.set_global_default.html">
+///     <code>set_global_default</code></a> instead.
+/// </pre>
 ///
 /// [span]: ../span/index.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
@@ -233,12 +231,11 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 /// Sets the dispatch as the default dispatch for the duration of the lifetime
 /// of the returned DefaultGuard
 ///
-/// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: This function required the Rust standard library.
-/// <code>no_std</code> users should use <a href="../fn.set_global_default.html">
-/// <code>set_global_default</code></a> instead.
-/// </pre></div>
+///     <strong>Note</strong>: This function required the Rust standard library.
+///     <code>no_std</code> users should use <a href="../fn.set_global_default.html">
+///     <code>set_global_default</code></a> instead.
+/// </pre>
 ///
 /// [`set_global_default`]: ../fn.set_global_default.html
 #[cfg(feature = "std")]
@@ -258,12 +255,11 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// Can only be set once; subsequent attempts to set the global default will fail.
 /// Returns `Err` if the global default has already been set.
 ///
-///
-/// </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-/// <strong>Warning</strong>: In general, libraries should <em>not</em> call
-/// <code>set_global_default()</code>! Doing so will cause conflicts when
-/// executables that depend on the library try to set the default later.
-/// </pre></div>
+/// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+///     <strong>Warning</strong>: In general, libraries should <em>not</em> call
+///     <code>set_global_default()</code>! Doing so will cause conflicts when
+///     executables that depend on the library try to set the default later.
+/// </pre>
 ///
 /// [span]: ../span/index.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
@@ -572,13 +568,14 @@ impl Dispatch {
     /// must as well.
     ///
     /// This calls the [`drop_span`] function on the [`Subscriber`] that this
-    ///  `Dispatch` forwards to.
+    /// `Dispatch` forwards to.
     ///
-    /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-    /// <strong>Deprecated</strong>: The <a href="#method.try_close"><code>try_close</code></a>
-    /// method is functionally identical, but returns <code>true</code> if the span is now closed.
-    /// It should be used instead of this method.
-    /// </pre></div>
+    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+    ///     <strong>Deprecated</strong>: The <a href="#method.try_close"><code>
+    ///     try_close</code></a> method is functionally identical, but returns
+    ///     <code>true</code> if the span is now closed. It should be used
+    ///     instead of this method.
+    /// </pre>
     ///
     /// [span ID]: ../span/struct.Id.html
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html

@@ -5,7 +5,6 @@ use crate::Metadata;
 
 /// Trait implemented to allow a type to be used as a field key.
 ///
-/// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 /// <strong>Note</strong>: Although this is implemented for both the
 /// <a href="./struct.Field.html"><code>Field</code></a> type <em>and</em> any

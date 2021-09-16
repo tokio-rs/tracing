@@ -210,14 +210,13 @@
 //! function pointer. In addition, when more control is required, the [`Filter`]
 //! trait may also be implemented for user-defined types.
 //!
-//! <div class="example-wrap" style="display:inline-block">
 //! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: Currently, the <a href="../struct.Registry.html">
 //!     <code>Registry</code></a> type defined in this crate is the only root
 //!     <code>Subscriber</code> capable of supporting <code>Layer</code>s with
 //!     per-layer filters. In the future, new APIs will be added to allow other
 //!     root <code>Subscriber</code>s to support per-layer filters.
-//! </pre></div>
+//! </pre>
 //!
 //! For example, to generate an HTTP access log based on spans with
 //! the `http_access` target, while logging other spans and events to
@@ -483,7 +482,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.enabled">
     /// <code>Layer::enabled</code></a>) determine whether a span or event is
@@ -496,7 +494,7 @@ where
     /// <a href="#method.on_enter"><code>on_enter</code></a>,
     /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
     /// methods.
-    /// </pre></div>
+    /// </pre>
     ///
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
@@ -532,7 +530,6 @@ where
     /// By default, this always returns `true`, allowing the wrapped subscriber
     /// to choose to disable the span.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: This method (and <a href="#method.register_callsite">
     /// <code>Layer::register_callsite</code></a>) determine whether a span or event is
@@ -545,7 +542,7 @@ where
     /// <a href="#method.on_enter"><code>on_enter</code></a>,
     /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
     /// methods.
-    /// </pre></div>
+    /// </pre>
     ///
     ///
     /// See [the trait-level documentation] for more information on filtering
@@ -831,7 +828,6 @@ pub trait Filter<S> {
     /// never enable a particular callsite, providing an implementation of this
     /// function is recommended.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: If a <code>Filter</code> will perform
     /// <em>dynamic filtering</em> that depends on the current context in which
@@ -842,7 +838,6 @@ pub trait Filter<S> {
     /// <code>enabled</code> method may not be called when a particular instance
     /// of that span or event is recorded.
     /// </pre>
-    /// </div>
     ///
     /// This method is broadly similar to [`Subscriber::register_callsite`];
     /// however, since the returned value represents only the interest of
