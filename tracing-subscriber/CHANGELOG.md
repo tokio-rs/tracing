@@ -1,3 +1,18 @@
+# 0.2.23 (September 16, 2021)
+
+This release fixes a few bugs in the per-layer filtering API added in v0.2.21.
+
+### Fixed
+
+- **env-filter**: Fixed excessive `EnvFilter` memory use ([#1568])
+- **filter**: Fixed a panic that may occur in debug mode when using per-layer
+  filters together with global filters ([#1569])
+- Fixed incorrect documentation formatting ([#1572])
+
+[#1568]: https://github.com/tokio-rs/tracing/pull/1568
+[#1569]: https://github.com/tokio-rs/tracing/pull/1569
+[#1572]: https://github.com/tokio-rs/tracing/pull/1572
+
 # 0.2.22 (September 13, 2021)
 
 This fixes a regression where the `filter::ParseError` type was accidentally
