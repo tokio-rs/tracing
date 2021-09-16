@@ -35,15 +35,15 @@ use crate::stdlib::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
-/// <strong>Note</strong>: Although instances of <code>Metadata</code> cannot
-/// be compared directly, they provide a method <a href="struct.Metadata.html#method.id">
-/// <code>id</code></a>, returning an opaque <a href="../callsite/struct.Identifier.html">
-/// callsite identifier</a>  which uniquely identifies the callsite where the metadata
-/// originated. This can be used to determine if two <code>Metadata</code> correspond to
-/// the same callsite.
-/// </pre></div>
+///     <strong>Note</strong>: Although instances of <code>Metadata</code>
+///     cannot be compared directly, they provide a method
+///     <a href="struct.Metadata.html#method.id"><code>id</code></a>, returning
+///     an opaque <a href="../callsite/struct.Identifier.html">callsite
+///     identifier</a>which uniquely identifies the callsite where the metadata
+///     originated. This can be used to determine if two <code>Metadata</code>
+///     correspond to the same callsite.
+/// </pre>
 ///
 /// [span]: ../span/index.html
 /// [event]: ../event/index.html

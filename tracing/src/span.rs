@@ -119,13 +119,12 @@
 //! });
 //! ```
 //!
-//! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
-//! <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
-//! <code>Sync</code>, it is entirely valid for multiple threads to enter the
-//! same span concurrently.
-//! </pre></div>
+//!     <strong>Note</strong>: Since entering a span takes <code>&self</code>, and
+//!     <code>Span</code>s are <code>Clone</code>, <code>Send</code>, and
+//!     <code>Sync</code>, it is entirely valid for multiple threads to enter the
+//!     same span concurrently.
+//! </pre>
 //!
 //! ## Span Relationships
 //!
@@ -649,7 +648,7 @@ impl Span {
     ///       // This is okay! The span has already been exited before we reach
     ///       // the await point.
     ///       some_other_async_function(some_value).await;
-    ///  
+    ///
     ///       // ...
     ///   }
     ///   ```
@@ -658,7 +657,7 @@ impl Span {
     ///   attaching a span to a future (async function or block). This will
     ///   enter the span _every_ time the future is polled, and exit it whenever
     ///   the future yields.
-    ///   
+    ///
     ///   `Instrument` can be used with an async block inside an async function:
     ///   ```ignore
     ///   # use tracing::info_span;
@@ -705,13 +704,13 @@ impl Span {
     ///   # async fn some_other_async_function() {}
     ///   #[tracing::instrument(level = "info")]
     ///   async fn my_async_function() {
-    ///   
+    ///
     ///       // This is correct! If we yield here, the span will be exited,
     ///       // and re-entered when we resume.
     ///       some_other_async_function().await;
     ///
     ///       // ...
-    ///    
+    ///
     ///   }
     ///   ```
     ///
@@ -789,6 +788,14 @@ impl Span {
     /// Enters this span, consuming it and returning a [guard][`EnteredSpan`]
     /// that will exit the span when dropped.
     ///
+    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+    ///     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
+    ///     <code>Span::entered</code> may produce incorrect traces if the returned drop
+    ///     guard is held across an await point. See <a href="#in-asynchronous-code">the
+    ///     <code>Span::enter</code> documentation</a> for details.
+    /// </pre>
+    ///
+    ///
     /// If this span is enabled by the current subscriber, then this function will
     /// call [`Subscriber::enter`] with the span's [`Id`], and dropping the guard
     /// will call [`Subscriber::exit`]. If the span is disabled, this does
@@ -813,22 +820,13 @@ impl Span {
     /// Furthermore, `entered` may be used when the span must be stored in some
     /// other struct or be passed to a function while remaining entered.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///
-    /// **Note**: The returned [`EnteredSpan`] guard does not
-    /// implement `Send`. Dropping the guard will exit *this* span,
-    /// and if the guard is sent to another thread and dropped there, that thread may
-    /// never have entered this span. Thus, `EnteredSpan`s should not be sent
-    /// between threads.
-    ///
-    /// </pre></div>
-    ///
-    /// **Warning**: in asynchronous code that uses [async/await syntax][syntax],
-    /// [`Span::entered`] should be used very carefully or avoided entirely. Holding
-    /// the drop guard returned by `Span::entered` across `.await` points will
-    /// result in incorrect traces. See the documentation for the
-    /// [`Span::enter`] method for details.
+    ///     <strong>Note</strong>: The returned <a href="../struct.EnteredSpan.html">
+    ///     <code>EnteredSpan</a></code> guard does not implement <code>Send</code>.
+    ///     Dropping the guard will exit <em>this</em> span, and if the guard is sent
+    ///     to another thread and dropped there, that thread may never have entered
+    ///     this span. Thus, <code>EnteredSpan</code>s should not be sent between threads.
+    /// </pre>
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     ///
@@ -1159,14 +1157,15 @@ impl Span {
     /// }
     /// ```
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: The fields associated with a span are part of its
-    /// <a href="../struct.Metadata.html"><code>Metadata</code></a>.
-    /// The <a href="../struct.Metadata.html"><code>Metadata</code></a>. describing a particular
-    /// span is constructed statically when the span is created and cannot be extended later to
-    /// add new fields. Therefore, you cannot record a value for a field that was not specified
-    /// when the span was created:</pre></div>
+    ///     <strong>Note</strong>: The fields associated with a span are part
+    ///     of its <a href="../struct.Metadata.html"><code>Metadata</code></a>.
+    ///     The <a href="../struct.Metadata.html"><code>Metadata</code></a>
+    ///     describing a particular span is constructed statically when the span
+    ///     is created and cannot be extended later to add new fields. Therefore,
+    ///     you cannot record a value for a field that was not specified when the
+    ///     span was created:
+    /// </pre>
     ///
     /// ```
     /// use tracing::{trace_span, field};

@@ -51,13 +51,13 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
 //!     guard is held across an await point. See
 //!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
 //!     for details.
-//! </pre></div>
+//! </pre>
 //!
 //! ## Events
 //!
@@ -576,12 +576,11 @@
 //! # }
 //! ```
 //!
-//! <div class="information">
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-//! <strong>Warning</strong>: In general, libraries should <em>not</em> call
-//! <code>set_global_default()</code>! Doing so will cause conflicts when
-//! executables that depend on the library try to set the default later.
-//! </pre></div>
+//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
+//!     <strong>Warning</strong>: In general, libraries should <em>not</em> call
+//!     <code>set_global_default()</code>! Doing so will cause conflicts when
+//!     executables that depend on the library try to set the default later.
+//! </pre>
 //!
 //! This subscriber will be used as the default in all threads for the
 //! remainder of the duration of the program, similar to setting the logger
@@ -767,12 +766,11 @@
 //! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 //! [Elastic APM]: https://www.elastic.co/apm
 //!
-//! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: Some of these ecosystem crates are currently
-//! unreleased and/or in earlier stages of development. They may be less stable
-//! than <code>tracing</code> and <code>tracing-core</code>.
-//! </pre></div>
+//!     <strong>Note</strong>: Some of these ecosystem crates are currently
+//!     unreleased and/or in earlier stages of development. They may be less stable
+//!     than <code>tracing</code> and <code>tracing-core</code>.
+//! </pre>
 //!
 //! ## Crate Feature Flags
 //!
@@ -800,14 +798,10 @@
 //!   tracing = { version = "0.1.27", default-features = false }
 //!   ```
 //!
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
-//! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
-//! requires <code>liballoc</code>.
-//! </pre></div>
+//!     <strong>Note</strong>: <code>tracing</code>'s <code>no_std</code> support
+//!     requires <code>liballoc</code>.
+//! </pre>
 //!
 //! ## Supported Rust Versions
 //!

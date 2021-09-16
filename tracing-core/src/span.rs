@@ -61,9 +61,9 @@ enum CurrentInner {
 impl Id {
     /// Constructs a new span ID from the given `u64`.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: Span IDs must be greater than zero.</pre></div>
+    ///     <strong>Note</strong>: Span IDs must be greater than zero.
+    /// </pre>
     ///
     /// # Panics
     /// - If the provided `u64` is 0.

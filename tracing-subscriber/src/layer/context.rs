@@ -183,13 +183,13 @@ where
     /// });
     /// ```
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     #[inline]
     pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, S>>
     where
@@ -223,13 +223,13 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
@@ -248,13 +248,13 @@ where
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     #[inline]
     pub fn exists(&self, id: &span::Id) -> bool
     where
@@ -268,13 +268,13 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
@@ -343,13 +343,13 @@ where
     ///
     /// If this iterator is empty, then there are no spans in the current context.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[deprecated(
@@ -375,27 +375,20 @@ where
     /// current context, starting with the specified span and ending with the
     /// root of the trace tree and ending with the current span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
     /// returns the spans in reverse order (from leaf to root). Use
     /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
     /// in case root-to-leaf ordering is desired.
-    /// </pre></div>
+    /// </pre>
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
@@ -409,21 +402,20 @@ where
     /// current context, starting with the parent span of the specified event,
     /// and ending with the root of the trace tree and ending with the current span.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
     /// returns the spans in reverse order (from leaf to root). Use
     /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
     /// in case root-to-leaf ordering is desired.
-    /// </pre></div>
+    /// </pre>
     ///
-    /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
+    ///     <strong>Note</strong>: This requires the wrapped subscriber to
+    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
+    ///     LookupSpan</code></a> trait. See the documentation on
+    ///     <a href="./struct.Context.html"><code>Context</code>'s
+    ///     declaration</a> for details.
+    /// </pre>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, S>>
