@@ -3,6 +3,7 @@
 mod support;
 use self::support::*;
 mod filter_scopes;
+mod targets;
 mod trees;
 
 use tracing::{level_filters::LevelFilter, Level};
