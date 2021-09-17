@@ -705,7 +705,10 @@ impl FilterState {
     /// This resets the [`FilterMap`] and current [`Interest`] as well as
     /// clearing the debug counters.
     pub(crate) fn clear_enabled() {
-        FILTERING.try_with(|filtering| {
+        // Drop the `Result` returned by `try_with` --- if we are in the middle
+        // a panic and the thread-local has been torn down, that's fine, just
+        // ignore it ratehr than panicking.
+        let _ = FILTERING.try_with(|filtering| {
             filtering.enabled.set(FilterMap::default());
 
             #[cfg(debug_assertions)]
