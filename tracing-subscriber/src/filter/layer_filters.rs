@@ -37,6 +37,7 @@ use std::{
     cell::{Cell, RefCell},
     fmt,
     marker::PhantomData,
+    ops::Deref,
     sync::Arc,
     thread_local,
 };
@@ -159,6 +160,7 @@ thread_local! {
 }
 
 // === impl Filter ===
+
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<S> layer::Filter<S> for LevelFilter {
@@ -179,38 +181,35 @@ impl<S> layer::Filter<S> for LevelFilter {
     }
 }
 
-impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        (**self).enabled(meta, cx)
-    }
+macro_rules! filter_impl_body {
+    () => {
+        #[inline]
+        fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+            self.deref().enabled(meta, cx)
+        }
 
-    #[inline]
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        (**self).callsite_enabled(meta)
-    }
+        #[inline]
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            self.deref().callsite_enabled(meta)
+        }
 
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        (**self).max_level_hint()
-    }
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.deref().max_level_hint()
+        }
+    };
 }
 
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
+    filter_impl_body!();
+}
+
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        (**self).enabled(meta, cx)
-    }
-
-    #[inline]
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        (**self).callsite_enabled(meta)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        (**self).max_level_hint()
-    }
+    filter_impl_body!();
 }
 
 // === impl Filtered ===
