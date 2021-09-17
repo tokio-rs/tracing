@@ -20,6 +20,7 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     mod layer_filters;
     pub use self::layer_filters::*;
+    pub mod combinator;
 }
 
 mod level;

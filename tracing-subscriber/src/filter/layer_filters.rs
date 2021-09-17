@@ -28,7 +28,7 @@
 //! [1]: crate::layer#per-layer-filtering
 //! [`Filter`]: crate::layer::Filter
 use crate::{
-    filter::LevelFilter,
+    filter::{combinator, LevelFilter},
     layer::{self, Context, Layer},
     registry,
 };
@@ -157,6 +157,38 @@ struct DebugCounters {
 
 thread_local! {
     pub(crate) static FILTERING: FilterState = FilterState::new();
+}
+
+pub trait FilterExt<S>: layer::Filter<S> {
+    fn and<B>(self, other: B) -> combinator::And<Self, B>
+    where
+        Self: Sized,
+        B: layer::Filter<S>,
+    {
+        combinator::And::new(self, other)
+    }
+
+    fn or<B>(self, other: B) -> combinator::Or<Self, B>
+    where
+        Self: Sized,
+        B: layer::Filter<S>,
+    {
+        combinator::Or::new(self, other)
+    }
+
+    fn not(self) -> combinator::Not<Self>
+    where
+        Self: Sized,
+    {
+        combinator::Not::new(self)
+    }
+
+    fn boxed(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
+    where
+        Self: Sized + Send + Sync + 'static,
+    {
+        Box::new(self)
+    }
 }
 
 // === impl Filter ===
@@ -542,6 +574,10 @@ impl fmt::Binary for FilterId {
             .finish()
     }
 }
+
+// === impl FilterExt ===
+
+impl<S, F> FilterExt<S> for F where F: layer::Filter<S> {}
 
 // === impl FilterMap ===
 
