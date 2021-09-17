@@ -414,7 +414,11 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{any::TypeId, ops::Deref, sync::Arc};
+use std::{
+    any::TypeId,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 use tracing_core::{
     metadata::Metadata,
     span,
@@ -1160,6 +1164,15 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
+    fn on_layer(&mut self, subscriber: &mut S) {
+        if let Some(inner) = Arc::get_mut(self) {
+            // XXX(eliza): this may behave weird if another `Arc` clone of this
+            // layer is layered onto a _different_ subscriber...but there's no
+            // good solution for that...
+            inner.on_layer(subscriber);
+        }
+    }
+
     layer_impl_body! {}
 }
 
@@ -1167,6 +1180,15 @@ impl<S> Layer<S> for Arc<dyn Layer<S> + Send + Sync>
 where
     S: Subscriber,
 {
+    fn on_layer(&mut self, subscriber: &mut S) {
+        if let Some(inner) = Arc::get_mut(self) {
+            // XXX(eliza): this may behave weird if another `Arc` clone of this
+            // layer is layered onto a _different_ subscriber...but there's no
+            // good solution for that...
+            inner.on_layer(subscriber);
+        }
+    }
+
     layer_impl_body! {}
 }
 
@@ -1175,6 +1197,10 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
+    fn on_layer(&mut self, subscriber: &mut S) {
+        self.deref_mut().on_layer(subscriber);
+    }
+
     layer_impl_body! {}
 }
 
@@ -1182,6 +1208,10 @@ impl<S> Layer<S> for Box<dyn Layer<S> + Send + Sync>
 where
     S: Subscriber,
 {
+    fn on_layer(&mut self, subscriber: &mut S) {
+        self.deref_mut().on_layer(subscriber);
+    }
+
     layer_impl_body! {}
 }
 
