@@ -1,3 +1,16 @@
+# 0.1.28 (September 17th, 2021)
+
+This release fixes an issue where the RustDoc documentation was rendered
+incorrectly. It doesn't include any actual code changes, and is very boring and
+can be ignored.
+
+### Fixed
+
+- **docs**: Incorrect documentation rendering due to unclosed `<div>` tag
+  ([#1572])
+
+[#1572]: https://github.com/tokio-rs/tracing/pull/1572
+
 # 0.1.27 (September 13, 2021)
 
 This release adds a new [`Span::or_current`] method to aid in efficiently
