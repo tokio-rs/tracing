@@ -1,12 +1,6 @@
-use std::{borrow::Cow, ffi::CStr};
-use tracing_core::{
-    field::{Field, Visit},
-    Collect, Event, Level,
-};
-use tracing_subscriber::{
-    registry::LookupSpan,
-    subscribe::{Context, Subscribe},
-};
+use std::{borrow::Cow, cell::RefCell, ffi::CStr, io};
+use tracing_core::{Level, Metadata};
+use tracing_subscriber::fmt::MakeWriter;
 
 /// `syslog` options.
 ///
@@ -174,12 +168,11 @@ fn syslog(priority: Priority, msg: &CStr) {
     unsafe { libc::syslog(priority.0, "%s\0".as_ptr().cast(), msg.as_ptr()) }
 }
 
-/// [`Subscriber`](tracing_subscriber::Subscribe) that logs to `syslog` via
-/// `libc`'s [`syslog()`](libc::syslog) function.
+/// [`MakeWriter`] that logs to `syslog` via `libc`'s [`syslog()`](libc::syslog) function.
 ///
 /// # Level Mapping
 ///
-/// `tracing` [`Level`](tracing_core::Level)s are mapped to `syslog` severities as follows:
+/// `tracing` [`Level`]s are mapped to `syslog` severities as follows:
 ///
 /// ```raw
 /// Level::ERROR => Severity::LOG_ERR,
@@ -194,15 +187,15 @@ fn syslog(priority: Priority, msg: &CStr) {
 /// does not have a level lower than `LOG_DEBUG`, so this is unavoidable.
 ///
 /// # Examples
-/// Initializing a global [`Collector`](tracing_core::Collect) that logs to `syslog` with
-/// an identity of `example-program` and the default `syslog` options and facility:
+///
+/// Initializing a global logger that writes to `syslog` with an identity of `example-program`
+/// and the default `syslog` options and facility:
+///
 /// ```
-/// use tracing_syslog::Syslog;
-/// use tracing_subscriber::{Registry, subscribe::CollectExt};
 /// let identity = std::ffi::CStr::from_bytes_with_nul(b"example-program\0").unwrap();
 /// let (options, facility) = Default::default();
-/// let collector = Registry::default().with(Syslog::new(identity, options, facility));
-/// tracing::collect::set_global_default(collector).unwrap();
+/// let syslog = tracing_syslog::Syslog::new(identity, options, facility);
+/// tracing_subscriber::fmt().with_writer(syslog).init();
 /// ```
 pub struct Syslog {
     /// Identity e.g. program name. Referenced by syslog, so we store it here to
@@ -213,14 +206,16 @@ pub struct Syslog {
 }
 
 impl Syslog {
-    /// Creates a [`Subscriber`](tracing_subscriber::Subscribe) that logs to `syslog`.
+    /// Creates a [`MakeWriter`] that writes to `syslog`.
     ///
     /// This calls [`libc::openlog()`] to initialize the logger. The corresponding
     /// [`libc::closelog()`] call happens when the returned logger is dropped.
     ///
     /// # Examples
+    ///
     /// Creating a `syslog` subscriber with an identity of `example-program` and
     /// the default `syslog` options and facility:
+    ///
     /// ```
     /// use tracing_syslog::Syslog;
     /// let identity = std::ffi::CStr::from_bytes_with_nul(b"example-program\0").unwrap();
@@ -248,19 +243,48 @@ impl Drop for Syslog {
     }
 }
 
-impl<C> Subscribe<C> for Syslog
-where
-    C: Collect + for<'span> LookupSpan<'span>,
-{
-    fn on_event(&self, event: &Event, _ctx: Context<C>) {
-        use std::cell::RefCell;
-        thread_local! { static BUF: RefCell<Vec<u8>> = RefCell::new(Vec::with_capacity(256)) }
+impl<'a> MakeWriter<'a> for Syslog {
+    type Writer = SyslogWriter;
 
+    fn make_writer(&'a self) -> Self::Writer {
+        // TODO: is `INFO` a good default?
+        SyslogWriter::new(self.facility, Level::INFO)
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        SyslogWriter::new(self.facility, *meta.level())
+    }
+}
+
+/// [Writer](io::Write) to `syslog` produced by [`MakeWriter`].
+pub struct SyslogWriter {
+    flushed: bool,
+    facility: Facility,
+    level: Level,
+}
+
+impl SyslogWriter {
+    fn new(facility: Facility, level: Level) -> Self {
+        SyslogWriter {
+            flushed: false,
+            facility,
+            level,
+        }
+    }
+}
+
+thread_local! { static BUF: RefCell<Vec<u8>> = RefCell::new(Vec::with_capacity(256)) }
+
+impl io::Write for SyslogWriter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        BUF.with(|buf| buf.borrow_mut().extend(bytes));
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
         BUF.with(|buf| {
             let mut buf = buf.borrow_mut();
 
-            // Record event fields
-            event.record(&mut EventVisitor(&mut buf));
             // Append nul-terminator
             buf.push(0);
 
@@ -276,26 +300,22 @@ where
 
             // Send the message to `syslog` if the message is valid
             if let Ok(msg) = msg {
-                let priority = Priority::new(self.facility, *event.metadata().level());
+                let priority = Priority::new(self.facility, self.level);
                 syslog(priority, msg)
             }
 
             // Clear buffer
             buf.clear();
-        })
+        });
+        self.flushed = true;
+        Ok(())
     }
 }
 
-struct EventVisitor<'a>(&'a mut Vec<u8>);
-
-impl Visit for EventVisitor<'_> {
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        use std::io::Write;
-        if field.name() != "message" {
-            self.0.push(b' ');
-            self.0.extend_from_slice(field.name().as_bytes());
-            self.0.push(b'=');
+impl Drop for SyslogWriter {
+    fn drop(&mut self) {
+        if !self.flushed {
+            let _ = io::Write::flush(self);
         }
-        write!(&mut self.0, "{:?}", value).expect("io::Write impl on Vec never fails");
     }
 }
