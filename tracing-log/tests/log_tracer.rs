@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tracing::collect::with_default;
 use tracing_core::span::{Attributes, Record};
-use tracing_core::{span, Collect, Event, Level, Metadata};
+use tracing_core::{span, Collect, Event, Level, LevelFilter, Metadata};
 use tracing_log::{LogTracer, NormalizeEvent};
 
 struct State {
@@ -21,8 +21,13 @@ struct OwnedMetadata {
 struct TestSubscriber(Arc<State>);
 
 impl Collect for TestSubscriber {
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
+    fn enabled(&self, meta: &Metadata<'_>) -> bool {
+        dbg!(meta);
         true
+    }
+
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        Some(LevelFilter::from_level(Level::INFO))
     }
 
     fn new_span(&self, _span: &Attributes<'_>) -> span::Id {
@@ -34,6 +39,7 @@ impl Collect for TestSubscriber {
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
     fn event(&self, event: &Event<'_>) {
+        dbg!(event);
         *self.0.last_normalized_metadata.lock().unwrap() = (
             event.is_log(),
             event.normalized_metadata().map(|normalized| OwnedMetadata {
@@ -50,6 +56,10 @@ impl Collect for TestSubscriber {
     fn enter(&self, _span: &span::Id) {}
 
     fn exit(&self, _span: &span::Id) {}
+
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }
 
 #[test]
@@ -61,6 +71,8 @@ fn normalized_metadata() {
     let state = me.clone();
 
     with_default(TestSubscriber(me), || {
+        log::info!("expected info log");
+        log::debug!("unexpected debug log");
         let log = log::Record::builder()
             .args(format_args!("Error!"))
             .level(log::Level::Info)
@@ -107,7 +119,9 @@ fn normalized_metadata() {
 }
 
 fn last(state: &State, should_be_log: bool, expected: Option<OwnedMetadata>) {
-    let metadata = state.last_normalized_metadata.lock().unwrap();
-    assert_eq!(metadata.0, should_be_log);
-    assert_eq!(metadata.1, expected);
+    let lock = state.last_normalized_metadata.lock().unwrap();
+    let (is_log, metadata) = &*lock;
+    dbg!(&metadata);
+    assert_eq!(dbg!(*is_log), should_be_log);
+    assert_eq!(metadata.as_ref(), expected.as_ref());
 }

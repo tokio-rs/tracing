@@ -2,13 +2,16 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{LookupSpan, SpanRef},
-    subscribe::{self, Context, Scope},
+    subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
+use std::{
+    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
+    time::Instant,
+};
 use tracing_core::{
     field,
-    span::{Attributes, Id, Record},
+    span::{Attributes, Current, Id, Record},
     Collect, Event, Metadata,
 };
 
@@ -20,7 +23,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let collector = Registry::default()
 ///     .with(fmt::Subscriber::default());
@@ -32,7 +35,7 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::{fmt, Registry};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 ///
 /// let fmt_subscriber = fmt::subscriber()
 ///    .with_target(false) // don't include event targets when logging
@@ -46,41 +49,41 @@ use tracing_core::{
 ///
 /// ```rust
 /// use tracing_subscriber::fmt::{self, format, time};
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::Subscribe;
 ///
 /// let fmt = format().with_timer(time::Uptime::default());
-/// let fmt_layer = fmt::subscriber()
+/// let fmt_subscriber = fmt::subscriber()
 ///     .event_format(fmt)
 ///     .with_target(false);
-/// # let subscriber = fmt_layer.with_collector(tracing_subscriber::registry::Registry::default());
+/// # let subscriber = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
 /// # tracing::collect::set_global_default(subscriber).unwrap();
 /// ```
 ///
 /// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
-pub struct Subscriber<S, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
+pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
-    _inner: PhantomData<S>,
+    _inner: PhantomData<C>,
 }
 
-impl<S> Subscriber<S> {
+impl<C> Subscriber<C> {
     /// Returns a new [`Subscriber`] with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
-impl<S, N, E, W> Subscriber<S, N, E, W>
+// This needs to be a separate impl block because they place different bounds on the type parameters.
+impl<C, N, E, W> Subscriber<C, N, E, W>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    /// Sets the [event formatter][`FormatEvent`] that the layer will use to
+    /// Sets the [event formatter][`FormatEvent`] that the subscriber will use to
     /// format events.
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]
@@ -93,17 +96,17 @@ where
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .event_format(format().compact());
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
-    pub fn event_format<E2>(self, e: E2) -> Subscriber<S, N, E2, W>
+    pub fn event_format<E2>(self, e: E2) -> Subscriber<C, N, E2, W>
     where
-        E2: FormatEvent<S, N> + 'static,
+        E2: FormatEvent<C, N> + 'static,
     {
         Subscriber {
             fmt_fields: self.fmt_fields,
@@ -115,8 +118,8 @@ where
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
-impl<S, N, E, W> Subscriber<S, N, E, W> {
+// This needs to be a separate impl block because they place different bounds on the type parameters.
+impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// Sets the [`MakeWriter`] that the [`Subscriber`] being built will use to write events.
     ///
     /// # Examples
@@ -127,16 +130,16 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .with_writer(io::stderr);
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     ///
     /// [`MakeWriter`]: super::writer::MakeWriter
     /// [`Subscriber`]: super::Subscriber
-    pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<S, N, E, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<C, N, E, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
     {
@@ -162,16 +165,16 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     /// use std::io;
     /// use tracing_subscriber::fmt;
     ///
-    /// let layer = fmt::subscriber()
+    /// let fmt_subscriber = fmt::subscriber()
     ///     .with_test_writer();
     /// # // this is necessary for type inference.
     /// # use tracing_subscriber::Subscribe as _;
-    /// # let _ = layer.with_collector(tracing_subscriber::registry::Registry::default());
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: super::writer::TestWriter
-    pub fn with_test_writer(self) -> Subscriber<S, N, E, TestWriter> {
+    pub fn with_test_writer(self) -> Subscriber<C, N, E, TestWriter> {
         Subscriber {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
@@ -182,7 +185,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     }
 }
 
-impl<S, N, L, T, W> Subscriber<S, N, format::Format<L, T>, W>
+impl<C, N, L, T, W> Subscriber<C, N, format::Format<L, T>, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
 {
@@ -197,7 +200,7 @@ where
     /// [`timer`]: super::time::FormatTime
     /// [`ChronoUtc`]: super::time::ChronoUtc
     /// [`ChronoLocal`]: super::time::ChronoLocal
-    pub fn with_timer<T2>(self, timer: T2) -> Subscriber<S, N, format::Format<L, T2>, W> {
+    pub fn with_timer<T2>(self, timer: T2) -> Subscriber<C, N, format::Format<L, T2>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
@@ -208,7 +211,7 @@ where
     }
 
     /// Do not emit timestamps with spans and event.
-    pub fn without_time(self) -> Subscriber<S, N, format::Format<L, ()>, W> {
+    pub fn without_time(self) -> Subscriber<C, N, format::Format<L, ()>, W> {
         Subscriber {
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
@@ -226,17 +229,32 @@ where
     /// - `FmtSpan::NONE`: No events will be synthesized when spans are
     ///    created, entered, exited, or closed. Data from spans will still be
     ///    included as the context for formatted events. This is the default.
-    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
-    ///    or exited.
+    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
+    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
+    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
     /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
     ///    [timestamps are enabled][time] for this formatter, the generated
     ///    event will contain fields with the span's _busy time_ (the total
     ///    time for which it was entered) and _idle time_ (the total time that
     ///    the span existed but was not entered).
+    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
+    ///    or exited.
     /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
     ///    created, entered, exited, or closed. If timestamps are enabled, the
     ///    close event will contain the span's busy and idle time, as
     ///    described above.
+    ///
+    /// The options can be enabled in any combination. For instance, the following
+    /// will synthesize events whenever spans are created and closed:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt;
+    /// use tracing_subscriber::fmt::format::FmtSpan;
+    ///
+    /// let subscriber = fmt()
+    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    ///     .finish();
+    /// ```
     ///
     /// Note that the generated events will only be part of the log output by
     /// this formatter; they will not be recorded by other `Collector`s or by
@@ -246,46 +264,34 @@ where
     /// [time]: Subscriber::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
-            fmt_event: self.fmt_event,
-            fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.with_kind(kind),
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+    pub fn with_ansi(self, ansi: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_ansi(ansi),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+    pub fn with_target(self, display_target: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
     /// Sets whether or not an event's level is displayed.
-    pub fn with_level(self, display_level: bool) -> Subscriber<S, N, format::Format<L, T>, W> {
+    pub fn with_level(self, display_level: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_level(display_level),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -296,13 +302,10 @@ where
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
-    ) -> Subscriber<S, N, format::Format<L, T>, W> {
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -313,18 +316,15 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> Subscriber<S, N, format::Format<L, T>, W> {
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
     /// Sets the subscriber being built to use a [less verbose formatter](format::Compact).
-    pub fn compact(self) -> Subscriber<S, N, format::Format<format::Compact, T>, W>
+    pub fn compact(self) -> Subscriber<C, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -340,7 +340,7 @@ where
     /// Sets the subscriber being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn pretty(self) -> Subscriber<S, format::Pretty, format::Format<format::Pretty, T>, W> {
+    pub fn pretty(self) -> Subscriber<C, format::Pretty, format::Format<format::Pretty, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.pretty(),
             fmt_fields: format::Pretty::default(),
@@ -367,7 +367,7 @@ where
     ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    pub fn json(self) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
@@ -380,20 +380,18 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
-    /// Sets the JSON layer being built to flatten event metadata.
+impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+    /// Sets the JSON subscriber being built to flatten event metadata.
     ///
     /// See [`format::Json`]
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -404,13 +402,11 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 
@@ -421,21 +417,19 @@ impl<S, T, W> Subscriber<S, format::JsonFields, format::Format<format::Json, T>,
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> Subscriber<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            _inner: self._inner,
+            ..self
         }
     }
 }
 
-impl<S, N, E, W> Subscriber<S, N, E, W> {
-    /// Sets the field formatter that the layer being built will use to record
+impl<C, N, E, W> Subscriber<C, N, E, W> {
+    /// Sets the field formatter that the subscriber being built will use to record
     /// fields.
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<S, N2, E, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<C, N2, E, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -449,7 +443,7 @@ impl<S, N, E, W> Subscriber<S, N, E, W> {
     }
 }
 
-impl<S> Default for Subscriber<S> {
+impl<C> Default for Subscriber<C> {
     fn default() -> Self {
         Subscriber {
             fmt_fields: format::DefaultFields::default(),
@@ -461,15 +455,15 @@ impl<S> Default for Subscriber<S> {
     }
 }
 
-impl<S, N, E, W> Subscriber<S, N, E, W>
+impl<C, N, E, W> Subscriber<C, N, E, W>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
+    E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
-    fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
+    fn make_ctx<'a>(&'a self, ctx: Context<'a, C>) -> FmtContext<'a, C, N> {
         FmtContext {
             ctx,
             fmt_fields: &self.fmt_fields,
@@ -524,7 +518,7 @@ impl<E> Deref for FormattedFields<E> {
     }
 }
 
-// === impl FmtLayer ===
+// === impl FmtSubscriber ===
 
 macro_rules! with_event_from_span {
     ($id:ident, $span:ident, $($field:literal = $value:expr),*, |$event:ident| $code:block) => {
@@ -542,14 +536,14 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<S, N, E, W> subscribe::Subscribe<S> for Subscriber<S, N, E, W>
+impl<C, N, E, W> subscribe::Subscribe<C> for Subscriber<C, N, E, W>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
+    E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+    fn new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
@@ -580,7 +574,7 @@ where
         }
     }
 
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(FormattedFields { ref mut fields, .. }) =
@@ -599,8 +593,8 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
-        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+    fn on_enter(&self, id: &Id, ctx: Context<'_, C>) {
+        if self.fmt_span.trace_enter() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
@@ -609,7 +603,7 @@ where
                 timings.last = now;
             }
 
-            if self.fmt_span.trace_active() {
+            if self.fmt_span.trace_enter() {
                 with_event_from_span!(id, span, "message" = "enter", |event| {
                     drop(extensions);
                     drop(span);
@@ -619,8 +613,8 @@ where
         }
     }
 
-    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
-        if self.fmt_span.trace_active() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, C>) {
+        if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
@@ -629,7 +623,7 @@ where
                 timings.last = now;
             }
 
-            if self.fmt_span.trace_active() {
+            if self.fmt_span.trace_exit() {
                 with_event_from_span!(id, span, "message" = "exit", |event| {
                     drop(extensions);
                     drop(span);
@@ -639,7 +633,7 @@ where
         }
     }
 
-    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, C>) {
         if self.fmt_span.trace_close() {
             let span = ctx.span(&id).expect("Span not found, this is a bug");
             let extensions = span.extensions();
@@ -676,7 +670,7 @@ where
         }
     }
 
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         thread_local! {
             static BUF: RefCell<String> = RefCell::new(String::new());
         }
@@ -698,7 +692,7 @@ where
 
             let ctx = self.make_ctx(ctx);
             if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
-                let mut writer = self.make_writer.make_writer();
+                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
@@ -706,36 +700,36 @@ where
         });
     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-        // This `downcast_raw` impl allows downcasting a `fmt` layer to any of
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        // This `downcast_raw` impl allows downcasting a `fmt` subscriber to any of
         // its components (event formatter, field formatter, and `MakeWriter`)
-        // as well as to the layer's type itself. The potential use-cases for
+        // as well as to the subscriber's type itself. The potential use-cases for
         // this *may* be somewhat niche, though...
         match () {
-            _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
-            _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
-            _ if id == TypeId::of::<W>() => Some(&self.make_writer as *const W as *const ()),
+            _ if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            _ if id == TypeId::of::<E>() => Some(NonNull::from(&self.fmt_event).cast()),
+            _ if id == TypeId::of::<N>() => Some(NonNull::from(&self.fmt_fields).cast()),
+            _ if id == TypeId::of::<W>() => Some(NonNull::from(&self.make_writer).cast()),
             _ => None,
         }
     }
 }
 
 /// Provides the current span context to a formatter.
-pub struct FmtContext<'a, S, N> {
-    pub(crate) ctx: Context<'a, S>,
+pub struct FmtContext<'a, C, N> {
+    pub(crate) ctx: Context<'a, C>,
     pub(crate) fmt_fields: &'a N,
 }
 
-impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
+impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FmtContext").finish()
     }
 }
 
-impl<'cx, 'writer, S, N> FormatFields<'writer> for FmtContext<'cx, S, N>
+impl<'cx, 'writer, C, N> FormatFields<'writer> for FmtContext<'cx, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: FormatFields<'writer> + 'static,
 {
     fn format_fields<R: RecordFields>(
@@ -747,9 +741,9 @@ where
     }
 }
 
-impl<'a, S, N> FmtContext<'a, S, N>
+impl<'a, C, N> FmtContext<'a, C, N>
 where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
+    C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
@@ -759,11 +753,13 @@ where
     /// and so on until a root span is reached.
     pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
-        F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
+        F: FnMut(&SpanRef<'_, C>) -> Result<(), E>,
     {
         // visit all the current spans
-        for span in self.ctx.scope() {
-            f(&span)?;
+        if let Some(leaf) = self.ctx.lookup_current() {
+            for span in leaf.scope().from_root() {
+                f(&span)?;
+            }
         }
         Ok(())
     }
@@ -775,7 +771,7 @@ where
     #[inline]
     pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.metadata(id)
     }
@@ -787,9 +783,9 @@ where
     ///
     /// [stored data]: SpanRef
     #[inline]
-    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
+    pub fn span(&self, id: &Id) -> Option<SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.span(id)
     }
@@ -798,7 +794,7 @@ where
     #[inline]
     pub fn exists(&self, id: &Id) -> bool
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.exists(id)
     }
@@ -810,23 +806,16 @@ where
     ///
     /// [stored data]: SpanRef
     #[inline]
-    pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
+    pub fn lookup_current(&self) -> Option<SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.lookup_current()
     }
 
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: SpanRef
-    pub fn scope(&self) -> Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
+    /// Returns the current span for this formatter.
+    pub fn current_span(&self) -> Current {
+        self.ctx.current_span()
     }
 
     /// Returns the [field formatter] configured by the subscriber invoking
@@ -859,11 +848,12 @@ impl Timings {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::fmt::{
         self,
         format::{self, test::MockTime, Format},
         subscribe::Subscribe as _,
-        test::MockMakeWriter,
+        test::{MockMakeWriter, MockWriter},
         time,
     };
     use crate::Registry;
@@ -891,7 +881,7 @@ mod test {
     }
 
     #[test]
-    fn fmt_layer_downcasts() {
+    fn fmt_subscriber_downcasts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
         let subscriber = fmt.with_collector(Registry::default());
@@ -903,7 +893,7 @@ mod test {
     }
 
     #[test]
-    fn fmt_layer_downcasts_to_parts() {
+    fn fmt_subscriber_downcasts_to_parts() {
         let f = format::Format::default();
         let fmt = fmt::Subscriber::default().event_format(f);
         let subscriber = fmt.with_collector(Registry::default());
@@ -1007,7 +997,7 @@ mod test {
         });
         let actual = sanitize_timings(make_writer.get_string());
         assert_eq!(
-            " span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
+            "span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close\n",
             actual.as_str()
         );
     }
@@ -1033,6 +1023,68 @@ mod test {
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n\
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: close timing timing\n",
+            actual.as_str()
+        );
+    }
+
+    #[test]
+    fn make_writer_based_on_meta() {
+        struct MakeByTarget {
+            make_writer1: MockMakeWriter,
+            make_writer2: MockMakeWriter,
+        }
+
+        impl<'a> MakeWriter<'a> for MakeByTarget {
+            type Writer = MockWriter;
+
+            fn make_writer(&'a self) -> Self::Writer {
+                self.make_writer1.make_writer()
+            }
+
+            fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+                if meta.target() == "writer2" {
+                    return self.make_writer2.make_writer();
+                }
+                self.make_writer()
+            }
+        }
+
+        let make_writer1 = MockMakeWriter::default();
+        let make_writer2 = MockMakeWriter::default();
+
+        let make_writer = MakeByTarget {
+            make_writer1: make_writer1.clone(),
+            make_writer2: make_writer2.clone(),
+        };
+
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer)
+            .with_level(false)
+            .with_target(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::CLOSE)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("writer1_span", x = 42);
+            let _e = span1.enter();
+            tracing::info!(target: "writer2", "hello writer2!");
+            let span2 = tracing::info_span!(target: "writer2", "writer2_span");
+            let _e = span2.enter();
+            tracing::warn!(target: "writer1", "hello writer1!");
+        });
+
+        let actual = sanitize_timings(make_writer1.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}:writer2_span: hello writer1!\n\
+             fake time writer1_span{x=42}: close timing timing\n",
+            actual.as_str()
+        );
+        let actual = sanitize_timings(make_writer2.get_string());
+        assert_eq!(
+            "fake time writer1_span{x=42}: hello writer2!\n\
+             fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
         );
     }

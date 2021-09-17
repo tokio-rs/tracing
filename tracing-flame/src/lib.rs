@@ -180,7 +180,7 @@ thread_local! {
 /// samples.
 ///
 /// The output of `FlameSubscriber` emulates the output of commands like `perf` once
-/// they've been collapsed by `inferno-flamegraph`. The output of this layer
+/// they've been collapsed by `inferno-flamegraph`. The output of this subscriber
 /// should look similar to the output of the following commands:
 ///
 /// ```sh
@@ -223,6 +223,12 @@ struct Config {
 
     /// Don't include thread_id
     threads_collapsed: bool,
+
+    /// Don't display module_path
+    module_path: bool,
+
+    /// Don't display file and line
+    file_and_line: bool,
 }
 
 impl Default for Config {
@@ -230,6 +236,8 @@ impl Default for Config {
         Self {
             empty_samples: true,
             threads_collapsed: false,
+            module_path: true,
+            file_and_line: true,
         }
     }
 }
@@ -258,7 +266,7 @@ where
     /// provided writer.
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
-        // LAST_EVENT when constructing the layer
+        // LAST_EVENT when constructing the subscriber
         let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
@@ -305,6 +313,18 @@ where
     /// span may be split up across many threads.
     pub fn with_threads_collapsed(mut self, enabled: bool) -> Self {
         self.config.threads_collapsed = enabled;
+        self
+    }
+
+    /// Configures whether or not module paths should be included in the output.
+    pub fn with_module_path(mut self, enabled: bool) -> Self {
+        self.config.module_path = enabled;
+        self
+    }
+
+    /// Configures whether or not file and line should be included in the output.
+    pub fn with_file_and_line(mut self, enabled: bool) -> Self {
+        self.config.file_and_line = enabled;
         self
     }
 }
@@ -358,9 +378,9 @@ where
             })
             .map_err(Error)?;
         let writer = BufWriter::new(file);
-        let layer = Self::new(writer);
-        let guard = layer.flush_on_drop();
-        Ok((layer, guard))
+        let subscriber = Self::new(writer);
+        let guard = subscriber.flush_on_drop();
+        Ok((subscriber, guard))
     }
 }
 
@@ -374,11 +394,9 @@ where
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
 
-        if !self.config.empty_samples && first.from_root().count() == 0 {
+        if !self.config.empty_samples && first.parent().is_none() {
             return;
         }
-
-        let parents = first.from_root();
 
         let mut stack = String::new();
 
@@ -388,9 +406,12 @@ where
             stack += "all-threads";
         }
 
-        for parent in parents {
-            stack += "; ";
-            write(&mut stack, parent).expect("expected: write to String never fails");
+        if let Some(second) = first.parent() {
+            for parent in second.scope().from_root() {
+                stack += "; ";
+                write(&mut stack, parent, &self.config)
+                    .expect("expected: write to String never fails");
+            }
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
@@ -419,8 +440,7 @@ where
         }
 
         let samples = self.time_since_last_event();
-        let first = expect!(ctx.span(&id), "expected: span id exists in registry");
-        let parents = first.from_root();
+        let first = expect!(ctx.span(id), "expected: span id exists in registry");
 
         let mut stack = String::new();
         if !self.config.threads_collapsed {
@@ -428,20 +448,15 @@ where
         } else {
             stack += "all-threads";
         }
-        stack += "; ";
 
-        for parent in parents {
+        for parent in first.scope().from_root() {
+            stack += "; ";
             expect!(
-                write(&mut stack, parent),
+                write(&mut stack, parent, &self.config),
                 "expected: write to String never fails"
             );
-            stack += "; ";
         }
 
-        expect!(
-            write(&mut stack, first),
-            "expected: write to String never fails"
-        );
         expect!(
             write!(&mut stack, " {}", samples.as_nanos()),
             "expected: write to String never fails"
@@ -469,22 +484,26 @@ where
     }
 }
 
-fn write<C>(dest: &mut String, span: SpanRef<'_, C>) -> fmt::Result
+fn write<C>(dest: &mut String, span: SpanRef<'_, C>, config: &Config) -> fmt::Result
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
-    if let Some(module_path) = span.metadata().module_path() {
-        write!(dest, "{}::", module_path)?;
+    if config.module_path {
+        if let Some(module_path) = span.metadata().module_path() {
+            write!(dest, "{}::", module_path)?;
+        }
     }
 
     write!(dest, "{}", span.name())?;
 
-    if let Some(file) = span.metadata().file() {
-        write!(dest, ":{}", file)?;
-    }
+    if config.file_and_line {
+        if let Some(file) = span.metadata().file() {
+            write!(dest, ":{}", file)?;
+        }
 
-    if let Some(line) = span.metadata().line() {
-        write!(dest, ":{}", line)?;
+        if let Some(line) = span.metadata().line() {
+            write!(dest, ":{}", line)?;
+        }
     }
 
     Ok(())

@@ -299,6 +299,44 @@ fn enter() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn entered() {
+    let (collector, handle) = collector::mock()
+        .enter(span::mock().named("foo"))
+        .event(event::mock())
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        let _span = span!(Level::TRACE, "foo").entered();
+        debug!("dropping guard...");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn entered_api() {
+    let (collector, handle) = collector::mock()
+        .enter(span::mock().named("foo"))
+        .event(event::mock())
+        .exit(span::mock().named("foo"))
+        .drop_span(span::mock().named("foo"))
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        let span = span!(Level::TRACE, "foo").entered();
+        let _derefs_to_span = span.id();
+        debug!("exiting span...");
+        let _: Span = span.exit();
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn moved_field() {
     let (collector, handle) = collector::mock()
         .new_span(
@@ -415,6 +453,28 @@ fn move_field_out_of_struct() {
         let bar = span!(Level::TRACE, "bar", position = debug(pos));
         foo.in_scope(|| {});
         bar.in_scope(|| {});
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn float_values() {
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span::mock().named("foo").with_field(
+                field::mock("x")
+                    .with_value(&3.234)
+                    .and(field::mock("y").with_value(&-1.223))
+                    .only(),
+            ),
+        )
+        .run_with_handle();
+
+    with_default(collector, || {
+        let foo = span!(Level::TRACE, "foo", x = 3.234, y = -1.223);
+        foo.in_scope(|| {});
     });
 
     handle.assert_finished();

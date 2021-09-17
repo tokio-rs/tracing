@@ -1,4 +1,4 @@
-use crate::layer::WithContext;
+use crate::subscriber::WithContext;
 use std::fmt;
 use tracing::{Metadata, Span};
 
@@ -68,6 +68,11 @@ pub struct SpanTrace {
 // === impl SpanTrace ===
 
 impl SpanTrace {
+    /// Create a new span trace with the given span as the innermost span.
+    pub fn new(span: Span) -> Self {
+        SpanTrace { span }
+    }
+
     /// Capture the current span trace.
     ///
     /// # Examples
@@ -95,9 +100,7 @@ impl SpanTrace {
     /// }
     /// ```
     pub fn capture() -> Self {
-        SpanTrace {
-            span: Span::current(),
-        }
+        SpanTrace::new(Span::current())
     }
 
     /// Apply a function to all captured spans in the trace until it returns

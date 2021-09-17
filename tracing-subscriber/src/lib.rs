@@ -101,8 +101,6 @@
 // "needless".
 #![allow(clippy::needless_update)]
 
-use tracing_core::span::Id;
-
 #[macro_use]
 mod macros;
 
@@ -116,7 +114,6 @@ pub mod registry;
 pub mod reload;
 pub mod subscribe;
 pub(crate) mod sync;
-pub(crate) mod thread;
 pub mod util;
 
 #[cfg(feature = "env-filter")]
@@ -140,47 +137,6 @@ cfg_feature!("registry", {
 });
 
 use std::default::Default;
-/// Tracks the currently executing span on a per-thread basis.
-#[derive(Debug)]
-pub struct CurrentSpan {
-    current: thread::Local<Vec<Id>>,
-}
-
-impl CurrentSpan {
-    /// Returns a new `CurrentSpan`.
-    pub fn new() -> Self {
-        Self {
-            current: thread::Local::new(),
-        }
-    }
-
-    /// Returns the [`Id`] of the span in which the current thread is
-    /// executing, or `None` if it is not inside of a span.
-    ///
-    ///
-    /// [`Id`]: tracing::span::Id
-    pub fn id(&self) -> Option<Id> {
-        self.current.with(|current| current.last().cloned())?
-    }
-
-    /// Records that the current thread has entered the span with the provided ID.
-    pub fn enter(&self, span: Id) {
-        self.current.with(|current| current.push(span));
-    }
-
-    /// Records that the current thread has exited a span.
-    pub fn exit(&self) {
-        self.current.with(|current| {
-            let _ = current.pop();
-        });
-    }
-}
-
-impl Default for CurrentSpan {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 mod sealed {
     pub trait Sealed<A = ()> {}

@@ -1,6 +1,5 @@
-use crate::layer::WithContext;
-use opentelemetry::{trace as otel, trace::TraceContextExt, Context, KeyValue};
-use std::time::SystemTime;
+use crate::subscriber::WithContext;
+use opentelemetry::{trace::SpanContext, Context, KeyValue};
 
 /// Utility functions to allow tracing [`Span`]s to accept and return
 /// [OpenTelemetry] [`Context`]s.
@@ -18,7 +17,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
-    /// use opentelemetry::sdk::propagation::B3Propagator;
+    /// use opentelemetry::sdk::propagation::TraceContextPropagator;
     /// use tracing_opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
@@ -26,8 +25,8 @@ pub trait OpenTelemetrySpanExt {
     /// // Example carrier, could be a framework header map that impls otel's `Extract`.
     /// let mut carrier = HashMap::new();
     ///
-    /// // Propagator can be swapped with trace context propagator, binary propagator, etc.
-    /// let propagator = B3Propagator::new();
+    /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
+    /// let propagator = TraceContextPropagator::new();
     ///
     /// // Extract otel parent context via the chosen propagator
     /// let parent_context = propagator.extract(&carrier);
@@ -36,12 +35,56 @@ pub trait OpenTelemetrySpanExt {
     /// let app_root = tracing::span!(tracing::Level::INFO, "app_start");
     ///
     /// // Assign parent trace from external context
-    /// app_root.set_parent(&parent_context);
+    /// app_root.set_parent(parent_context.clone());
     ///
     /// // Or if the current span has been created elsewhere:
-    /// Span::current().set_parent(&parent_context);
+    /// Span::current().set_parent(parent_context);
     /// ```
-    fn set_parent(&self, cx: &Context);
+    fn set_parent(&self, cx: Context);
+
+    /// Associates `self` with a given OpenTelemetry trace, using the provided
+    /// followed span [`SpanContext`].
+    ///
+    /// [`SpanContext`]: opentelemetry::trace::SpanContext
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
+    /// use opentelemetry::sdk::propagation::TraceContextPropagator;
+    /// use tracing_opentelemetry::OpenTelemetrySpanExt;
+    /// use std::collections::HashMap;
+    /// use tracing::Span;
+    ///
+    /// // Example carrier, could be a framework header map that impls otel's `Extract`.
+    /// let mut carrier = HashMap::new();
+    ///
+    /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
+    /// let propagator = TraceContextPropagator::new();
+    ///
+    /// // Extract otel context of linked span via the chosen propagator
+    /// let linked_span_otel_context = propagator.extract(&carrier);
+    ///
+    /// // Extract the linked span context from the otel context
+    /// let linked_span_context = linked_span_otel_context.span().span_context().clone();
+    ///
+    /// // Generate a tracing span as usual
+    /// let app_root = tracing::span!(tracing::Level::INFO, "app_start");
+    ///
+    /// // Assign linked trace from external context
+    /// app_root.add_link(linked_span_context);
+    ///
+    /// // Or if the current span has been created elsewhere:
+    /// let linked_span_context = linked_span_otel_context.span().span_context().clone();
+    /// Span::current().add_link(linked_span_context);
+    /// ```
+    fn add_link(&self, cx: SpanContext);
+
+    /// Associates `self` with a given OpenTelemetry trace, using the provided
+    /// followed span [`SpanContext`] and attributes.
+    ///
+    /// [`SpanContext`]: opentelemetry::trace::SpanContext
+    fn add_link_with_attributes(&self, cx: SpanContext, attributes: Vec<KeyValue>);
 
     /// Extracts an OpenTelemetry [`Context`] from `self`.
     ///
@@ -74,81 +117,54 @@ pub trait OpenTelemetrySpanExt {
 }
 
 impl OpenTelemetrySpanExt for tracing::Span {
-    fn set_parent(&self, cx: &Context) {
+    fn set_parent(&self, cx: Context) {
+        let mut cx = Some(cx);
         self.with_collector(move |(id, collector)| {
             if let Some(get_context) = collector.downcast_ref::<WithContext>() {
                 get_context.with_context(collector, id, move |builder, _tracer| {
-                    builder.parent_context = cx.remote_span_context().cloned()
+                    if let Some(cx) = cx.take() {
+                        builder.parent_context = cx;
+                    }
                 });
             }
         });
     }
 
+    fn add_link(&self, cx: SpanContext) {
+        self.add_link_with_attributes(cx, Vec::new())
+    }
+
+    fn add_link_with_attributes(&self, cx: SpanContext, attributes: Vec<KeyValue>) {
+        if cx.is_valid() {
+            let mut cx = Some(cx);
+            let mut att = Some(attributes);
+            self.with_collector(move |(id, collector)| {
+                if let Some(get_context) = collector.downcast_ref::<WithContext>() {
+                    get_context.with_context(collector, id, move |builder, _tracer| {
+                        if let Some(cx) = cx.take() {
+                            let attr = att.take().unwrap_or_default();
+                            let follows_link = opentelemetry::trace::Link::new(cx, attr);
+                            builder
+                                .links
+                                .get_or_insert_with(|| Vec::with_capacity(1))
+                                .push(follows_link);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
     fn context(&self) -> Context {
-        let mut span_context = None;
+        let mut cx = None;
         self.with_collector(|(id, collector)| {
             if let Some(get_context) = collector.downcast_ref::<WithContext>() {
                 get_context.with_context(collector, id, |builder, tracer| {
-                    span_context = Some(tracer.sampled_span_context(builder));
+                    cx = Some(tracer.sampled_context(builder));
                 })
             }
         });
 
-        let span_context = span_context.unwrap_or_else(otel::SpanContext::empty_context);
-        let compat_span = CompatSpan(span_context);
-        Context::current_with_span(compat_span)
-    }
-}
-
-/// A compatibility wrapper for an injectable OpenTelemetry span context.
-#[derive(Debug)]
-struct CompatSpan(otel::SpanContext);
-impl otel::Span for CompatSpan {
-    fn add_event_with_timestamp(
-        &self,
-        _name: String,
-        _timestamp: std::time::SystemTime,
-        _attributes: Vec<KeyValue>,
-    ) {
-        #[cfg(debug_assertions)]
-        panic!(
-            "OpenTelemetry and tracing APIs cannot be mixed, use `tracing::event!` macro instead."
-        );
-    }
-
-    /// This method is used by OpenTelemetry propagators to inject span context
-    /// information into [`Injector`]s.
-    ///
-    /// [`Injector`]: opentelemetry::propagation::Injector
-    fn span_context(&self) -> &otel::SpanContext {
-        &self.0
-    }
-
-    fn is_recording(&self) -> bool {
-        #[cfg(debug_assertions)]
-        panic!("cannot record via OpenTelemetry API when using extracted span in tracing");
-
-        #[cfg(not(debug_assertions))]
-        false
-    }
-
-    fn set_attribute(&self, _attribute: KeyValue) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead.");
-    }
-
-    fn set_status(&self, _code: otel::StatusCode, _message: String) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, use `tracing::span!` macro or `span.record()` instead.");
-    }
-
-    fn update_name(&self, _new_name: String) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, span names are not mutable.");
-    }
-
-    fn end_with_timestamp(&self, _timestamp: SystemTime) {
-        #[cfg(debug_assertions)]
-        panic!("OpenTelemetry and tracing APIs cannot be mixed, span end times are set when the underlying tracing span closes.");
+        cx.unwrap_or_default()
     }
 }

@@ -6,28 +6,28 @@
 /// You can run this example by running the following command in a terminal
 ///
 /// ```
-/// cargo run --example toggle-layers -- json
+/// cargo run --example toggle-subscribers -- --json
 /// ```
 ///
-use clap::{App, Arg};
+use argh::FromArgs;
 use tracing::info;
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt};
 
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
-fn main() {
-    let matches = App::new("fmt optional Example")
-        .version("1.0")
-        .arg(
-            Arg::with_name("json")
-                .help("Enabling json formatting of logs")
-                .required(false)
-                .takes_value(false),
-        )
-        .get_matches();
+#[derive(FromArgs)]
+/// Subscriber toggling example.
+struct Args {
+    /// enable JSON log format
+    #[argh(switch, short = 'j')]
+    json: bool,
+}
 
-    let (json, plain) = if matches.is_present("json") {
+fn main() {
+    let args: Args = argh::from_env();
+
+    let (json, plain) = if args.json {
         (Some(tracing_subscriber::fmt::subscriber().json()), None)
     } else {
         (None, Some(tracing_subscriber::fmt::subscriber()))

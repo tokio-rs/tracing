@@ -9,7 +9,7 @@ use tracing_core::{
 
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
 
 /// A composable handler for `tracing` events.
 ///
@@ -38,7 +38,7 @@ use std::{any::TypeId, marker::PhantomData};
 ///
 /// Since `Subscribe` does not implement a complete strategy for collecting
 /// traces, it must be composed with a `Collect` in order to be used. The
-/// `Subscribe` trait is generic over a type parameter (called `S` in the trait
+/// `Subscribe` trait is generic over a type parameter (called `C` in the trait
 /// definition), representing the types of `Collect` they can be composed
 /// with. Thus, a subscriber may be implemented that will only compose with a
 /// particular `Collect` implementation, or additional trait bounds may be
@@ -52,14 +52,15 @@ use std::{any::TypeId, marker::PhantomData};
 /// For example:
 /// ```rust
 /// use tracing_subscriber::Subscribe;
-/// use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing::Collect;
+/// use tracing_core::span::Current;
 ///
 /// pub struct MySubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MySubscriber {
+/// impl<C: Collect> Subscribe<C> for MySubscriber {
 ///     // ...
 /// }
 ///
@@ -68,7 +69,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// }
 ///
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-/// impl Collect for MySubscriber {
+/// impl Collect for MyCollector {
 ///     // ...
 /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 /// #   fn record(&self, _: &Id, _: &Record) {}
@@ -77,6 +78,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -85,7 +87,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// # fn new() -> Self { Self { }}
 /// # }
 ///
-/// let collector = MySubscriber::new()
+/// let collector = MyCollector::new()
 ///     .with(MySubscriber::new());
 ///
 /// tracing::collect::set_global_default(collector);
@@ -94,13 +96,14 @@ use std::{any::TypeId, marker::PhantomData};
 /// Multiple `Subscriber`s may be composed in the same manner:
 /// ```rust
 /// # use tracing_subscriber::Subscribe;
-/// # use tracing_subscriber::prelude::*;
+/// # use tracing_subscriber::subscribe::CollectExt;
 /// # use tracing::Collect;
+/// # use tracing_core::span::Current;
 /// pub struct MyOtherSubscriber {
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyOtherSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 ///     // ...
 /// }
 ///
@@ -108,11 +111,11 @@ use std::{any::TypeId, marker::PhantomData};
 ///     // ...
 /// }
 ///
-/// impl<S: Collect> Subscribe<S> for MyThirdSubscriber {
+/// impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 ///     // ...
 /// }
 /// # pub struct MySubscriber {}
-/// # impl<S: Collect> Subscribe<S> for MySubscriber {}
+/// # impl<C: Collect> Subscribe<C> for MySubscriber {}
 /// # pub struct MyCollector { }
 /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
 /// # impl Collect for MyCollector {
@@ -123,6 +126,7 @@ use std::{any::TypeId, marker::PhantomData};
 /// #   fn enabled(&self, _: &Metadata) -> bool { false }
 /// #   fn enter(&self, _: &Id) {}
 /// #   fn exit(&self, _: &Id) {}
+/// #   fn current_span(&self) -> Current { Current::unknown() }
 /// }
 /// # impl MySubscriber {
 /// # fn new() -> Self { Self {} }
@@ -171,15 +175,15 @@ use std::{any::TypeId, marker::PhantomData};
 /// As well as strategies for handling trace events, the `Subscriber` trait may also
 /// be used to represent composable _filters_. This allows the determination of
 /// what spans and events should be recorded to be decoupled from _how_ they are
-/// recorded: a filtering layer can be applied to other layers or
-/// subscribers. A `Subscriber` that implements a filtering strategy should override the
+/// recorded: a filtering subscriber can be applied to other subscribers or
+/// collectors. A `Subscriber` that implements a filtering strategy should override the
 /// [`register_callsite`] and/or [`enabled`] methods. It may also choose to implement
 /// methods such as [`on_enter`], if it wishes to filter trace events based on
 /// the current span context.
 ///
 /// Note that the [`Subscribe::register_callsite`] and [`Subscribe::enabled`] methods
 /// determine whether a span or event is enabled *globally*. Thus, they should
-/// **not** be used to indicate whether an individual layer wishes to record a
+/// **not** be used to indicate whether an individual subscriber wishes to record a
 /// particular span or event. Instead, if a subscriber is only interested in a subset
 /// of trace data, but does *not* wish to disable other spans and events for the
 /// rest of the subscriber stack should ignore those spans and events in its
@@ -209,9 +213,6 @@ where
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -229,7 +230,7 @@ where
     /// with `Subscriber`s.
     ///
     /// Subscribers may also implement this method to perform any behaviour that
-    /// should be run once per callsite. If the layer wishes to use
+    /// should be run once per callsite. If the subscriber wishes to use
     /// `register_callsite` for per-callsite behaviour, but does not want to
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
@@ -237,10 +238,7 @@ where
     /// [`Interest`]: tracing_core::Interest
     /// [`Collect::register_callsite`]: tracing_core::Collect::register_callsite()
     /// [`self.enabled`]: Subscribe::enabled()
-    /// [`on_event`]: Subscribe::on_event()
-    /// [`on_enter`]: Subscribe::on_enter()
-    /// [`on_exit`]: Subscribe::on_exit()
-    /// [the trait-level documentation]: #filtering-with-layers
+    /// [the trait-level documentation]: #filtering-with-subscribers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata, Context::none()) {
             Interest::always()
@@ -256,15 +254,12 @@ where
     /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
     /// **Note**: This method (and [`register_callsite`][Self::register_callsite])
     /// determine whether a span or event is
-    /// globally enabled, *not* whether the individual layer will be
+    /// globally enabled, *not* whether the individual subscriber will be
     /// notified about that span or event. This is intended to be used
     /// by layers that implement filtering for the entire stack. Layers which do
     /// not wish to be notified about certain spans or events but do not wish to
@@ -279,16 +274,13 @@ where
     /// with `Subscriber`s.
     ///
     /// [`Interest`]: tracing_core::Interest
-    /// [`on_event`]: Layer::on_event()
-    /// [`on_enter`]: Layer::on_enter()
-    /// [`on_exit`]: Layer::on_exit()
-    /// [the trait-level documentation]: #filtering-with-layers
+    /// [the trait-level documentation]: #filtering-with-subscribers
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
         true
     }
 
-    /// Notifies this layer that a new span was constructed with the given
+    /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
@@ -342,6 +334,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -354,11 +347,11 @@ where
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for FooSubscriber {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Collect> Subscribe<S> for BarSubscriber {
+    /// impl<C: Collect> Subscribe<C> for BarSubscriber {
     ///     // ...
     /// }
     ///
@@ -380,6 +373,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .and_then(BarSubscriber::new())
@@ -390,12 +384,12 @@ where
     ///
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
-    /// # use tracing_core::Collect;
+    /// # use tracing_core::{Collect, span::Current};
     /// # pub struct FooSubscriber {}
     /// # pub struct BarSubscriber {}
     /// # pub struct MyCollector {}
-    /// # impl<S: Collect> Subscribe<S> for FooSubscriber {}
-    /// # impl<S: Collect> Subscribe<S> for BarSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for BarSubscriber {}
     /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
@@ -414,6 +408,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// pub struct BazSubscriber {
     ///     // ...
@@ -451,6 +446,7 @@ where
     /// ```rust
     /// # use tracing_subscriber::subscribe::Subscribe;
     /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
     /// pub struct FooSubscriber {
     ///     // ...
     /// }
@@ -478,6 +474,7 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
     /// let collector = FooSubscriber::new()
     ///     .with_collector(MyCollector::new());
@@ -496,9 +493,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
@@ -507,7 +504,7 @@ where
 
 /// Extension trait adding a `with(Subscriber)` combinator to `Collect`.
 pub trait CollectExt: Collect + crate::sealed::Sealed {
-    /// Wraps `self` with the provided `layer`.
+    /// Wraps `self` with the provided `subscriber`.
     fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
         S: Subscribe<Self>,
@@ -542,8 +539,8 @@ pub trait CollectExt: Collect + crate::sealed::Sealed {
 /// [collector]: tracing_core::Collect
 /// [stored data]: super::registry::SpanRef
 #[derive(Debug)]
-pub struct Context<'a, S> {
-    subscriber: Option<&'a S>,
+pub struct Context<'a, C> {
+    collector: Option<&'a C>,
 }
 
 /// A [collector] composed of a collector wrapped by one or more
@@ -564,19 +561,6 @@ pub struct Identity {
     _p: (),
 }
 
-/// An iterator over the [stored data] for all the spans in the
-/// current context, starting the root of the trace tree and ending with
-/// the current span.
-///
-/// This is returned by [`Context::scope`].
-///
-/// [stored data]: super::registry::SpanRef
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub struct Scope<'a, L: LookupSpan<'a>>(
-    Option<std::iter::Chain<registry::FromRoot<'a, L>, std::iter::Once<SpanRef<'a, L>>>>,
-);
-
 // === impl Layered ===
 
 impl<S, C> Collect for Layered<S, C>
@@ -592,6 +576,9 @@ where
             return outer;
         }
 
+        // The intention behind calling `inner.register_callsite()` before the if statement
+        // is to ensure that the inner subscriber is informed that the callsite exists
+        // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
@@ -694,9 +681,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -718,6 +705,9 @@ where
             return outer;
         }
 
+        // The intention behind calling `inner.register_callsite()` before the if statement
+        // is to ensure that the inner subscriber is informed that the callsite exists
+        // regardless of the outer subscriber's filtering decision.
         let inner = self.inner.register_callsite(metadata);
         if outer.is_sometimes() {
             // if this interest is "sometimes", return "sometimes" to ensure that
@@ -732,7 +722,7 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         if self.subscriber.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner subscriber.
-            self.subscriber.enabled(metadata, ctx)
+            self.inner.enabled(metadata, ctx)
         } else {
             // otherwise, the callsite is disabled by this subscriber
             false
@@ -788,9 +778,9 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+            return Some(NonNull::from(self).cast());
         }
         self.subscriber
             .downcast_raw(id)
@@ -885,13 +875,108 @@ where
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }
     }
+}
+
+macro_rules! subscriber_impl_body {
+    () => {
+        #[inline]
+        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+            self.deref().new_span(attrs, id, ctx)
+        }
+
+        #[inline]
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            self.deref().register_callsite(metadata)
+        }
+
+        #[inline]
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+            self.deref().enabled(metadata, ctx)
+        }
+
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.deref().max_level_hint()
+        }
+
+        #[inline]
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+            self.deref().on_record(span, values, ctx)
+        }
+
+        #[inline]
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+            self.deref().on_follows_from(span, follows, ctx)
+        }
+
+        #[inline]
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+            self.deref().on_event(event, ctx)
+        }
+
+        #[inline]
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+            self.deref().on_enter(id, ctx)
+        }
+
+        #[inline]
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+            self.deref().on_exit(id, ctx)
+        }
+
+        #[inline]
+        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+            self.deref().on_close(id, ctx)
+        }
+
+        #[inline]
+        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+            self.deref().on_id_change(old, new, ctx)
+        }
+
+        #[doc(hidden)]
+        #[inline]
+        unsafe fn downcast_raw(&self, id: TypeId) -> std::option::Option<NonNull<()>> {
+            self.deref().downcast_raw(id)
+        }
+    };
+}
+
+impl<S, C> Subscribe<C> for Arc<S>
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    subscriber_impl_body! {}
+}
+
+impl<C> Subscribe<C> for Arc<dyn Subscribe<C> + Send + Sync>
+where
+    C: Collect,
+{
+    subscriber_impl_body! {}
+}
+
+impl<S, C> Subscribe<C> for Box<S>
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    subscriber_impl_body! {}
+}
+
+impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
+where
+    C: Collect,
+{
+    subscriber_impl_body! {}
 }
 
 #[cfg(feature = "registry")]
@@ -913,7 +998,7 @@ where
 {
     fn ctx(&self) -> Context<'_, C> {
         Context {
-            subscriber: Some(&self.inner),
+            collector: Some(&self.inner),
         }
     }
 }
@@ -939,7 +1024,7 @@ where
     /// Returns the wrapped subscriber's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber
+        self.collector
             .map(Collect::current_span)
             // TODO: this would be more correct as "unknown", so perhaps
             // `tracing-core` should make `Current::unknown()` public?
@@ -949,11 +1034,11 @@ where
     /// Returns whether the wrapped subscriber would enable the current span.
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber
-            .map(|subscriber| subscriber.enabled(metadata))
+        self.collector
+            .map(|collector| collector.enabled(metadata))
             // If this context is `None`, we are registering a callsite, so
             // return `true` so that the subscriber does not incorrectly assume that
-            // the inner subscriber has disabled this metadata.
+            // the inner collector has disabled this metadata.
             // TODO(eliza): would it be more correct for this to return an `Option`?
             .unwrap_or(true)
     }
@@ -979,8 +1064,80 @@ where
     /// [`Context::enabled`]: Layered::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if let Some(ref subscriber) = self.subscriber {
-            subscriber.event(event);
+        if let Some(collector) = self.collector {
+            collector.event(event);
+        }
+    }
+
+    /// Returns a [`SpanRef`] for the parent span of the given [`Event`], if
+    /// it has a parent.
+    ///
+    /// If the event has an explicitly overridden parent, this method returns
+    /// a reference to that span. If the event's parent is the current span,
+    /// this returns a reference to the current span, if there is one. If this
+    /// returns `None`, then either the event's parent was explicitly set to
+    /// `None`, or the event's parent was defined contextually, but no span
+    /// is currently entered.
+    ///
+    /// Compared to [`Context::current_span`] and [`Context::lookup_current`],
+    /// this respects overrides provided by the [`Event`].
+    ///
+    /// Compared to [`Event::parent`], this automatically falls back to the contextual
+    /// span, if required.
+    ///
+    /// ```rust
+    /// use tracing::{Collect, Event};
+    /// use tracing_subscriber::{
+    ///     subscribe::{Context, Subscribe},
+    ///     prelude::*,
+    ///     registry::LookupSpan,
+    /// };
+    ///
+    /// struct PrintingSubscriber;
+    /// impl<C> Subscribe<C> for PrintingSubscriber
+    /// where
+    ///     C: Collect + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_event(&self, event: &Event, ctx: Context<C>) {
+    ///         let span = ctx.event_span(event);
+    ///         println!("Event in span: {:?}", span.map(|s| s.name()));
+    ///     }
+    /// }
+    ///
+    /// tracing::collect::with_default(tracing_subscriber::registry().with(PrintingSubscriber), || {
+    ///     tracing::info!("no span");
+    ///     // Prints: Event in span: None
+    ///
+    ///     let span = tracing::info_span!("span");
+    ///     tracing::info!(parent: &span, "explicitly specified");
+    ///     // Prints: Event in span: Some("span")
+    ///
+    ///     let _guard = span.enter();
+    ///     tracing::info!("contextual span");
+    ///     // Prints: Event in span: Some("span")
+    /// });
+    /// ```
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    #[inline]
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, C>>
+    where
+        C: for<'lookup> LookupSpan<'lookup>,
+    {
+        if event.is_root() {
+            None
+        } else if event.is_contextual() {
+            self.lookup_current()
+        } else {
+            event.parent().and_then(|id| self.span(id))
         }
     }
 
@@ -995,7 +1152,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let span = self.subscriber.as_ref()?.span(id)?;
+        let span = self.collector.as_ref()?.span(id)?;
         Some(span.metadata())
     }
 
@@ -1004,9 +1161,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1023,14 +1177,11 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref()?.span(id)
+        self.collector.as_ref()?.span(id)
     }
 
     /// Returns `true` if an active span exists for the given `Id`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1045,7 +1196,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
+        self.collector.as_ref().and_then(|s| s.span(id)).is_some()
     }
 
     /// Returns [stored data] for the span that the wrapped collector considers
@@ -1053,9 +1204,6 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
@@ -1072,10 +1220,10 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let subscriber = self.subscriber.as_ref()?;
-        let current = subscriber.current_span();
+        let collector = self.collector.as_ref()?;
+        let current = collector.current_span();
         let id = current.id()?;
-        let span = subscriber.span(&id);
+        let span = collector.span(id);
         debug_assert!(
             span.is_some(),
             "the subscriber should have data for the current span ({:?})!",
@@ -1085,52 +1233,80 @@ where
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// If this iterator is empty, then there are no spans in the current context.
+    /// current context, starting with the specified span and ending with the
+    /// root of the trace tree and ending with the current span.
     ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///
-    /// **Note**: This requires the wrapped subscriber to implement the [`LookupSpan`] trait.
-    /// See the documentation on [`Context`]'s declaration for details.
-    ///
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
     /// </pre></div>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    pub fn scope(&self) -> Scope<'_, C>
+    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,
     {
-        let scope = self.lookup_current().map(|span| {
-            let parents = span.from_root();
-            parents.chain(std::iter::once(span))
-        });
-        Scope(scope)
+        Some(self.span(id)?.scope())
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting with the parent span of the specified event,
+    /// and ending with the root of the trace tree and ending with the current span.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: ../registry/struct.SpanRef.html
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, C>>
+    where
+        C: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        Some(self.event_span(event)?.scope())
     }
 }
 
 impl<'a, C> Context<'a, C> {
     pub(crate) fn none() -> Self {
-        Self { subscriber: None }
+        Self { collector: None }
     }
 }
 
 impl<'a, C> Clone for Context<'a, C> {
     #[inline]
     fn clone(&self) -> Self {
-        let subscriber = if let Some(ref subscriber) = self.subscriber {
-            Some(*subscriber)
-        } else {
-            None
-        };
-        Context { subscriber }
+        let collector = self.collector.as_ref().copied();
+        Context { collector }
     }
 }
 
@@ -1145,29 +1321,9 @@ impl Identity {
     }
 }
 
-// === impl Scope ===
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> Iterator for Scope<'a, L> {
-    type Item = SpanRef<'a, L>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.as_mut()?.next()
-    }
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<'a, L: LookupSpan<'a>> std::fmt::Debug for Scope<'a, L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("Scope { .. }")
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
+
     use super::*;
 
     pub(crate) struct NopCollector;
@@ -1190,6 +1346,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct NopSubscriber;
@@ -1230,6 +1389,9 @@ pub(crate) mod tests {
         fn event(&self, _: &Event<'_>) {}
         fn enter(&self, _: &span::Id) {}
         fn exit(&self, _: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     fn assert_collector(_s: impl Collect) {}
@@ -1264,7 +1426,7 @@ pub(crate) mod tests {
             .and_then(NopSubscriber)
             .with_collector(StringCollector("collector".into()));
         let collector =
-            Collect::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
+            <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
         assert_eq!(&collector.0, "collector");
     }
 
@@ -1274,14 +1436,53 @@ pub(crate) mod tests {
             .and_then(StringSubscriber2("subscriber_2".into()))
             .and_then(StringSubscriber3("subscriber_3".into()))
             .with_collector(NopCollector);
-        let layer =
-            Collect::downcast_ref::<StringSubscriber>(&s).expect("subscriber 2 should downcast");
-        assert_eq!(&layer.0, "subscriber_1");
-        let layer =
-            Collect::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
-        assert_eq!(&layer.0, "subscriber_2");
-        let layer =
-            Collect::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
-        assert_eq!(&layer.0, "subscriber_3");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber>(&s)
+            .expect("subscriber 2 should downcast");
+        assert_eq!(&subscriber.0, "subscriber_1");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber2>(&s)
+            .expect("subscriber 2 should downcast");
+        assert_eq!(&subscriber.0, "subscriber_2");
+        let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber3>(&s)
+            .expect("subscriber 3 should downcast");
+        assert_eq!(&subscriber.0, "subscriber_3");
+    }
+
+    #[test]
+    #[cfg(feature = "registry")]
+    fn context_event_span() {
+        use std::sync::{Arc, Mutex};
+        let last_event_span = Arc::new(Mutex::new(None));
+
+        struct RecordingSubscriber {
+            last_event_span: Arc<Mutex<Option<&'static str>>>,
+        }
+
+        impl<S> Subscribe<S> for RecordingSubscriber
+        where
+            S: Collect + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+                let span = ctx.event_span(event);
+                *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
+            }
+        }
+
+        tracing::collect::with_default(
+            crate::registry().with(RecordingSubscriber {
+                last_event_span: last_event_span.clone(),
+            }),
+            || {
+                tracing::info!("no span");
+                assert_eq!(*last_event_span.lock().unwrap(), None);
+
+                let parent = tracing::info_span!("explicit");
+                tracing::info!(parent: &parent, "explicit span");
+                assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
+
+                let _guard = tracing::info_span!("contextual").entered();
+                tracing::info!("contextual span");
+                assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
+            },
+        );
     }
 }

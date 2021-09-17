@@ -1,3 +1,4 @@
+#![cfg(feature = "reload")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     collect::Interest,
@@ -26,6 +27,9 @@ impl Collect for NopCollector {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &Id) {}
     fn exit(&self, _: &Id) {}
+    fn current_span(&self) -> tracing_core::span::Current {
+        tracing_core::span::Current::unknown()
+    }
 }
 
 #[test]

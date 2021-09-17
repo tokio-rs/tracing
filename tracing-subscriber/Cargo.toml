@@ -34,8 +34,8 @@ json = ["tracing-serde", "serde", "serde_json"]
 tracing-core = { path = "../tracing-core", version = "0.2" }
 
 # only required by the filter feature
-tracing = { optional = true, path = "../tracing", version = "0.2" }
-matchers = { optional = true, version = "0.0.1" }
+tracing = { optional = true, path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
+matchers = { optional = true, version = "0.1.0" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1" }
 lazy_static = { optional = true, version = "1" }
@@ -43,7 +43,7 @@ lazy_static = { optional = true, version = "1" }
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
 ansi_term = { version = "0.12", optional = true }
-chrono = { version = "0.4", optional = true }
+chrono = { version = "0.4.16", optional = true, default-features = false, features = ["clock", "std"] }
 
 # only required by the json feature
 serde_json = { version = "1.0", optional = true }

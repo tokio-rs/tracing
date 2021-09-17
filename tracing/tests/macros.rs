@@ -407,6 +407,12 @@ fn trace() {
     trace!(?foo);
     trace!(%foo);
     trace!(foo);
+    trace!(target: "foo_events", ?foo);
+    trace!(target: "foo_events", %foo);
+    trace!(target: "foo_events", foo);
+    trace!(target: "foo_events", ?foo, true, "message");
+    trace!(target: "foo_events", %foo, true, "message");
+    trace!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -437,6 +443,12 @@ fn debug() {
     debug!(?foo);
     debug!(%foo);
     debug!(foo);
+    debug!(target: "foo_events", ?foo);
+    debug!(target: "foo_events", %foo);
+    debug!(target: "foo_events", foo);
+    debug!(target: "foo_events", ?foo, true, "message");
+    debug!(target: "foo_events", %foo, true, "message");
+    debug!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -467,6 +479,12 @@ fn info() {
     info!(?foo);
     info!(%foo);
     info!(foo);
+    info!(target: "foo_events", ?foo);
+    info!(target: "foo_events", %foo);
+    info!(target: "foo_events", foo);
+    info!(target: "foo_events", ?foo, true, "message");
+    info!(target: "foo_events", %foo, true, "message");
+    info!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -497,6 +515,12 @@ fn warn() {
     warn!(?foo);
     warn!(%foo);
     warn!(foo);
+    warn!(target: "foo_events", ?foo);
+    warn!(target: "foo_events", %foo);
+    warn!(target: "foo_events", foo);
+    warn!(target: "foo_events", ?foo, true, "message");
+    warn!(target: "foo_events", %foo, true, "message");
+    warn!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -527,6 +551,12 @@ fn error() {
     error!(?foo);
     error!(%foo);
     error!(foo);
+    error!(target: "foo_events", ?foo);
+    error!(target: "foo_events", %foo);
+    error!(target: "foo_events", foo);
+    error!(target: "foo_events", ?foo, true, "message");
+    error!(target: "foo_events", %foo, true, "message");
+    error!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

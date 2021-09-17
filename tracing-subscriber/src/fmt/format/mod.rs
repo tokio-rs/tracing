@@ -1,15 +1,14 @@
 //! Formatters for logging `tracing` events.
-use super::time::{self, FormatTime, SystemTime};
+use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_subscriber::FmtContext,
-    fmt::fmt_subscriber::FormattedFields,
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
+    registry::Scope,
 };
 
 use std::{
     fmt::{self, Write},
-    iter,
     marker::PhantomData,
 };
 use tracing_core::{
@@ -39,38 +38,106 @@ use fmt::{Debug, Display};
 
 /// A type that can format a tracing `Event` for a `fmt::Write`.
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`]. Each time an event is
-/// dispatched to [`fmt::Collector`] or [`fmt::Subscriber`], the subscriber or layer forwards it to
-/// its associated `FormatEvent` to emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
+/// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
+/// the collector or subscriber forwards it to its associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
+/// # Examples
+///
+/// ```rust
+/// use std::fmt::{self, Write};
+/// use tracing_core::{Collect, Event};
+/// use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext, FormattedFields};
+/// use tracing_subscriber::registry::LookupSpan;
+///
+/// struct MyFormatter;
+///
+/// impl<C, N> FormatEvent<C, N> for MyFormatter
+/// where
+///     C: Collect + for<'a> LookupSpan<'a>,
+///     N: for<'a> FormatFields<'a> + 'static,
+/// {
+///     fn format_event(
+///         &self,
+///         ctx: &FmtContext<'_, C, N>,
+///         writer: &mut dyn fmt::Write,
+///         event: &Event<'_>,
+///     ) -> fmt::Result {
+///         // Write level and target
+///         let level = *event.metadata().level();
+///         let target = event.metadata().target();
+///         write!(
+///             writer,
+///             "{} {}: ",
+///             level,
+///             target,
+///         )?;
+///
+///         // Write spans and fields of each span
+///         ctx.visit_spans(|span| {
+///             write!(writer, "{}", span.name())?;
+///
+///             let ext = span.extensions();
+///
+///             // `FormattedFields` is a a formatted representation of the span's
+///             // fields, which is stored in its extensions by the `fmt` layer's
+///             // `new_span` method. The fields will have been formatted
+///             // by the same field formatter that's provided to the event
+///             // formatter in the `FmtContext`.
+///             let fields = &ext
+///                 .get::<FormattedFields<N>>()
+///                 .expect("will never be `None`");
+///
+///             if !fields.is_empty() {
+///                 write!(writer, "{{{}}}", fields)?;
+///             }
+///             write!(writer, ": ")?;
+///
+///             Ok(())
+///         })?;
+///
+///         // Write fields on the event
+///         ctx.field_format().format_fields(writer, event)?;
+///
+///         writeln!(writer)
+///     }
+/// }
+/// ```
+///
+/// This formatter will print events like this:
+///
+/// ```text
+/// DEBUG yak_shaving::shaver: some-span{field-on-span=foo}: started shaving yak
+/// ```
+///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
-pub trait FormatEvent<S, N>
+pub trait FormatEvent<C, N>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given `Write`.
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<S, N> FormatEvent<S, N>
-    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+impl<C, N> FormatEvent<C, N>
+    for fn(ctx: &FmtContext<'_, C, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -123,11 +190,14 @@ pub trait FormatFields<'writer> {
 ///     .event_format(format)
 ///     .init();
 /// ```
+/// [event formatter]: FormatEvent
 pub fn format() -> Format {
     Format::default()
 }
 
 /// Returns the default configuration for a JSON [event formatter].
+///
+/// [event formatter]: FormatEvent
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub fn json() -> Format<Json> {
@@ -182,6 +252,7 @@ pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
     pub(crate) ansi: bool,
+    pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
@@ -194,6 +265,7 @@ impl Default for Format<Full, SystemTime> {
             format: Full,
             timer: SystemTime,
             ansi: true,
+            display_timestamp: true,
             display_target: true,
             display_level: true,
             display_thread_id: false,
@@ -212,6 +284,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: false,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -223,6 +296,23 @@ impl<F, T> Format<F, T> {
     /// See [`Pretty`].
     ///
     /// Note that this requires the "ansi" feature to be enabled.
+    ///
+    /// # Options
+    ///
+    /// [`Format::with_ansi`] can be used to disable ANSI terminal escape codes (which enable
+    /// formatting such as colors, bold, italic, etc) in event formatting. However, a field
+    /// formatter must be manually provided to avoid ANSI in the formatting of parent spans, like
+    /// so:
+    ///
+    /// ```
+    /// # use tracing_subscriber::fmt::format;
+    /// tracing_subscriber::fmt()
+    ///    .pretty()
+    ///    .with_ansi(false)
+    ///    .fmt_fields(format::PrettyFields::new().with_ansi(false))
+    ///    // ... other settings ...
+    ///    .init();
+    /// ```
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Format<Pretty, T> {
@@ -231,6 +321,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -260,6 +351,7 @@ impl<F, T> Format<F, T> {
             timer: self.timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -268,20 +360,22 @@ impl<F, T> Format<F, T> {
 
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See [`time` module] for the provided timer implementations.
     ///
     /// Note that using the `chrono` feature flag enables the
     /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
     ///
-    /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`timer`]: super::time::FormatTime
+    /// [`time` module]: mod@super::time
+    /// [`ChronoUtc`]: super::time::ChronoUtc
+    /// [`ChronoLocal`]: super::time::ChronoLocal
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
             timer,
             ansi: self.ansi,
             display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
@@ -294,6 +388,7 @@ impl<F, T> Format<F, T> {
             format: self.format,
             timer: (),
             ansi: self.ansi,
+            display_timestamp: false,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
@@ -364,6 +459,45 @@ impl<F, T> Format<F, T> {
 
         Ok(())
     }
+
+    #[inline]
+    fn format_timestamp(&self, writer: &mut dyn fmt::Write) -> fmt::Result
+    where
+        T: FormatTime,
+    {
+        // If timestamps are disabled, do nothing.
+        if !self.display_timestamp {
+            return Ok(());
+        }
+
+        // If ANSI color codes are enabled, format the timestamp with ANSI
+        // colors.
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                let style = Style::new().dimmed();
+                write!(writer, "{}", style.prefix())?;
+                self.timer.format_time(writer)?;
+                write!(writer, "{} ", style.suffix())?;
+                return Ok(());
+            }
+        }
+
+        // Otherwise, just format the timestamp without ANSI formatting.
+        self.timer.format_time(writer)?;
+        writer.write_char(' ')
+    }
+
+    fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
 }
 
 #[cfg(feature = "json")]
@@ -407,15 +541,15 @@ impl<T> Format<Json, T> {
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Full, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -425,11 +559,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
@@ -450,35 +581,46 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let full_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FullCtx::new(ctx, event.parent(), self.ansi)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FullCtx::new(ctx, event.parent())
-            }
-        };
+        if let Some(scope) = ctx.ctx.event_scope(event) {
+            let bold = self.bold();
+            let mut seen = false;
 
-        write!(writer, "{}", full_ctx)?;
+            for span in scope.from_root() {
+                write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                seen = true;
+
+                let ext = span.extensions();
+                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                    }
+                }
+                writer.write_char(':')?;
+            }
+
+            if seen {
+                writer.write_char(' ')?;
+            }
+        }
+
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
+
         ctx.format_fields(writer, event)?;
         writeln!(writer)
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Compact, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, C, N>,
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
@@ -488,11 +630,8 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        #[cfg(feature = "ansi")]
-        time::write(&self.timer, writer, self.ansi)?;
-        #[cfg(not(feature = "ansi"))]
-        time::write(&self.timer, writer)?;
 
+        self.format_timestamp(writer)?;
         self.format_level(*meta.level(), writer)?;
 
         if self.display_thread_name {
@@ -527,22 +666,19 @@ where
 
         ctx.format_fields(writer, event)?;
 
-        let span = event
-            .parent()
-            .and_then(|id| ctx.ctx.span(&id))
-            .or_else(|| ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
         #[cfg(feature = "ansi")]
         let dimmed = if self.ansi {
             Style::new().dimmed()
         } else {
             Style::new()
         };
-        for span in scope {
+        for span in ctx
+            .ctx
+            .event_scope(event)
+            .into_iter()
+            .map(Scope::from_root)
+            .flatten()
+        {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
@@ -657,7 +793,10 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            self.record_debug(field, &format_args!("{}, {}: {}", value, field, source))
+            self.record_debug(
+                field,
+                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+            )
         } else {
             self.record_debug(field, &format_args!("{}", value))
         }
@@ -702,84 +841,18 @@ impl<'a> fmt::Debug for DefaultVisitor<'a> {
     }
 }
 
-struct FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    ctx: &'a FmtContext<'a, S, N>,
-    span: Option<&'a span::Id>,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
+/// Renders an error into a list of sources, *including* the error
+struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
 
-impl<'a, S, N: 'a> FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    #[cfg(feature = "ansi")]
-    pub(crate) fn new(
-        ctx: &'a FmtContext<'a, S, N>,
-        span: Option<&'a span::Id>,
-        ansi: bool,
-    ) -> Self {
-        Self { ctx, span, ansi }
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
-        }
-
-        Style::new()
-    }
-}
-
-impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
+impl<'a> Display for ErrorSourceList<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bold = self.bold();
-        let mut seen = false;
-
-        let span = self
-            .span
-            .and_then(|id| self.ctx.ctx.span(&id))
-            .or_else(|| self.ctx.ctx.lookup_current());
-
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
-
-        for span in scope {
-            write!(f, "{}", bold.paint(span.metadata().name()))?;
-            seen = true;
-
-            let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
-            }
-            f.write_char(':')?;
+        let mut list = f.debug_list();
+        let mut curr = Some(self.0);
+        while let Some(curr_err) = curr {
+            list.entry(&format_args!("{}", curr_err));
+            curr = curr_err.source();
         }
-
-        if seen {
-            f.write_char(' ')?;
-        }
-        Ok(())
+        list.finish()
     }
 }
 
@@ -864,6 +937,15 @@ trait LevelNames {
     }
 }
 
+#[cfg(feature = "ansi")]
+impl LevelNames for Pretty {
+    const TRACE_STR: &'static str = "TRACE";
+    const DEBUG_STR: &'static str = "DEBUG";
+    const INFO_STR: &'static str = " INFO";
+    const WARN_STR: &'static str = " WARN";
+    const ERROR_STR: &'static str = "ERROR";
+}
+
 impl LevelNames for Full {
     const TRACE_STR: &'static str = "TRACE";
     const DEBUG_STR: &'static str = "DEBUG";
@@ -872,11 +954,11 @@ impl LevelNames for Full {
     const ERROR_STR: &'static str = "ERROR";
 }
 impl LevelNames for Compact {
-    const TRACE_STR: &'static str = "T";
-    const DEBUG_STR: &'static str = "D";
-    const INFO_STR: &'static str = "I";
-    const WARN_STR: &'static str = "W";
-    const ERROR_STR: &'static str = "!";
+    const TRACE_STR: &'static str = ".";
+    const DEBUG_STR: &'static str = ":";
+    const INFO_STR: &'static str = "i";
+    const WARN_STR: &'static str = "!";
+    const ERROR_STR: &'static str = "X";
 }
 
 struct FmtLevel<F: ?Sized> {
@@ -973,40 +1055,89 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 ///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FmtSpan(FmtSpanInner);
+pub struct FmtSpan(u8);
 
 impl FmtSpan {
-    /// spans are ignored (this is the default)
-    pub const NONE: FmtSpan = FmtSpan(FmtSpanInner::None);
-    /// one event per enter/exit of a span
-    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpanInner::Active);
+    /// one event when span is created
+    pub const NEW: FmtSpan = FmtSpan(1 << 0);
+    /// one event per enter of a span
+    pub const ENTER: FmtSpan = FmtSpan(1 << 1);
+    /// one event per exit of a span
+    pub const EXIT: FmtSpan = FmtSpan(1 << 2);
     /// one event when the span is dropped
-    pub const CLOSE: FmtSpan = FmtSpan(FmtSpanInner::Close);
-    /// events at all points (new, enter, exit, drop)
-    pub const FULL: FmtSpan = FmtSpan(FmtSpanInner::Full);
-}
+    pub const CLOSE: FmtSpan = FmtSpan(1 << 3);
 
-impl Debug for FmtSpan {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            FmtSpanInner::None => f.write_str("FmtSpan::NONE"),
-            FmtSpanInner::Active => f.write_str("FmtSpan::ACTIVE"),
-            FmtSpanInner::Close => f.write_str("FmtSpan::CLOSE"),
-            FmtSpanInner::Full => f.write_str("FmtSpan::FULL"),
-        }
+    /// spans are ignored (this is the default)
+    pub const NONE: FmtSpan = FmtSpan(0);
+    /// one event per enter/exit of a span
+    pub const ACTIVE: FmtSpan = FmtSpan(FmtSpan::ENTER.0 | FmtSpan::EXIT.0);
+    /// events at all points (new, enter, exit, drop)
+    pub const FULL: FmtSpan =
+        FmtSpan(FmtSpan::NEW.0 | FmtSpan::ENTER.0 | FmtSpan::EXIT.0 | FmtSpan::CLOSE.0);
+
+    /// Check whether or not a certain flag is set for this [`FmtSpan`]
+    fn contains(&self, other: FmtSpan) -> bool {
+        self.clone() & other.clone() == other
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-enum FmtSpanInner {
-    /// spans are ignored (this is the default)
-    None,
-    /// one event per enter/exit of a span
-    Active,
-    /// one event when the span is dropped
-    Close,
-    /// events at all points (new, enter, exit, drop)
-    Full,
+macro_rules! impl_fmt_span_bit_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            type Output = FmtSpan;
+
+            fn $func(self, rhs: Self) -> Self::Output {
+                FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+macro_rules! impl_fmt_span_bit_assign_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait for FmtSpan {
+            fn $func(&mut self, rhs: Self) {
+                *self = FmtSpan(self.0 $op rhs.0)
+            }
+        }
+    };
+}
+
+impl_fmt_span_bit_op!(BitAnd, bitand, &);
+impl_fmt_span_bit_op!(BitOr, bitor, |);
+impl_fmt_span_bit_op!(BitXor, bitxor, ^);
+
+impl_fmt_span_bit_assign_op!(BitAndAssign, bitand_assign, &);
+impl_fmt_span_bit_assign_op!(BitOrAssign, bitor_assign, |);
+impl_fmt_span_bit_assign_op!(BitXorAssign, bitxor_assign, ^);
+
+impl Debug for FmtSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut wrote_flag = false;
+        let mut write_flags = |flag, flag_str| -> fmt::Result {
+            if self.contains(flag) {
+                if wrote_flag {
+                    f.write_str(" | ")?;
+                }
+
+                f.write_str(flag_str)?;
+                wrote_flag = true;
+            }
+
+            Ok(())
+        };
+
+        if FmtSpan::NONE | self.clone() == FmtSpan::NONE {
+            f.write_str("FmtSpan::NONE")?;
+        } else {
+            write_flags(FmtSpan::NEW, "FmtSpan::NEW")?;
+            write_flags(FmtSpan::ENTER, "FmtSpan::ENTER")?;
+            write_flags(FmtSpan::EXIT, "FmtSpan::EXIT")?;
+            write_flags(FmtSpan::CLOSE, "FmtSpan::CLOSE")?;
+        }
+
+        Ok(())
+    }
 }
 
 pub(super) struct FmtSpanConfig {
@@ -1028,13 +1159,16 @@ impl FmtSpanConfig {
         }
     }
     pub(super) fn trace_new(&self) -> bool {
-        matches!(self.kind, FmtSpan::FULL)
+        self.kind.contains(FmtSpan::NEW)
     }
-    pub(super) fn trace_active(&self) -> bool {
-        matches!(self.kind, FmtSpan::ACTIVE | FmtSpan::FULL)
+    pub(super) fn trace_enter(&self) -> bool {
+        self.kind.contains(FmtSpan::ENTER)
+    }
+    pub(super) fn trace_exit(&self) -> bool {
+        self.kind.contains(FmtSpan::EXIT)
     }
     pub(super) fn trace_close(&self) -> bool {
-        matches!(self.kind, FmtSpan::CLOSE | FmtSpan::FULL)
+        self.kind.contains(FmtSpan::CLOSE)
     }
 }
 
@@ -1053,7 +1187,6 @@ impl Default for FmtSpanConfig {
     }
 }
 
-#[repr(transparent)]
 pub(super) struct TimingDisplay(pub(super) u64);
 impl Display for TimingDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1081,7 +1214,7 @@ pub(super) mod test {
         dispatch::{set_default, Dispatch},
     };
 
-    use super::TimingDisplay;
+    use super::{FmtSpan, TimingDisplay};
     use std::fmt;
 
     pub(crate) struct MockTime;
@@ -1089,6 +1222,22 @@ pub(super) mod test {
         fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
             write!(w, "fake time")
         }
+    }
+
+    #[test]
+    fn disable_everything() {
+        // This test reproduces https://github.com/tokio-rs/tracing/issues/1354
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_thread_names(false);
+        #[cfg(feature = "ansi")]
+        let subscriber = subscriber.with_ansi(false);
+        run_test(subscriber, make_writer, "hello\n")
     }
 
     #[cfg(feature = "ansi")]
@@ -1215,5 +1364,32 @@ pub(super) mod test {
         assert_eq!(fmt(12345678901), "12.3s");
         assert_eq!(fmt(123456789012), "123s");
         assert_eq!(fmt(1234567890123), "1235s");
+    }
+
+    #[test]
+    fn fmt_span_combinations() {
+        let f = FmtSpan::NONE;
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
+
+        let f = FmtSpan::ACTIVE;
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
+
+        let f = FmtSpan::FULL;
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
+
+        let f = FmtSpan::NEW | FmtSpan::CLOSE;
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
     }
 }
