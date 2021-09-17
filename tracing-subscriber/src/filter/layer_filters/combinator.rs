@@ -4,7 +4,12 @@ use std::cmp;
 use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
 
 /// Combines two [`Filter`]s so that spans and events are enabled if and only if
-/// _both_ filters return `true`.
+/// *both* filters return `true`.
+///
+/// Typically, this type is returned by the [`FilterExt::and`] method. See that
+/// method's documentation for details.
+///
+/// [`FilterExt::and`]: crate::filter::FilterExt::and
 #[derive(Debug, Clone)]
 pub struct And<A, B>(A, B);
 
@@ -14,12 +19,54 @@ pub struct And<A, B>(A, B);
 pub struct Or<A, B>(A, B);
 
 /// Inverts the result of a [`Filter`].
+///
+/// If the wrapped filter would enable a span or event, it will be disabled. If
+/// it would disable a span or event, that span or event will be enabled.
 #[derive(Debug, Clone)]
 pub struct Not<A>(A);
 
 // === impl And ===
 
 impl<A, B> And<A, B> {
+    /// Combines two [`Filter`]s so that spans and events are enabled if and only if
+    /// *both* filters return `true`.
+    ///
+    /// # Examples
+    ///
+    /// Enabling spans or events if they have both a particular target *and* are
+    /// above a certain level:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, combinator::And};
+    ///     prelude::*,
+    /// };
+    ///
+    /// // Enables spans and events with targets starting with `interesting_target`:
+    /// let target_filter = filter::filter_fn(|meta| {
+    ///     meta.target().starts_with("interesting_target")
+    /// });
+    ///
+    /// // Enables spans and events with levels `INFO` and below:
+    /// let level_filter = LevelFilter::INFO;
+    ///
+    /// // Combine the two filters together so that a span or event is only enabled
+    /// // if *both* filters would enable it:
+    /// let filter = And::new(level_filter, target_filter);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::info!("an event with an uninteresting target");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!(target: "interesting_target", "a very interesting event");
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::debug!(target: "interesting_target", "interesting debug event...");
+    /// ```
     pub const fn new(a: A, b: B) -> Self {
         Self(a, b)
     }
@@ -59,6 +106,8 @@ where
 // === impl Or ===
 
 impl<A, B> Or<A, B> {
+    /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
+    /// returns `true`.
     pub const fn new(a: A, b: B) -> Self {
         Self(a, b)
     }
@@ -107,6 +156,10 @@ where
 // === impl Not ===
 
 impl<A> Not<A> {
+    /// Inverts the result of a [`Filter`].
+    ///
+    /// If the wrapped filter would enable a span or event, it will be disabled. If
+    /// it would disable a span or event, that span or event will be enabled.
     pub const fn new(a: A) -> Self {
         Self(a)
     }
