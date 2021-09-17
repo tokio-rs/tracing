@@ -236,6 +236,11 @@ impl<L, F, S> Filtered<L, F, S> {
 
     #[inline(always)]
     fn id(&self) -> FilterId {
+        debug_assert!(
+            !self.id.0.is_disabled(),
+            "a `Filtered` layer was used, but it had no `FilterId`; \
+            was it registered with the subscriber?"
+        );
         self.id.0
     }
 
@@ -503,6 +508,10 @@ impl FilterId {
         }
 
         Self(self.0 | other)
+    }
+
+    fn is_disabled(self) -> bool {
+        self.0 == Self::disabled().0
     }
 }
 
