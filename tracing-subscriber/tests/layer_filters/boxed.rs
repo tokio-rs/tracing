@@ -1,30 +1,27 @@
 use super::*;
 use std::sync::Arc;
-use tracing_subscriber::{
-    filter::{LevelFilter, Targets},
-    prelude::*,
-    Layer,
-};
+use tracing_subscriber::{filter, prelude::*, Layer};
 
 fn layer() -> (ExpectLayer, subscriber::MockHandle) {
-    layer::mock()
-        .event(event::mock().with_fields(field::mock("i").with_value(&0)))
-        .event(event::mock().with_fields(field::mock("i").with_value(&1)))
-        .done()
-        .run_with_handle()
+    layer::mock().done().run_with_handle()
+}
+
+fn filter<S>() -> filter::DynFilterFn<S> {
+    // Use dynamic filter fn to disable interest caching and max-level hints,
+    // allowing us to put all of these tests in the same file.
+    filter::dynamic_filter_fn(|_, _| false)
 }
 
 /// reproduces https://github.com/tokio-rs/tracing/issues/1563#issuecomment-921363629
 #[test]
 fn box_works() {
     let (layer, handle) = layer();
-    let layer =
-        Box::new(layer.with_filter(Targets::new().with_target("hello", LevelFilter::DEBUG)));
+    let layer = Box::new(layer.with_filter(filter()));
 
     let _guard = tracing_subscriber::registry().with(layer).set_default();
 
-    for i in 0..1 {
-        tracing::info!(target: "Hello", message = "hello", i);
+    for i in 0..2 {
+        tracing::info!(i);
     }
 
     handle.assert_finished();
@@ -34,13 +31,12 @@ fn box_works() {
 #[test]
 fn dyn_box_works() {
     let (layer, handle) = layer();
-    let layer: Box<dyn Layer<_> + Send + Sync + 'static> =
-        Box::new(layer.with_filter(Targets::new().with_target("hello", LevelFilter::DEBUG)));
+    let layer: Box<dyn Layer<_> + Send + Sync + 'static> = Box::new(layer.with_filter(filter()));
 
     let _guard = tracing_subscriber::registry().with(layer).set_default();
 
-    for i in 0..1 {
-        tracing::info!(target: "Hello", message = "hello", i);
+    for i in 0..2 {
+        tracing::info!(i);
     }
 
     handle.assert_finished();
@@ -50,13 +46,12 @@ fn dyn_box_works() {
 #[test]
 fn arc_works() {
     let (layer, handle) = layer();
-    let layer =
-        Box::new(layer.with_filter(Targets::new().with_target("hello", LevelFilter::DEBUG)));
+    let layer = Box::new(layer.with_filter(filter()));
 
     let _guard = tracing_subscriber::registry().with(layer).set_default();
 
-    for i in 0..1 {
-        tracing::info!(target: "Hello", message = "hello", i);
+    for i in 0..2 {
+        tracing::info!(i);
     }
 
     handle.assert_finished();
@@ -66,13 +61,12 @@ fn arc_works() {
 #[test]
 fn dyn_arc_works() {
     let (layer, handle) = layer();
-    let layer: Arc<dyn Layer<_> + Send + Sync + 'static> =
-        Arc::new(layer.with_filter(Targets::new().with_target("hello", LevelFilter::DEBUG)));
+    let layer: Arc<dyn Layer<_> + Send + Sync + 'static> = Arc::new(layer.with_filter(filter()));
 
     let _guard = tracing_subscriber::registry().with(layer).set_default();
 
-    for i in 0..1 {
-        tracing::info!(target: "Hello", message = "hello", i);
+    for i in 0..2 {
+        tracing::info!(i);
     }
 
     handle.assert_finished();
