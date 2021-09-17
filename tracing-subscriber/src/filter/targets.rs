@@ -1,3 +1,10 @@
+//! A filter that enables or disables spans and events based on their [target] and [level].
+//!
+//! See [`Targets`] for details.
+//!
+//! [target]: tracing_core::Metadata::target
+//! [level]: tracing_core::Level
+
 use crate::{
     filter::{
         directive::{DirectiveSet, ParseError, StaticDirective},
@@ -266,6 +273,34 @@ impl Targets {
         self
     }
 
+    /// Returns an iterator over the [target]-[`LevelFilter`] pairs in this filter.
+    ///
+    /// The order of iteration is undefined.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{Targets, LevelFilter};
+    /// use tracing_core::Level;
+    ///
+    /// let filter = Targets::new()
+    ///     .with_target("my_crate", Level::INFO)
+    ///     .with_target("my_crate::interesting_module", Level::DEBUG);
+    ///
+    /// let mut targets: Vec<_> = filter.iter().collect();
+    /// targets.sort();
+    ///
+    /// assert_eq!(targets, vec![
+    ///     ("my_crate", LevelFilter::INFO),
+    ///     ("my_crate::interesting_module", LevelFilter::DEBUG),
+    /// ]);
+    /// ```
+    ///
+    /// [target]: tracing_core::Metadata::target
+    pub fn iter(&self) -> Iter<'_> {
+        self.into_iter()
+    }
+
     #[inline]
     fn interested(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.0.enabled(metadata) {
@@ -344,20 +379,59 @@ impl<S> layer::Filter<S> for Targets {
     }
 }
 
+impl<'a> IntoIterator for &'a Targets {
+    type Item = (&'a str, LevelFilter);
+
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        fn unpack(directive: &StaticDirective) -> Option<(&str, LevelFilter)> {
+            directive
+                .target
+                .as_deref()
+                .map(|target| (target, directive.level))
+        }
+        Iter(self.0.iter().filter_map(unpack))
+    }
+}
+
+/// A borrowing iterator over the [target]-[level] pairs of a `Targets` filter.
+///
+/// This struct is created by [`iter`] method of [`Targets`], or from the `IntoIterator`
+/// implementation for `&Targets`.
+///
+/// [target]: tracing_core::Metadata::target
+/// [level]: tracing_core::Level
+/// [`iter`]: Targets::iter
+#[derive(Debug)]
+pub struct Iter<'a>(
+    std::iter::FilterMap<
+        std::slice::Iter<'a, StaticDirective>,
+        fn(&'a StaticDirective) -> Option<(&'a str, LevelFilter)>,
+    >,
+);
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = (&'a str, LevelFilter);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filter::directive::FilterVec;
 
-    fn expect_parse(s: &str) -> FilterVec<StaticDirective> {
+    fn expect_parse(s: &str) -> Targets {
         match dbg!(s).parse::<Targets>() {
             Err(e) => panic!("string {:?} did not parse successfully: {}", s, e),
-            Ok(e) => e.0.into_vec(),
+            Ok(e) => e,
         }
     }
 
     fn expect_parse_ralith(s: &str) {
-        let dirs = expect_parse(s);
+        let dirs = expect_parse(s).0.into_vec();
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("server".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
@@ -369,7 +443,7 @@ mod tests {
     }
 
     fn expect_parse_level_directives(s: &str) {
-        let dirs = expect_parse(s);
+        let dirs = expect_parse(s).0.into_vec();
         assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
 
         assert_eq!(dirs[0].target, Some("crate3::mod2::mod1".to_string()));
@@ -414,7 +488,9 @@ mod tests {
 
     #[test]
     fn expect_parse_valid() {
-        let dirs = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
+        let dirs = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .0
+            .into_vec();
         assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
@@ -455,6 +531,25 @@ mod tests {
             "crate1::mod1=1,crate1::mod2=2,crate1::mod2::mod3=3,crate2=4,\
              crate3=5,crate3::mod2::mod1=0",
         )
+    }
+
+    #[test]
+    fn targets_iter() {
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .with_default(LevelFilter::WARN);
+
+        let mut targets: Vec<_> = filter.iter().collect();
+        targets.sort();
+
+        assert_eq!(
+            targets,
+            vec![
+                ("crate1::mod1", LevelFilter::ERROR),
+                ("crate1::mod2", LevelFilter::TRACE),
+                ("crate2", LevelFilter::DEBUG),
+                ("crate3", LevelFilter::OFF),
+            ]
+        );
     }
 
     #[test]
