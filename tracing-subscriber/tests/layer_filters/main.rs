@@ -2,6 +2,7 @@
 #[path = "../support.rs"]
 mod support;
 use self::support::*;
+mod boxed;
 mod filter_scopes;
 mod targets;
 mod trees;
