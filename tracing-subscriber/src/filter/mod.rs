@@ -15,7 +15,7 @@ mod filter_fn;
 mod level;
 #[cfg(feature = "registry")]
 mod subscriber_filters;
-mod targets;
+pub mod targets;
 
 pub use self::directive::ParseError;
 pub use self::filter_fn::*;
