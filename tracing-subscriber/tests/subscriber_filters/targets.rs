@@ -33,9 +33,9 @@ fn log_events() {
 }
 
 #[test]
-fn inner_layer_short_circuits() {
+fn inner_subscriber_short_circuits() {
     // This test ensures that when a global filter short-circuits `Interest`
-    // evaluation, we aren't left with a "dirty" per-layer filter state.
+    // evaluation, we aren't left with a "dirty" per-subscriber filter state.
 
     let (subscriber, handle) = subscriber::mock()
         .event(event::msg("hello world"))
