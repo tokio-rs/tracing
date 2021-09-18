@@ -13,7 +13,7 @@ use crate::{
     layer,
 };
 use std::{
-    iter::{Extend, FromIterator},
+    iter::{Extend, FilterMap, FromIterator},
     str::FromStr,
 };
 use tracing_core::{Interest, Metadata, Subscriber};
@@ -423,7 +423,7 @@ impl<'a> IntoIterator for &'a Targets {
 #[derive(Debug)]
 pub struct IntoIter(
     #[allow(clippy::type_complexity)] // alias indirection would probably make this more confusing
-    std::iter::FilterMap<
+    FilterMap<
         <DirectiveSet<StaticDirective> as IntoIterator>::IntoIter,
         fn(StaticDirective) -> Option<(String, LevelFilter)>,
     >,
@@ -460,7 +460,7 @@ impl Iterator for IntoIter {
 /// [`iter`]: Targets::iter
 #[derive(Debug)]
 pub struct Iter<'a>(
-    std::iter::FilterMap<
+    FilterMap<
         std::slice::Iter<'a, StaticDirective>,
         fn(&'a StaticDirective) -> Option<(&'a str, LevelFilter)>,
     >,
