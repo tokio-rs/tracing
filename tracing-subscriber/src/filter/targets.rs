@@ -385,11 +385,7 @@ impl IntoIterator for Targets {
     type IntoIter = IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        fn unpack(directive: StaticDirective) -> Option<(String, LevelFilter)> {
-            let level = directive.level;
-            directive.target.map(move |target| (target, level))
-        }
-        IntoIter(self.0.into_iter().filter_map(unpack))
+        IntoIter::new(self)
     }
 }
 
@@ -399,13 +395,7 @@ impl<'a> IntoIterator for &'a Targets {
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        fn unpack(directive: &StaticDirective) -> Option<(&str, LevelFilter)> {
-            directive
-                .target
-                .as_deref()
-                .map(|target| (target, directive.level))
-        }
-        Iter(self.0.iter().filter_map(unpack))
+        Iter::new(self)
     }
 }
 
@@ -439,6 +429,15 @@ pub struct IntoIter(
     >,
 );
 
+impl IntoIter {
+    fn new(targets: Targets) -> Self {
+        Self(targets.0.into_iter().filter_map(|directive| {
+            let level = directive.level;
+            directive.target.map(|target| (target, level))
+        }))
+    }
+}
+
 impl Iterator for IntoIter {
     type Item = (String, LevelFilter);
 
@@ -462,6 +461,17 @@ pub struct Iter<'a>(
         fn(&'a StaticDirective) -> Option<(&'a str, LevelFilter)>,
     >,
 );
+
+impl<'a> Iter<'a> {
+    fn new(targets: &'a Targets) -> Self {
+        Self(targets.0.iter().filter_map(|directive| {
+            directive
+                .target
+                .as_deref()
+                .map(|target| (target, directive.level))
+        }))
+    }
+}
 
 impl<'a> Iterator for Iter<'a> {
     type Item = (&'a str, LevelFilter);
