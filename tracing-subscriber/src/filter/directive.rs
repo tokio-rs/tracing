@@ -112,6 +112,19 @@ impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
     }
 }
 
+impl<T> IntoIterator for DirectiveSet<T> {
+    type Item = T;
+
+    #[cfg(feature = "smallvec")]
+    type IntoIter = smallvec::IntoIter<[T; 8]>;
+    #[cfg(not(feature = "smallvec"))]
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.directives.into_iter()
+    }
+}
+
 // === impl Statics ===
 
 impl DirectiveSet<StaticDirective> {

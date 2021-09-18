@@ -13,7 +13,7 @@ mod filter_fn;
 #[cfg(feature = "registry")]
 mod layer_filters;
 mod level;
-mod targets;
+pub mod targets;
 
 pub use self::directive::ParseError;
 pub use self::filter_fn::*;
