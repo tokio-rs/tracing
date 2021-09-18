@@ -9,12 +9,19 @@ use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
 /// Typically, this type is returned by the [`FilterExt::and`] method. See that
 /// method's documentation for details.
 ///
+/// [`Filter`]: crate::layer::Filter
 /// [`FilterExt::and`]: crate::filter::FilterExt::and
 #[derive(Debug, Clone)]
 pub struct And<A, B>(A, B);
 
 /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
 /// returns `true`.
+///
+/// Typically, this type is returned by the [`FilterExt::or`] method. See that
+/// method's documentation for details.
+///
+/// [`Filter`]: crate::layer::Filter
+/// [`FilterExt::or`]: crate::filter::FilterExt::or
 #[derive(Debug, Clone)]
 pub struct Or<A, B>(A, B);
 
@@ -22,6 +29,12 @@ pub struct Or<A, B>(A, B);
 ///
 /// If the wrapped filter would enable a span or event, it will be disabled. If
 /// it would disable a span or event, that span or event will be enabled.
+///
+/// Typically, this type is returned by the [`FilterExt::or`] method. See that
+/// method's documentation for details.
+///
+/// [`Filter`]: crate::layer::Filter
+/// [`FilterExt::or`]: crate::filter::FilterExt::or
 #[derive(Debug, Clone)]
 pub struct Not<A>(A);
 
@@ -67,6 +80,8 @@ impl<A, B> And<A, B> {
     /// // This event will *not* be enabled:
     /// tracing::debug!(target: "interesting_target", "interesting debug event...");
     /// ```
+    ///
+    /// [`Filter`]: crate::layer::Filter
     pub const fn new(a: A, b: B) -> Self {
         Self(a, b)
     }
@@ -108,6 +123,78 @@ where
 impl<A, B> Or<A, B> {
     /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
     /// returns `true`.
+    ///
+    /// # Examples
+    ///
+    /// Enabling spans and events at the `INFO` level and above, and all spans
+    /// and events with a particular target:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, combinator::Or};
+    ///     prelude::*,
+    /// };
+    ///
+    /// // Enables spans and events with targets starting with `interesting_target`:
+    /// let target_filter = filter::filter_fn(|meta| {
+    ///     meta.target().starts_with("interesting_target")
+    /// });
+    ///
+    /// // Enables spans and events with levels `INFO` and below:
+    /// let level_filter = LevelFilter::INFO;
+    ///
+    /// // Combine the two filters together so that a span or event is enabled
+    /// // if it is at INFO or lower, or if it has a target starting with
+    /// // `interesting_target`.
+    /// let filter = Or::new(level_filter, target_filter);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::debug!("an uninteresting event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!("an uninteresting INFO event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!(target: "interesting_target", "a very interesting event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::debug!(target: "interesting_target", "interesting debug event...");
+    /// ```
+    ///
+    /// Enabling a higher level for a particular target by using `Or` in
+    /// conjunction with the [`And`] combinator:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, combinator};
+    ///     prelude::*,
+    /// };
+    ///
+    /// // This filter will enable spans and events with targets beginning with
+    /// // `my_crate`:
+    /// let my_crate =  target_filter = filter::filter_fn(|meta| {
+    ///     meta.target().starts_with("my_crate")
+    /// });
+    ///
+    /// // Combine the `my_crate` filter with a `LevelFilter` to produce a filter
+    /// // that will enable the `INFO` level and lower for spans and events with
+    /// // `my_crate` targets:
+    /// let filter = combinator::And::new(my_crate, LevelFilter::INFO);
+    ///
+    /// // If a span or event *doesn't* have a target beginning with
+    /// // `my_crate`, enable it if it has the `WARN` level or lower:
+    /// // let filter = combinator::Or::new(filter, LevelFilter::WARN);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    /// ```
+    ///
+    /// [`Filter`]: crate::layer::Filter
     pub const fn new(a: A, b: B) -> Self {
         Self(a, b)
     }
@@ -160,6 +247,8 @@ impl<A> Not<A> {
     ///
     /// If the wrapped filter would enable a span or event, it will be disabled. If
     /// it would disable a span or event, that span or event will be enabled.
+    ///
+    /// [`Filter`]: crate::layer::Filter
     pub const fn new(a: A) -> Self {
         Self(a)
     }
