@@ -1,9 +1,10 @@
-//! A filter that enables or disables spans and events based on their [target] and [level].
+//! A [filter] that enables or disables spans and events based on their [target] and [level].
 //!
 //! See [`Targets`] for details.
 //!
 //! [target]: tracing_core::Metadata::target
 //! [level]: tracing_core::Level
+//! [filter]: crate::layer#filtering-with-layers
 
 use crate::{
     filter::{
