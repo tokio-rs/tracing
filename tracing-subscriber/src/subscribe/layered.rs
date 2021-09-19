@@ -79,6 +79,13 @@ where
             self.inner.enabled(metadata)
         } else {
             // otherwise, the callsite is disabled by the layer
+
+            // If per-layer filters are in use, and we are short-circuiting
+            // (rather than calling into the inner type), clear the current
+            // per-layer filter `enabled` state.
+            #[cfg(feature = "registry")]
+            filter::FilterState::clear_enabled();
+
             false
         }
     }
