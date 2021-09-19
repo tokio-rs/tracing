@@ -409,7 +409,7 @@ where
 
 impl FilterId {
     const fn disabled() -> Self {
-        Self(u64::MAX)
+        Self(std::u64::MAX)
     }
 
     /// Returns a `FilterId` that will consider _all_ spans enabled.
@@ -548,7 +548,7 @@ impl fmt::Binary for FilterId {
 
 impl FilterMap {
     pub(crate) fn set(self, FilterId(mask): FilterId, enabled: bool) -> Self {
-        if mask == u64::MAX {
+        if mask == std::u64::MAX {
             return self;
         }
 
@@ -570,7 +570,7 @@ impl FilterMap {
 
     #[inline]
     pub(crate) fn any_enabled(self) -> bool {
-        self.bits != u64::MAX
+        self.bits != std::u64::MAX
     }
 }
 
@@ -727,8 +727,10 @@ impl FilterState {
     pub(crate) fn filter_map(&self) -> FilterMap {
         let map = self.enabled.get();
         #[cfg(debug_assertions)]
-        if self.counters.in_filter_pass.get() == 0 {
-            debug_assert_eq!(map, FilterMap::default());
+        {
+            if self.counters.in_filter_pass.get() == 0 {
+                debug_assert_eq!(map, FilterMap::default());
+            }
         }
 
         map
