@@ -51,12 +51,12 @@ impl<A, B> And<A, B> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, combinator::And};
+    ///     filter::{filter_fn, LevelFilter, combinator::And},
     ///     prelude::*,
     /// };
     ///
     /// // Enables spans and events with targets starting with `interesting_target`:
-    /// let target_filter = filter::filter_fn(|meta| {
+    /// let target_filter = filter_fn(|meta| {
     ///     meta.target().starts_with("interesting_target")
     /// });
     ///
@@ -131,12 +131,12 @@ impl<A, B> Or<A, B> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, combinator::Or};
+    ///     filter::{filter_fn, LevelFilter, combinator::Or},
     ///     prelude::*,
     /// };
     ///
     /// // Enables spans and events with targets starting with `interesting_target`:
-    /// let target_filter = filter::filter_fn(|meta| {
+    /// let target_filter = filter_fn(|meta| {
     ///     meta.target().starts_with("interesting_target")
     /// });
     ///
@@ -170,13 +170,13 @@ impl<A, B> Or<A, B> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, combinator};
+    ///     filter::{filter_fn, LevelFilter, combinator},
     ///     prelude::*,
     /// };
     ///
     /// // This filter will enable spans and events with targets beginning with
     /// // `my_crate`:
-    /// let my_crate =  target_filter = filter::filter_fn(|meta| {
+    /// let my_crate = filter_fn(|meta| {
     ///     meta.target().starts_with("my_crate")
     /// });
     ///
