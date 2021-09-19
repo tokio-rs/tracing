@@ -295,20 +295,22 @@ where
         // If we found a span, and our per-layer filter enables it, return that
         // span!
         #[cfg(feature = "registry")]
-        if let Some(span) = span?.try_with_filter(self.filter) {
-            Some(span)
-        } else {
-            // Otherwise, the span at the *top* of the stack is disabled by
-            // per-layer filtering, but there may be additional spans in the stack.
-            //
-            // Currently, `LookupSpan` doesn't have a nice way of exposing access to
-            // the whole span stack. However, if we can downcast the innermost
-            // subscriber to a a `Registry`, we can iterate over its current span
-            // stack.
-            //
-            // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
-            // implemented, change this to use that instead...
-            self.lookup_current_filtered(subscriber)
+        {
+            if let Some(span) = span?.try_with_filter(self.filter) {
+                Some(span)
+            } else {
+                // Otherwise, the span at the *top* of the stack is disabled by
+                // per-layer filtering, but there may be additional spans in the stack.
+                //
+                // Currently, `LookupSpan` doesn't have a nice way of exposing access to
+                // the whole span stack. However, if we can downcast the innermost
+                // subscriber to a a `Registry`, we can iterate over its current span
+                // stack.
+                //
+                // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
+                // implemented, change this to use that instead...
+                self.lookup_current_filtered(subscriber)
+            }
         }
 
         #[cfg(not(feature = "registry"))]

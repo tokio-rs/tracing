@@ -273,10 +273,12 @@ where
             // by the selected filter ID.
 
             #[cfg(feature = "registry")]
-            if !curr.is_enabled_for(self.filter) {
-                // The current span in the chain is disabled for this
-                // filter. Try its parent.
-                continue;
+            {
+                if !curr.is_enabled_for(self.filter) {
+                    // The current span in the chain is disabled for this
+                    // filter. Try its parent.
+                    continue;
+                }
             }
 
             return Some(curr);
