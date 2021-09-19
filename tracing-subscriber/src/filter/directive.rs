@@ -312,16 +312,21 @@ impl FromStr for StaticDirective {
                     ));
                 }
 
+                if !maybe_fields.ends_with("}]") {
+                    return Err(ParseError::msg("expected fields list to end with '}]'"));
+                }
+
                 let fields = maybe_fields
-                    .strip_suffix("}]")
-                    .ok_or_else(|| ParseError::msg("expected fields list to end with '}]'"))?;
-                field_names.extend(fields.split(',').filter_map(|s| {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(String::from(s))
-                    }
-                }));
+                    .trim_end_matches("}]")
+                    .split(',')
+                    .filter_map(|s| {
+                        if s.is_empty() {
+                            None
+                        } else {
+                            Some(String::from(s))
+                        }
+                    });
+                field_names.extend(fields);
             };
             let level = part1.parse()?;
             return Ok(Self {
