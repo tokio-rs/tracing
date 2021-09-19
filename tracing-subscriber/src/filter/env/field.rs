@@ -219,7 +219,7 @@ impl fmt::Display for ValueMatch {
         match self {
             ValueMatch::Bool(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::F64(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::NaN => fmt::Display::fmt(&f64::NAN, f),
+            ValueMatch::NaN => fmt::Display::fmt(&std::f64::NAN, f),
             ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
@@ -355,7 +355,9 @@ impl<'a> Visit for MatchVisitor<'a> {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched)) if (value - *e).abs() < f64::EPSILON => {
+            Some((ValueMatch::F64(ref e), ref matched))
+                if (value - *e).abs() < std::f64::EPSILON =>
+            {
                 matched.store(true, Release);
             }
             _ => {}
