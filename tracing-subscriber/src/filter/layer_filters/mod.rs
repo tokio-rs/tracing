@@ -164,7 +164,7 @@ thread_local! {
 ///
 /// [combinators]: crate::filter::combinator
 /// [`Filter`]: crate::layer::Filter
-pub trait FilterExt<S>: layer::Filter<S> {
+pub trait FilterExt {
     /// Combines this [`Filter`] with another [`Filter`] s so that spans and
     /// events are enabled if and only if *both* filters return `true`.
     ///
@@ -175,14 +175,14 @@ pub trait FilterExt<S>: layer::Filter<S> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, FilterExt};
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
     ///     prelude::*,
     /// };
     ///
     /// // Enables spans and events with targets starting with `interesting_target`:
-    /// let target_filter = filter::filter_fn(|meta| {
+    /// let target_filter = filter_fn(|meta| {
     ///     meta.target().starts_with("interesting_target")
-    /// })
+    /// });
     ///
     /// // Enables spans and events with levels `INFO` and below:
     /// let level_filter = LevelFilter::INFO;
@@ -209,7 +209,7 @@ pub trait FilterExt<S>: layer::Filter<S> {
     fn and<B>(self, other: B) -> combinator::And<Self, B>
     where
         Self: Sized,
-        B: layer::Filter<S>,
+        // B: layer::Filter<S>,
     {
         combinator::And::new(self, other)
     }
@@ -223,12 +223,12 @@ pub trait FilterExt<S>: layer::Filter<S> {
     /// and events with a particular target:
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, FilterExt};
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
     ///     prelude::*,
     /// };
     ///
     /// // Enables spans and events with targets starting with `interesting_target`:
-    /// let target_filter = filter::filter_fn(|meta| {
+    /// let target_filter = filter_fn(|meta| {
     ///     meta.target().starts_with("interesting_target")
     /// });
     ///
@@ -262,13 +262,13 @@ pub trait FilterExt<S>: layer::Filter<S> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, FilterExt};
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
     ///     prelude::*,
     /// };
     ///
     /// // This filter will enable spans and events with targets beginning with
     /// // `my_crate`:
-    /// let my_crate =  target_filter = filter::filter_fn(|meta| {
+    /// let my_crate = filter_fn(|meta| {
     ///     meta.target().starts_with("my_crate")
     /// });
     ///
@@ -291,7 +291,6 @@ pub trait FilterExt<S>: layer::Filter<S> {
     fn or<B>(self, other: B) -> combinator::Or<Self, B>
     where
         Self: Sized,
-        B: layer::Filter<S>,
     {
         combinator::Or::new(self, other)
     }
@@ -318,7 +317,7 @@ pub trait FilterExt<S>: layer::Filter<S> {
     ///
     /// ```compile_fail
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, FilterExt};
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
     ///     prelude::*,
     /// };
     ///
@@ -348,7 +347,7 @@ pub trait FilterExt<S>: layer::Filter<S> {
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     filter::{filter_fn, LevelFilter, FilterExt};
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
     ///     prelude::*,
     /// };
     ///
@@ -375,9 +374,9 @@ pub trait FilterExt<S>: layer::Filter<S> {
     ///
     /// [Boxes]: std::boxed
     /// [`Box::new`]: std::boxed::Box::new
-    fn boxed(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
+    fn boxed<S>(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
     where
-        Self: Sized + Send + Sync + 'static,
+        Self: layer::Filter<S> + Sized + Send + Sync + 'static,
     {
         Box::new(self)
     }
@@ -769,7 +768,7 @@ impl fmt::Binary for FilterId {
 
 // === impl FilterExt ===
 
-impl<S, F> FilterExt<S> for F where F: layer::Filter<S> {}
+impl<F> FilterExt for F {}
 
 // === impl FilterMap ===
 
