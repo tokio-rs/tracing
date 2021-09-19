@@ -1,6 +1,6 @@
 //! Filter combinators
 use crate::layer::{Context, Filter};
-use std::cmp;
+use std::{cmp, fmt, marker::PhantomData};
 use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
 
 /// Combines two [`Filter`]s so that spans and events are enabled if and only if
@@ -11,8 +11,11 @@ use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
 ///
 /// [`Filter`]: crate::layer::Filter
 /// [`FilterExt::and`]: crate::filter::FilterExt::and
-#[derive(Debug, Clone)]
-pub struct And<A, B>(A, B);
+pub struct And<A, B, S> {
+    a: A,
+    b: B,
+    _s: PhantomData<fn(S)>,
+}
 
 /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
 /// returns `true`.
@@ -22,8 +25,11 @@ pub struct And<A, B>(A, B);
 ///
 /// [`Filter`]: crate::layer::Filter
 /// [`FilterExt::or`]: crate::filter::FilterExt::or
-#[derive(Debug, Clone)]
-pub struct Or<A, B>(A, B);
+pub struct Or<A, B, S> {
+    a: A,
+    b: B,
+    _s: PhantomData<fn(S)>,
+}
 
 /// Inverts the result of a [`Filter`].
 ///
@@ -35,12 +41,18 @@ pub struct Or<A, B>(A, B);
 ///
 /// [`Filter`]: crate::layer::Filter
 /// [`FilterExt::or`]: crate::filter::FilterExt::or
-#[derive(Debug, Clone)]
-pub struct Not<A>(A);
+pub struct Not<A, S> {
+    a: A,
+    _s: PhantomData<fn(S)>,
+}
 
 // === impl And ===
 
-impl<A, B> And<A, B> {
+impl<A, B, S> And<A, B, S>
+where
+    A: Filter<S>,
+    B: Filter<S>,
+{
     /// Combines two [`Filter`]s so that spans and events are enabled if and only if
     /// *both* filters return `true`.
     ///
@@ -82,28 +94,32 @@ impl<A, B> And<A, B> {
     /// ```
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub const fn new(a: A, b: B) -> Self {
-        Self(a, b)
+    pub fn new(a: A, b: B) -> Self {
+        Self {
+            a,
+            b,
+            _s: PhantomData,
+        }
     }
 }
 
-impl<S, A, B> Filter<S> for And<A, B>
+impl<A, B, S> Filter<S> for And<A, B, S>
 where
     A: Filter<S>,
     B: Filter<S>,
 {
     #[inline]
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        self.0.enabled(meta, cx) && self.1.enabled(meta, cx)
+        self.a.enabled(meta, cx) && self.b.enabled(meta, cx)
     }
 
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        let a = self.0.callsite_enabled(meta);
+        let a = self.a.callsite_enabled(meta);
         if a.is_never() {
             return a;
         }
 
-        let b = self.1.callsite_enabled(meta);
+        let b = self.b.callsite_enabled(meta);
 
         if !b.is_always() {
             return b;
@@ -114,13 +130,44 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // If either hint is `None`, return `None`. Otherwise, return the most restrictive.
-        cmp::min(self.0.max_level_hint(), self.1.max_level_hint())
+        cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
+    }
+}
+
+impl<A, B, S> Clone for And<A, B, S>
+where
+    A: Clone,
+    B: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            a: self.a.clone(),
+            b: self.b.clone(),
+            _s: PhantomData,
+        }
+    }
+}
+
+impl<A, B, S> fmt::Debug for And<A, B, S>
+where
+    A: fmt::Debug,
+    B: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("And")
+            .field("a", &self.a)
+            .field("b", &self.b)
+            .finish()
     }
 }
 
 // === impl Or ===
 
-impl<A, B> Or<A, B> {
+impl<A, B, S> Or<A, B, S>
+where
+    A: Filter<S>,
+    B: Filter<S>,
+{
     /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
     /// returns `true`.
     ///
@@ -195,24 +242,28 @@ impl<A, B> Or<A, B> {
     /// ```
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub const fn new(a: A, b: B) -> Self {
-        Self(a, b)
+    pub fn new(a: A, b: B) -> Self {
+        Self {
+            a,
+            b,
+            _s: PhantomData,
+        }
     }
 }
 
-impl<S, A, B> Filter<S> for Or<A, B>
+impl<A, B, S> Filter<S> for Or<A, B, S>
 where
     A: Filter<S>,
     B: Filter<S>,
 {
     #[inline]
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        self.0.enabled(meta, cx) || self.1.enabled(meta, cx)
+        self.a.enabled(meta, cx) || self.b.enabled(meta, cx)
     }
 
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        let a = self.0.callsite_enabled(meta);
-        let b = self.1.callsite_enabled(meta);
+        let a = self.a.callsite_enabled(meta);
+        let b = self.b.callsite_enabled(meta);
 
         // If either filter will always enable the span or event, return `always`.
         if a.is_always() || b.is_always() {
@@ -236,35 +287,65 @@ where
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // If either hint is `None`, return `None`. Otherwise, return the less restrictive.
-        Some(cmp::max(self.0.max_level_hint()?, self.1.max_level_hint()?))
+        Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
+    }
+}
+
+impl<A, B, S> Clone for Or<A, B, S>
+where
+    A: Clone,
+    B: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            a: self.a.clone(),
+            b: self.b.clone(),
+            _s: PhantomData,
+        }
+    }
+}
+
+impl<A, B, S> fmt::Debug for Or<A, B, S>
+where
+    A: fmt::Debug,
+    B: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Or")
+            .field("a", &self.a)
+            .field("b", &self.b)
+            .finish()
     }
 }
 
 // === impl Not ===
 
-impl<A> Not<A> {
+impl<A, S> Not<A, S>
+where
+    A: Filter<S>,
+{
     /// Inverts the result of a [`Filter`].
     ///
     /// If the wrapped filter would enable a span or event, it will be disabled. If
     /// it would disable a span or event, that span or event will be enabled.
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub const fn new(a: A) -> Self {
-        Self(a)
+    pub fn new(a: A) -> Self {
+        Self { a, _s: PhantomData }
     }
 }
 
-impl<S, A> Filter<S> for Not<A>
+impl<A, S> Filter<S> for Not<A, S>
 where
     A: Filter<S>,
 {
     #[inline]
     fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        !self.0.enabled(meta, cx)
+        !self.a.enabled(meta, cx)
     }
 
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        match self.0.callsite_enabled(meta) {
+        match self.a.callsite_enabled(meta) {
             i if i.is_always() => Interest::never(),
             i if i.is_never() => Interest::always(),
             _ => Interest::sometimes(),
@@ -274,5 +355,26 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // TODO(eliza): figure this out???
         None
+    }
+}
+
+impl<A, S> Clone for Not<A, S>
+where
+    A: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            a: self.a.clone(),
+            _s: PhantomData,
+        }
+    }
+}
+
+impl<A, S> fmt::Debug for Not<A, S>
+where
+    A: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Not").field(&self.a).finish()
     }
 }

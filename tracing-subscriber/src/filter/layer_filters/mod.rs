@@ -164,7 +164,7 @@ thread_local! {
 ///
 /// [combinators]: crate::filter::combinator
 /// [`Filter`]: crate::layer::Filter
-pub trait FilterExt {
+pub trait FilterExt<S>: layer::Filter<S> {
     /// Combines this [`Filter`] with another [`Filter`] s so that spans and
     /// events are enabled if and only if *both* filters return `true`.
     ///
@@ -206,10 +206,10 @@ pub trait FilterExt {
     /// ```
     ///
     /// [`Filter`]: crate::layer::Filter
-    fn and<B>(self, other: B) -> combinator::And<Self, B>
+    fn and<B>(self, other: B) -> combinator::And<Self, B, S>
     where
         Self: Sized,
-        // B: layer::Filter<S>,
+        B: layer::Filter<S>,
     {
         combinator::And::new(self, other)
     }
@@ -288,16 +288,17 @@ pub trait FilterExt {
     ///
     /// [`Filter`]: crate::layer::Filter
     /// [`and`]: FilterExt::and
-    fn or<B>(self, other: B) -> combinator::Or<Self, B>
+    fn or<B>(self, other: B) -> combinator::Or<Self, B, S>
     where
         Self: Sized,
+        B: layer::Filter<S>,
     {
         combinator::Or::new(self, other)
     }
 
     /// Inverts `self`, returning a filter that enables spans and events only if
     /// `self` would *not* enable them.
-    fn not(self) -> combinator::Not<Self>
+    fn not(self) -> combinator::Not<Self, S>
     where
         Self: Sized,
     {
@@ -374,9 +375,9 @@ pub trait FilterExt {
     ///
     /// [Boxes]: std::boxed
     /// [`Box::new`]: std::boxed::Box::new
-    fn boxed<S>(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
+    fn boxed(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
     where
-        Self: layer::Filter<S> + Sized + Send + Sync + 'static,
+        Self: Sized + Send + Sync + 'static,
     {
         Box::new(self)
     }
@@ -768,7 +769,7 @@ impl fmt::Binary for FilterId {
 
 // === impl FilterExt ===
 
-impl<F> FilterExt for F {}
+impl<F, S> FilterExt<S> for F where F: layer::Filter<S> {}
 
 // === impl FilterMap ===
 
