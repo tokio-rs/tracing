@@ -1,3 +1,32 @@
+# 0.2.24 (September 19, 2021)
+
+This release contains a number of bug fixes, including a fix for
+`tracing-subscriber` failing to compile on the minimum supported Rust version of
+1.42.0. It also adds `IntoIterator` implementations for the `Targets` type.
+
+### Fixed
+
+- Fixed compilation on Rust 1.42.0 ([#1580], [#1581])
+- **registry**: Ensure per-layer filter `enabled` state is cleared when a global
+  filter short-circuits filter evaluation ([#1575])
+- **layer**: Fixed `Layer::on_layer` not being called for `Box`ed `Layer`s,
+  which broke  per-layer filtering ([#1576])
+
+### Added
+
+- **filter**: Added `Targets::iter`, returning an iterator over the set of
+  target-level pairs enabled by a `Targets` filter ([#1574])
+- **filter**:  Added `IntoIterator` implementations for `Targets` and `&Targets`
+  ([#1574])
+
+Thanks to new contributor @connec for contributing to this release!
+
+[#1580]: https://github.com/tokio-rs/tracing/pull/1580
+[#1581]: https://github.com/tokio-rs/tracing/pull/1581
+[#1575]: https://github.com/tokio-rs/tracing/pull/1575
+[#1576]: https://github.com/tokio-rs/tracing/pull/1576
+[#1574]: https://github.com/tokio-rs/tracing/pull/1574
+
 # 0.2.23 (September 16, 2021)
 
 This release fixes a few bugs in the per-layer filtering API added in v0.2.21.
