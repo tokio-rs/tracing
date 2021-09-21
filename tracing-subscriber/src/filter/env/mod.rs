@@ -10,13 +10,14 @@ pub use self::{
 };
 mod directive;
 mod field;
+mod parsing;
 
 use crate::{
     filter::LevelFilter,
     subscribe::{Context, Subscribe},
     sync::RwLock,
 };
-use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, iter, str::FromStr};
 use tracing_core::{
     callsite,
     collect::{Collect, Interest},
@@ -151,24 +152,32 @@ impl EnvFilter {
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// ignoring any that are invalid.
     pub fn new<S: AsRef<str>>(dirs: S) -> Self {
-        let directives = dirs.as_ref().split(',').filter_map(|s| match s.parse() {
-            Ok(d) => Some(d),
-            Err(err) => {
-                eprintln!("ignoring `{}`: {}", s, err);
-                None
+        let mut dirs = dirs.as_ref();
+        let directives = iter::from_fn(move || {
+            if dirs.is_empty() {
+                return None;
             }
-        });
+            let (parsed, after) = parsing::parse_one_directive(dirs);
+            dirs = &dirs[after..];
+            Some(parsed)
+        })
+        .filter_map(Result::ok);
         Self::from_directives(directives)
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
     pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
-        let directives = dirs
-            .as_ref()
-            .split(',')
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut dirs = dirs.as_ref();
+        let directives = iter::from_fn(move || {
+            if dirs.is_empty() {
+                return None;
+            }
+            let (parsed, after) = parsing::parse_one_directive(dirs);
+            dirs = &dirs[after..];
+            Some(parsed)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::from_directives(directives))
     }
 
@@ -679,7 +688,8 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
-        let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
+        let filter = EnvFilter::try_new(r#"app[mySpan{field="value",field2=2}]=debug"#)
+            .unwrap()
             .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
@@ -693,13 +703,13 @@ mod tests {
         );
 
         let interest = filter.register_callsite(META);
-        assert!(interest.is_never());
+        assert!(interest.is_sometimes());
     }
 
     #[test]
     fn roundtrip() {
         let f1: EnvFilter =
-            "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug"
+            "[span1{foo=1}]=error,[span2{bar=2, baz=false}],crate2[{quux=\"quuux\"}]=debug"
                 .parse()
                 .unwrap();
         let f2: EnvFilter = format!("{}", f1).parse().unwrap();

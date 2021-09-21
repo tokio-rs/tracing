@@ -24,7 +24,7 @@ keywords = ["logging", "tracing", "metrics", "subscriber"]
 [features]
 
 default = ["env-filter", "smallvec", "fmt", "ansi", "chrono", "tracing-log", "json"]
-env-filter = ["matchers", "regex", "lazy_static", "tracing"]
+env-filter = ["matchers", "tracing"]
 fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local"]
@@ -36,9 +36,7 @@ tracing-core = { path = "../tracing-core", version = "0.2" }
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 matchers = { optional = true, version = "0.1.0" }
-regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1" }
-lazy_static = { optional = true, version = "1" }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }

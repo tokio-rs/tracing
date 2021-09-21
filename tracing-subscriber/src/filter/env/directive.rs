@@ -1,7 +1,9 @@
 use super::super::level::{self, LevelFilter};
-use super::{field, FieldMap, FilterVec};
-use lazy_static::lazy_static;
-use regex::Regex;
+use super::{
+    field,
+    parsing::{parse_one_directive, ParseErrorKind},
+    FieldMap, FilterVec,
+};
 use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
@@ -10,8 +12,8 @@ use tracing_core::{span, Level, Metadata};
 #[derive(Debug, Eq, PartialEq)]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
-    in_span: Option<String>,
-    fields: FilterVec<field::Match>,
+    pub(super) in_span: Option<String>,
+    pub(super) fields: FilterVec<field::Match>,
     pub(crate) target: Option<String>,
     pub(crate) level: LevelFilter,
 }
@@ -56,13 +58,6 @@ pub(crate) struct MatchSet<T> {
 #[derive(Debug)]
 pub struct ParseError {
     kind: ParseErrorKind,
-}
-
-#[derive(Debug)]
-enum ParseErrorKind {
-    Field(Box<dyn Error + Send + Sync>),
-    Level(level::ParseError),
-    Other,
 }
 
 impl Directive {
@@ -176,94 +171,12 @@ impl Match for Directive {
 impl FromStr for Directive {
     type Err = ParseError;
     fn from_str(from: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref DIRECTIVE_RE: Regex = Regex::new(
-                r"(?x)
-                ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
-                 #                 ^^^.
-                 #                     `note: we match log level names case-insensitively
-                ^
-                (?: # target name or span name
-                    (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
-                ){1,2}
-                (?: # level or nothing
-                    =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
-                     #          ^^^.
-                     #              `note: we match log level names case-insensitively
-                )?
-                $
-                "
-            )
-            .unwrap();
-            static ref SPAN_PART_RE: Regex =
-                Regex::new(r#"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
-            static ref FIELD_FILTER_RE: Regex =
-                // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
-                // characters. We should fix that.
-                Regex::new(r#"(?x)
-                    (
-                        # field name
-                        [[:word:]][[[:word:]]\.]*
-                        # value part (optional)
-                        (?:=[^,]+)?
-                    )
-                    # trailing comma or EOS
-                    (?:,\s?|$)
-                "#).unwrap();
+        let (parsed, after) = parse_one_directive(from);
+        if after != from.len() {
+            Err(ParseError::new())
+        } else {
+            Ok(parsed?)
         }
-
-        let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
-
-        if let Some(level) = caps
-            .name("global_level")
-            .and_then(|s| s.as_str().parse().ok())
-        {
-            return Ok(Directive {
-                level,
-                ..Default::default()
-            });
-        }
-
-        let target = caps.name("target").and_then(|c| {
-            let s = c.as_str();
-            if s.parse::<LevelFilter>().is_ok() {
-                None
-            } else {
-                Some(s.to_owned())
-            }
-        });
-
-        let (in_span, fields) = caps
-            .name("span")
-            .and_then(|cap| {
-                let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
-                let caps = SPAN_PART_RE.captures(cap)?;
-                let span = caps.name("name").map(|c| c.as_str().to_owned());
-                let fields = caps
-                    .name("fields")
-                    .map(|c| {
-                        FIELD_FILTER_RE
-                            .find_iter(c.as_str())
-                            .map(|c| c.as_str().parse())
-                            .collect::<Result<FilterVec<_>, _>>()
-                    })
-                    .unwrap_or_else(|| Ok(FilterVec::new()));
-                Some((span, fields))
-            })
-            .unwrap_or_else(|| (None, Ok(FilterVec::new())));
-
-        let level = caps
-            .name("level")
-            .and_then(|l| l.as_str().parse().ok())
-            // Setting the target without the level enables every level for that target
-            .unwrap_or(LevelFilter::TRACE);
-
-        Ok(Directive {
-            level,
-            target,
-            in_span,
-            fields: fields?,
-        })
     }
 }
 
@@ -643,6 +556,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Other => f.pad("invalid filter directive"),
             ParseErrorKind::Level(ref l) => l.fmt(f),
             ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
+            ParseErrorKind::UnexpectedSyntax(ref c) => {
+                write!(f, "unexpected semantic character: {}", c)
+            }
         }
     }
 }
@@ -657,6 +573,7 @@ impl Error for ParseError {
             ParseErrorKind::Other => None,
             ParseErrorKind::Level(ref l) => Some(l),
             ParseErrorKind::Field(ref n) => Some(n.as_ref()),
+            ParseErrorKind::UnexpectedSyntax(_) => None,
         }
     }
 }
@@ -674,6 +591,12 @@ impl From<level::ParseError> for ParseError {
         Self {
             kind: ParseErrorKind::Level(l),
         }
+    }
+}
+
+impl From<ParseErrorKind> for ParseError {
+    fn from(kind: ParseErrorKind) -> Self {
+        Self { kind }
     }
 }
 
@@ -1106,7 +1029,7 @@ mod test {
 
     #[test]
     fn parse_directives_with_special_characters_in_span_name() {
-        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~[}";
+        let span_name = r##"!#$%&'()*+-.:;<>?@^_`|~"##; // forbidden: "/[]{}=
 
         let dirs = parse_directives(format!("target[{}]=info", span_name));
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
