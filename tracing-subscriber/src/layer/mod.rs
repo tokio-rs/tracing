@@ -410,7 +410,9 @@
 //!
 //! let debug_log = match std::env::var("LOG_PATH") {
 //!     Ok(path) => {
-//!         let file = File::create("debug.log")?;
+//!         let mut path = PathBuf::from(path);
+//!         path.push("debug.log");
+//!         let file = File::create(path)?;
 //!         let layer = tracing_subscriber::fmt::layer()
 //!             .with_writer(Arc::new(file));
 //!         Some(layer)
