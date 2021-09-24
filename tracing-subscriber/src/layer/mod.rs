@@ -404,7 +404,7 @@
 //! # // running the doctests..
 //! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
 //! use tracing_subscriber::{Registry, prelude::*};
-//! use std::{fs::File, sync::Arc};
+//! use std::{fs::File, sync::Arc, path::PathBuf};
 //! let stdout_log = tracing_subscriber::fmt::layer()
 //!     .pretty();
 //!
