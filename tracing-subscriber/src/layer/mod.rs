@@ -393,6 +393,38 @@
 //! # Ok(()) }
 //! ```
 //!
+//! ## Runtime-configurable Layers
+//!
+//! Conditionally enabling/disabling layers at runtime can be challenging due to the generics
+//! used Layers implementations. However, A Layer wrapped in an `Option` is also Layers, which
+//! allows some runtime configuration:
+//!
+//! ```
+//! // wrap this in a function so we don't actually create `debug.log` when
+//! // running the doctests..
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! use tracing_subscriber::{Registry, prelude::*};
+//! use std::{fs::File, sync::Arc};
+//! let stdout_log = tracing_subscriber::fmt::layer()
+//!     .pretty();
+//!
+//! let debug_log = match std::env::var("LOG_PATH") {
+//!     Ok(path) => {
+//!         let file = File::create("debug.log")?;
+//!         let layer = tracing_subscriber::fmt::layer()
+//!             .with_writer(Arc::new(file));
+//!         Some(layer)
+//!     },
+//!     Err(_) => None,
+//! };
+//!
+//! let subscriber = Registry::default()
+//!     .with(stdout_log)
+//!     .with(debug_log);
+//! tracing::subscriber::set_global_default(subscriber).expect("Unable to set global subscriber");
+//! # Ok(()) }
+//! ```
+//!
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
 //! [the current span]: Context::current_span
