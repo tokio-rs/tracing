@@ -17,7 +17,7 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 
 [features]
-default = ["tower-layer", "tower-make", "http"]
+default = ["tower-layer", "tower-make"]
 tower-make = [
     "tower_make",
     "pin-project-lite",
