@@ -400,8 +400,8 @@
 //! allows some runtime configuration:
 //!
 //! ```
-//! // wrap this in a function so we don't actually create `debug.log` when
-//! // running the doctests..
+//! # // wrap this in a function so we don't actually create `debug.log` when
+//! # // running the doctests..
 //! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
 //! use tracing_subscriber::{Registry, prelude::*};
 //! use std::{fs::File, sync::Arc};
