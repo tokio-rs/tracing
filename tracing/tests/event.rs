@@ -462,7 +462,7 @@ fn option_ref_mut_values() {
 
     with_default(subscriber, || {
         let some_str = &mut Some("yes");
-        let none_str: &mut ption<&'static str> = &mut None;
+        let none_str: &mut Option<&'static str> = &mut None;
         let some_bool = &mut Some(true);
         let none_bool: &mut Option<bool> = &mut None;
         let some_u64 = &mut Some(42_u64);
