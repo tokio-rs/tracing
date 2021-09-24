@@ -441,9 +441,6 @@ fn option_ref_values() {
 
     handle.assert_finished();
 }
-
-
-
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn option_ref_mut_values() {
