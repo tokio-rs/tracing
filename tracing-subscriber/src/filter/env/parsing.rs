@@ -34,7 +34,7 @@ macro_rules! switch_syntax {
     }) => {{
         let haystack: &str = &$haystack;
         match find_syntax(haystack) {
-            $((ix, $(switch_syntax!(@syntax $needle))|+) => {
+            $($((ix, switch_syntax!(@syntax $needle)))|+ => {
                 #[allow(unused_variables)]
                 let $ix = ix;
                 $expr
@@ -137,10 +137,12 @@ pub(super) fn parse_one_directive(source: &str) -> (Result<Directive, ParseError
                 (None, _) => (Err(ParseErrorKind::Other), source.len()),
                 (Some(quoted), after_quoted) => match source.as_bytes().get(1 + after_quoted) {
                     None => (Err(ParseErrorKind::Other), source.len()),
-                    Some(&syntax @ (b'/' | b'[' | b'}' | b'"' | b',' | b'=')) => (
-                        Err(ParseErrorKind::UnexpectedSyntax(syntax as char)),
-                        source.len(),
-                    ),
+                    Some(b'/') => (Err(ParseErrorKind::UnexpectedSyntax('/')), source.len()),
+                    Some(b'[') => (Err(ParseErrorKind::UnexpectedSyntax('[')), source.len()),
+                    Some(b'}') => (Err(ParseErrorKind::UnexpectedSyntax('}')), source.len()),
+                    Some(b'"') => (Err(ParseErrorKind::UnexpectedSyntax('"')), source.len()),
+                    Some(b',') => (Err(ParseErrorKind::UnexpectedSyntax(',')), source.len()),
+                    Some(b'=') => (Err(ParseErrorKind::UnexpectedSyntax('=')), source.len()),
                     Some(b']') => {
                         let (parsed, after_parsed) = parse_at_level(
                             &source[1 + after_quoted + 1..],
@@ -388,12 +390,20 @@ pub(super) fn parse_one_directive(source: &str) -> (Result<Directive, ParseError
         match source[i..].as_bytes().get(0) {
             None => (directive, i),
             Some(b',') => (directive, i + 1),
-            Some(&syntax @ (b'[' | b'{' | b'"' | b'/')) => (
-                Err(ParseErrorKind::UnexpectedSyntax(syntax as char)),
-                source.len(),
+            Some(b'[') => (Err(ParseErrorKind::UnexpectedSyntax('[')), source.len()),
+            Some(b'{') => (Err(ParseErrorKind::UnexpectedSyntax('{')), source.len()),
+            Some(b'"') => (Err(ParseErrorKind::UnexpectedSyntax('"')), source.len()),
+            Some(b'/') => (Err(ParseErrorKind::UnexpectedSyntax('/')), source.len()),
+            Some(b']') => (
+                Err(ParseErrorKind::UnexpectedSyntax(']')),
+                try_recover_with(source, i + 1, Syntax::Comma),
             ),
-            Some(&syntax @ (b']' | b'}' | b'=')) => (
-                Err(ParseErrorKind::UnexpectedSyntax(syntax as char)),
+            Some(b'}') => (
+                Err(ParseErrorKind::UnexpectedSyntax('}')),
+                try_recover_with(source, i + 1, Syntax::Comma),
+            ),
+            Some(b'=') => (
+                Err(ParseErrorKind::UnexpectedSyntax('=')),
                 try_recover_with(source, i + 1, Syntax::Comma),
             ),
             _ => (
@@ -425,12 +435,14 @@ pub(super) fn parse_one_directive(source: &str) -> (Result<Directive, ParseError
                     }),
                     after_quoted + 1,
                 ),
-                Some(&syntax @ (b'/' | b'{')) => (
-                    Err(ParseErrorKind::UnexpectedSyntax(syntax as char)),
-                    source.len(),
+                Some(b'/') => (Err(ParseErrorKind::UnexpectedSyntax('/')), source.len()),
+                Some(b'{') => (Err(ParseErrorKind::UnexpectedSyntax('{')), source.len()),
+                Some(b']') => (
+                    Err(ParseErrorKind::UnexpectedSyntax(']')),
+                    try_recover_with(source, after_quoted + 1, Syntax::Comma),
                 ),
-                Some(&syntax @ (b']' | b'}')) => (
-                    Err(ParseErrorKind::UnexpectedSyntax(syntax as char)),
+                Some(b'}') => (
+                    Err(ParseErrorKind::UnexpectedSyntax('}')),
                     try_recover_with(source, after_quoted + 1, Syntax::Comma),
                 ),
                 Some(b'[') => {
