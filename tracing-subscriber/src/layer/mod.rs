@@ -408,6 +408,9 @@
 //! let stdout_log = tracing_subscriber::fmt::layer()
 //!     .pretty();
 //!
+//! // If the LOG_PATH environment variable is set, also log events 
+//! // to that file. If the environment variable is not set, then `debug_log`
+//! // will be `None`.
 //! let debug_log = match std::env::var("LOG_PATH") {
 //!     Ok(path) => {
 //!         let mut path = PathBuf::from(path);
