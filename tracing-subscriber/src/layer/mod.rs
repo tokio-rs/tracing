@@ -408,7 +408,7 @@
 //! let stdout_log = tracing_subscriber::fmt::layer()
 //!     .pretty();
 //!
-//! // If the LOG_PATH environment variable is set, also log events 
+//! // If the LOG_PATH environment variable is set, also log events
 //! // to that file. If the environment variable is not set, then `debug_log`
 //! // will be `None`.
 //! let debug_log = match std::env::var("LOG_PATH") {
@@ -431,7 +431,7 @@
 //!     .with(debug_log);
 //!
 //! tracing::subscriber::set_global_default(subscriber)
-///!    .expect("Unable to set global subscriber");
+//!    .expect("Unable to set global subscriber");
 //! # Ok(()) }
 //! ```
 //!
