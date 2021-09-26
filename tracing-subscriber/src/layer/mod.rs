@@ -429,7 +429,9 @@
 //!     // will do nothing. However, the subscriber will still have the same _type_
 //!     // regardless of whether the `Option`'s value is `None` or `Some`.
 //!     .with(debug_log);
-//! tracing::subscriber::set_global_default(subscriber).expect("Unable to set global subscriber");
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+///!    .expect("Unable to set global subscriber");
 //! # Ok(()) }
 //! ```
 //!
