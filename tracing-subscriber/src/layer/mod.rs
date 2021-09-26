@@ -393,7 +393,7 @@
 //! # Ok(()) }
 //! ```
 //!
-//! ## Runtime-configurable Layers
+//! ## Runtime Configuration With Layers
 //!
 //! Conditionally enabling/disabling layers at runtime can be challenging due to the generics
 //! used Layers implementations. However, A Layer wrapped in an `Option` is also Layers, which
