@@ -404,12 +404,11 @@
 //!
 //! ```compile_fail
 //! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
-//! # use std::path::PathBuf;
 //! # struct Config {
 //! #    is_prod: bool,
-//! #    path: PathBuf,
+//! #    path: &'static str,
 //! # }
-//! # let cfg = Config { is_prod: false, path: PathBuf::from("debug.log") };
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
 //! use std::{fs::File, sync::Arc};
 //! use tracing_subscriber::{Registry, prelude::*};
 //!
