@@ -757,6 +757,8 @@ fn gen_block(
                 __tracing_attr_span = #span;
                 __tracing_attr_guard = __tracing_attr_span.enter();
             }
+            // pacify clippy::suspicious_else_formatting
+            let _ = ();
             #block
         )
     }
