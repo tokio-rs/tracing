@@ -601,6 +601,8 @@ fn gen_block(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
+    let level = args.level();
+
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
@@ -646,7 +648,6 @@ fn gen_block(
             }
         }
 
-        let level = args.level();
         let target = args.target();
 
         // filter out skipped fields
@@ -750,8 +751,12 @@ fn gen_block(
         )
     } else {
         quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            let __tracing_attr_guard = __tracing_attr_span.enter();
+            let __tracing_attr_span;
+            let __tracing_attr_guard;
+            if tracing::level_enabled!(#level) {
+                __tracing_attr_span = #span;
+                __tracing_attr_guard = __tracing_attr_span.enter();
+            }
             #block
         )
     }
