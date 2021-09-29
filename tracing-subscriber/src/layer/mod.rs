@@ -438,22 +438,19 @@
 //! example:
 //!
 //! ```
-//! # use std::path::PathBuf;
 //! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
 //! # struct Config {
 //! #    is_prod: bool,
-//! #    path: PathBuf,
+//! #    path: &'static str,
 //! # }
-//! # let cfg = Config { is_prod: false, path: PathBuf::from("debug.log") };
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
 //! use std::{fs::File, sync::Arc};
 //! use tracing_subscriber::{Registry, prelude::*};
 //!
 //! let stdout_log = tracing_subscriber::fmt::layer().pretty();
 //! let subscriber = Registry::default().with(stdout_log);
 //!
-//! // if cfg.is_prod is true, also log JSON-based logs to a file.
-//! // note: in reality, https://crates.io/crates/tracing-appender should
-//! // be used instead of the example below.
+//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
 //! let json_log = if cfg.is_prod {
 //!     let file = File::create(cfg.path)?;
 //!     let json_log = tracing_subscriber::fmt::layer()
@@ -464,8 +461,8 @@
 //!     None
 //! };
 //!
-//! // If `cfg.is_prod`  is false, then `json` will be `None`, and this layer
-//! // will do nothing. However, the subscriber will still have the same _type_
+//! // If `cfg.is_prod` is false, then `json` will be `None`, and this layer
+//! // will do nothing. However, the subscriber will still have the same type
 //! // regardless of whether the `Option`'s value is `None` or `Some`.
 //! let subscriber = subscriber.with(json_log);
 //!
