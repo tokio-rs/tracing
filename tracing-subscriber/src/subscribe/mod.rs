@@ -396,6 +396,85 @@
 //! # Ok(()) }
 //! ```
 //!
+//!
+//! ## Runtime Configuration With Subscribers
+//!
+//! In some cases, a particular [subscriber] may be enabled or disabled based on
+//! runtime configuration. This can introduce challenges, because the type of a
+//! layered [collector] depends on which subscribers are added to it: if an `if`
+//! or `match` expression adds some [`Subscribe`] implementation in one branch,
+//! and other subscribers in another, the [collector] values returned by those
+//! branches will have different types. For example, the following _will not_
+//! work:
+//!
+//! ```compile_fail
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
+//! let collector = Registry::default().with(stdout_log);
+//!
+//! // The compile error will occur here because the if and else
+//! // branches have different (and therefore incompatible) types.
+//! let collector = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let collector = tracing_subscriber::fmt::subscriber()
+//!         .json()
+//!         .with_writer(Arc::new(file));
+//!     collector.with(subscriber)
+//! } else {
+//!     collector
+//! };
+//!
+//! tracing::collect::set_global_default(collector)
+//!     .expect("Unable to set global collector");
+//! # Ok(()) }
+//! ```
+//!
+//! However, a [`Subscribe`] wrapped in an [`Option`] [also implements the `Subscribe`
+//! trait][option-impl]. This allows individual layers to be enabled or disabled at
+//! runtime while always producing a [`Collect`] of the same type. For
+//! example:
+//!
+//! ```
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
+//! let collector = Registry::default().with(stdout_log);
+//!
+//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
+//! let json_log = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let json_log = tracing_subscriber::fmt::subscriber()
+//!         .json()
+//!         .with_writer(file);
+//!     Some(json_log)
+//! } else {
+//!     None
+//! };
+//!
+//! // If `cfg.is_prod` is false, then `json` will be `None`, and this subscriber
+//! // will do nothing. However, the collector will still have the same type
+//! // regardless of whether the `Option`'s value is `None` or `Some`.
+//! let collector = collector.with(json_log);
+//!
+//! tracing::collect::set_global_default(collector)
+//!    .expect("Unable to set global collector");
+//! # Ok(()) }
+//! ```
 //! [subscriber]: Subscribe
 //! [`Collect`]:tracing_core::Collect
 //! [collector]: tracing_core::Collect
@@ -407,6 +486,7 @@
 //! [`Subscribe::register_callsite`]: Subscribe::register_callsite
 //! [`Subscribe::enabled`]: Subscribe::enabled
 //! [`Interest::never()`]: tracing_core::collect::Interest::never
+//! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [`Filtered`]: crate::filter::Filtered
 //! [`filter`]: crate::filter
 //! [`Targets`]: crate::filter::Targets

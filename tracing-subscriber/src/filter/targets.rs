@@ -4,7 +4,7 @@
 //!
 //! [target]: tracing_core::Metadata::target
 //! [level]: tracing_core::Level
-//! [filter]: crate::layer#filtering-with-layers
+//! [filter]: crate::subscribe#filtering-with-subscribers
 
 use crate::{
     filter::{
@@ -118,7 +118,7 @@ use tracing_core::{Collect, Interest, Metadata};
 /// };
 /// use tracing_core::Level;
 /// use std::fs::File;
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # fn docs() -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// // A subscriber that logs events to stdout using the human-readable "pretty"
 /// // format.
