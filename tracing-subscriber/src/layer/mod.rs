@@ -464,7 +464,7 @@
 //!     None
 //! };
 //!
-//! // If cfg.is_prod file is false, then `json` will be `None`, and this layer
+//! // If `cfg.is_prod`  is false, then `json` will be `None`, and this layer
 //! // will do nothing. However, the subscriber will still have the same _type_
 //! // regardless of whether the `Option`'s value is `None` or `Some`.
 //! let subscriber = subscriber.with(json_log);
