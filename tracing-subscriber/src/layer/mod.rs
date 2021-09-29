@@ -417,7 +417,7 @@
 //! let subscriber = Registry::default().with(stdout_log);
 //!
 //! // The compile error will occur here because the if and else
-//! // branches have different, and therefore incompatible, types.
+//! // branches have different (and therefore incompatible) types.
 //! let subscriber = if cfg.is_prod {
 //!     let file = File::create(cfg.path)?;
 //!     let layer = tracing_subscriber::fmt::layer()
