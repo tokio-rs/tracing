@@ -553,6 +553,16 @@ fn gen_block(
         )
     } else {
         quote_spanned!(block.span()=>
+            // These variables are left uninitialized and initialized only
+            // if the tracing level is statically enabled at this point.
+            // While the tracing level is also checked at span creation
+            // time, that will still create a dummy span, and a dummy guard
+            // and drop the dummy guard later. By lazily initializing these
+            // variables, Rust will generate a drop flag for them and thus
+            // only drop the guard if it was created. This creates code that
+            // is very straightforward for LLVM to optimize out if the tracing
+            // level is statically disabled, while not causing any performance
+            // regression in case the level is enabled.
             let __tracing_attr_span;
             let __tracing_attr_guard;
             if tracing::level_enabled!(#level) {
