@@ -1,6 +1,9 @@
 use core::cell::UnsafeCell;
 use core::fmt;
-use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
+// TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
+#[allow(deprecated)]
+use core::sync::atomic::spin_loop_hint as cpu_relax;
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the
