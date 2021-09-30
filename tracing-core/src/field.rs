@@ -184,6 +184,12 @@ pub struct Iter {
 /// [`Event`]: ../event/struct.Event.html
 /// [`ValueSet`]: struct.ValueSet.html
 pub trait Visit {
+    /// Visits an arbitrary value from Valuable
+    #[cfg(feature = "valuable")]
+    fn record_value(&mut self, field: &Field, value: &(dyn valuable::Valuable)) {
+        self.record_debug(field, &value)
+    }
+
     /// Visit a double-precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.record_debug(field, &value)
