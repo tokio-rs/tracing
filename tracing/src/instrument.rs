@@ -233,10 +233,9 @@ pub trait WithCollector: Sized {
     /// // run on a different thread, in a different default collector's context.
     /// tokio::spawn(future);
     ///
-    /// // However, if we call `with_current_collector` on the future before
-    /// // spawning it, we can ensure that the current thread's default
-    /// // collector is propagated to the spawned task, regardless of where
-    /// // it executes:
+    /// // However, calling `with_current_collector` on the future before
+    /// // spawning it, ensures that the current thread's default collector is 
+    /// // propagated to the spawned task, regardless of where it executes:
     /// # let future = async { };
     /// tokio::spawn(future.with_current_collector());
     /// # }
