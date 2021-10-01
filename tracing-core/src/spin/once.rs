@@ -76,25 +76,33 @@ impl<T> Once<T> {
         let mut status = self.state.load(Ordering::SeqCst);
 
         if status == INCOMPLETE {
-            if self
-                .state
-                .compare_exchange(INCOMPLETE, RUNNING, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok()
-            {
-                // We init
-                // We use a guard (Finish) to catch panics caused by builder
-                let mut finish = Finish {
-                    state: &self.state,
-                    panicked: true,
-                };
-                unsafe { *self.data.get() = Some(builder()) };
-                finish.panicked = false;
+            status = match self.state.compare_exchange(
+                INCOMPLETE,
+                RUNNING,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(status) => {
+                    debug_assert_eq!(
+                        status, INCOMPLETE,
+                        "if compare_exchange succeeded, previous status must be incomplete",
+                    );
+                    // We init
+                    // We use a guard (Finish) to catch panics caused by builder
+                    let mut finish = Finish {
+                        state: &self.state,
+                        panicked: true,
+                    };
+                    unsafe { *self.data.get() = Some(builder()) };
+                    finish.panicked = false;
 
-                status = COMPLETE;
-                self.state.store(status, Ordering::SeqCst);
+                    status = COMPLETE;
+                    self.state.store(status, Ordering::SeqCst);
 
-                // This next line is strictly an optimization
-                return self.force_get();
+                    // This next line is strictly an optimization
+                    return self.force_get();
+                }
+                Err(s) => status = s,
             }
         }
 
