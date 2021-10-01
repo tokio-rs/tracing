@@ -255,6 +255,10 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
+#[derive(Clone)]
+#[cfg(feature = "valuable")]
+pub struct ValuableValue<T: valuable::Valuable>(T);
+
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
 /// recorded using its `Display` implementation.
 pub fn display<T>(t: T) -> DisplayValue<T>
@@ -271,6 +275,14 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+#[cfg(feature = "valuable")]
+pub fn valuable<T>(t: T) -> ValuableValue<T>
+where
+    T: valuable::Valuable,
+{
+    ValuableValue(t)
 }
 
 // ===== impl Visit =====
@@ -434,17 +446,6 @@ impl Value for dyn std::error::Error + 'static {
     }
 }
 
-#[cfg(feature = "valuable")]
-impl crate::sealed::Sealed for dyn valuable::Valuable {}
-
-#[cfg(feature = "valuable")]
-#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
-impl Value for dyn valuable::Valuable {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_value(key, self)
-    }
-}
-
 impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
 
 impl<'a, T: ?Sized> Value for &'a T
@@ -553,6 +554,19 @@ where
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+
+// ===== impl ValuableValue =====
+
+#[cfg(feature = "valuable")]
+impl<T: valuable::Valuable> crate::sealed::Sealed for ValuableValue<T> {}
+
+#[cfg(feature = "valuable")]
+#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
+impl<T: valuable::Valuable> Value for ValuableValue<T> {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_value(key, &self.0)
     }
 }
 
