@@ -239,7 +239,7 @@ jobs:
       run: cargo test --no-default-features
       working-directory: tracing
     - name: "Test tracing no-std support"
-      run: cargo test --no-default-features
+      run: cargo test --lib --tests --no-default-features
       working-directory: tracing
       # this skips running doctests under the `--no-default-features` flag,
       # as rustdoc isn't aware of cargo's feature flags.
