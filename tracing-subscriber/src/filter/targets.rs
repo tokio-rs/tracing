@@ -118,7 +118,7 @@ use tracing_core::{Interest, Metadata, Subscriber};
 /// };
 /// use tracing_core::Level;
 /// use std::{sync::Arc, fs::File};
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # fn docs() -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// // A layer that logs events to stdout using the human-readable "pretty"
 /// // format.

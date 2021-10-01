@@ -101,7 +101,7 @@ pub trait Subscriber: 'static {
     ///
     /// `Subscriber`s which require their filters to be run every time an event
     /// occurs or a span is entered/exited should return `Interest::sometimes`.
-    /// If a subscriber returns `Interest::sometimes`, then its' [`enabled`] method
+    /// If a subscriber returns `Interest::sometimes`, then its [`enabled`] method
     /// will be called every time an event or span is created from that callsite.
     ///
     /// For example, suppose a sampling subscriber is implemented by
@@ -363,7 +363,7 @@ pub trait Subscriber: 'static {
     #[deprecated(since = "0.1.2", note = "use `Subscriber::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
-    /// Notifies the subscriber that a [`span ID`] has been dropped, and returns
+    /// Notifies the subscriber that a [span ID] has been dropped, and returns
     /// `true` if there are now 0 IDs that refer to that span.
     ///
     /// Higher-level libraries providing functionality for composing multiple

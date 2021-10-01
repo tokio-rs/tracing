@@ -6,7 +6,7 @@
 //! complete strategy for collecting traces; but it _also_ means that the
 //! `Subscriber` trait cannot easily be composed with other `Subscriber`s.
 //!
-//! In particular, [`Subscriber`]'s are responsible for generating [span IDs] and
+//! In particular, [`Subscriber`]s are responsible for generating [span IDs] and
 //! assigning them to spans. Since these IDs must uniquely identify a span
 //! within the context of the current trace, this means that there may only be
 //! a single `Subscriber` for a given thread at any point in time &mdash;
@@ -393,6 +393,84 @@
 //! # Ok(()) }
 //! ```
 //!
+//! ## Runtime Configuration With Layers
+//!
+//! In some cases, a particular [`Layer`] may be enabled or disabled based on
+//! runtime configuration. This can introduce challenges, because the type of a
+//! layered [`Subscriber`] depends on which layers are added to it: if an `if`
+//! or `match` expression adds some [`Layer`]s in one branch and other layers
+//! in another, the [`Subscriber`] values returned by those branches will have
+//! different types. For example, the following _will not_ work:
+//!
+//! ```compile_fail
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::{fs::File, sync::Arc};
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
+//! let subscriber = Registry::default().with(stdout_log);
+//!
+//! // The compile error will occur here because the if and else
+//! // branches have different (and therefore incompatible) types.
+//! let subscriber = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let layer = tracing_subscriber::fmt::layer()
+//!         .json()
+//!         .with_writer(Arc::new(file));
+//!     subscriber.with(layer)
+//! } else {
+//!     subscriber
+//! };
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+//!     .expect("Unable to set global subscriber");
+//! # Ok(()) }
+//! ```
+//!
+//! However, a [`Layer`] wrapped in an [`Option`] [also implements the `Layer`
+//! trait][option-impl]. This allows individual layers to be enabled or disabled at
+//! runtime while always producing a [`Subscriber`] of the same type. For
+//! example:
+//!
+//! ```
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::{fs::File, sync::Arc};
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
+//! let subscriber = Registry::default().with(stdout_log);
+//!
+//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
+//! let json_log = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let json_log = tracing_subscriber::fmt::layer()
+//!         .json()
+//!         .with_writer(Arc::new(file));
+//!     Some(json_log)
+//! } else {   
+//!     None
+//! };
+//!
+//! // If `cfg.is_prod` is false, then `json` will be `None`, and this layer
+//! // will do nothing. However, the subscriber will still have the same type
+//! // regardless of whether the `Option`'s value is `None` or `Some`.
+//! let subscriber = subscriber.with(json_log);
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+//!    .expect("Unable to set global subscriber");
+//! # Ok(()) }
+//! ```
+//!
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
 //! [the current span]: Context::current_span
@@ -402,6 +480,7 @@
 //! [`Layer::register_callsite`]: Layer::register_callsite
 //! [`Layer::enabled`]: Layer::enabled
 //! [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
+//! [option-impl]: crate::layer::Layer#impl-Layer<S>-for-Option<L>
 //! [`Filtered`]: crate::filter::Filtered
 //! [`filter`]: crate::filter
 //! [`Targets`]: crate::filter::Targets
