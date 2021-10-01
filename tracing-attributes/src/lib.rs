@@ -533,18 +533,15 @@ fn gen_block(
         };
 
         return quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            // See comment on the default case at the end of this function
-            // for why we do this a bit roundabout.
-            let fut = #mk_fut;
             if tracing::level_enabled!(#level) {
+                let __tracing_attr_span = #span;
                 tracing::Instrument::instrument(
-                    fut,
+                    #mk_fut,
                     __tracing_attr_span
                 )
                 .await
             } else {
-                fut.await
+                #mk_fut.await
             }
         );
     }
