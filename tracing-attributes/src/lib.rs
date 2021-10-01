@@ -513,7 +513,7 @@ fn gen_block(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        if err {
+        return if err {
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
                 // See comment on the default case at the end of this function
@@ -554,19 +554,33 @@ fn gen_block(
                     fut.await
                 }
             )
+        };
+    }
+
+    let span = quote_spanned!(block.span()=>
+        // These variables are left uninitialized and initialized only
+        // if the tracing level is statically enabled at this point.
+        // While the tracing level is also checked at span creation
+        // time, that will still create a dummy span, and a dummy guard
+        // and drop the dummy guard later. By lazily initializing these
+        // variables, Rust will generate a drop flag for them and thus
+        // only drop the guard if it was created. This creates code that
+        // is very straightforward for LLVM to optimize out if the tracing
+        // level is statically disabled, while not causing any performance
+        // regression in case the level is enabled.
+        let __tracing_attr_span;
+        let __tracing_attr_guard;
+        if tracing::level_enabled!(#level) {
+            __tracing_attr_span = #span;
+            __tracing_attr_guard = __tracing_attr_span.enter();
         }
-    } else if err {
-        quote_spanned!(block.span()=>
-            // See comment on the default case at the end of this function
-            // for why we do this a bit roundabout.
-            let __tracing_attr_span;
-            let __tracing_attr_guard;
-            if tracing::level_enabled!(#level) {
-                __tracing_attr_span = #span;
-                __tracing_attr_guard = __tracing_attr_span.enter();
-            }
-            // pacify clippy::suspicious_else_formatting
-            let _ = ();
+        // pacify clippy::suspicious_else_formatting
+        let _ = ();
+    );
+
+    if err {
+        return quote_spanned!(block.span()=>
+            #span
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
@@ -576,30 +590,13 @@ fn gen_block(
                     Err(e)
                 }
             }
-        )
-    } else {
-        quote_spanned!(block.span()=>
-            // These variables are left uninitialized and initialized only
-            // if the tracing level is statically enabled at this point.
-            // While the tracing level is also checked at span creation
-            // time, that will still create a dummy span, and a dummy guard
-            // and drop the dummy guard later. By lazily initializing these
-            // variables, Rust will generate a drop flag for them and thus
-            // only drop the guard if it was created. This creates code that
-            // is very straightforward for LLVM to optimize out if the tracing
-            // level is statically disabled, while not causing any performance
-            // regression in case the level is enabled.
-            let __tracing_attr_span;
-            let __tracing_attr_guard;
-            if tracing::level_enabled!(#level) {
-                __tracing_attr_span = #span;
-                __tracing_attr_guard = __tracing_attr_span.enter();
-            }
-            // pacify clippy::suspicious_else_formatting
-            let _ = ();
-            #block
-        )
+        );
     }
+
+    quote_spanned!(block.span()=>
+        #span
+        #block
+    )
 }
 
 #[derive(Default, Debug)]
