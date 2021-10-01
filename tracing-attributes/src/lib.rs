@@ -513,12 +513,9 @@ fn gen_block(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        return if err {
+        let mk_fut = if err {
             quote_spanned!(block.span()=>
-                let __tracing_attr_span = #span;
-                // See comment on the default case at the end of this function
-                // for why we do this a bit roundabout.
-                let fut = async move {
+                async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
@@ -527,34 +524,29 @@ fn gen_block(
                             Err(e)
                         }
                     }
-                };
-                if tracing::level_enabled!(#level) {
-                    tracing::Instrument::instrument(
-                        fut,
-                        __tracing_attr_span
-                    )
-                    .await
-                } else {
-                    fut.await
                 }
             )
         } else {
             quote_spanned!(block.span()=>
-                let __tracing_attr_span = #span;
-                // See comment on the default case at the end of this function
-                // for why we do this a bit roundabout.
-                let fut = async move { #block };
-                if tracing::level_enabled!(#level) {
-                    tracing::Instrument::instrument(
-                        fut,
-                        __tracing_attr_span
-                    )
-                    .await
-                } else {
-                    fut.await
-                }
+                async move { #block }
             )
         };
+
+        return quote_spanned!(block.span()=>
+            let __tracing_attr_span = #span;
+            // See comment on the default case at the end of this function
+            // for why we do this a bit roundabout.
+            let fut = #mk_fut;
+            if tracing::level_enabled!(#level) {
+                tracing::Instrument::instrument(
+                    fut,
+                    __tracing_attr_span
+                )
+                .await
+            } else {
+                fut.await
+            }
+        );
     }
 
     let span = quote_spanned!(block.span()=>
