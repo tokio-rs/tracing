@@ -234,7 +234,7 @@ pub trait WithCollector: Sized {
     /// tokio::spawn(future);
     ///
     /// // However, calling `with_current_collector` on the future before
-    /// // spawning it, ensures that the current thread's default collector is 
+    /// // spawning it, ensures that the current thread's default collector is
     /// // propagated to the spawned task, regardless of where it executes:
     /// # let future = async { };
     /// tokio::spawn(future.with_current_collector());
@@ -348,7 +348,8 @@ impl<T: Future> Future for WithDispatch<T> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
-        dispatch::with_default(dispatch, || future.poll(cx))
+        let _default = dispatch::set_default(dispatch);
+        future.poll(cx)
     }
 }
 
