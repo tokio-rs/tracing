@@ -96,13 +96,12 @@ impl<T> Once<T> {
                     unsafe { *self.data.get() = Some(builder()) };
                     finish.panicked = false;
 
-                    status = COMPLETE;
-                    self.state.store(status, Ordering::SeqCst);
+                    self.state.store(COMPLETE, Ordering::SeqCst);
 
                     // This next line is strictly an optimization
                     return self.force_get();
                 }
-                Err(s) => status = s,
+                Err(status) => status,
             }
         }
 
