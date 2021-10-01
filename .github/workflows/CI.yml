@@ -237,7 +237,7 @@ jobs:
       working-directory: "tracing/test_static_max_level_features"
     - name: "Test tracing-core no-std support"
       run: cargo test --no-default-features
-      working-directory: tracing
+      working-directory: tracing-core
     - name: "Test tracing no-std support"
       run: cargo test --lib --tests --no-default-features
       working-directory: tracing
