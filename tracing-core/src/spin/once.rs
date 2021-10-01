@@ -76,10 +76,11 @@ impl<T> Once<T> {
         let mut status = self.state.load(Ordering::SeqCst);
 
         if status == INCOMPLETE {
-            status = self
+            if self
                 .state
-                .compare_and_swap(INCOMPLETE, RUNNING, Ordering::SeqCst);
-            if status == INCOMPLETE {
+                .compare_exchange(INCOMPLETE, RUNNING, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
                 // We init
                 // We use a guard (Finish) to catch panics caused by builder
                 let mut finish = Finish {
@@ -101,6 +102,8 @@ impl<T> Once<T> {
             match status {
                 INCOMPLETE => unreachable!(),
                 RUNNING => {
+                    // TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
+                    #[allow(deprecated)]
                     // We spin
                     cpu_relax();
                     status = self.state.load(Ordering::SeqCst)
@@ -126,7 +129,12 @@ impl<T> Once<T> {
         loop {
             match self.state.load(Ordering::SeqCst) {
                 INCOMPLETE => return None,
-                RUNNING => cpu_relax(), // We spin
+
+                RUNNING => {
+                    // TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
+                    #[allow(deprecated)]
+                    cpu_relax() // We spin
+                }
                 COMPLETE => return Some(self.force_get()),
                 PANICKED => panic!("Once has panicked"),
                 _ => unsafe { unreachable() },
