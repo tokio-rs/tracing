@@ -186,7 +186,7 @@ pub struct Iter {
 pub trait Visit {
     /// Visits an arbitrary value from Valuable
     #[cfg(feature = "valuable")]
-    fn record_value(&mut self, field: &Field, value: &(dyn valuable::Valuable)) {
+    fn record_value(&mut self, field: &Field, value: &dyn valuable::Valuable) {
         self.record_debug(field, &value)
     }
 
@@ -431,6 +431,17 @@ impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 impl Value for dyn std::error::Error + 'static {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_error(key, self)
+    }
+}
+
+#[cfg(feature = "valuable")]
+impl crate::sealed::Sealed for dyn valuable::Valuable {}
+
+#[cfg(feature = "valuable")]
+#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
+impl Value for dyn valuable::Valuable {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_value(key, self)
     }
 }
 
