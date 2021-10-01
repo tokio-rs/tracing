@@ -1,20 +1,24 @@
 use crate::stdlib::pin::Pin;
 use crate::stdlib::task::{Context, Poll};
 use crate::stdlib::{future::Future, marker::Sized};
-use crate::{dispatcher, span::Span, Dispatch};
+use crate::{
+    dispatcher::{self, Dispatch},
+    span::Span,
+};
 use pin_project_lite::pin_project;
 
-/// Attaches spans to a `std::future::Future`.
+/// Attaches spans to a [`std::future::Future`].
 ///
 /// Extension trait allowing futures to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]:  ../struct.Span.html
+/// [span]: super::Span
 pub trait Instrument: Sized {
-    /// Instruments this type with the provided `Span`, returning an
+    /// Instruments this type with the provided [`Span`], returning an
     /// `Instrumented` wrapper.
     ///
-    /// The attached `Span` will be [entered] every time the instrumented `Future` is polled.
+    /// The attached [`Span`] will be [entered] every time the instrumented
+    /// [`Future`] is polled.
     ///
     /// # Examples
     ///
@@ -38,7 +42,7 @@ pub trait Instrument: Sized {
     /// `instrument` to ensure that the [current span] is attached to the
     /// future if the span passed to `instrument` is [disabled]:
     ///
-    /// ```W
+    /// ```
     /// use tracing::Instrument;
     /// # mod tokio {
     /// #     pub(super) fn spawn(_: impl std::future::Future) {}
@@ -74,17 +78,16 @@ pub trait Instrument: Sized {
     /// [`Span::or_current`]: super::Span::or_current()
     /// [current span]: super::Span::current()
     /// [disabled]: super::Span::is_disabled()
+    /// [`Future`]: std::future::Future
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
 
-    /// Instruments this type with the [current] `Span`, returning an
+    /// Instruments this type with the [current] [`Span`], returning an
     /// `Instrumented` wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// The attached [`Span`] will be [entered] every time the instrumented
+    /// [`Future`] is polled.
     ///
     /// This can be used to propagate the current span when spawning a new future.
     ///
@@ -93,6 +96,9 @@ pub trait Instrument: Sized {
     /// ```rust
     /// use tracing::Instrument;
     ///
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
     /// # async fn doc() {
     /// let span = tracing::info_span!("my_span");
     /// let _enter = span.enter();
@@ -107,8 +113,10 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: ../struct.Span.html#method.current
-    /// [entered]: ../struct.Span.html#method.enter
+    /// [current]: super::Span::current()
+    /// [entered]: super::Span::enter()
+    /// [`Span`]: crate::Span
+    /// [`Future`]: std::future::Future
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -117,63 +125,133 @@ pub trait Instrument: Sized {
 
 /// Extension trait allowing futures to be instrumented with
 /// a `tracing` [`Subscriber`].
-///
-/// [`Subscriber`]: ../trait.Subscriber.html
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a
-    /// `WithDispatch` wrapper.
+    /// [`WithDispatch`] wrapper.
     ///
-    /// The attached subscriber will be set as the [default] when the returned `Future` is polled.
+    /// The attached [`Subscriber`] will be set as the [default] when the returned
+    /// [`Future`] is polled.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::subscriber::NoSubscriber as MySubscriber;
+    /// # use tracing::subscriber::NoSubscriber as MyOtherSubscriber;
+    /// # async fn docs() {
+    /// use tracing::instrument::WithSubscriber;
+    ///
+    /// // Set the default `Subscriber`
+    /// let _default = tracing::subscriber::set_default(MySubscriber::default());
+    ///
+    /// tracing::info!("this event will be recorded by the default `Subscriber`");
+    ///
+    /// // Create a different `Subscriber` and attach it to a future.
+    /// let other_subscriber = MyOtherSubscriber::default();
+    /// let future = async {
+    ///     tracing::info!("this event will be recorded by the other `Subscriber`");
+    ///     // ...
+    /// };
+    ///
+    /// future
+    ///     // Attach the other `Subscriber` to the future before awaiting it
+    ///     .with_subscriber(other_subscriber)
+    ///     .await;
+    ///
+    /// // Once the future has completed, we return to the default `Subscriber`.
+    /// tracing::info!("this event will be recorded by the default `Subscriber`");
+    /// # }
+    /// ```
+    ///
+    /// [`Subscriber`]: super::Subscriber
+    /// [default]: crate::dispatcher#setting-the-default-subscriber
+    /// [`Future`]: std::future::Future
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
         S: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
-            dispatch: subscriber.into(),
+            dispatcher: subscriber.into(),
         }
     }
 
     /// Attaches the current [default] [`Subscriber`] to this type, returning a
-    /// `WithDispatch` wrapper.
+    /// [`WithDispatch`] wrapper.
     ///
-    /// When the wrapped type is a future, stream, or sink, the attached
-    /// subscriber will be set as the [default] while it is being polled.
-    /// When the wrapped type is an executor, the subscriber will be set as the
-    /// default for any futures spawned on that executor.
+    /// The attached `Subscriber` will be set as the [default] when the returned
+    /// [`Future`] is polled.
     ///
     /// This can be used to propagate the current dispatcher context when
-    /// spawning a new future.
+    /// spawning a new future that may run on a different thread.
     ///
-    /// [`Subscriber`]: ../trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// # Examples
+    ///
+    /// ```
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    /// # use tracing::subscriber::NoSubscriber as MySubscriber;
+    /// # async fn docs() {
+    /// use tracing::instrument::WithSubscriber;
+    ///
+    /// // Using `set_default` (rather than `set_global_default`) sets the
+    /// // default `Subscriber` for *this* thread only.
+    /// let _default = tracing::subscriber::set_default(MySubscriber::default());
+    ///
+    /// let future = async {
+    ///     // ...
+    /// };
+    ///
+    /// // If a multi-threaded async runtime is in use, this spawned task may
+    /// // run on a different thread, in a different default `Subscriber`'s context.
+    /// tokio::spawn(future);
+    ///
+    /// // However, calling `with_current_subscriber` on the future before
+    /// // spawning it, ensures that the current thread's default `Subscriber` is
+    /// // propagated to the spawned task, regardless of where it executes:
+    /// # let future = async { };
+    /// tokio::spawn(future.with_current_subscriber());
+    /// # }
+    /// ```
+    /// [`Subscriber`]: super::Subscriber
+    /// [default]: crate::dispatcher#setting-the-default-subscriber
+    /// [`Future`]: std::future::Future
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
-            dispatch: dispatcher::get_default(|default| default.clone()),
+            dispatcher: crate::dispatcher::get_default(|default| default.clone()),
         }
     }
 }
 
-impl<T: Sized> WithSubscriber for T {}
-
 pin_project! {
-    /// A future that has been instrumented with a `tracing` subscriber.
+    /// A [`Future`] that has been instrumented with a `tracing` [`Subscriber`].
+    ///
+    /// This type is returned by the [`WithSubscriber`] extension trait. See that
+    /// trait's documentation for details.
+    ///
+    /// [`Future`]: std::future::Future
+    /// [`Subscriber`]: crate::Subscriber
     #[derive(Clone, Debug)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub struct WithDispatch<T> {
         #[pin]
         inner: T,
-        dispatch: Dispatch,
+        dispatcher: Dispatch,
     }
 }
 
 pin_project! {
-    /// A future that has been instrumented with a `tracing` span.
+    /// A [`Future`] that has been instrumented with a `tracing` [`Span`].
+    ///
+    /// This type is returned by the [`Instrument`] extension trait. See that
+    /// trait's documentation for details.
+    ///
+    /// [`Future`]: std::future::Future
+    /// [`Span`]: crate::Span
     #[derive(Debug, Clone)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct Instrumented<T> {
@@ -182,6 +260,8 @@ pin_project! {
         span: Span,
     }
 }
+
+// === impl Instrumented ===
 
 impl<T: Future> Future for Instrumented<T> {
     type Output = T::Output;
@@ -204,6 +284,61 @@ impl<T> Instrumented<T> {
     /// Mutably borrows the `Span` that this type is instrumented by.
     pub fn span_mut(&mut self) -> &mut Span {
         &mut self.span
+    }
+
+    /// Borrows the wrapped type.
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
+
+    /// Mutably borrows the wrapped type.
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+
+    /// Get a pinned reference to the wrapped type.
+    pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
+        self.project_ref().inner
+    }
+
+    /// Get a pinned mutable reference to the wrapped type.
+    pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+        self.project().inner
+    }
+
+    /// Consumes the `Instrumented`, returning the wrapped type.
+    ///
+    /// Note that this drops the span.
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+}
+
+// === impl WithDispatch ===
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl<T: Future> Future for WithDispatch<T> {
+    type Output = T::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let dispatcher = this.dispatcher;
+        let future = this.inner;
+        let _default = dispatcher::set_default(dispatcher);
+        future.poll(cx)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl<T: Sized> WithSubscriber for T {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl<T> WithDispatch<T> {
+    /// Borrows the [`Dispatch`] that is entered when this type is polled.
+    pub fn dispatcher(&self) -> &Dispatch {
+        &self.dispatcher
     }
 
     /// Borrows the wrapped type.
