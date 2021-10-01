@@ -1,8 +1,11 @@
-use crate::{dispatch, span::Span, Dispatch};
+use crate::span::Span;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::{future::Future, marker::Sized};
 use pin_project_lite::pin_project;
+
+#[cfg(feature = "std")]
+use crate::dispatch::{self, Dispatch};
 
 /// Attaches spans to a [`std::future::Future`].
 ///
@@ -123,6 +126,9 @@ pub trait Instrument: Sized {
 /// Extension trait allowing futures to be instrumented with
 /// a `tracing` collector.
 ///
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithCollector: Sized {
     /// Attaches the provided [collector] to this type, returning a
     /// [`WithDispatch`] wrapper.
@@ -252,6 +258,7 @@ pub trait WithCollector: Sized {
     }
 }
 
+#[cfg(feature = "std")]
 pin_project! {
     /// A [`Future`] that has been instrumented with a `tracing` [collector].
     ///
@@ -262,6 +269,7 @@ pin_project! {
     /// [collector]: crate::Collector
     #[derive(Clone, Debug)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub struct WithDispatch<T> {
         #[pin]
         inner: T,
@@ -341,6 +349,8 @@ impl<T> Instrumented<T> {
 
 // === impl WithDispatch ===
 
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<T: Future> Future for WithDispatch<T> {
     type Output = T::Output;
 
@@ -353,8 +363,12 @@ impl<T: Future> Future for WithDispatch<T> {
     }
 }
 
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<T: Sized> WithCollector for T {}
 
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<T> WithDispatch<T> {
     /// Borrows the [`Dispatch`] that is entered when this type is polled.
     pub fn dispatch(&self) -> &Dispatch {
