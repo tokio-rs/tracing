@@ -64,7 +64,12 @@ impl InnerAppender {
             self.next_date = self.rotation.next_date(&now);
 
             match create_writer(&self.log_directory, &filename) {
-                Ok(writer) => self.writer = writer,
+                Ok(writer) => {
+                    if let Err(err) = self.writer.flush() {
+                        eprintln!("Couldn't flush previous writer: {}", err);
+                    }
+                    self.writer = writer
+                }
                 Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
             }
         }
