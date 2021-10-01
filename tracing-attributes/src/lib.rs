@@ -601,6 +601,8 @@ fn gen_block(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
+    let level = args.level();
+
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
@@ -646,7 +648,6 @@ fn gen_block(
             }
         }
 
-        let level = args.level();
         let target = args.target();
 
         // filter out skipped fields
@@ -713,7 +714,9 @@ fn gen_block(
         if err {
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
-                tracing::Instrument::instrument(async move {
+                // See comment on the default case at the end of this function
+                // for why we do this a bit roundabout.
+                let fut = async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
@@ -722,22 +725,46 @@ fn gen_block(
                             Err(e)
                         }
                     }
-                }, __tracing_attr_span).await
+                };
+                if tracing::level_enabled!(#level) {
+                    tracing::Instrument::instrument(
+                        fut,
+                        __tracing_attr_span
+                    )
+                    .await
+                } else {
+                    fut.await
+                }
             )
         } else {
             quote_spanned!(block.span()=>
                 let __tracing_attr_span = #span;
+                // See comment on the default case at the end of this function
+                // for why we do this a bit roundabout.
+                let fut = async move { #block };
+                if tracing::level_enabled!(#level) {
                     tracing::Instrument::instrument(
-                        async move { #block },
+                        fut,
                         __tracing_attr_span
                     )
                     .await
+                } else {
+                    fut.await
+                }
             )
         }
     } else if err {
         quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            let __tracing_attr_guard = __tracing_attr_span.enter();
+            // See comment on the default case at the end of this function
+            // for why we do this a bit roundabout.
+            let __tracing_attr_span;
+            let __tracing_attr_guard;
+            if tracing::level_enabled!(#level) {
+                __tracing_attr_span = #span;
+                __tracing_attr_guard = __tracing_attr_span.enter();
+            }
+            // pacify clippy::suspicious_else_formatting
+            let _ = ();
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
@@ -750,8 +777,24 @@ fn gen_block(
         )
     } else {
         quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            let __tracing_attr_guard = __tracing_attr_span.enter();
+            // These variables are left uninitialized and initialized only
+            // if the tracing level is statically enabled at this point.
+            // While the tracing level is also checked at span creation
+            // time, that will still create a dummy span, and a dummy guard
+            // and drop the dummy guard later. By lazily initializing these
+            // variables, Rust will generate a drop flag for them and thus
+            // only drop the guard if it was created. This creates code that
+            // is very straightforward for LLVM to optimize out if the tracing
+            // level is statically disabled, while not causing any performance
+            // regression in case the level is enabled.
+            let __tracing_attr_span;
+            let __tracing_attr_guard;
+            if tracing::level_enabled!(#level) {
+                __tracing_attr_span = #span;
+                __tracing_attr_guard = __tracing_attr_span.enter();
+            }
+            // pacify clippy::suspicious_else_formatting
+            let _ = ();
             #block
         )
     }
