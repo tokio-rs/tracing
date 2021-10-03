@@ -967,7 +967,8 @@ pub use self::span::Span;
 pub use tracing_attributes::instrument;
 
 #[macro_use]
-mod macros;
+#[doc(hidden)]
+pub mod macros;
 
 pub mod collect;
 pub mod dispatch;

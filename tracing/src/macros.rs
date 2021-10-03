@@ -2391,6 +2391,40 @@ macro_rules! fieldset {
 
 }
 
+// autoref specialization level 0
+#[doc(hidden)]
+pub trait TracingCaptureValueByValue {
+    fn __tracing_capture_value(&self) -> &dyn crate::field::Value;
+}
+
+impl<T: crate::field::Value> TracingCaptureValueByValue for T {
+    fn __tracing_capture_value(&self) -> &dyn crate::field::Value {
+        self
+    }
+}
+
+// autoref specialization level 1
+#[doc(hidden)]
+pub trait TracingCaptureValueByDebug {
+    fn __tracing_capture_value(&self) -> &dyn crate::field::Value;
+}
+
+impl<T: core::fmt::Debug> TracingCaptureValueByDebug for &T {
+    fn __tracing_capture_value(&self) -> &dyn crate::field::Value {
+        crate::field::debug_ref(self)
+    }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_capture_value {
+    ($e:expr) => {{
+        #[allow(unused_imports)]
+        use $crate::macros::{TracingCaptureValueByDebug, TracingCaptureValueByValue};
+        (&$e).__tracing_capture_value()
+    }};
+}
+
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
