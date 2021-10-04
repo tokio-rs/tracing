@@ -8,19 +8,29 @@ use tracing_attributes::instrument;
 #[test]
 fn named_levels() {
     #[instrument(level = "trace")]
-    fn trace() {}
+    fn trace() {
+        let _ = 1;
+    }
 
     #[instrument(level = "Debug")]
-    fn debug() {}
+    fn debug() {
+        let _ = 1;
+    }
 
     #[instrument(level = "INFO")]
-    fn info() {}
+    fn info() {
+        let _ = 1;
+    }
 
     #[instrument(level = "WARn")]
-    fn warn() {}
+    fn warn() {
+        let _ = 1;
+    }
 
     #[instrument(level = "eRrOr")]
-    fn error() {}
+    fn error() {
+        let _ = 1;
+    }
     let (collector, handle) = collector::mock()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))
         .enter(span::mock().named("trace").at_level(Level::TRACE))
@@ -54,19 +64,29 @@ fn named_levels() {
 #[test]
 fn numeric_levels() {
     #[instrument(level = 1)]
-    fn trace() {}
+    fn trace() {
+        let _ = 1;
+    }
 
     #[instrument(level = 2)]
-    fn debug() {}
+    fn debug() {
+        let _ = 1;
+    }
 
     #[instrument(level = 3)]
-    fn info() {}
+    fn info() {
+        let _ = 1;
+    }
 
     #[instrument(level = 4)]
-    fn warn() {}
+    fn warn() {
+        let _ = 1;
+    }
 
     #[instrument(level = 5)]
-    fn error() {}
+    fn error() {
+        let _ = 1;
+    }
     let (collector, handle) = collector::mock()
         .new_span(span::mock().named("trace").at_level(Level::TRACE))
         .enter(span::mock().named("trace").at_level(Level::TRACE))

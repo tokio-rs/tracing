@@ -8,10 +8,14 @@ use tracing_attributes::instrument;
 #[test]
 fn override_everything() {
     #[instrument(target = "my_target", level = "debug")]
-    fn my_fn() {}
+    fn my_fn() {
+        let _ = 1;
+    }
 
     #[instrument(level = "debug", target = "my_target")]
-    fn my_other_fn() {}
+    fn my_other_fn() {
+        let _ = 2;
+    }
 
     let span = span::mock()
         .named("my_fn")
@@ -44,7 +48,9 @@ fn override_everything() {
 #[test]
 fn fields() {
     #[instrument(target = "my_target", level = "debug")]
-    fn my_fn(arg1: usize, arg2: bool) {}
+    fn my_fn(arg1: usize, arg2: bool) {
+        let _ = arg1;
+    }
 
     let span = span::mock()
         .named("my_fn")
@@ -93,8 +99,10 @@ fn fields() {
 fn skip() {
     struct UnDebug(pub u32);
 
-    #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
-    fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
+    #[instrument(target = "my_target", level = "debug", skip(arg2, _arg3))]
+    fn my_fn(arg1: usize, arg2: UnDebug, _arg3: UnDebug) {
+        let _ = arg2;
+    }
 
     let span = span::mock()
         .named("my_fn")
@@ -174,7 +182,9 @@ fn methods() {
 
     impl Foo {
         #[instrument]
-        fn my_fn(&self, arg1: usize) {}
+        fn my_fn(&self, arg1: usize) {
+            let _ = arg1;
+        }
     }
 
     let span = span::mock().named("my_fn");

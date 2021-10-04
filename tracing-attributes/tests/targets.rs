@@ -5,10 +5,14 @@ use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
 #[instrument]
-fn default_target() {}
+fn default_target() {
+    let _ = 1;
+}
 
 #[instrument(target = "my_target")]
-fn custom_target() {}
+fn custom_target() {
+    let _ = 1;
+}
 
 mod my_mod {
     use tracing_attributes::instrument;
@@ -16,10 +20,14 @@ mod my_mod {
     pub const MODULE_PATH: &str = module_path!();
 
     #[instrument]
-    pub fn default_target() {}
+    pub fn default_target() {
+        let _ = 1;
+    }
 
     #[instrument(target = "my_other_target")]
-    pub fn custom_target() {}
+    pub fn custom_target() {
+        let _ = 1;
+    }
 }
 
 #[test]

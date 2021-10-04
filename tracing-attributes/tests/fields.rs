@@ -7,16 +7,24 @@ use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
 #[instrument(fields(foo = "bar", dsa = true, num = 1))]
-fn fn_no_param() {}
+fn fn_no_param() {
+    let _ = 1;
+}
 
 #[instrument(fields(foo = "bar"))]
-fn fn_param(param: u32) {}
+fn fn_param(param: u32) {
+    let _ = param;
+}
 
 #[instrument(fields(foo = "bar", empty))]
-fn fn_empty_field() {}
+fn fn_empty_field() {
+    let _ = "bar";
+}
 
 #[instrument(fields(len = s.len()))]
-fn fn_expr_field(s: &str) {}
+fn fn_expr_field(s: &str) {
+    let _ = s;
+}
 
 #[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()))]
 fn fn_two_expr_fields(s: &str) {
@@ -40,7 +48,9 @@ struct HasField {
 
 impl HasField {
     #[instrument(fields(my_field = self.my_field), skip(self))]
-    fn self_expr_field(&self) {}
+    fn self_expr_field(&self) {
+        let _ = self;
+    }
 }
 
 #[test]

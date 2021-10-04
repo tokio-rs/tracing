@@ -5,16 +5,22 @@ use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
 #[instrument]
-fn default_name() {}
+fn default_name() {
+    let _ = 1;
+}
 
 #[instrument(name = "my_name")]
-fn custom_name() {}
+fn custom_name() {
+    let _ = 1;
+}
 
 // XXX: it's weird that we support both of these forms, but apparently we
 // managed to release a version that accepts both syntax, so now we have to
 // support it! yay!
 #[instrument("my_other_name")]
-fn custom_name_no_equals() {}
+fn custom_name_no_equals() {
+    let _ = 1;
+}
 
 #[test]
 fn default_name_test() {

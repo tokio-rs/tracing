@@ -7,7 +7,9 @@ use tracing_attributes::instrument;
 #[test]
 fn destructure_tuples() {
     #[instrument]
-    fn my_fn((arg1, arg2): (usize, usize)) {}
+    fn my_fn((arg1, arg2): (usize, usize)) {
+        let _ = arg1;
+    }
 
     let span = span::mock().named("my_fn");
 
@@ -36,7 +38,9 @@ fn destructure_tuples() {
 #[test]
 fn destructure_nested_tuples() {
     #[instrument]
-    fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
+    fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {
+        let _ = arg1;
+    }
 
     let span = span::mock().named("my_fn");
 
@@ -67,7 +71,9 @@ fn destructure_nested_tuples() {
 #[test]
 fn destructure_refs() {
     #[instrument]
-    fn my_fn(&arg1: &usize) {}
+    fn my_fn(&arg1: &usize) {
+        let _ = arg1;
+    }
 
     let span = span::mock().named("my_fn");
 
@@ -94,7 +100,9 @@ fn destructure_tuple_structs() {
     struct Foo(usize, usize);
 
     #[instrument]
-    fn my_fn(Foo(arg1, arg2): Foo) {}
+    fn my_fn(Foo(arg1, arg2): Foo) {
+        let _ = arg1;
+    }
 
     let span = span::mock().named("my_fn");
 
