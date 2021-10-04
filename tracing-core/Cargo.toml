@@ -26,7 +26,7 @@ keywords = ["logging", "tracing", "profiling"]
 edition = "2018"
 
 [features]
-default = ["std"]
+default = ["std", "valuable/std"]
 std = ["lazy_static"]
 
 [badges]
@@ -36,7 +36,7 @@ maintenance = { status = "actively-developed" }
 lazy_static = { version = "1", optional = true }
 
 [target.'cfg(tracing_unstable)'.dependencies]
-valuable = { git="https://github.com/tokio-rs/valuable", optional = true }
+valuable = { git = "https://github.com/tokio-rs/valuable", optional = true, default_features = false }
 
 [package.metadata.docs.rs]
 all-features = true
