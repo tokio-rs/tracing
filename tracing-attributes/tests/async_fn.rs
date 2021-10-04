@@ -15,6 +15,9 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
     future.await
 }
 
+#[instrument]
+async fn test_async_fn_empty() {}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (collector, handle) = collector::mock()
