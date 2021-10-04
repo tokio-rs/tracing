@@ -255,6 +255,7 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
+/// A `Value` which serializes using `valuable::Valuable`.
 #[derive(Clone)]
 #[cfg(feature = "valuable")]
 pub struct ValuableValue<T: valuable::Valuable>(T);
@@ -277,6 +278,8 @@ where
     DebugValue(t)
 }
 
+/// Wraps a type implementing `valuable::Valuable` as a `Value` that
+/// can be recorded  using it `Valuable` implementation.
 #[cfg(feature = "valuable")]
 pub fn valuable<T>(t: T) -> ValuableValue<T>
 where
