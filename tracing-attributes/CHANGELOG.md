@@ -1,3 +1,18 @@
+# 0.1.17 (October 1, 2021)
+
+This release significantly improves performance when `#[instrument]`-generated
+spans are below the maximum enabled level.
+
+### Added
+
+- improve performance when skipping `#[instrument]`-generated spans below the
+  max level ([#1600], [#1605])
+
+Thanks to @oli-obk for contributing to this release!
+
+[#1600]: https://github.com/tokio-rs/tracing/pull/1600
+[#1605]: https://github.com/tokio-rs/tracing/pull/1605
+
 # 0.1.16 (September 13, 2021)
 
 This release adds a new `#[instrument(skip_all)]` option to skip recording *all*

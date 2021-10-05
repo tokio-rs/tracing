@@ -16,7 +16,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-attributes = "0.1.16"
+//! tracing-attributes = "0.1.17"
 //! ```
 //!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
@@ -52,7 +52,7 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.16")]
+#![doc(html_root_url = "https://docs.rs/tracing-attributes/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -601,6 +601,8 @@ fn gen_block(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
+    let level = args.level();
+
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
@@ -646,7 +648,6 @@ fn gen_block(
             }
         }
 
-        let level = args.level();
         let target = args.target();
 
         // filter out skipped fields
@@ -710,10 +711,9 @@ fn gen_block(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        if err {
+        let mk_fut = if err {
             quote_spanned!(block.span()=>
-                let __tracing_attr_span = #span;
-                tracing::Instrument::instrument(async move {
+                async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
@@ -722,22 +722,52 @@ fn gen_block(
                             Err(e)
                         }
                     }
-                }, __tracing_attr_span).await
+                }
             )
         } else {
             quote_spanned!(block.span()=>
-                let __tracing_attr_span = #span;
-                    tracing::Instrument::instrument(
-                        async move { #block },
-                        __tracing_attr_span
-                    )
-                    .await
+                async move { #block }
             )
+        };
+
+        return quote_spanned!(block.span()=>
+            if tracing::level_enabled!(#level) {
+                let __tracing_attr_span = #span;
+                tracing::Instrument::instrument(
+                    #mk_fut,
+                    __tracing_attr_span
+                )
+                .await
+            } else {
+                #mk_fut.await
+            }
+        );
+    }
+
+    let span = quote_spanned!(block.span()=>
+        // These variables are left uninitialized and initialized only
+        // if the tracing level is statically enabled at this point.
+        // While the tracing level is also checked at span creation
+        // time, that will still create a dummy span, and a dummy guard
+        // and drop the dummy guard later. By lazily initializing these
+        // variables, Rust will generate a drop flag for them and thus
+        // only drop the guard if it was created. This creates code that
+        // is very straightforward for LLVM to optimize out if the tracing
+        // level is statically disabled, while not causing any performance
+        // regression in case the level is enabled.
+        let __tracing_attr_span;
+        let __tracing_attr_guard;
+        if tracing::level_enabled!(#level) {
+            __tracing_attr_span = #span;
+            __tracing_attr_guard = __tracing_attr_span.enter();
         }
-    } else if err {
-        quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            let __tracing_attr_guard = __tracing_attr_span.enter();
+        // pacify clippy::suspicious_else_formatting
+        let _ = ();
+    );
+
+    if err {
+        return quote_spanned!(block.span()=>
+            #span
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
@@ -747,14 +777,13 @@ fn gen_block(
                     Err(e)
                 }
             }
-        )
-    } else {
-        quote_spanned!(block.span()=>
-            let __tracing_attr_span = #span;
-            let __tracing_attr_guard = __tracing_attr_span.enter();
-            #block
-        )
+        );
     }
+
+    quote_spanned!(block.span()=>
+        #span
+        #block
+    )
 }
 
 #[derive(Default, Debug)]

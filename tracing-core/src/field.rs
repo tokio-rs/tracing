@@ -118,7 +118,7 @@ pub struct Iter {
 /// }
 ///
 /// impl<'a> Visit for StringVisitor<'a> {
-///     fn record_debug(&mut self, field: &Field, value: &fmt::Debug) {
+///     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
 ///         write!(self.string, "{} = {:?}; ", field.name(), value).unwrap();
 ///     }
 /// }
@@ -524,7 +524,7 @@ impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
 
 impl<T: fmt::Debug> crate::sealed::Sealed for DebugValue<T> {}
 
-impl<T: fmt::Debug> Value for DebugValue<T>
+impl<T> Value for DebugValue<T>
 where
     T: fmt::Debug,
 {
@@ -543,6 +543,16 @@ impl crate::sealed::Sealed for Empty {}
 impl Value for Empty {
     #[inline]
     fn record(&self, _: &Field, _: &mut dyn Visit) {}
+}
+
+impl<T: Value> crate::sealed::Sealed for Option<T> {}
+
+impl<T: Value> Value for Option<T> {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        if let Some(v) = &self {
+            v.record(key, visitor)
+        }
+    }
 }
 
 // ===== impl Field =====

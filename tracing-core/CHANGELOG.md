@@ -1,3 +1,27 @@
+# 0.1.21 (October 1, 2021)
+
+This release adds support for recording `Option<T> where T: Value` as typed
+`tracing` field values.
+
+### Added
+
+- **field**: `Value` impl for `Option<T> where T: Value` ([#1585])
+
+### Fixed
+
+- Fixed deprecation warnings when building with `default-features` disabled
+  ([#1603], [#1606])
+- Documentation fixes and improvements ([#1595], [#1601])
+
+Thanks to @brianburgers, @DCjanus, and @matklad for contributing to this
+release!
+
+[#1585]: https://github.com/tokio-rs/tracing/pull/1585
+[#1595]: https://github.com/tokio-rs/tracing/pull/1595
+[#1601]: https://github.com/tokio-rs/tracing/pull/1601
+[#1603]: https://github.com/tokio-rs/tracing/pull/1603
+[#1606]: https://github.com/tokio-rs/tracing/pull/1606
+
 # 0.1.20 (September 12, 2021)
 
 This release adds support for `f64` as one of the `tracing-core`
