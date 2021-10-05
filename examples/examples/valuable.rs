@@ -1,5 +1,5 @@
 #![cfg(tracing_unstable)]
-use tracing::{info_span, info};
+use tracing::{info_span, info, field::valuable};
 use valuable::Valuable;
 
 #[derive(Clone, Debug, Valuable)]
@@ -32,7 +32,7 @@ fn main() {
         }
     };
 
-    let span = info_span!("Processing", user=tracing::field::valuable(&user)); 
+    let span = info_span!("Processing", user=valuable(&user)); 
     let _handle = span.enter();
     info!("Nothing to do");
 }
