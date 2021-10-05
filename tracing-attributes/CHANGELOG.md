@@ -1,4 +1,21 @@
-# 0.1.17 (October 1, 2021)
+# 0.1.18 (October 5, 2021)
+
+This release fixes issues introduced in v0.1.17.
+
+### Fixed
+
+- fixed mismatched types compiler error that may occur when using
+  `#[instrument]` on an `async fn` that returns an `impl Trait` value that
+  includes a closure ([#1616])
+- fixed false positives for `clippy::suspicious_else_formatting` warnings due to
+  rust-lang/rust-clippy#7760 and rust-lang/rust-clippy#6249 ([#1617])
+- fixed `clippy::let_unit_value` lints when using `#[instrument]` ([#1614])
+
+[#1617]: https://github.com/tokio-rs/tracing/pull/1617
+[#1616]: https://github.com/tokio-rs/tracing/pull/1616
+[#1614]: https://github.com/tokio-rs/tracing/pull/1614
+
+# 0.1.17 (YANKED) (October 1, 2021)
 
 This release significantly improves performance when `#[instrument]`-generated
 spans are below the maximum enabled level.
