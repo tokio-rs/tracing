@@ -30,6 +30,9 @@ async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'
     Ok((0..10).filter(move |x| *x < n))
 }
 
+#[instrument]
+async fn test_async_fn_empty() {}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (collector, handle) = collector::mock()

@@ -564,8 +564,6 @@ fn gen_block(
             __tracing_attr_span = #span;
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
-        // pacify clippy::suspicious_else_formatting
-        let _ = ();
     );
 
     if err {
@@ -584,8 +582,17 @@ fn gen_block(
     }
 
     quote_spanned!(block.span()=>
-        #span
-        #block
+        // Because `quote` produces a stream of tokens _without_ whitespace, the
+        // `if` and the block will appear directly next to each other. This
+        // generates a clippy lint about suspicious `if/else` formatting.
+        // Therefore, suppress the lint inside the generated code...
+        #[allow(clippy::suspicious_else_formatting)]
+        {
+            #span
+            // ...but turn the lint back on inside the function body.
+            #[warn(clippy::suspicious_else_formatting)]
+            #block
+        }
     )
 }
 
