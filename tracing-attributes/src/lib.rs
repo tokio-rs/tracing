@@ -533,15 +533,16 @@ fn gen_block(
         };
 
         return quote!(
-            if tracing::level_enabled!(#level) {
-                let __tracing_attr_span = #span;
+            let __tracing_attr_span = #span;
+            let __tracing_instrument_future = #mk_fut;
+            if !__tracing_attr_span.is_disabled() {
                 tracing::Instrument::instrument(
-                    #mk_fut,
+                    __tracing_instrument_future,
                     __tracing_attr_span
                 )
                 .await
             } else {
-                #mk_fut.await
+                __tracing_instrument_future.await
             }
         );
     }
