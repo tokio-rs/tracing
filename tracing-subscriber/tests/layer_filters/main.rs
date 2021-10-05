@@ -3,6 +3,7 @@
 mod support;
 use self::support::*;
 mod boxed;
+mod downcast_raw;
 mod filter_scopes;
 mod targets;
 mod trees;
