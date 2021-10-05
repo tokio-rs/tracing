@@ -15,6 +15,46 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
     future.await
 }
 
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument]
+async fn test_ret_impl_trait(n: i32) -> Result<impl Iterator<Item = i32>, ()> {
+    let n = n;
+    Ok((0..10).filter(move |x| *x < n))
+}
+
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument(err)]
+async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'static str> {
+    Ok((0..10).filter(move |x| *x < n))
+}
+
+#[instrument]
+async fn test_async_fn_empty() {}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+#[instrument]
+// LOAD-BEARING `#[rustfmt::skip]`! This is necessary to reproduce the bug;
+// with the rustfmt-generated formatting, the lint will not be triggered!
+#[rustfmt::skip]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613(var: bool) {
+    println!(
+        "{}",
+        if var { "true" } else { "false" }
+    );
+}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+// and https://github.com/rust-lang/rust-clippy/issues/7760
+#[instrument]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613_2() {
+    // hello world
+    // else
+}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()

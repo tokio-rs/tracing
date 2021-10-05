@@ -16,6 +16,12 @@ fn err() -> Result<u8, TryFromIntError> {
     u8::try_from(1234)
 }
 
+#[instrument(err)]
+fn err_suspicious_else() -> Result<u8, TryFromIntError> {
+    {}
+    u8::try_from(1234)
+}
+
 #[test]
 fn test() {
     let span = span::mock().named("err");

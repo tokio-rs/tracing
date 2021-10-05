@@ -730,21 +730,22 @@ fn gen_block(
             )
         };
 
-        return quote_spanned!(block.span()=>
-            if tracing::level_enabled!(#level) {
-                let __tracing_attr_span = #span;
+        return quote!(
+            let __tracing_attr_span = #span;
+            let __tracing_instrument_future = #mk_fut;
+            if !__tracing_attr_span.is_disabled() {
                 tracing::Instrument::instrument(
-                    #mk_fut,
+                    __tracing_instrument_future,
                     __tracing_attr_span
                 )
                 .await
             } else {
-                #mk_fut.await
+                __tracing_instrument_future.await
             }
         );
     }
 
-    let span = quote_spanned!(block.span()=>
+    let span = quote!(
         // These variables are left uninitialized and initialized only
         // if the tracing level is statically enabled at this point.
         // While the tracing level is also checked at span creation
@@ -761,8 +762,6 @@ fn gen_block(
             __tracing_attr_span = #span;
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
-        // pacify clippy::suspicious_else_formatting
-        let _ = ();
     );
 
     if err {
@@ -780,9 +779,18 @@ fn gen_block(
         );
     }
 
-    quote_spanned!(block.span()=>
-        #span
-        #block
+    quote_spanned!(block.span() =>
+        // Because `quote` produces a stream of tokens _without_ whitespace, the
+        // `if` and the block will appear directly next to each other. This
+        // generates a clippy lint about suspicious `if/else` formatting.
+        // Therefore, suppress the lint inside the generated code...
+        #[allow(clippy::suspicious_else_formatting)]
+        {
+            #span
+            // ...but turn the lint back on inside the function body.
+            #[warn(clippy::suspicious_else_formatting)]
+            #block
+        }
     )
 }
 
