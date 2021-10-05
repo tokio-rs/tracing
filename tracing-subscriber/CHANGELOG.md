@@ -1,3 +1,23 @@
+# 0.2.25 (October 5, 2021)
+
+This release fixes an issue where a `Layer` implementation's custom
+`downcast_raw` implementation was lost when wrapping that layer with a per-layer
+filter.
+
+### Fixed
+
+- **registry**: Forward `Filtered::downcast_raw` to wrapped `Layer` ([#1619])
+
+### Added
+
+- Documentation improvements ([#1596], [#1601])
+
+Thanks to @bryanburgers for contributing to this release!
+
+[#1619]: https://github.com/tokio-rs/tracing/pull/1619
+[#1601]: https://github.com/tokio-rs/tracing/pull/1601
+[#1596]: https://github.com/tokio-rs/tracing/pull/1596
+
 # 0.2.24 (September 19, 2021)
 
 This release contains a number of bug fixes, including a fix for
