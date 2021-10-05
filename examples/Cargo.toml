@@ -57,3 +57,8 @@ opentelemetry-jaeger = "0.15"
 # fmt examples
 snafu = "0.6.10"
 thiserror = "1.0.26"
+
+# valuable examples 
+[target.'cfg(tracing_unstable)'.dependencies]
+valuable = { git = "https://github.com/tokio-rs/valuable", features = ["derive"] }
+tracing-core = { path = "../tracing-core", version = "0.2", features = ["valuable"]}
