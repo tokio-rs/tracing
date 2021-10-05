@@ -33,6 +33,28 @@ async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'
 #[instrument]
 async fn test_async_fn_empty() {}
 
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+#[instrument]
+// LOAD-BEARING `#[rustfmt::skip]`! This is necessary to reproduce the bug;
+// with the rustfmt-generated formatting, the lint will not be triggered!
+#[rustfmt::skip]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613(var: bool) {
+    println!(
+        "{}",
+        if var { "true" } else { "false" }
+    );
+}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+// and https://github.com/rust-lang/rust-clippy/issues/7760
+#[instrument]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613_2() {
+    // hello world
+    // else
+}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()

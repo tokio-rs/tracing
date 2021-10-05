@@ -730,7 +730,7 @@ fn gen_block(
             )
         };
 
-        return quote_spanned!(block.span()=>
+        return quote!(
             let __tracing_attr_span = #span;
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
@@ -745,7 +745,7 @@ fn gen_block(
         );
     }
 
-    let span = quote_spanned!(block.span()=>
+    let span = quote!(
         // These variables are left uninitialized and initialized only
         // if the tracing level is statically enabled at this point.
         // While the tracing level is also checked at span creation
@@ -779,7 +779,7 @@ fn gen_block(
         );
     }
 
-    quote_spanned!(block.span()=>
+    quote_spanned!(block.span() =>
         // Because `quote` produces a stream of tokens _without_ whitespace, the
         // `if` and the block will appear directly next to each other. This
         // generates a clippy lint about suspicious `if/else` formatting.
