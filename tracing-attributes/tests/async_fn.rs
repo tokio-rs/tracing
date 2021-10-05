@@ -15,6 +15,21 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
     future.await
 }
 
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument]
+async fn test_ret_impl_trait(n: i32) -> Result<impl Iterator<Item = i32>, ()> {
+    let n = n;
+    Ok((0..10).filter(move |x| *x < n))
+}
+
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument(err)]
+async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'static str> {
+    Ok((0..10).filter(move |x| *x < n))
+}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (collector, handle) = collector::mock()
