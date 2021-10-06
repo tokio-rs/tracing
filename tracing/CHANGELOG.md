@@ -1,3 +1,41 @@
+# 0.1.29 (October 5th, 2021
+
+This release adds support for recording `Option<T> where T: Value` as typed
+`tracing` field values. It also includes significant performance improvements
+for functions annotated with the `#[instrument]` attribute when the generated
+span is disabled.
+
+### Changed
+
+- `tracing-core`: updated to v0.1.21
+- `tracing-attributes`: updated to v0.1.19
+
+### Added
+
+- **field**: `Value` impl for `Option<T> where T: Value` ([#1585])
+- **attributes**: - improved performance when skipping `#[instrument]`-generated
+  spans below the max level ([#1600], [#1605], [#1614], [#1616], [#1617])
+
+### Fixed
+
+- **instrument**: added missing `Future` implementation for `WithSubscriber`,
+  making the `WithDispatch` extension trait actually useable ([#1602])
+- Documentation fixes and improvements ([#1595], [#1601], [#1597])
+
+Thanks to @brianburgers, @mattiast, @DCjanus, @oli-obk, and @matklad for
+contributing to this release!
+
+[#1585]: https://github.com/tokio-rs/tracing/pull/1585
+[#1595]: https://github.com/tokio-rs/tracing/pull/1596
+[#1597]: https://github.com/tokio-rs/tracing/pull/1597
+[#1600]: https://github.com/tokio-rs/tracing/pull/1600
+[#1601]: https://github.com/tokio-rs/tracing/pull/1601
+[#1602]: https://github.com/tokio-rs/tracing/pull/1602
+[#1605]: https://github.com/tokio-rs/tracing/pull/1605
+[#1614]: https://github.com/tokio-rs/tracing/pull/1614
+[#1616]: https://github.com/tokio-rs/tracing/pull/1616
+[#1617]: https://github.com/tokio-rs/tracing/pull/1617
+
 # 0.1.28 (September 17th, 2021)
 
 This release fixes an issue where the RustDoc documentation was rendered
