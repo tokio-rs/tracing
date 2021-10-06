@@ -8,7 +8,7 @@ span is disabled.
 ### Changed
 
 - `tracing-core`: updated to v0.1.21
-- `tracing-attributes`: updated to v0.1.19
+- `tracing-attributes`: updated to v0.1.18
 
 ### Added
 
