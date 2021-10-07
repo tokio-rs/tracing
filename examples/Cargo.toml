@@ -61,4 +61,4 @@ thiserror = "1.0.26"
 # valuable examples 
 [target.'cfg(tracing_unstable)'.dependencies]
 valuable = { git = "https://github.com/tokio-rs/valuable", features = ["derive"] }
-tracing-core = { path = "../tracing-core", version = "0.2", features = ["valuable"]}
+tracing-core = { path = "../tracing-core", version = "0.1", features = ["valuable"]}
