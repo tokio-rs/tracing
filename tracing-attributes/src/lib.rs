@@ -394,6 +394,7 @@ fn gen_block(
     self_type: Option<&syn::TypePath>,
 ) -> proc_macro2::TokenStream {
     let err = args.err;
+    let err_dbg = args.err_dbg;
 
     // generate the span's name
     let span_name = args
@@ -507,29 +508,34 @@ fn gen_block(
         ))
     })();
 
+    let err_block = match (err, err_dbg) {
+        (true, _) => Some(quote!(tracing::error!(error = %e))),
+        (_, true) => Some(quote!(tracing::error!(error = ?e))),
+        _ => None,
+    };
+
     // Generate the instrumented function body.
     // If the function is an `async fn`, this will wrap it in an async block,
     // which is `instrument`ed using `tracing-futures`. Otherwise, this will
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        let mk_fut = if err {
-            quote_spanned!(block.span()=>
+        let mk_fut = match err_block {
+            Some(err_block) => quote_spanned!(block.span()=>
                 async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
-                            tracing::error!(error = %e);
+                            #err_block;
                             Err(e)
                         }
                     }
                 }
-            )
-        } else {
-            quote_spanned!(block.span()=>
+            ),
+            None => quote_spanned!(block.span()=>
                 async move { #block }
-            )
+            ),
         };
 
         return quote!(
@@ -566,7 +572,7 @@ fn gen_block(
         }
     );
 
-    if err {
+    if let Some(err_block) = err_block {
         return quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
@@ -574,7 +580,7 @@ fn gen_block(
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
-                    tracing::error!(error = %e);
+                    #err_block;
                     Err(e)
                 }
             }
@@ -604,6 +610,7 @@ struct InstrumentArgs {
     skips: HashSet<Ident>,
     fields: Option<Fields>,
     err: bool,
+    err_dbg: bool,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -729,7 +736,16 @@ impl Parse for InstrumentArgs {
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>()?;
+                if args.err_dbg {
+                    return Err(input.error("expected at most one of `err` or `err_dbg`"));
+                }
                 args.err = true;
+            } else if lookahead.peek(kw::err_dbg) {
+                let _ = input.parse::<kw::err_dbg>()?;
+                if args.err {
+                    return Err(input.error("expected at most one of `err_dbg` or `err`"));
+                }
+                args.err_dbg = true;
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -1010,6 +1026,7 @@ mod kw {
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
+    syn::custom_keyword!(err_dbg);
 }
 
 enum AsyncTraitKind<'a> {

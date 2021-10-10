@@ -174,3 +174,23 @@ fn impl_trait_return_type() {
 
     handle.assert_finished();
 }
+
+#[instrument(err_dbg)]
+fn err_dbg() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_dbg() {
+    let span = span::mock().named("err_dbg");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(collector, || err_dbg().ok());
+    handle.assert_finished();
+}
