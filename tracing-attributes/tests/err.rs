@@ -175,7 +175,7 @@ fn impl_trait_return_type() {
     handle.assert_finished();
 }
 
-#[instrument(err_dbg)]
+#[instrument(err(Debug))]
 fn err_dbg() -> Result<u8, TryFromIntError> {
     u8::try_from(1234)
 }

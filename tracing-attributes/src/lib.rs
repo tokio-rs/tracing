@@ -393,8 +393,6 @@ fn gen_block(
     instrumented_function_name: &str,
     self_type: Option<&syn::TypePath>,
 ) -> proc_macro2::TokenStream {
-    let err = args.err;
-    let err_dbg = args.err_dbg;
 
     // generate the span's name
     let span_name = args
@@ -508,9 +506,9 @@ fn gen_block(
         ))
     })();
 
-    let err_block = match (err, err_dbg) {
-        (true, _) => Some(quote!(tracing::error!(error = %e))),
-        (_, true) => Some(quote!(tracing::error!(error = ?e))),
+    let err_block = match args.err_mode {
+        Some(ErrorMode::Display) => Some(quote!(tracing::error!(error = %e))),
+        Some(ErrorMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
         _ => None,
     };
 
@@ -609,8 +607,7 @@ struct InstrumentArgs {
     target: Option<LitStr>,
     skips: HashSet<Ident>,
     fields: Option<Fields>,
-    err: bool,
-    err_dbg: bool,
+    err_mode: Option<ErrorMode>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -735,17 +732,8 @@ impl Parse for InstrumentArgs {
                 }
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
-                let _ = input.parse::<kw::err>()?;
-                if args.err_dbg {
-                    return Err(input.error("expected at most one of `err` or `err_dbg`"));
-                }
-                args.err = true;
-            } else if lookahead.peek(kw::err_dbg) {
-                let _ = input.parse::<kw::err_dbg>()?;
-                if args.err {
-                    return Err(input.error("expected at most one of `err_dbg` or `err`"));
-                }
-                args.err_dbg = true;
+                let ErrorModes(mode) = input.parse()?;
+                args.err_mode = Some(mode);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -800,6 +788,55 @@ impl Parse for Skips {
             }
         }
         Ok(Self(skips))
+    }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum ErrorMode {
+    Display,
+    Debug,
+}
+impl Default for ErrorMode {
+    fn default() -> Self {
+        ErrorMode::Display
+    }
+}
+
+impl Parse for ErrorMode {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let ident: Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "Debug" => Ok(ErrorMode::Debug),
+            "Display" => Ok(ErrorMode::Display),
+            _ => Err(syn::Error::new(
+                ident.span(),
+                "unknown error mode, must be Debug or Display",
+            )),
+        }
+    }
+}
+
+struct ErrorModes(ErrorMode);
+
+impl Parse for ErrorModes {
+
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _ = input.parse::<kw::err>();
+        if input.peek(syn::token::Paren) {
+            let content;
+            let _ = syn::parenthesized!(content in input);
+            let modes: Punctuated<ErrorMode, Token![,]> = content.parse_terminated(ErrorMode::parse)?;
+            let modes = modes.into_iter().collect::<HashSet<_>>();
+            return match modes.len() {
+                0 => Ok(Self(ErrorMode::Display)),
+                1 => Ok(Self(modes.into_iter().next().unwrap())),
+                _ => Err(syn::Error::new(
+                    content.span(),
+                    "at most one of Debug or Display can be given",
+                ))
+            }
+        }
+        Ok(Self(ErrorMode::Display))
     }
 }
 
@@ -1026,7 +1063,6 @@ mod kw {
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
-    syn::custom_keyword!(err_dbg);
 }
 
 enum AsyncTraitKind<'a> {
