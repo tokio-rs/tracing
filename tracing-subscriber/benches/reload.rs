@@ -1,4 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use std::time::Duration;
+use tracing::Dispatch;
 use tracing_subscriber::{
     filter::LevelFilter,
     fmt::{
@@ -10,7 +12,7 @@ use tracing_subscriber::{
 };
 
 mod support;
-use support::NoWriter;
+use support::{MultithreadedBench, NoWriter};
 
 /// Prepare a real-world-inspired collector and use it to  measure the performance impact of
 /// reloadable collectors.
@@ -66,5 +68,56 @@ fn bench_reload(c: &mut Criterion) {
     });
     group.finish();
 }
-criterion_group!(benches, bench_reload);
+
+fn bench_concurrent(c: &mut Criterion) {
+    let mut group = c.benchmark_group("reload_concurrent");
+
+    fn events() {
+        tracing::info!(target: "this", "hi");
+        tracing::debug!(target: "enabled", "hi");
+        tracing::warn!(target: "hepp", "hi");
+        tracing::trace!(target: "stuff", "hi");
+    }
+
+    group.bench_function("complex-collector", |b| {
+        let builder = mk_builder();
+        let collector = Dispatch::new(builder.finish());
+        b.iter_custom(|iters| {
+            let mut total = Duration::from_secs(0);
+            for _ in 0..iters {
+                let bench = MultithreadedBench::new(collector.clone());
+                let elapsed = bench
+                    .thread(events)
+                    .thread(events)
+                    .thread(events)
+                    .thread(events)
+                    .run();
+                total += elapsed;
+            }
+            total
+        });
+    });
+    group.bench_function("complex-collector-reloadable", |b| {
+        let builder = mk_builder().with_filter_reloading();
+        let _handle = builder.reload_handle();
+        let collector = Dispatch::new(builder.finish());
+        b.iter_custom(|iters| {
+            let mut total = Duration::from_secs(0);
+            for _ in 0..iters {
+                let bench = MultithreadedBench::new(collector.clone());
+                let elapsed = bench
+                    .thread(events)
+                    .thread(events)
+                    .thread(events)
+                    .thread(events)
+                    .run();
+                total += elapsed;
+            }
+            total
+        });
+    });
+    group.finish();
+}
+
+criterion_group!(benches, bench_reload, bench_concurrent);
 criterion_main!(benches);
