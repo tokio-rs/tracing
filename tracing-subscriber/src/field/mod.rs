@@ -156,21 +156,21 @@ where
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
 impl<'a> RecordFields for Event<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Event::record(&self, visitor)
+        Event::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
 impl<'a> RecordFields for Attributes<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Attributes::record(&self, visitor)
+        Attributes::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
 impl<'a> RecordFields for Record<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Record::record(&self, visitor)
+        Record::record(self, visitor)
     }
 }
 

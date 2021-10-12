@@ -59,8 +59,8 @@ fn fields() {
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("2"))
-                    .and(field::mock("arg2").with_value(&format_args!("false")))
+                    .with_value(&2usize)
+                    .and(field::mock("arg2").with_value(&false))
                     .only(),
             ),
         )
@@ -70,8 +70,8 @@ fn fields() {
         .new_span(
             span2.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("3"))
-                    .and(field::mock("arg2").with_value(&format_args!("true")))
+                    .with_value(&3usize)
+                    .and(field::mock("arg2").with_value(&true))
                     .only(),
             ),
         )
@@ -108,7 +108,7 @@ fn skip() {
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
+                .with_field(field::mock("arg1").with_value(&2usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -116,7 +116,7 @@ fn skip() {
         .new_span(
             span2
                 .clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
+                .with_field(field::mock("arg1").with_value(&3usize).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -184,7 +184,7 @@ fn methods() {
             span.clone().with_field(
                 field::mock("self")
                     .with_value(&format_args!("Foo"))
-                    .and(field::mock("arg1").with_value(&format_args!("42"))),
+                    .and(field::mock("arg1").with_value(&42usize)),
             ),
         )
         .enter(span.clone())
@@ -213,7 +213,7 @@ fn impl_trait_return_type() {
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("x").with_value(&format_args!("10")).only()),
+                .with_field(field::mock("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())

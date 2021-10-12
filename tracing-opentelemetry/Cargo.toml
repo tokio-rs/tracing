@@ -1,6 +1,6 @@
 [package]
 name = "tracing-opentelemetry"
-version = "0.11.0"
+version = "0.15.0"
 authors = [
     "Julian Tescher <julian@tescher.me>",
     "Tokio Contributors <team@tokio.rs>"
@@ -24,7 +24,7 @@ fmt = ["tracing-subscriber/fmt"]
 ansi = ["tracing-subscriber/ansi", "ansi_term"]
 
 [dependencies]
-opentelemetry = { version = "0.12", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
@@ -33,4 +33,12 @@ ansi_term = { version = "0.12", optional = true }
 
 [dev-dependencies]
 async-trait = "0.1"
-opentelemetry-jaeger = "0.11"
+criterion = { version = "0.3", default_features = false }
+opentelemetry-jaeger = "0.15"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "trace"
+harness = false

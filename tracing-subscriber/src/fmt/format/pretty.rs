@@ -5,10 +5,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    iter,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field},
     Collect, Event, Level,
@@ -107,7 +104,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(writer, "  ")?;
-        time::write(&self.timer, writer, self.ansi)?;
+
+        self.format_timestamp(writer)?;
 
         let style = if self.display_level && self.ansi {
             Pretty::style_for(meta.level())
@@ -182,13 +180,10 @@ where
         };
         let span = event
             .parent()
-            .and_then(|id| ctx.span(&id))
+            .and_then(|id| ctx.span(id))
             .or_else(|| ctx.lookup_current());
 
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
+        let scope = span.into_iter().flat_map(|span| span.scope());
 
         for span in scope {
             let meta = span.metadata();
@@ -336,12 +331,12 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}{}.source{}: {}",
+                    "{}, {}{}.sources{}: {}",
                     value,
                     bold.prefix(),
                     field,
                     bold.infix(self.style),
-                    source,
+                    ErrorSourceList(source),
                 ),
             )
         } else {
