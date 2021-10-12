@@ -88,9 +88,9 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Block, Expr, ExprAsync, ExprCall, FieldPat, FnArg,
-    Ident, Item, ItemFn, LitInt, LitStr, Pat, PatIdent, PatReference, PatStruct, PatTuple,
-    PatTupleStruct, PatType, Path, Signature, Stmt, Token, TypePath,
+    punctuated::Punctuated, spanned::Spanned, Attribute, Block, Expr, ExprAsync, ExprCall,
+    FieldPat, FnArg, Ident, Item, ItemFn, LitInt, LitStr, Pat, PatIdent, PatReference, PatStruct,
+    PatTuple, PatTupleStruct, PatType, Path, Signature, Stmt, Token, TypePath, Visibility,
 };
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
@@ -274,14 +274,42 @@ pub fn instrument(
     args: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(item as ItemFn);
     let args = syn::parse_macro_input!(args as InstrumentArgs);
+    // Cloning a `TokenStream` is cheap since it's reference counted internally.
+    instrument_precise(args.clone(), item.clone())
+        .unwrap_or_else(|_err| instrument_speculative(args, item))
+}
 
+/// Instrument the function, without parsing the function body (instead using the raw tokens).
+fn instrument_speculative(
+    args: InstrumentArgs,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(item as MaybeItemFn);
+    let instrumented_function_name = input.sig.ident.to_string();
+    gen_function(
+        input.as_ref(),
+        args,
+        instrumented_function_name.as_str(),
+        None,
+    )
+    .into()
+}
+
+/// Instrument the function, by fully parsing the function body,
+/// which allows us to rewrite some statements related to async_trait-like patterns.
+fn instrument_precise(
+    args: InstrumentArgs,
+    item: proc_macro::TokenStream,
+) -> Result<proc_macro::TokenStream, syn::Error> {
+    let input = syn::parse::<ItemFn>(item)?;
     let instrumented_function_name = input.sig.ident.to_string();
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
-    if let Some(internal_fun) = get_async_trait_info(&input.block, input.sig.asyncness.is_some()) {
+    let res = if let Some(internal_fun) =
+        get_async_trait_info(&input.block, input.sig.asyncness.is_some())
+    {
         // let's rewrite some statements!
         let mut out_stmts: Vec<TokenStream> = input
             .block
@@ -301,7 +329,7 @@ pub fn instrument(
             out_stmts[iter] = match internal_fun.kind {
                 // async-trait <= 0.1.43
                 AsyncTraitKind::Function(fun) => gen_function(
-                    fun,
+                    fun.into(),
                     args,
                     instrumented_function_name.as_str(),
                     internal_fun.self_type.as_ref(),
@@ -335,13 +363,21 @@ pub fn instrument(
         )
         .into()
     } else {
-        gen_function(&input, args, instrumented_function_name.as_str(), None).into()
-    }
+        gen_function(
+            (&input).into(),
+            args,
+            instrumented_function_name.as_str(),
+            None,
+        )
+        .into()
+    };
+
+    Ok(res)
 }
 
 /// Given an existing function, generate an instrumented version of that function
-fn gen_function(
-    input: &ItemFn,
+fn gen_function<'a, B: ToTokens + 'a>(
+    input: MaybeItemFnRef<'a, B>,
     args: InstrumentArgs,
     instrumented_function_name: &str,
     self_type: Option<&syn::TypePath>,
@@ -349,12 +385,11 @@ fn gen_function(
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
     // (Syn's ToTokens isn't implemented for ItemFn)
-    let ItemFn {
+    let MaybeItemFnRef {
         attrs,
         vis,
-        block,
         sig,
-        ..
+        block,
     } = input;
 
     let Signature {
@@ -397,8 +432,8 @@ fn gen_function(
 }
 
 /// Instrument a block
-fn gen_block(
-    block: &Block,
+fn gen_block<B: ToTokens>(
+    block: &B,
     params: &Punctuated<FnArg, Token![,]>,
     async_context: bool,
     mut args: InstrumentArgs,
@@ -611,7 +646,66 @@ fn gen_block(
     )
 }
 
-#[derive(Default, Debug)]
+/// This is a more flexible/imprecise `ItemFn` type,
+/// which's block is just a `TokenStream` (it may contain invalid code).
+#[derive(Debug, Clone)]
+struct MaybeItemFn {
+    attrs: Vec<Attribute>,
+    vis: Visibility,
+    sig: Signature,
+    block: TokenStream,
+}
+
+impl MaybeItemFn {
+    fn as_ref(&self) -> MaybeItemFnRef<'_, TokenStream> {
+        MaybeItemFnRef {
+            attrs: &self.attrs,
+            vis: &self.vis,
+            sig: &self.sig,
+            block: &self.block,
+        }
+    }
+}
+
+/// This parses a `TokenStream` into a `MaybeItemFn`
+/// (just like `ItemFn`, but skips parsing the body).
+impl Parse for MaybeItemFn {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let attrs = input.call(syn::Attribute::parse_outer)?;
+        let vis: Visibility = input.parse()?;
+        let sig: Signature = input.parse()?;
+        let block: TokenStream = input.parse()?;
+        Ok(Self {
+            attrs,
+            vis,
+            sig,
+            block,
+        })
+    }
+}
+
+/// A generic reference type for `MaybeItemFn`,
+/// that takes a generic block type `B` that implements `ToTokens` (eg. `TokenStream`, `Block`).
+#[derive(Debug, Clone)]
+struct MaybeItemFnRef<'a, B: ToTokens> {
+    attrs: &'a Vec<Attribute>,
+    vis: &'a Visibility,
+    sig: &'a Signature,
+    block: &'a B,
+}
+
+impl<'a> From<&'a ItemFn> for MaybeItemFnRef<'a, Box<Block>> {
+    fn from(val: &'a ItemFn) -> Self {
+        MaybeItemFnRef {
+            attrs: &val.attrs,
+            vis: &val.vis,
+            sig: &val.sig,
+            block: &val.block,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug)]
 struct InstrumentArgs {
     level: Option<Level>,
     name: Option<LitStr>,
@@ -803,7 +897,7 @@ impl Parse for Skips {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 enum ErrorMode {
     Display,
     Debug,
@@ -836,17 +930,17 @@ impl Parse for ErrorMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Fields(Punctuated<Field, Token![,]>);
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Field {
     name: Punctuated<Ident, Token![.]>,
     value: Option<Expr>,
     kind: FieldKind,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum FieldKind {
     Debug,
     Display,
@@ -930,7 +1024,7 @@ impl ToTokens for FieldKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Level {
     Str(LitStr),
     Int(LitInt),
