@@ -28,7 +28,7 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// A filter consists of one or more comma-separated directives which match on [`Span`]s and [`Event`]s.
 /// Each directive may have a corresponding maximum verbosity [`level`] which
 /// enables (e.g., _selects for_) spans and events that match. Like `log`,
 /// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
@@ -77,6 +77,9 @@ use tracing_core::{
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
 ///    - at the level `info` or above.
+/// - `warn,tokio::net=info` will enable all spans and events that:
+///    - are at the level `warn` or above, *or*
+///    - have the `tokio::net` target at the level `info` or above.
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
