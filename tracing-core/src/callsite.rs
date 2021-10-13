@@ -3,7 +3,8 @@
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
-    sync::Mutex,
+    sync::{Mutex},
+    sync::atomic::{AtomicUsize, Ordering},
     vec::Vec,
 };
 use crate::{
@@ -18,6 +19,8 @@ lazy_static! {
         dispatchers: Vec::new(),
     });
 }
+
+static EPOCH: AtomicUsize = AtomicUsize::new(0);
 
 struct Registry {
     callsites: Vec<&'static dyn Callsite>,
@@ -126,7 +129,13 @@ pub struct Identifier(
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 pub fn rebuild_interest_cache() {
     let mut registry = REGISTRY.lock().unwrap();
+    EPOCH.fetch_add(1, Ordering::SeqCst);
     registry.rebuild_interest();
+}
+
+#[doc(hidden)]
+pub fn _interest_cache_epoch() -> usize {
+    EPOCH.load(Ordering::SeqCst)
 }
 
 /// Register a new `Callsite` with the global registry.

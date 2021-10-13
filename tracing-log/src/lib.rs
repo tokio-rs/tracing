@@ -74,6 +74,8 @@
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
+//! * `interest-cache`: makes it possible to configure an interest cache for
+//!   logs emitted through the `log` crate
 //!
 //! ## Supported Rust Versions
 //!
@@ -174,6 +176,13 @@ pub use self::trace_logger::TraceLogger;
 pub mod env_logger;
 
 pub use log;
+
+#[cfg(feature = "interest-cache")]
+mod interest_cache;
+
+#[cfg(feature = "interest-cache")]
+#[cfg_attr(docsrs, doc(cfg(feature = "interest-cache")))]
+pub use crate::interest_cache::InterestCacheConfig;
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {

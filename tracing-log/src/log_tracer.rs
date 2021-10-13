@@ -39,6 +39,8 @@ pub struct LogTracer {
 pub struct Builder {
     ignore_crates: Vec<String>,
     filter: log::LevelFilter,
+    #[cfg(feature = "interest-cache")]
+    interest_cache_config: Option<crate::InterestCacheConfig>,
 }
 
 // ===== impl LogTracer =====
@@ -156,6 +158,14 @@ impl Default for LogTracer {
     }
 }
 
+#[cfg(feature = "interest-cache")]
+use crate::interest_cache::try_cache as try_cache_interest;
+
+#[cfg(not(feature = "interest-cache"))]
+fn try_cache_interest(_: &log::Metadata<'_>, callback: impl FnOnce() -> bool) -> bool {
+    callback()
+}
+
 impl log::Log for LogTracer {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         // First, check the log record against the current max level enabled by
@@ -178,8 +188,10 @@ impl log::Log for LogTracer {
             }
         }
 
-        // Finally, check if the current `tracing` dispatcher cares about this.
-        dispatcher::get_default(|dispatch| dispatch.enabled(&metadata.as_trace()))
+        try_cache_interest(metadata, || {
+            // Finally, check if the current `tracing` dispatcher cares about this.
+            dispatcher::get_default(|dispatch| dispatch.enabled(&metadata.as_trace()))
+        })
     }
 
     fn log(&self, record: &log::Record<'_>) {
@@ -236,13 +248,43 @@ impl Builder {
         crates.into_iter().fold(self, Self::ignore_crate)
     }
 
+    /// Configures the `LogTracer` to either disable or enable the interest cache.
+    ///
+    /// When enabled a per-thread LRU cache will be used to cache whenever the logger
+    /// is interested in a given target + level pair for records generated through
+    /// the `log` crate.
+    ///
+    /// When no `trace!` logs are enabled the logger is able to cheaply filter
+    /// them out just by comparing their log level to the globally specified
+    /// maximum, and immediately reject them. When *any* other `trace!` log is
+    /// enabled (even one which doesn't actually exist!) the logger has to run
+    /// its full filtering machinery on each and every `trace!` log, which can
+    /// potentially be very expensive.
+    ///
+    /// Enabling this cache is useful in such situations to improve performance.
+    ///
+    /// You most likely do not want to enabled this if you have registered any dynamic
+    /// filters on your logger and you want them to be run every time.
+    ///
+    /// This is disabled by default.
+    #[cfg(feature = "interest-cache")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "interest-cache")))]
+    pub fn with_interest_cache(mut self, config: Option<crate::InterestCacheConfig>) -> Self {
+        self.interest_cache_config = config;
+        self
+    }
+
     /// Constructs a new `LogTracer` with the provided configuration and sets it
     /// as the default logger.
     ///
     /// Setting a global logger can only be done once.
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn init(self) -> Result<(), SetLoggerError> {
+    #[allow(unused_mut)]
+    pub fn init(mut self) -> Result<(), SetLoggerError> {
+        #[cfg(feature = "interest-cache")]
+        crate::interest_cache::reconfigure(self.interest_cache_config.take());
+
         let ignore_crates = self.ignore_crates.into_boxed_slice();
         let logger = Box::new(LogTracer { ignore_crates });
         log::set_boxed_logger(logger)?;
@@ -256,6 +298,8 @@ impl Default for Builder {
         Self {
             ignore_crates: Vec::new(),
             filter: log::LevelFilter::max(),
+            #[cfg(feature = "interest-cache")]
+            interest_cache_config: None,
         }
     }
 }
