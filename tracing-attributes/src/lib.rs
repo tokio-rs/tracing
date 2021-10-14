@@ -182,11 +182,23 @@ use syn::{
 /// ```
 ///
 /// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, you can add
-/// `err` to emit error events when the function returns `Err`:
+/// `err` or `err(Display)` to emit error events when the function returns `Err`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err)]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+/// 
+/// The above example will be emitting error events using the `std::fmt::Display` implementation.
+/// If `E` implements `std::fmt::Debug`, you can also make it use that implementation with
+/// `err(Debug)`:
+/// 
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(Debug))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
@@ -506,7 +518,7 @@ fn gen_block(
         ))
     })();
 
-    let err_block = match args.err_mode {
+    let err_event = match args.err_mode {
         Some(ErrorMode::Display) => Some(quote!(tracing::error!(error = %e))),
         Some(ErrorMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
         _ => None,
@@ -518,14 +530,14 @@ fn gen_block(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        let mk_fut = match err_block {
-            Some(err_block) => quote_spanned!(block.span()=>
+        let mk_fut = match err_event {
+            Some(err_event) => quote_spanned!(block.span()=>
                 async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
-                            #err_block;
+                            #err_event;
                             Err(e)
                         }
                     }
@@ -570,7 +582,7 @@ fn gen_block(
         }
     );
 
-    if let Some(err_block) = err_block {
+    if let Some(err_event) = err_event {
         return quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
@@ -578,7 +590,7 @@ fn gen_block(
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
-                    #err_block;
+                    #err_event;
                     Err(e)
                 }
             }
@@ -796,6 +808,7 @@ enum ErrorMode {
     Display,
     Debug,
 }
+
 impl Default for ErrorMode {
     fn default() -> Self {
         ErrorMode::Display
@@ -804,15 +817,23 @@ impl Default for ErrorMode {
 
 impl Parse for ErrorMode {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let ident: Ident = input.parse()?;
-        match ident.to_string().as_str() {
-            "Debug" => Ok(ErrorMode::Debug),
-            "Display" => Ok(ErrorMode::Display),
-            _ => Err(syn::Error::new(
-                ident.span(),
-                "unknown error mode, must be Debug or Display",
-            )),
+        if !input.peek(syn::token::Paren) {
+            return Ok(ErrorMode::default());
         }
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let maybe_mode: Option<Ident> = content.parse()?;
+        maybe_mode.map_or(
+            Ok(ErrorMode::default()),
+            |ident| match ident.to_string().as_str() {
+                "Debug" => Ok(ErrorMode::Debug),
+                "Display" => Ok(ErrorMode::Display),
+                _ => Err(syn::Error::new(
+                    ident.span(),
+                    "unknown error mode, must be Debug or Display",
+                )),
+            }
+        )
     }
 }
 
@@ -822,21 +843,8 @@ impl Parse for ErrorModes {
 
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let _ = input.parse::<kw::err>();
-        if input.peek(syn::token::Paren) {
-            let content;
-            let _ = syn::parenthesized!(content in input);
-            let modes: Punctuated<ErrorMode, Token![,]> = content.parse_terminated(ErrorMode::parse)?;
-            let modes = modes.into_iter().collect::<HashSet<_>>();
-            return match modes.len() {
-                0 => Ok(Self(ErrorMode::Display)),
-                1 => Ok(Self(modes.into_iter().next().unwrap())),
-                _ => Err(syn::Error::new(
-                    content.span(),
-                    "at most one of Debug or Display can be given",
-                ))
-            }
-        }
-        Ok(Self(ErrorMode::Display))
+        let mode = ErrorMode::parse(input)?;
+        Ok(Self(mode))
     }
 }
 
