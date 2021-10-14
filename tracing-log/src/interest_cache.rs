@@ -3,6 +3,7 @@ use log::{Level, Metadata};
 use lru::LruCache;
 use std::cell::RefCell;
 use std::hash::Hasher;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 /// The interest cache configuration.
@@ -72,19 +73,53 @@ impl State {
     }
 }
 
+static INTEREST_CACHE_EPOCH: AtomicUsize = AtomicUsize::new(0);
+
+fn interest_cache_epoch() -> usize {
+    INTEREST_CACHE_EPOCH.load(Ordering::Relaxed)
+}
+
+struct SentinelCallsite;
+
+impl tracing_core::Callsite for SentinelCallsite {
+    fn set_interest(&self, _: tracing_core::subscriber::Interest) {
+        INTEREST_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn metadata(&self) -> &tracing_core::Metadata<'_> {
+        &SENTINEL_METADATA
+    }
+}
+
+static SENTINEL_CALLSITE: SentinelCallsite = SentinelCallsite;
+static SENTINEL_METADATA: tracing_core::Metadata<'static> = tracing_core::Metadata::new(
+    "log interest cache",
+    "log",
+    tracing_core::Level::ERROR,
+    None,
+    None,
+    None,
+    tracing_core::field::FieldSet::new(&[], tracing_core::identify_callsite!(&SENTINEL_CALLSITE)),
+    tracing_core::metadata::Kind::EVENT,
+);
+
 lazy_static::lazy_static! {
-    static ref CONFIG: Mutex<Option<InterestCacheConfig>> = Mutex::new(None);
+    static ref CONFIG: Mutex<Option<InterestCacheConfig>> = {
+        tracing_core::callsite::register(&SENTINEL_CALLSITE);
+        Mutex::new(None)
+    };
 }
 
 thread_local! {
-    static STATE: RefCell<State> = RefCell::new(State::new(
-        tracing_core::callsite::_interest_cache_epoch(), CONFIG.lock().unwrap().as_ref()
-    ));
+    static STATE: RefCell<State> = {
+        let config = CONFIG.lock().unwrap();
+        RefCell::new(State::new(interest_cache_epoch(), config.as_ref()))
+    };
 }
 
 pub(crate) fn reconfigure(new_config: Option<InterestCacheConfig>) {
     *CONFIG.lock().unwrap() = new_config;
-    tracing_core::callsite::rebuild_interest_cache();
+    INTEREST_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst);
 }
 
 pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool) -> bool {
@@ -92,7 +127,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         let mut state = state.borrow_mut();
 
         // If the interest cache in core was rebuilt we need to reset the cache here too.
-        let epoch = tracing_core::callsite::_interest_cache_epoch();
+        let epoch = interest_cache_epoch();
         if epoch != state.epoch {
             *state = State::new(epoch, CONFIG.lock().unwrap().as_ref());
         }
