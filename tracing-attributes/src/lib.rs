@@ -191,11 +191,11 @@ use syn::{
 ///     Ok(())
 /// }
 /// ```
-/// 
-/// The above example will be emitting error events using the `std::fmt::Display` implementation.
-/// If `E` implements `std::fmt::Debug`, you can also make it use that implementation with
-/// `err(Debug)`:
-/// 
+///
+/// By default, error values will be recorded using their `std::fmt::Display` implementations.
+/// If an error implements `std::fmt::Debug`, it can be recorded using its `Debug` implementation
+/// instead, by writing `err(Debug)`:
+///
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err(Debug))]
@@ -405,7 +405,6 @@ fn gen_block(
     instrumented_function_name: &str,
     self_type: Option<&syn::TypePath>,
 ) -> proc_macro2::TokenStream {
-
     // generate the span's name
     let span_name = args
         // did the user override the span's name?
@@ -744,7 +743,8 @@ impl Parse for InstrumentArgs {
                 }
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
-                let ErrorModes(mode) = input.parse()?;
+                let _ = input.parse::<kw::err>();
+                let mode = ErrorMode::parse(input)?;
                 args.err_mode = Some(mode);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
@@ -823,9 +823,8 @@ impl Parse for ErrorMode {
         let content;
         let _ = syn::parenthesized!(content in input);
         let maybe_mode: Option<Ident> = content.parse()?;
-        maybe_mode.map_or(
-            Ok(ErrorMode::default()),
-            |ident| match ident.to_string().as_str() {
+        maybe_mode.map_or(Ok(ErrorMode::default()), |ident| {
+            match ident.to_string().as_str() {
                 "Debug" => Ok(ErrorMode::Debug),
                 "Display" => Ok(ErrorMode::Display),
                 _ => Err(syn::Error::new(
@@ -833,18 +832,7 @@ impl Parse for ErrorMode {
                     "unknown error mode, must be Debug or Display",
                 )),
             }
-        )
-    }
-}
-
-struct ErrorModes(ErrorMode);
-
-impl Parse for ErrorModes {
-
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let _ = input.parse::<kw::err>();
-        let mode = ErrorMode::parse(input)?;
-        Ok(Self(mode))
+        })
     }
 }
 

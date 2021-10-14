@@ -187,16 +187,14 @@ fn test_err_dbg() {
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::mock()
-                .at_level(Level::ERROR)
-                .with_fields(
-                    field::mock("error")
-                        // use the actual error value that will be emitted, so
-                        // that this test doesn't break if the standard library
-                        // changes the `fmt::Debug` output from the error type
-                        // in the future.
-                        .with_value(&tracing::field::debug(u8::try_from(1234).unwrap_err()))
-                )
+            event::mock().at_level(Level::ERROR).with_fields(
+                field::mock("error")
+                    // use the actual error value that will be emitted, so
+                    // that this test doesn't break if the standard library
+                    // changes the `fmt::Debug` output from the error type
+                    // in the future.
+                    .with_value(&tracing::field::debug(u8::try_from(1234).unwrap_err())),
+            ),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -212,13 +210,12 @@ fn test_err_display_default() {
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::mock()
-            .at_level(Level::ERROR)
-            .with_fields(
+        .event(
+            event::mock().at_level(Level::ERROR).with_fields(
                 field::mock("error")
                     // by default, errors will be emitted with their display values
-                    .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err()))
-            )
+                    .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())),
+            ),
         )
         .exit(span.clone())
         .drop_span(span)
