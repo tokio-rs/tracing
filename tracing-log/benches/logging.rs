@@ -14,6 +14,7 @@ where
 {
     let started_count = Arc::new(AtomicUsize::new(0));
     let barrier = Arc::new(AtomicBool::new(false));
+    #[allow(clippy::needless_collect)]
     let threads: Vec<_> = (0..thread_count)
         .map(|_| {
             let started_count = started_count.clone();

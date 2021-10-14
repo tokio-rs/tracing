@@ -190,7 +190,7 @@ fn lock_for_test() -> impl Drop {
 
     match LOCK.lock() {
         Ok(guard) => guard,
-        Err(poison) => poison.into_inner()
+        Err(poison) => poison.into_inner(),
     }
 }
 
