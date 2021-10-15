@@ -68,16 +68,16 @@ impl InterestCacheConfig {
     }
 }
 
-struct Bucket {
-    level: Level,
-    hash: u64,
-    result: bool,
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+struct Key {
+    target_address: usize,
+    level_and_length: usize,
 }
 
 struct State {
     min_verbosity: Option<Level>,
     epoch: usize,
-    cache: LruCache<usize, Bucket, ahash::RandomState>,
+    cache: LruCache<Key, u64, ahash::RandomState>,
 }
 
 impl State {
@@ -179,37 +179,55 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
 
         let mut hasher = AHasher::default();
         hasher.write(target.as_bytes());
-        let hash = hasher.finish();
 
-        // Since log targets are usually static strings we just use
-        // the address of the pointer as the key for our cache.
-        let key = target.as_ptr() as usize ^ level as usize;
-        if let Some(bucket) = state.cache.get_mut(&key) {
+        const HASH_MASK: u64 = !1;
+        const INTEREST_MASK: u64 = 1;
+
+        // We mask out the least significant bit of the hash since we'll use
+        // that space to save the interest.
+        //
+        // Since we use a good hashing function the loss of only a single bit
+        // won't really affect us negatively.
+        let target_hash = hasher.finish() & HASH_MASK;
+
+        // Since log targets are usually static strings we just use the address of the pointer
+        // as the key for our cache.
+        //
+        // We want each level to be cached separately so we also use the level as key, and since
+        // some linkers at certain optimization levels deduplicate strings if their prefix matches
+        // (e.g. "ham" and "hamster" might actually have the same address in memory) we also use the length.
+        let key = Key {
+            target_address: target.as_ptr() as usize,
+            // For extra efficiency we pack both the level and the length into a single field.
+            // The `level` can be between 1 and 5, so it can take at most 3 bits of space.
+            level_and_length: level as usize | target.len().wrapping_shl(3),
+        };
+
+        if let Some(&cached) = state.cache.get(&key) {
             // And here we make sure that the target actually matches.
             //
-            // This is just a hash, so theoretically we're not guaranteed that it won't
-            // collide, however in practice it shouldn't matter as it is quite unlikely
-            // for both the target string's pointer *and* the hash to be equal at
-            // the same time. And in case our LRU cache is too small we really want to
-            // avoid doing any memory allocations (which we'd have to do if we'd store
-            // the whole target string in our cache) as that would completely tank our
-            // performance.
-            if bucket.hash == hash && bucket.level == level {
-                return bucket.result;
+            // This is just a hash of the target string, so theoretically we're not guaranteed
+            // that it won't collide, however in practice it shouldn't matter as it is quite
+            // unlikely that the target string's address and its length and the level and
+            // the hash will *all* be equal at the same time.
+            //
+            // We could of course actually store the whole target string in our cache,
+            // but we really want to avoid doing that as the necessary memory allocations
+            // would completely tank our performance, especially in cases where the cache's
+            // size is too small so it needs to regularly replace entries.
+            if cached & HASH_MASK == target_hash {
+                return (cached & INTEREST_MASK) != 0;
             }
+
+            // Realistically we should never land here, unless someone is using a non-static
+            // target string with the same length and level, or is very lucky and found a hash
+            // collision for the cache's key.
         }
 
-        let result = callback();
-        state.cache.put(
-            key,
-            Bucket {
-                level,
-                hash,
-                result,
-            },
-        );
+        let interest = callback();
+        state.cache.put(key, target_hash | interest as u64);
 
-        result
+        interest
     })
 }
 
@@ -487,6 +505,35 @@ mod tests {
                 .build();
             try_cache(&metadata_1, || true);
             assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
+            try_cache(&metadata_2, || false);
+            assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn test_cache_handles_non_static_target_string() {
+        let _lock = lock_for_test();
+
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let mut target = *b"dummy_1";
+            let metadata_1 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target(std::str::from_utf8(&target).unwrap())
+                .build();
+
+            try_cache(&metadata_1, || true);
+            assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
+
+            *target.last_mut().unwrap() = b'2';
+            let metadata_2 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target(std::str::from_utf8(&target).unwrap())
+                .build();
+
             try_cache(&metadata_2, || false);
             assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
         })
