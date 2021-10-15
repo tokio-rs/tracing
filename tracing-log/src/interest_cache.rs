@@ -28,6 +28,12 @@ impl InterestCacheConfig {
     /// The interest for logs with a lower verbosity than specified here
     /// will not be cached.
     ///
+    /// It should be set to the lowest verbosity level for which the majority
+    /// of the logs in your application are usually *disabled*.
+    ///
+    /// In normal circumstances with typical logger usage patterns
+    /// you shouldn't ever have to change this.
+    ///
     /// By default this is set to `Debug`.
     pub fn with_min_verbosity(mut self, level: Level) -> Self {
         self.min_verbosity = level;
@@ -36,7 +42,26 @@ impl InterestCacheConfig {
 
     /// Sets the size of the LRU cache used to cache the interest.
     ///
+    /// The bigger the cache the more unlikely it will be for the interest
+    /// in a given callsite to be recalculated, at the expense of extra
+    /// memory usage per every thread which tries to log something.
+    ///
+    /// Every unique [level] + [target] pair is going to consume a single slot
+    /// in the cache. Entries will be added to the cache until its size
+    /// reaches the value configured here, and from then on it will evict
+    /// the least recently seen level + target pair when adding a new entry.
+    ///
+    /// The ideal value to set here widely depends on how much exactly
+    /// you're logging, and how diverse the targets are to which you are logging.
+    ///
+    /// If you profile your application and you see that it spends a significant
+    /// amount of time filtering out logs which are *not* getting printed out you
+    /// should consider increasing this value.
+    ///
     /// By default this is set to 1024.
+    ///
+    /// [level]: log::Metadata::level
+    /// [target]: log::Metadata::target
     pub fn with_lru_cache_size(mut self, size: usize) -> Self {
         self.lru_cache_size = size;
         self
@@ -72,6 +97,14 @@ impl State {
         }
     }
 }
+
+// When the logger's filters are reconfigured the interest cache in core is cleared,
+// and we also want to get notified when that happens so that we can clear our cache too.
+//
+// So what we do here is to register a dummy callsite with the core, just so that we can be
+// notified when that happens. It doesn't really matter how exactly our dummy callsite looks
+// like and whenever the core will actually be interested in it, since nothing will actually
+// be logged from it.
 
 static INTEREST_CACHE_EPOCH: AtomicUsize = AtomicUsize::new(0);
 
@@ -117,7 +150,7 @@ thread_local! {
     };
 }
 
-pub(crate) fn reconfigure(new_config: Option<InterestCacheConfig>) {
+pub(crate) fn configure(new_config: Option<InterestCacheConfig>) {
     *CONFIG.lock().unwrap() = new_config;
     INTEREST_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst);
 }
@@ -181,273 +214,283 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
 }
 
 #[cfg(test)]
-fn lock_for_test() -> impl Drop {
-    // We need to make sure only one test runs at a time.
+mod tests {
+    use super::*;
 
-    lazy_static::lazy_static! {
-        static ref LOCK: Mutex<()> = Mutex::new(());
+    fn lock_for_test() -> impl Drop {
+        // We need to make sure only one test runs at a time.
+
+        lazy_static::lazy_static! {
+            static ref LOCK: Mutex<()> = Mutex::new(());
+        }
+
+        match LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poison) => poison.into_inner(),
+        }
     }
 
-    match LOCK.lock() {
-        Ok(guard) => guard,
-        Err(poison) => poison.into_inner(),
-    }
-}
+    #[test]
+    fn test_when_disabled_the_callback_is_always_called() {
+        let _lock = lock_for_test();
 
-#[test]
-fn test_when_disabled_the_callback_is_always_called() {
-    let _lock = lock_for_test();
-
-    *CONFIG.lock().unwrap() = None;
-    std::thread::spawn(|| {
-        let metadata = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy")
-            .build();
-        let mut count = 0;
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 1);
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 2);
-    })
-    .join()
-    .unwrap();
-}
-
-#[test]
-fn test_when_enabled_the_callback_is_called_only_once_for_a_high_enough_verbosity() {
-    let _lock = lock_for_test();
-
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata = log::MetadataBuilder::new()
-            .level(Level::Debug)
-            .target("dummy")
-            .build();
-        let mut count = 0;
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 1);
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 1);
-    })
-    .join()
-    .unwrap();
-}
-
-#[test]
-fn test_when_core_interest_cache_is_rebuilt_this_cache_is_also_flushed() {
-    let _lock = lock_for_test();
-
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata = log::MetadataBuilder::new()
-            .level(Level::Debug)
-            .target("dummy")
-            .build();
-        {
+        *CONFIG.lock().unwrap() = None;
+        std::thread::spawn(|| {
+            let metadata = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy")
+                .build();
             let mut count = 0;
             try_cache(&metadata, || {
                 count += 1;
                 true
             });
+            assert_eq!(count, 1);
             try_cache(&metadata, || {
                 count += 1;
                 true
             });
-            assert_eq!(count, 1);
-        }
-        tracing_core::callsite::rebuild_interest_cache();
-        {
+            assert_eq!(count, 2);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn test_when_enabled_the_callback_is_called_only_once_for_a_high_enough_verbosity() {
+        let _lock = lock_for_test();
+
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata = log::MetadataBuilder::new()
+                .level(Level::Debug)
+                .target("dummy")
+                .build();
             let mut count = 0;
             try_cache(&metadata, || {
                 count += 1;
                 true
             });
+            assert_eq!(count, 1);
             try_cache(&metadata, || {
                 count += 1;
                 true
             });
             assert_eq!(count, 1);
-        }
-    })
-    .join()
-    .unwrap();
-}
+        })
+        .join()
+        .unwrap();
+    }
 
-#[test]
-fn test_when_enabled_the_callback_is_always_called_for_a_low_enough_verbosity() {
-    let _lock = lock_for_test();
+    #[test]
+    fn test_when_core_interest_cache_is_rebuilt_this_cache_is_also_flushed() {
+        let _lock = lock_for_test();
 
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata = log::MetadataBuilder::new()
-            .level(Level::Info)
-            .target("dummy")
-            .build();
-        let mut count = 0;
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 1);
-        try_cache(&metadata, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 2);
-    })
-    .join()
-    .unwrap();
-}
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata = log::MetadataBuilder::new()
+                .level(Level::Debug)
+                .target("dummy")
+                .build();
+            {
+                let mut count = 0;
+                try_cache(&metadata, || {
+                    count += 1;
+                    true
+                });
+                try_cache(&metadata, || {
+                    count += 1;
+                    true
+                });
+                assert_eq!(count, 1);
+            }
+            tracing_core::callsite::rebuild_interest_cache();
+            {
+                let mut count = 0;
+                try_cache(&metadata, || {
+                    count += 1;
+                    true
+                });
+                try_cache(&metadata, || {
+                    count += 1;
+                    true
+                });
+                assert_eq!(count, 1);
+            }
+        })
+        .join()
+        .unwrap();
+    }
 
-#[test]
-fn test_different_log_levels_are_cached_separately() {
-    let _lock = lock_for_test();
+    #[test]
+    fn test_when_enabled_the_callback_is_always_called_for_a_low_enough_verbosity() {
+        let _lock = lock_for_test();
 
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata_debug = log::MetadataBuilder::new()
-            .level(Level::Debug)
-            .target("dummy")
-            .build();
-        let metadata_trace = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy")
-            .build();
-        let mut count_debug = 0;
-        let mut count_trace = 0;
-        try_cache(&metadata_debug, || {
-            count_debug += 1;
-            true
-        });
-        try_cache(&metadata_trace, || {
-            count_trace += 1;
-            true
-        });
-        try_cache(&metadata_debug, || {
-            count_debug += 1;
-            true
-        });
-        try_cache(&metadata_trace, || {
-            count_trace += 1;
-            true
-        });
-        assert_eq!(count_debug, 1);
-        assert_eq!(count_trace, 1);
-    })
-    .join()
-    .unwrap();
-}
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata = log::MetadataBuilder::new()
+                .level(Level::Info)
+                .target("dummy")
+                .build();
+            let mut count = 0;
+            try_cache(&metadata, || {
+                count += 1;
+                true
+            });
+            assert_eq!(count, 1);
+            try_cache(&metadata, || {
+                count += 1;
+                true
+            });
+            assert_eq!(count, 2);
+        })
+        .join()
+        .unwrap();
+    }
 
-#[test]
-fn test_different_log_targets_are_cached_separately() {
-    let _lock = lock_for_test();
+    #[test]
+    fn test_different_log_levels_are_cached_separately() {
+        let _lock = lock_for_test();
 
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata_1 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_1")
-            .build();
-        let metadata_2 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_2")
-            .build();
-        let mut count_1 = 0;
-        let mut count_2 = 0;
-        try_cache(&metadata_1, || {
-            count_1 += 1;
-            true
-        });
-        try_cache(&metadata_2, || {
-            count_2 += 1;
-            true
-        });
-        try_cache(&metadata_1, || {
-            count_1 += 1;
-            true
-        });
-        try_cache(&metadata_2, || {
-            count_2 += 1;
-            true
-        });
-        assert_eq!(count_1, 1);
-        assert_eq!(count_2, 1);
-    })
-    .join()
-    .unwrap();
-}
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata_debug = log::MetadataBuilder::new()
+                .level(Level::Debug)
+                .target("dummy")
+                .build();
+            let metadata_trace = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy")
+                .build();
+            let mut count_debug = 0;
+            let mut count_trace = 0;
+            try_cache(&metadata_debug, || {
+                count_debug += 1;
+                true
+            });
+            try_cache(&metadata_trace, || {
+                count_trace += 1;
+                true
+            });
+            try_cache(&metadata_debug, || {
+                count_debug += 1;
+                true
+            });
+            try_cache(&metadata_trace, || {
+                count_trace += 1;
+                true
+            });
+            assert_eq!(count_debug, 1);
+            assert_eq!(count_trace, 1);
+        })
+        .join()
+        .unwrap();
+    }
 
-#[test]
-fn test_when_cache_runs_out_of_space_the_callback_is_called_again() {
-    let _lock = lock_for_test();
+    #[test]
+    fn test_different_log_targets_are_cached_separately() {
+        let _lock = lock_for_test();
 
-    *CONFIG.lock().unwrap() = Some(
-        InterestCacheConfig::default()
-            .with_min_verbosity(Level::Debug)
-            .with_lru_cache_size(1),
-    );
-    std::thread::spawn(|| {
-        let metadata_1 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_1")
-            .build();
-        let metadata_2 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_2")
-            .build();
-        let mut count = 0;
-        try_cache(&metadata_1, || {
-            count += 1;
-            true
-        });
-        try_cache(&metadata_1, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 1);
-        try_cache(&metadata_2, || true);
-        try_cache(&metadata_1, || {
-            count += 1;
-            true
-        });
-        assert_eq!(count, 2);
-    })
-    .join()
-    .unwrap();
-}
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata_1 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_1")
+                .build();
+            let metadata_2 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_2")
+                .build();
+            let mut count_1 = 0;
+            let mut count_2 = 0;
+            try_cache(&metadata_1, || {
+                count_1 += 1;
+                true
+            });
+            try_cache(&metadata_2, || {
+                count_2 += 1;
+                true
+            });
+            try_cache(&metadata_1, || {
+                count_1 += 1;
+                true
+            });
+            try_cache(&metadata_2, || {
+                count_2 += 1;
+                true
+            });
+            assert_eq!(count_1, 1);
+            assert_eq!(count_2, 1);
+        })
+        .join()
+        .unwrap();
+    }
 
-#[test]
-fn test_cache_returns_previously_computed_value() {
-    let _lock = lock_for_test();
+    #[test]
+    fn test_when_cache_runs_out_of_space_the_callback_is_called_again() {
+        let _lock = lock_for_test();
 
-    *CONFIG.lock().unwrap() = Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
-    std::thread::spawn(|| {
-        let metadata_1 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_1")
-            .build();
-        let metadata_2 = log::MetadataBuilder::new()
-            .level(Level::Trace)
-            .target("dummy_2")
-            .build();
-        try_cache(&metadata_1, || true);
-        assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
-        try_cache(&metadata_2, || false);
-        assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
-    })
-    .join()
-    .unwrap();
+        *CONFIG.lock().unwrap() = Some(
+            InterestCacheConfig::default()
+                .with_min_verbosity(Level::Debug)
+                .with_lru_cache_size(1),
+        );
+        std::thread::spawn(|| {
+            let metadata_1 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_1")
+                .build();
+            let metadata_2 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_2")
+                .build();
+            let mut count = 0;
+            try_cache(&metadata_1, || {
+                count += 1;
+                true
+            });
+            try_cache(&metadata_1, || {
+                count += 1;
+                true
+            });
+            assert_eq!(count, 1);
+            try_cache(&metadata_2, || true);
+            try_cache(&metadata_1, || {
+                count += 1;
+                true
+            });
+            assert_eq!(count, 2);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn test_cache_returns_previously_computed_value() {
+        let _lock = lock_for_test();
+
+        *CONFIG.lock().unwrap() =
+            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        std::thread::spawn(|| {
+            let metadata_1 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_1")
+                .build();
+            let metadata_2 = log::MetadataBuilder::new()
+                .level(Level::Trace)
+                .target("dummy_2")
+                .build();
+            try_cache(&metadata_1, || true);
+            assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
+            try_cache(&metadata_2, || false);
+            assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
+        })
+        .join()
+        .unwrap();
+    }
 }

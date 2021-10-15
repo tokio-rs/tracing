@@ -39,7 +39,7 @@ pub struct LogTracer {
 pub struct Builder {
     ignore_crates: Vec<String>,
     filter: log::LevelFilter,
-    #[cfg(feature = "interest-cache")]
+    #[cfg(all(feature = "interest-cache", feature = "std"))]
     interest_cache_config: Option<crate::InterestCacheConfig>,
 }
 
@@ -158,10 +158,10 @@ impl Default for LogTracer {
     }
 }
 
-#[cfg(feature = "interest-cache")]
+#[cfg(all(feature = "interest-cache", feature = "std"))]
 use crate::interest_cache::try_cache as try_cache_interest;
 
-#[cfg(not(feature = "interest-cache"))]
+#[cfg(not(all(feature = "interest-cache", feature = "std")))]
 fn try_cache_interest(_: &log::Metadata<'_>, callback: impl FnOnce() -> bool) -> bool {
     callback()
 }
@@ -250,8 +250,8 @@ impl Builder {
 
     /// Configures the `LogTracer` to either disable or enable the interest cache.
     ///
-    /// When enabled a per-thread LRU cache will be used to cache whenever the logger
-    /// is interested in a given target + level pair for records generated through
+    /// When enabled, a per-thread LRU cache will be used to cache whenever the logger
+    /// is interested in a given [level] + [target] pair for records generated through
     /// the `log` crate.
     ///
     /// When no `trace!` logs are enabled the logger is able to cheaply filter
@@ -267,8 +267,11 @@ impl Builder {
     /// filters on your logger and you want them to be run every time.
     ///
     /// This is disabled by default.
-    #[cfg(feature = "interest-cache")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "interest-cache")))]
+    ///
+    /// [level]: log::Metadata::level
+    /// [target]: log::Metadata::target
+    #[cfg(all(feature = "interest-cache", feature = "std"))]
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "interest-cache", feature = "std"))))]
     pub fn with_interest_cache(mut self, config: Option<crate::InterestCacheConfig>) -> Self {
         self.interest_cache_config = config;
         self
@@ -282,8 +285,8 @@ impl Builder {
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[allow(unused_mut)]
     pub fn init(mut self) -> Result<(), SetLoggerError> {
-        #[cfg(feature = "interest-cache")]
-        crate::interest_cache::reconfigure(self.interest_cache_config.take());
+        #[cfg(all(feature = "interest-cache", feature = "std"))]
+        crate::interest_cache::configure(self.interest_cache_config.take());
 
         let ignore_crates = self.ignore_crates.into_boxed_slice();
         let logger = Box::new(LogTracer { ignore_crates });
@@ -298,7 +301,7 @@ impl Default for Builder {
         Self {
             ignore_crates: Vec::new(),
             filter: log::LevelFilter::max(),
-            #[cfg(feature = "interest-cache")]
+            #[cfg(all(feature = "interest-cache", feature = "std"))]
             interest_cache_config: None,
         }
     }

@@ -75,7 +75,7 @@
 //! * `env_logger`: enables the `env_logger` module, with helpers for working
 //!   with the [`env_logger` crate].
 //! * `interest-cache`: makes it possible to configure an interest cache for
-//!   logs emitted through the `log` crate
+//!   logs emitted through the `log` crate (see [`Builder::with_interest_cache`]); requires `std`
 //!
 //! ## Supported Rust Versions
 //!
@@ -107,6 +107,7 @@
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
+//! [`Builder::with_interest_cache`]: log_tracer::Builder::with_interest_cache
 #![doc(html_root_url = "https://docs.rs/tracing-log/0.1.2")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -177,11 +178,11 @@ pub mod env_logger;
 
 pub use log;
 
-#[cfg(feature = "interest-cache")]
+#[cfg(all(feature = "interest-cache", feature = "std"))]
 mod interest_cache;
 
-#[cfg(feature = "interest-cache")]
-#[cfg_attr(docsrs, doc(cfg(feature = "interest-cache")))]
+#[cfg(all(feature = "interest-cache", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "interest-cache", feature = "std"))))]
 pub use crate::interest_cache::InterestCacheConfig;
 
 /// Format a log record as a trace event in the current span.
