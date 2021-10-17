@@ -1,4 +1,3 @@
-use crate::kw;
 use std::collections::HashSet;
 use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
 
@@ -348,4 +347,13 @@ impl Parse for Level {
             Err(lookahead.error())
         }
     }
+}
+
+mod kw {
+    syn::custom_keyword!(fields);
+    syn::custom_keyword!(skip);
+    syn::custom_keyword!(level);
+    syn::custom_keyword!(target);
+    syn::custom_keyword!(name);
+    syn::custom_keyword!(err);
 }
