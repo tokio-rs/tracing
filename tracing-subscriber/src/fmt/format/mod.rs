@@ -362,13 +362,16 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time"` feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
     /// [`timer`]: super::time::FormatTime
     /// [`time` module]: mod@super::time
-    /// [`ChronoUtc`]: super::time::ChronoUtc
-    /// [`ChronoLocal`]: super::time::ChronoLocal
+    /// [`UtcTime`]: super::time::UtcTime
+    /// [`LocalTime`]: super::time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
