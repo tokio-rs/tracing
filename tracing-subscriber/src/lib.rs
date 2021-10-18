@@ -22,6 +22,9 @@
 //!
 //! ## Feature Flags
 //!
+//! - `std`: Enables APIs that depend on the on the Rust standard library
+//!   (enabled by default).
+//! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
 //!   similar to the [`env_logger` crate].
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
@@ -46,6 +49,34 @@
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
 //!   rather than the Rust standard library's implementation.
 //!
+//! ### `no_std` Support
+//!
+//! In embedded systems and other bare-metal applications, `tracing` can be
+//! used without requiring the Rust standard library, although some features are
+//! disabled. Although most of the APIs provided by `tracing-subscriber`, such
+//! as [`fmt`] and [`EnvFilter`], require the standard library, some
+//! functionality, such as the [`Subscriber`] trait, can still be used in
+//! `no_std` environments.
+//!
+//! The dependency on the standard library is controlled by two crate feature
+//! flags, "std", which enables the dependency on [`libstd`], and "alloc", which
+//! enables the dependency on [`liballoc`] (and is enabled by the "std"
+//! feature). These features are enabled by default, but `no_std` users can
+//! disable them using:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false }
+//! ```
+//!
+//! Additional APIs are available when [`liballoc`] is available. To enable
+//! `liballoc` but not `std`, use:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false, features = ["alloc"] }
+//! ```
+//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -69,6 +100,7 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`time` crate]: https://crates.io/crates/time
+//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
