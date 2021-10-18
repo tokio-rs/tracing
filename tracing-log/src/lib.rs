@@ -178,11 +178,14 @@ pub mod env_logger;
 
 pub use log;
 
-#[cfg(all(feature = "interest-cache", feature = "std"))]
+#[cfg(all(feature = "interest-cache", feature = "log-tracer", feature = "std"))]
 mod interest_cache;
 
-#[cfg(all(feature = "interest-cache", feature = "std"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "interest-cache", feature = "std"))))]
+#[cfg(all(feature = "interest-cache", feature = "log-tracer", feature = "std"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(all(feature = "interest-cache", feature = "log-tracer", feature = "std")))
+)]
 pub use crate::interest_cache::InterestCacheConfig;
 
 /// Format a log record as a trace event in the current span.

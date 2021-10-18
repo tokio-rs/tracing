@@ -272,8 +272,8 @@ impl Builder {
     /// [target]: log::Metadata::target
     #[cfg(all(feature = "interest-cache", feature = "std"))]
     #[cfg_attr(docsrs, doc(cfg(all(feature = "interest-cache", feature = "std"))))]
-    pub fn with_interest_cache(mut self, config: Option<crate::InterestCacheConfig>) -> Self {
-        self.interest_cache_config = config;
+    pub fn with_interest_cache(mut self, config: crate::InterestCacheConfig) -> Self {
+        self.interest_cache_config = Some(config);
         self
     }
 

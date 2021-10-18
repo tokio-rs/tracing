@@ -23,6 +23,15 @@ impl Default for InterestCacheConfig {
 }
 
 impl InterestCacheConfig {
+    fn disabled() -> Self {
+        Self {
+            lru_cache_size: 0,
+            ..Self::default()
+        }
+    }
+}
+
+impl InterestCacheConfig {
     /// Sets the minimum logging verbosity for which the cache will apply.
     ///
     /// The interest for logs with a lower verbosity than specified here
@@ -40,13 +49,14 @@ impl InterestCacheConfig {
         self
     }
 
-    /// Sets the size of the LRU cache used to cache the interest.
+    /// Sets the number of entries in the LRU cache used to cache interests
+    /// for `log` records.
     ///
-    /// The bigger the cache the more unlikely it will be for the interest
+    /// The bigger the cache, the more unlikely it will be for the interest
     /// in a given callsite to be recalculated, at the expense of extra
-    /// memory usage per every thread which tries to log something.
+    /// memory usage per every thread which tries to log events.
     ///
-    /// Every unique [level] + [target] pair is going to consume a single slot
+    /// Every unique [level] + [target] pair consumes a single slot
     /// in the cache. Entries will be added to the cache until its size
     /// reaches the value configured here, and from then on it will evict
     /// the least recently seen level + target pair when adding a new entry.
@@ -54,9 +64,11 @@ impl InterestCacheConfig {
     /// The ideal value to set here widely depends on how much exactly
     /// you're logging, and how diverse the targets are to which you are logging.
     ///
-    /// If you profile your application and you see that it spends a significant
-    /// amount of time filtering out logs which are *not* getting printed out you
-    /// should consider increasing this value.
+    /// If your application spends a significant amount of time filtering logs
+    /// which are *not* getting printed out then increasing this value will most
+    /// likely help.
+    ///
+    /// Setting this to zero will disable the cache.
     ///
     /// By default this is set to 1024.
     ///
@@ -75,25 +87,17 @@ struct Key {
 }
 
 struct State {
-    min_verbosity: Option<Level>,
+    min_verbosity: Level,
     epoch: usize,
     cache: LruCache<Key, u64, ahash::RandomState>,
 }
 
 impl State {
-    fn new(epoch: usize, config: Option<&InterestCacheConfig>) -> Self {
-        if let Some(config) = config {
-            State {
-                epoch,
-                min_verbosity: Some(config.min_verbosity),
-                cache: LruCache::new(config.lru_cache_size),
-            }
-        } else {
-            State {
-                epoch,
-                min_verbosity: None,
-                cache: LruCache::new(0),
-            }
+    fn new(epoch: usize, config: &InterestCacheConfig) -> Self {
+        State {
+            epoch,
+            min_verbosity: config.min_verbosity,
+            cache: LruCache::new(config.lru_cache_size),
         }
     }
 }
@@ -103,7 +107,7 @@ impl State {
 //
 // So what we do here is to register a dummy callsite with the core, just so that we can be
 // notified when that happens. It doesn't really matter how exactly our dummy callsite looks
-// like and whenever the core will actually be interested in it, since nothing will actually
+// like and whether subscribers will actually be interested in it, since nothing will actually
 // be logged from it.
 
 static INTEREST_CACHE_EPOCH: AtomicUsize = AtomicUsize::new(0);
@@ -137,21 +141,21 @@ static SENTINEL_METADATA: tracing_core::Metadata<'static> = tracing_core::Metada
 );
 
 lazy_static::lazy_static! {
-    static ref CONFIG: Mutex<Option<InterestCacheConfig>> = {
+    static ref CONFIG: Mutex<InterestCacheConfig> = {
         tracing_core::callsite::register(&SENTINEL_CALLSITE);
-        Mutex::new(None)
+        Mutex::new(InterestCacheConfig::disabled())
     };
 }
 
 thread_local! {
     static STATE: RefCell<State> = {
         let config = CONFIG.lock().unwrap();
-        RefCell::new(State::new(interest_cache_epoch(), config.as_ref()))
+        RefCell::new(State::new(interest_cache_epoch(), &config))
     };
 }
 
 pub(crate) fn configure(new_config: Option<InterestCacheConfig>) {
-    *CONFIG.lock().unwrap() = new_config;
+    *CONFIG.lock().unwrap() = new_config.unwrap_or_else(InterestCacheConfig::disabled);
     INTEREST_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst);
 }
 
@@ -162,16 +166,11 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         // If the interest cache in core was rebuilt we need to reset the cache here too.
         let epoch = interest_cache_epoch();
         if epoch != state.epoch {
-            *state = State::new(epoch, CONFIG.lock().unwrap().as_ref());
+            *state = State::new(epoch, &CONFIG.lock().unwrap());
         }
 
         let level = metadata.level();
-        let is_disabled = state
-            .min_verbosity
-            .map(|min_verbosity| level < min_verbosity)
-            .unwrap_or(true);
-
-        if is_disabled {
+        if state.cache.cap() == 0 || level < state.min_verbosity {
             return callback();
         }
 
@@ -252,7 +251,8 @@ mod tests {
     fn test_when_disabled_the_callback_is_always_called() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() = None;
+        *CONFIG.lock().unwrap() = InterestCacheConfig::disabled();
+
         std::thread::spawn(|| {
             let metadata = log::MetadataBuilder::new()
                 .level(Level::Trace)
@@ -278,8 +278,8 @@ mod tests {
     fn test_when_enabled_the_callback_is_called_only_once_for_a_high_enough_verbosity() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata = log::MetadataBuilder::new()
                 .level(Level::Debug)
@@ -305,8 +305,8 @@ mod tests {
     fn test_when_core_interest_cache_is_rebuilt_this_cache_is_also_flushed() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata = log::MetadataBuilder::new()
                 .level(Level::Debug)
@@ -346,8 +346,8 @@ mod tests {
     fn test_when_enabled_the_callback_is_always_called_for_a_low_enough_verbosity() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata = log::MetadataBuilder::new()
                 .level(Level::Info)
@@ -373,8 +373,8 @@ mod tests {
     fn test_different_log_levels_are_cached_separately() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata_debug = log::MetadataBuilder::new()
                 .level(Level::Debug)
@@ -413,8 +413,8 @@ mod tests {
     fn test_different_log_targets_are_cached_separately() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata_1 = log::MetadataBuilder::new()
                 .level(Level::Trace)
@@ -453,11 +453,10 @@ mod tests {
     fn test_when_cache_runs_out_of_space_the_callback_is_called_again() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() = Some(
-            InterestCacheConfig::default()
-                .with_min_verbosity(Level::Debug)
-                .with_lru_cache_size(1),
-        );
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default()
+            .with_min_verbosity(Level::Debug)
+            .with_lru_cache_size(1);
+
         std::thread::spawn(|| {
             let metadata_1 = log::MetadataBuilder::new()
                 .level(Level::Trace)
@@ -492,8 +491,8 @@ mod tests {
     fn test_cache_returns_previously_computed_value() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let metadata_1 = log::MetadataBuilder::new()
                 .level(Level::Trace)
@@ -516,8 +515,8 @@ mod tests {
     fn test_cache_handles_non_static_target_string() {
         let _lock = lock_for_test();
 
-        *CONFIG.lock().unwrap() =
-            Some(InterestCacheConfig::default().with_min_verbosity(Level::Debug));
+        *CONFIG.lock().unwrap() = InterestCacheConfig::default().with_min_verbosity(Level::Debug);
+
         std::thread::spawn(|| {
             let mut target = *b"dummy_1";
             let metadata_1 = log::MetadataBuilder::new()

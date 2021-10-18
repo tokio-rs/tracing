@@ -58,7 +58,7 @@ fn bench_logger(c: &mut Criterion) {
     let builder = tracing_log::LogTracer::builder().with_max_level(log::LevelFilter::Trace);
 
     #[cfg(feature = "interest-cache")]
-    let builder = builder.with_interest_cache(Some(tracing_log::InterestCacheConfig::default()));
+    let builder = builder.with_interest_cache(tracing_log::InterestCacheConfig::default());
 
     builder.init().unwrap();
 
