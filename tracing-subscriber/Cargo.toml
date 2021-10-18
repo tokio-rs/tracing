@@ -29,6 +29,9 @@ fmt = ["registry"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local"]
 json = ["tracing-serde", "serde", "serde_json"]
+# Enables support for local time when using the `time` crate timestamp
+# formatters.
+local-time = ["time/local-offset"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2" }
@@ -43,7 +46,7 @@ lazy_static = { optional = true, version = "1" }
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
 ansi_term = { version = "0.12", optional = true }
-chrono = { version = "0.4.16", optional = true, default-features = false, features = ["clock", "std"] }
+time = { version = "0.3", features = ["formatting"], optional = true }
 
 # only required by the json feature
 serde_json = { version = "1.0", optional = true }
@@ -65,6 +68,8 @@ criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.3", default-features = false, features = ["std-future", "std"] }
 tokio = { version = "0.2", features = ["rt-core", "macros"] }
+# Enable the `time` crate's `macros` feature, for examples.
+time = { version = "0.3", features = ["formatting", "macros"] }
 
 [badges]
 maintenance = { status = "experimental" }
