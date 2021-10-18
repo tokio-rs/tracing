@@ -55,13 +55,15 @@
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
+//! - [`local-time`]: Enables local time formatting when using the [`time`
+//!   crate]'s timestamp formatters with the `fmt` subscriber.
 //!
 //! ### Optional Dependencies
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
 //!   macros in the `fmt` subscriber. On by default.
-//! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
-//!   Enabled by default.
+//! - [`time`]: Enables support for using the [`time` crate] for timestamp
+//!   formatting in the `fmt` subscriber.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
@@ -87,10 +89,9 @@
 //! [`fmt`]: fmt/index.html
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
-//! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
-//! [`registry`]: registry/index.html
+//! [`time` crate]: https://crates.io/crates/time
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.25")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
