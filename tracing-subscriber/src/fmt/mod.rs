@@ -611,15 +611,18 @@ where
 {
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See the [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time`"" feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
-    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`time` module]: mod@time
+    /// [`UtcTime`]: time::UtcTime
+    /// [`LocalTime`]: time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
