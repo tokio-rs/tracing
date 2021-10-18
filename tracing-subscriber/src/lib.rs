@@ -23,21 +23,22 @@
 //! ## Feature Flags
 //!
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
-//!   similar to the [`env_logger` crate]. Enabled by default.
+//!   similar to the [`env_logger` crate].
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
-//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
+//!   feature does nothing.
 //! - [`local-time`]: Enables local time formatting when using the [`time`
 //!   crate]'s timestamp formatters with the `fmt` subscriber.
 //!
 //! ### Optional Dependencies
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
-//!   macros in the `fmt` subscriber. On by default.
+//!   macros in the `fmt` subscriber. Enabled by default.
 //! - [`time`]: Enables support for using the [`time` crate] for timestamp
 //!   formatting in the `fmt` subscriber.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
