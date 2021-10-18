@@ -162,7 +162,7 @@ fn err_dbg() -> Result<u8, TryFromIntError> {
 #[test]
 fn test_err_dbg() {
     let span = span::mock().named("err_dbg");
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -179,14 +179,14 @@ fn test_err_dbg() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(collector, || err_dbg().ok());
+    with_default(subscriber, || err_dbg().ok());
     handle.assert_finished();
 }
 
 #[test]
 fn test_err_display_default() {
     let span = span::mock().named("err");
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -200,6 +200,6 @@ fn test_err_display_default() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(collector, || err().ok());
+    with_default(subscriber, || err().ok());
     handle.assert_finished();
 }
