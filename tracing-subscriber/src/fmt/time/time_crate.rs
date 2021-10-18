@@ -182,13 +182,13 @@ impl<F: Formattable> UtcTime<F> {
     /// Typically, the format will be a format description string, or one of the
     /// `time` crate's [well-known formats].
     ///
-    /// If the format description is statically known, you should use the
-    /// [`format_description!`] macro. This is identical to the
+    /// If the format description is statically known, then the
+    /// [`format_description!`] macro should be used. This is identical to the
     /// [`time::format_description::parse] method, but runs at compile-time,
-    /// throwing an error if the format description is invalid. If you do not
-    /// know the desired format statically (such as if you are using one
-    /// provided by the user), you should use the
-    /// [`time::format_description::parse]` method, which is fallible.
+    /// failing  an error if the format description is invalid. If the desired format
+    /// is not known statically (e.g., a user is providing a format string), then the
+    /// [`time::format_description::parse]` method should be used. Note that this
+    /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.
     ///
