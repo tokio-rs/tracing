@@ -23,21 +23,21 @@
 //! ## Feature Flags
 //!
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
-//!   similar to the [`env_logger` crate]. Enabled by default.
+//!   similar to the [`env_logger` crate].
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
 //!   Enabled by default.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
-//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
+//!   feature does nothing.
 //!
 //! ### Optional Dependencies
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
-//!   macros in the `fmt` subscriber. On by default.
+//!   macros in the `fmt` subscriber. Enabled by default.
 //! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
-//!   Enabled by default.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation

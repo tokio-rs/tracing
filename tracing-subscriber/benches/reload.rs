@@ -1,3 +1,4 @@
+#![cfg(feature = "env-filter")]
 use criterion::{criterion_group, criterion_main, Criterion};
 use tracing_subscriber::{
     filter::LevelFilter,
