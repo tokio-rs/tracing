@@ -419,7 +419,10 @@ impl<'block> AsyncTraitInfo<'block> {
     /// https://github.com/dtolnay/async-trait/issues/45#issuecomment-571245673)
     pub(crate) fn from_fn(input: &'block ItemFn) -> Option<Self> {
         // are we in an async context? If yes, this isn't a async_trait-like pattern
-        let _ = input.sig.asyncness?;
+        if input.sig.asyncness.is_some() {
+            return None;
+        }
+
         let block = &input.block;
 
         // list of async functions declared inside the block
