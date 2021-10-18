@@ -3,7 +3,6 @@ use tracing_subscriber::{
     filter::LevelFilter,
     fmt::{
         format::{DefaultFields, Format, Full},
-        time::ChronoLocal,
         Collector, CollectorBuilder,
     },
     EnvFilter,
@@ -15,8 +14,7 @@ use support::NoWriter;
 /// Prepare a real-world-inspired collector and use it to  measure the performance impact of
 /// reloadable collectors.
 
-fn mk_builder(
-) -> CollectorBuilder<DefaultFields, Format<Full, ChronoLocal>, EnvFilter, fn() -> NoWriter> {
+fn mk_builder() -> CollectorBuilder<DefaultFields, Format<Full>, EnvFilter, fn() -> NoWriter> {
     let filter = EnvFilter::default()
         .add_directive("this=off".parse().unwrap())
         .add_directive("also=off".parse().unwrap())
@@ -28,9 +26,6 @@ fn mk_builder(
     Collector::builder()
         .with_env_filter(filter)
         .with_writer(NoWriter::new as _)
-        .with_timer(ChronoLocal::with_format(
-            "%Y-%m-%d %H:%M:%S%.3f".to_string(),
-        ))
         .with_ansi(true)
         .with_target(true)
         .with_level(true)

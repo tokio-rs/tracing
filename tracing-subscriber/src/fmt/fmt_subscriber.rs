@@ -191,15 +191,18 @@ where
 {
     /// Use the given [`timer`] for span and event timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See the [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time`"" feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
-    /// [`time`]: mod@super::time
     /// [`timer`]: super::time::FormatTime
-    /// [`ChronoUtc`]: super::time::ChronoUtc
-    /// [`ChronoLocal`]: super::time::ChronoLocal
+    /// [`time` module]: mod@super::time
+    /// [`UtcTime`]: super::time::UtcTime
+    /// [`LocalTime`]: super::time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> Subscriber<C, N, format::Format<L, T2>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_timer(timer),
