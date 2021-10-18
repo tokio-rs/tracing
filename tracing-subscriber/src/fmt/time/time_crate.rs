@@ -59,19 +59,19 @@ impl LocalTime<well_known::Rfc3339> {
 #[cfg(feature = "local-time")]
 impl<F: Formattable> LocalTime<F> {
     /// Returns a formatter that formats the current [local time] using the
-    /// [`time` crate], with the provided provided format. The format may be any
+    /// [`time` crate] with the provided provided format. The format may be any
     /// type that implements the [`Formattable`] trait.
     ///
     /// Typically, the format will be a format description string, or one of the
     /// `time` crate's [well-known formats].
     ///
-    /// If the format description is statically known, you should use the
-    /// [`format_description!`] macro. This is identical to the
+    /// If the format description is statically known, then the
+    /// [`format_description!`] macro should be used. This is identical to the
     /// [`time::format_description::parse] method, but runs at compile-time,
-    /// throwing an error if the format description is invalid. If you do not
-    /// know the desired format statically (such as if you are using one
-    /// provided by the user), you should use the
-    /// [`time::format_description::parse]` method, which is fallible.
+    /// throwing an error if the format description is invalid. If the desired format
+    /// is not known statically (e.g., a user is providing a format string), then the
+    /// [`time::format_description::parse]` method should be used. Note that this
+    /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.
     ///
@@ -154,7 +154,7 @@ where
 
 impl UtcTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current [UTC time] in the
-    /// [RFC 3339] format (a subset of the [ISO 8601] timestamp format).
+    /// [RFC 3339] format, which is a subset of the [ISO 8601] timestamp format.
     ///
     /// # Examples
     ///

@@ -638,7 +638,7 @@ pub struct Tee<A, B> {
 /// A bridge between `fmt::Write` and `io::Write`.
 ///
 /// This is used by the timestamp formatting implementation for the `time`
-/// crate, and by the JSON formatter. In both cases, this is needed because
+/// crate and by the JSON formatter. In both cases, this is needed because
 /// `tracing-subscriber`'s `FormatEvent`/`FormatTime` traits expect a
 /// `fmt::Write` implementation, while `serde_json::Serializer` and `time`'s
 /// `format_into` methods expect an `io::Write`.

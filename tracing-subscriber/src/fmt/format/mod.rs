@@ -362,7 +362,7 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `"time`"" feature flag enables the
+    /// Note that using the `"time"` feature flag enables the
     /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
     /// [`time` crate] to provide more sophisticated timestamp formatting
     /// options.
