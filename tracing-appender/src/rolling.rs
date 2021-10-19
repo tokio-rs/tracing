@@ -29,7 +29,7 @@
 use crate::inner::InnerAppender;
 use std::io;
 use std::path::Path;
-use time::{macros::format_description, Duration, OffsetDateTime, Time};
+use time::{format_description, Duration, OffsetDateTime, Time};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -334,21 +334,26 @@ impl Rotation {
     pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
         match *self {
             Rotation::MINUTELY => {
-                let format = format_description!("[year]-[month]-[day]-[hour]-[minute]");
+                let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
                 format!("{}.{}", filename, date)
             }
             Rotation::HOURLY => {
-                let format = format_description!("[year]-[month]-[day]-[hour]-[minute]");
+                let format = format_description::parse("[year]-[month]-[day]-[hour]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
                 format!("{}.{}", filename, date)
             }
             Rotation::DAILY => {
-                let format = format_description!("[year]-[month]-[day]");
+                let format = format_description::parse("[year]-[month]-[day]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
@@ -462,7 +467,7 @@ mod test {
 
         // per-hour
         let path = Rotation::HOURLY.join_date("app.log", &now);
-        assert_eq!("app.log.2020-02-01-10-03", path);
+        assert_eq!("app.log.2020-02-01-10", path);
 
         // per-day
         let path = Rotation::DAILY.join_date("app.log", &now);
