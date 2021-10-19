@@ -369,7 +369,6 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
-    use time::macros::datetime;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -460,10 +459,17 @@ mod test {
 
     #[test]
     fn test_path_concatination() {
-        let now = datetime!(2020-02-01 10:03:01 UTC);
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+
         // per-minute
         let path = Rotation::MINUTELY.join_date("app.log", &now);
-        assert_eq!("app.log.2020-02-01-10-03", path);
+        assert_eq!("app.log.2020-02-01-10-01", path);
 
         // per-hour
         let path = Rotation::HOURLY.join_date("app.log", &now);

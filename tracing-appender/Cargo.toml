@@ -31,5 +31,5 @@ features = ["fmt", "std"]
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
-time = { version = "0.3", default-features = false, features = ["formatting", "macros"] }
+time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
 tempfile = "3"
