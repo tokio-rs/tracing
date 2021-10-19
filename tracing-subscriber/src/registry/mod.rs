@@ -141,20 +141,21 @@ pub trait SpanData<'a> {
     /// Returns a reference to the ID
     fn parent(&self) -> Option<&Id>;
 
-    feature! {
-        #![feature = "std"]
-        /// Returns a reference to this span's `Extensions`.
-        ///
-        /// The extensions may be used by `Subscriber`s to store additional data
-        /// describing the span.
-        fn extensions(&self) -> Extensions<'_>;
+    /// Returns a reference to this span's `Extensions`.
+    ///
+    /// The extensions may be used by `Subscriber`s to store additional data
+    /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    fn extensions(&self) -> Extensions<'_>;
 
-        /// Returns a mutable reference to this span's `Extensions`.
-        ///
-        /// The extensions may be used by `Subscriber`s to store additional data
-        /// describing the span.
-        fn extensions_mut(&self) -> ExtensionsMut<'_>;
-    }
+    /// Returns a mutable reference to this span's `Extensions`.
+    ///
+    /// The extensions may be used by `Subscriber`s to store additional data
+    /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    fn extensions_mut(&self) -> ExtensionsMut<'_>;
 }
 
 /// A reference to [span data] and the associated [registry].
