@@ -13,6 +13,7 @@ pub use crate::layer::{
 
 pub use crate::util::SubscriberInitExt as _;
 
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use crate::fmt::writer::MakeWriterExt as _;
+feature! {
+    #![all(feature = "fmt", feature = "std")]
+    pub use crate::fmt::writer::MakeWriterExt as _;
+}

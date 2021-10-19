@@ -57,6 +57,7 @@ use tracing_core::{
 /// ```
 ///
 /// [`Layer`]: ../layer/trait.Layer.html
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
 pub struct Layer<
     S,
@@ -862,23 +863,6 @@ where
         S: for<'lookup> LookupSpan<'lookup>,
     {
         self.ctx.lookup_current()
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    #[deprecated(
-        note = "wraps layer::Context::scope, which is deprecated",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn scope(&self) -> crate::layer::Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.scope()
     }
 
     /// Returns the current span for this formatter.
