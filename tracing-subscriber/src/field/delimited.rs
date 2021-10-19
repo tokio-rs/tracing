@@ -133,6 +133,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test {
     use super::*;
     use crate::field::test_util::*;

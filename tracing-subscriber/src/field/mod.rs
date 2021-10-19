@@ -237,10 +237,11 @@ pub struct RecordFieldsMarker {
     _p: (),
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 #[macro_use]
 pub(in crate::field) mod test_util {
     use super::*;
+    pub(in crate::field) use alloc::string::String;
     use tracing_core::{
         callsite::Callsite,
         field::{Field, Value},
