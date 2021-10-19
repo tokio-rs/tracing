@@ -383,23 +383,24 @@ where
         }
     }
 
-    feature! {
-        #![feature = "std"]
-        /// Returns a reference to this span's `Extensions`.
-        ///
-        /// The extensions may be used by `Subscriber`s to store additional data
-        /// describing the span.
-        pub fn extensions(&self) -> Extensions<'_> {
-            self.data.extensions()
-        }
+    /// Returns a reference to this span's `Extensions`.
+    ///
+    /// The extensions may be used by `Subscriber`s to store additional data
+    /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn extensions(&self) -> Extensions<'_> {
+        self.data.extensions()
+    }
 
-        /// Returns a mutable reference to this span's `Extensions`.
-        ///
-        /// The extensions may be used by `Subscriber`s to store additional data
-        /// describing the span.
-        pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
-            self.data.extensions_mut()
-        }
+    /// Returns a mutable reference to this span's `Extensions`.
+    ///
+    /// The extensions may be used by `Subscriber`s to store additional data
+    /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
+        self.data.extensions_mut()
     }
 }
 

@@ -24,23 +24,22 @@ pub trait SubscriberInitExt
 where
     Self: Into<Dispatch>,
 {
-    feature! {
-        #![feature = "std"]
-        /// Sets `self` as the [default subscriber] in the current scope, returning a
-        /// guard that will unset it when dropped.
-        ///
-        /// If the "tracing-log" feature flag is enabled, this will also initialize
-        /// a [`log`] compatibility subscriber. This allows the subscriber to consume
-        /// `log::Record`s as though they were `tracing` `Event`s.
-        ///
-        /// [default subscriber]: tracing::dispatch#setting-the-default-collector
-        /// [`log`]: https://crates.io/log
-        fn set_default(self) -> dispatch::DefaultGuard {
-            #[cfg(feature = "tracing-log")]
-            let _ = tracing_log::LogTracer::init();
+    /// Sets `self` as the [default subscriber] in the current scope, returning a
+    /// guard that will unset it when dropped.
+    ///
+    /// If the "tracing-log" feature flag is enabled, this will also initialize
+    /// a [`log`] compatibility subscriber. This allows the subscriber to consume
+    /// `log::Record`s as though they were `tracing` `Event`s.
+    ///
+    /// [default subscriber]: tracing::dispatch#setting-the-default-collector
+    /// [`log`]: https://crates.io/log
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    fn set_default(self) -> dispatch::DefaultGuard {
+        #[cfg(feature = "tracing-log")]
+        let _ = tracing_log::LogTracer::init();
 
-            dispatch::set_default(&self.into())
-        }
+        dispatch::set_default(&self.into())
     }
 
     /// Attempts to set `self` as the [global default subscriber] in the current
