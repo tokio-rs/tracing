@@ -61,6 +61,7 @@ use tracing_core::{
 ///
 /// [`Subscriber`]: subscribe::Subscribe
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
     make_writer: W,
     fmt_fields: N,

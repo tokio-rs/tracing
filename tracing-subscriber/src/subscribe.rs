@@ -7,9 +7,16 @@ use tracing_core::{
     span, Event, LevelFilter,
 };
 
-#[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull};
+#[cfg(all(feature = "std", feature = "registry"))]
+use crate::registry::Registry;
+use crate::registry::{self, LookupSpan, SpanRef};
+use core::{any::TypeId, cmp, marker::PhantomData, ptr::NonNull};
+
+feature! {
+    #![feature = "alloc"]
+    use alloc::boxed::Box;
+    use core::ops::Deref;
+}
 
 /// A composable handler for `tracing` events.
 ///
@@ -601,7 +608,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        std::cmp::max(
+        cmp::max(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
         )
@@ -652,16 +659,16 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let subscriber = &self.inner as &dyn Collect;
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
             .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if let Some(g) = guard.as_mut() {
                     g.is_closing()
@@ -884,88 +891,90 @@ where
     }
 }
 
-macro_rules! subscriber_impl_body {
-    () => {
-        #[inline]
-        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().new_span(attrs, id, ctx)
-        }
+feature! {
+    #![any(feature = "std", feature = "alloc")]
 
-        #[inline]
-        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-            self.deref().register_callsite(metadata)
-        }
+    macro_rules! subscriber_impl_body {
+        () => {
+            #[inline]
+            fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().new_span(attrs, id, ctx)
+            }
 
-        #[inline]
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            self.deref().enabled(metadata, ctx)
-        }
+            #[inline]
+            fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+                self.deref().register_callsite(metadata)
+            }
 
-        #[inline]
-        fn max_level_hint(&self) -> Option<LevelFilter> {
-            self.deref().max_level_hint()
-        }
+            #[inline]
+            fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+                self.deref().enabled(metadata, ctx)
+            }
 
-        #[inline]
-        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
-            self.deref().on_record(span, values, ctx)
-        }
+            #[inline]
+            fn max_level_hint(&self) -> Option<LevelFilter> {
+                self.deref().max_level_hint()
+            }
 
-        #[inline]
-        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_follows_from(span, follows, ctx)
-        }
+            #[inline]
+            fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+                self.deref().on_record(span, values, ctx)
+            }
 
-        #[inline]
-        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
-            self.deref().on_event(event, ctx)
-        }
+            #[inline]
+            fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_follows_from(span, follows, ctx)
+            }
 
-        #[inline]
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_enter(id, ctx)
-        }
+            #[inline]
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+                self.deref().on_event(event, ctx)
+            }
 
-        #[inline]
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_exit(id, ctx)
-        }
+            #[inline]
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_enter(id, ctx)
+            }
 
-        #[inline]
-        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
-            self.deref().on_close(id, ctx)
-        }
+            #[inline]
+            fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_exit(id, ctx)
+            }
 
-        #[inline]
-        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_id_change(old, new, ctx)
-        }
+            #[inline]
+            fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+                self.deref().on_close(id, ctx)
+            }
 
-        #[doc(hidden)]
-        #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> std::option::Option<NonNull<()>> {
-            self.deref().downcast_raw(id)
-        }
-    };
+            #[inline]
+            fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_id_change(old, new, ctx)
+            }
+
+            #[doc(hidden)]
+            #[inline]
+            unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+                self.deref().downcast_raw(id)
+            }
+        };
+    }
+
+    impl<S, C> Subscribe<C> for Box<S>
+    where
+        S: Subscribe<C>,
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
+
+    impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
+    where
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
 }
 
-impl<S, C> Subscribe<C> for Box<S>
-where
-    S: Subscribe<C>,
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
-where
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
 where
     C: Collect + LookupSpan<'a>,
@@ -1111,8 +1120,6 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1131,8 +1138,6 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1156,8 +1161,6 @@ where
     ///
     /// [stored data]: super::registry::SpanRef
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1175,8 +1178,6 @@ where
     ///
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1199,8 +1200,6 @@ where
     ///
     /// [stored data]: super::registry::SpanRef
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1241,8 +1240,6 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,
@@ -1271,8 +1268,6 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,
@@ -1308,7 +1303,6 @@ impl Identity {
 
 #[cfg(test)]
 pub(crate) mod tests {
-
     use super::*;
 
     pub(crate) struct NopCollector;
@@ -1346,15 +1340,16 @@ pub(crate) mod tests {
     /// A subscriber that holds a string.
     ///
     /// Used to test that pointers returned by downcasting are actually valid.
-    struct StringSubscriber(String);
+    struct StringSubscriber(&'static str);
     impl<C: Collect> Subscribe<C> for StringSubscriber {}
-    struct StringSubscriber2(String);
+
+    struct StringSubscriber2(&'static str);
     impl<C: Collect> Subscribe<C> for StringSubscriber2 {}
 
-    struct StringSubscriber3(String);
+    struct StringSubscriber3(&'static str);
     impl<C: Collect> Subscribe<C> for StringSubscriber3 {}
 
-    pub(crate) struct StringCollector(String);
+    pub(crate) struct StringCollector(&'static str);
 
     impl Collect for StringCollector {
         fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
@@ -1409,31 +1404,31 @@ pub(crate) mod tests {
         let s = NopSubscriber
             .and_then(NopSubscriber)
             .and_then(NopSubscriber)
-            .with_collector(StringCollector("collector".into()));
+            .with_collector(StringCollector("collector"));
         let collector =
             <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
-        assert_eq!(&collector.0, "collector");
+        assert_eq!(collector.0, "collector");
     }
 
     #[test]
     fn downcasts_to_subscriber() {
-        let s = StringSubscriber("subscriber_1".into())
-            .and_then(StringSubscriber2("subscriber_2".into()))
-            .and_then(StringSubscriber3("subscriber_3".into()))
+        let s = StringSubscriber("subscriber_1")
+            .and_then(StringSubscriber2("subscriber_2"))
+            .and_then(StringSubscriber3("subscriber_3"))
             .with_collector(NopCollector);
         let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber>(&s)
             .expect("subscriber 2 should downcast");
-        assert_eq!(&subscriber.0, "subscriber_1");
+        assert_eq!(subscriber.0, "subscriber_1");
         let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber2>(&s)
             .expect("subscriber 2 should downcast");
-        assert_eq!(&subscriber.0, "subscriber_2");
+        assert_eq!(subscriber.0, "subscriber_2");
         let subscriber = <dyn Collect>::downcast_ref::<StringSubscriber3>(&s)
             .expect("subscriber 3 should downcast");
-        assert_eq!(&subscriber.0, "subscriber_3");
+        assert_eq!(subscriber.0, "subscriber_3");
     }
 
     #[test]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn context_event_span() {
         use std::sync::{Arc, Mutex};
         let last_event_span = Arc::new(Mutex::new(None));

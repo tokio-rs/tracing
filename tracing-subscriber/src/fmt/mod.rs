@@ -288,8 +288,11 @@ use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod format;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod time;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
@@ -311,6 +314,7 @@ pub use self::{
 ///
 /// This consists of an inner `Formatter` wrapped in a subscriber that performs filtering.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Collector<
     N = format::DefaultFields,
     E = format::Format,
@@ -322,11 +326,13 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
     subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
     E = format::Format,
@@ -400,6 +406,7 @@ pub struct CollectorBuilder<
 /// [`init`]: CollectorBuilder::init()
 /// [`try_init`]: CollectorBuilder::try_init()
 /// [`finish`]: CollectorBuilder::finish()
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -411,6 +418,7 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
