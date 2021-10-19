@@ -9,7 +9,7 @@ use tracing_core::{
 
 #[cfg(feature = "registry")]
 use crate::registry::{self, LookupSpan, Registry, SpanRef};
-use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
+use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
 ///
@@ -947,21 +947,6 @@ macro_rules! subscriber_impl_body {
             self.deref().downcast_raw(id)
         }
     };
-}
-
-impl<S, C> Subscribe<C> for Arc<S>
-where
-    S: Subscribe<C>,
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-impl<C> Subscribe<C> for Arc<dyn Subscribe<C> + Send + Sync>
-where
-    C: Collect,
-{
-    subscriber_impl_body! {}
 }
 
 impl<S, C> Subscribe<C> for Box<S>
