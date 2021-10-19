@@ -21,7 +21,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all
+        args: --all --exclude=tracing-appender
 
   check:
     # Run `cargo check` first to ensure that the pushed code at least compiles.
