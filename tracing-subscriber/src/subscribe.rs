@@ -659,16 +659,16 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let subscriber = &self.inner as &dyn Collect;
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
             .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if let Some(g) = guard.as_mut() {
                     g.is_closing()
