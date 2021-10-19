@@ -27,10 +27,9 @@
 //! # }
 //! ```
 use crate::inner::InnerAppender;
-use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
-use std::fmt::Debug;
 use std::io;
 use std::path::Path;
+use time::{macros::format_description, Duration, OffsetDateTime, Time};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -87,7 +86,7 @@ impl RollingFileAppender {
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
                 rotation,
-                Utc::now(),
+                OffsetDateTime::now_utc(),
             )
             .expect("Failed to create appender"),
         }
@@ -297,42 +296,64 @@ impl Rotation {
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
-    pub(crate) fn next_date(&self, current_date: &DateTime<Utc>) -> DateTime<Utc> {
+    pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
-            Rotation::MINUTELY => *current_date + chrono::Duration::minutes(1),
-            Rotation::HOURLY => *current_date + chrono::Duration::hours(1),
-            Rotation::DAILY => *current_date + chrono::Duration::days(1),
-            Rotation::NEVER => Utc.ymd(9999, 1, 1).and_hms(1, 0, 0),
+            Rotation::MINUTELY => *current_date + Duration::minutes(1),
+            Rotation::HOURLY => *current_date + Duration::hours(1),
+            Rotation::DAILY => *current_date + Duration::days(1),
+            Rotation::NEVER => return None,
         };
-        self.round_date(&unrounded_next_date)
+        Some(self.round_date(&unrounded_next_date))
     }
 
-    pub(crate) fn round_date(&self, date: &DateTime<Utc>) -> DateTime<Utc> {
+    // note that this method will panic if passed a `Rotation::NEVER`.
+    pub(crate) fn round_date(&self, date: &OffsetDateTime) -> OffsetDateTime {
         match *self {
-            Rotation::MINUTELY => Utc.ymd(date.year(), date.month(), date.day()).and_hms(
-                date.hour(),
-                date.minute(),
-                0,
-            ),
-            Rotation::HOURLY => {
-                Utc.ymd(date.year(), date.month(), date.day())
-                    .and_hms(date.hour(), 0, 0)
+            Rotation::MINUTELY => {
+                let time = Time::from_hms(date.hour(), date.minute(), 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
             }
-            Rotation::DAILY => Utc
-                .ymd(date.year(), date.month(), date.day())
-                .and_hms(0, 0, 0),
+            Rotation::HOURLY => {
+                let time = Time::from_hms(date.hour(), 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
+            }
+            Rotation::DAILY => {
+                let time = Time::from_hms(0, 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
+            }
+            // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
-                Utc.ymd(date.year(), date.month(), date.day())
-                    .and_hms(date.hour(), 0, 0)
+                unreachable!("Rotation::NEVER is impossible to round.")
             }
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &DateTime<Utc>) -> String {
+    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
         match *self {
-            Rotation::MINUTELY => format!("{}.{}", filename, date.format("%F-%H-%M")),
-            Rotation::HOURLY => format!("{}.{}", filename, date.format("%F-%H")),
-            Rotation::DAILY => format!("{}.{}", filename, date.format("%F")),
+            Rotation::MINUTELY => {
+                let format = format_description!("[year]-[month]-[day]-[hour]-[minute]");
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
+            Rotation::HOURLY => {
+                let format = format_description!("[year]-[month]-[day]-[hour]-[minute]");
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
+            Rotation::DAILY => {
+                let format = format_description!("[year]-[month]-[day]");
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
             Rotation::NEVER => filename.to_string(),
         }
     }
@@ -343,6 +364,7 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
+    use time::macros::datetime;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -400,172 +422,54 @@ mod test {
     }
 
     #[test]
-    fn test_next_date_minutely() {
-        let r = Rotation::MINUTELY;
+    fn test_rotations() {
+        // per-minute basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::MINUTELY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::MINUTE).minute(), next.minute());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_minute(1).unwrap(), next);
+        // per-hour basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::HOURLY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::HOUR).hour(), next.hour());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 30);
-        let next = r.next_date(&mock_now);
-        assert_eq!(
-            mock_now
-                .with_hour(0)
-                .unwrap()
-                .with_minute(21)
-                .unwrap()
-                .with_second(0)
-                .unwrap(),
-            next
-        );
+        // daily-basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::DAILY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::DAY).day(), next.day());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(
-            mock_now
-                .with_day(2)
-                .unwrap()
-                .with_hour(0)
-                .unwrap()
-                .with_minute(0)
-                .unwrap(),
-            next
-        );
-
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+        // never
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::NEVER.next_date(&now);
+        assert!(next.is_none());
     }
 
     #[test]
-    fn test_next_date_hourly() {
-        let r = Rotation::HOURLY;
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(1, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(2).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+    #[should_panic(
+        expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
+    )]
+    fn test_never_date_rounding() {
+        let now = OffsetDateTime::now_utc();
+        let _ = Rotation::NEVER.round_date(&now);
     }
 
     #[test]
-    fn test_next_date_daily() {
-        let r = Rotation::DAILY;
+    fn test_path_concatination() {
+        let now = datetime!(2020-02-01 10:03:01 UTC);
+        // per-minute
+        let path = Rotation::MINUTELY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01-10-03", path);
 
-        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
+        // per-hour
+        let path = Rotation::HOURLY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01-10-03", path);
 
-        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 20, 5);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2020, 8, 2).and_hms(0, 0, 0), next);
+        // per-day
+        let path = Rotation::DAILY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01", path);
 
-        let mock_now = Utc.ymd(2020, 8, 31).and_hms(11, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2020, 9, 1).and_hms(0, 0, 0), next);
-
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
-    }
-
-    #[test]
-    fn test_round_date_minutely() {
-        let r = Rotation::MINUTELY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(10, 3, 0),
-            r.round_date(&mock_now)
-        );
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
-
-    #[test]
-    fn test_round_date_hourly() {
-        let r = Rotation::HOURLY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(10, 0, 0),
-            r.round_date(&mock_now)
-        );
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 0, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
-
-    #[test]
-    fn test_rotation_path_minutely() {
-        let r = Rotation::MINUTELY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10-03", path);
-    }
-
-    #[test]
-    fn test_rotation_path_hourly() {
-        let r = Rotation::HOURLY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10", path);
-    }
-
-    #[test]
-    fn test_rotation_path_daily() {
-        let r = Rotation::DAILY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01", path);
-    }
-
-    #[test]
-    fn test_round_date_daily() {
-        let r = Rotation::DAILY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(0, 0, 0),
-            r.round_date(&mock_now)
-        );
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
-
-    #[test]
-    fn test_next_date_never() {
-        let r = Rotation::NEVER;
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(next, Utc.ymd(9999, 1, 1).and_hms(1, 0, 0));
-    }
-
-    #[test]
-    fn test_join_date_never() {
-        let r = Rotation::NEVER;
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let joined_date = r.join_date("Hello.log", &mock_now);
-        assert_eq!(joined_date, "Hello.log");
+        // never
+        let path = Rotation::NEVER.join_date("app.log", &now);
+        assert_eq!("app.log", path);
     }
 }
