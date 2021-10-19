@@ -10,7 +10,13 @@ use tracing_core::{
 #[cfg(all(feature = "std", feature = "registry"))]
 use crate::registry::Registry;
 use crate::registry::{self, LookupSpan, SpanRef};
-use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull};
+use core::{any::TypeId, cmp, marker::PhantomData, ptr::NonNull};
+
+feature! {
+    #![feature = "alloc"]
+    use alloc::boxed::Box;
+    use core::ops::Deref;
+}
 
 /// A composable handler for `tracing` events.
 ///
@@ -602,7 +608,7 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        std::cmp::max(
+        cmp::max(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
         )
@@ -1114,8 +1120,6 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,

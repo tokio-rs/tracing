@@ -135,6 +135,10 @@
 // future, reducing diff noise. Allow this even though clippy considers it
 // "needless".
 #![allow(clippy::needless_update)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 mod macros;

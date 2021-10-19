@@ -2,7 +2,7 @@
 //!
 //! [fields]: tracing_core::field
 //! [field visitors]: tracing_core::field::Visit
-use std::{fmt, io};
+use core::{fmt, marker::PhantomData};
 pub use tracing_core::field::Visit;
 use tracing_core::{
     span::{Attributes, Record},
@@ -108,11 +108,16 @@ where
     }
 }
 
-/// Extension trait implemented by visitors to indicate that they write to an
-/// `io::Write` instance, and allow access to that writer.
-pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
-    /// Returns the writer that this visitor writes to.
-    fn writer(&mut self) -> &mut dyn io::Write;
+feature! {
+    #![feature = "std"]
+    use std::io;
+
+    /// Extension trait implemented by visitors to indicate that they write to an
+    /// `io::Write` instance, and allow access to that writer.
+    pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
+        /// Returns the writer that this visitor writes to.
+        fn writer(&mut self) -> &mut dyn io::Write;
+    }
 }
 
 /// Extension trait implemented by visitors to indicate that they write to a
@@ -223,7 +228,7 @@ where
 #[derive(Debug)]
 #[doc(hidden)]
 pub struct MakeExtMarker<T> {
-    _p: std::marker::PhantomData<T>,
+    _p: PhantomData<T>,
 }
 
 #[derive(Debug)]

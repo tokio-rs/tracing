@@ -1,3 +1,4 @@
+#[cfg(feature = "std")]
 macro_rules! try_lock {
     ($lock:expr) => {
         try_lock!($lock, else return)
