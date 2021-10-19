@@ -261,8 +261,11 @@ use std::{any::TypeId, error::Error, io};
 use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
 mod fmt_layer;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod format;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod time;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod writer;
 #[allow(deprecated)]
 pub use fmt_layer::LayerBuilder;
@@ -285,6 +288,7 @@ pub use self::{
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 ///
 /// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
 pub struct Subscriber<
     N = format::DefaultFields,
@@ -297,6 +301,7 @@ pub struct Subscriber<
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub type Formatter<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -304,6 +309,7 @@ pub type Formatter<
 > = layer::Layered<fmt_layer::Layer<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Subscriber`s.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
 pub struct SubscriberBuilder<
     N = format::DefaultFields,
@@ -373,12 +379,12 @@ pub struct SubscriberBuilder<
 /// })
 /// ```
 ///
-/// [`SubscriberBuilder`]: struct.SubscriberBuilder.html
-/// [formatting subscriber]: struct.Subscriber.html
-/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
-/// [`init`]: struct.SubscriberBuilder.html#method.init
-/// [`try_init`]: struct.SubscriberBuilder.html#method.try_init
-/// [`finish`]: struct.SubscriberBuilder.html#method.finish
+/// [formatting subscriber]: Subscriber
+/// [`SubscriberBuilder::default()`]: SubscriberBuilder::default()
+/// [`init`]: SubscriberBuilder::init()
+/// [`try_init`]: SubscriberBuilder::try_init()
+/// [`finish`]: SubscriberBuilder::finish()
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn fmt() -> SubscriberBuilder {
     SubscriberBuilder::default()
 }
@@ -388,9 +394,9 @@ pub fn fmt() -> SubscriberBuilder {
 ///
 /// This is a shorthand for the equivalent [`Layer::default`] function.
 ///
-/// [formatting layer]: struct.Layer.html
-/// [composed]: ../layer/index.html
-/// [`Layer::default`]: struct.Layer.html#method.default
+/// [formatting layer]: Layer
+/// [composed]: crate::layer
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn layer<S>() -> Layer<S> {
     Layer::default()
 }

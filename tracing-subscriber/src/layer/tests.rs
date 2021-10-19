@@ -12,15 +12,15 @@ impl<S: Subscriber> Layer<S> for NopLayer2 {}
 /// A layer that holds a string.
 ///
 /// Used to test that pointers returned by downcasting are actually valid.
-struct StringLayer(String);
+struct StringLayer(&'static str);
 impl<S: Subscriber> Layer<S> for StringLayer {}
-struct StringLayer2(String);
+struct StringLayer2(&'static str);
 impl<S: Subscriber> Layer<S> for StringLayer2 {}
 
-struct StringLayer3(String);
+struct StringLayer3(&'static str);
 impl<S: Subscriber> Layer<S> for StringLayer3 {}
 
-pub(crate) struct StringSubscriber(String);
+pub(crate) struct StringSubscriber(&'static str);
 
 impl Subscriber for StringSubscriber {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
@@ -69,15 +69,17 @@ fn three_layers_are_subscriber() {
 }
 
 #[test]
-fn box_layer_is_layer() {
-    let l: Box<dyn Layer<NoSubscriber> + Send + Sync> = Box::new(NopLayer);
-    assert_layer(&l);
-    l.with_subscriber(NoSubscriber::default());
+fn three_layers_are_layer() {
+    let layers = NopLayer.and_then(NopLayer).and_then(NopLayer);
+    assert_layer(&layers);
+    let _ = layers.with_subscriber(NoSubscriber::default());
 }
 
 #[test]
-fn arc_layer_is_layer() {
-    let l: Arc<dyn Layer<NoSubscriber> + Send + Sync> = Arc::new(NopLayer);
+#[cfg(feature = "alloc")]
+fn box_layer_is_layer() {
+    use alloc::boxed::Box;
+    let l: Box<dyn Layer<NoSubscriber> + Send + Sync> = Box::new(NopLayer);
     assert_layer(&l);
     l.with_subscriber(NoSubscriber::default());
 }
@@ -87,29 +89,29 @@ fn downcasts_to_subscriber() {
     let s = NopLayer
         .and_then(NopLayer)
         .and_then(NopLayer)
-        .with_subscriber(StringSubscriber("subscriber".into()));
+        .with_subscriber(StringSubscriber("subscriber"));
     let subscriber =
         <dyn Subscriber>::downcast_ref::<StringSubscriber>(&s).expect("subscriber should downcast");
-    assert_eq!(&subscriber.0, "subscriber");
+    assert_eq!(subscriber.0, "subscriber");
 }
 
 #[test]
 fn downcasts_to_layer() {
-    let s = StringLayer("layer_1".into())
-        .and_then(StringLayer2("layer_2".into()))
-        .and_then(StringLayer3("layer_3".into()))
+    let s = StringLayer("layer_1")
+        .and_then(StringLayer2("layer_2"))
+        .and_then(StringLayer3("layer_3"))
         .with_subscriber(NoSubscriber::default());
     let layer = <dyn Subscriber>::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
-    assert_eq!(&layer.0, "layer_1");
+    assert_eq!(layer.0, "layer_1");
     let layer =
         <dyn Subscriber>::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
-    assert_eq!(&layer.0, "layer_2");
+    assert_eq!(layer.0, "layer_2");
     let layer =
         <dyn Subscriber>::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
-    assert_eq!(&layer.0, "layer_3");
+    assert_eq!(layer.0, "layer_3");
 }
 
-#[cfg(feature = "registry")]
+#[cfg(all(feature = "registry", feature = "std"))]
 mod registry_tests {
     use super::*;
     use crate::registry::LookupSpan;

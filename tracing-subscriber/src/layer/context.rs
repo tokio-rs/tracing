@@ -1,7 +1,8 @@
 use tracing_core::{metadata::Metadata, span, subscriber::Subscriber, Event};
 
 use crate::registry::{self, LookupSpan, SpanRef};
-#[cfg(feature = "registry")]
+
+#[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
 /// Represents information about the current context provided to [`Layer`]s by the
 /// wrapped [`Subscriber`].
@@ -41,34 +42,8 @@ pub struct Context<'a, S> {
     /// [`Filtered`]: crate::filter::Filtered
     /// [`FilterId`]: crate::filter::FilterId
     /// [`and`]: crate::filter::FilterId::and
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     filter: FilterId,
-}
-
-/// An iterator over the [stored data] for all the spans in the
-/// current context, starting the root of the trace tree and ending with
-/// the current span.
-///
-/// This is returned by [`Context::scope`].
-///
-/// [stored data]: ../registry/struct.SpanRef.html
-/// [`Context::scope`]: struct.Context.html#method.scope
-#[deprecated(note = "renamed to crate::registry::ScopeFromRoot", since = "0.2.19")]
-#[derive(Debug)]
-pub struct Scope<'a, L>(std::iter::Flatten<std::option::IntoIter<registry::ScopeFromRoot<'a, L>>>)
-where
-    L: LookupSpan<'a>;
-
-#[allow(deprecated)]
-impl<'a, L> Iterator for Scope<'a, L>
-where
-    L: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, L>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
 }
 
 // === impl Context ===
@@ -239,7 +214,7 @@ where
     {
         let span = self.subscriber.as_ref()?.span(id)?;
 
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         return span.try_with_filter(self.filter);
 
         #[cfg(not(feature = "registry"))]
@@ -294,7 +269,7 @@ where
 
         // If we found a span, and our per-layer filter enables it, return that
         // span!
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         {
             if let Some(span) = span?.try_with_filter(self.filter) {
                 Some(span)
@@ -324,7 +299,7 @@ where
     // factored out to prevent the loop and (potentially-recursive) subscriber
     // downcasting from being inlined if `lookup_current` is inlined.
     #[inline(never)]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn lookup_current_filtered<'lookup>(
         &self,
         subscriber: &'lookup S,
@@ -337,40 +312,6 @@ where
             .span_stack()
             .iter()
             .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter))
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// If this iterator is empty, then there are no spans in the current context.
-    ///
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///     <strong>Note</strong>: This requires the wrapped subscriber to
-    ///     implement the <a href="../registry/trait.LookupSpan.html"><code>
-    ///     LookupSpan</code></a> trait. See the documentation on
-    ///     <a href="./struct.Context.html"><code>Context</code>'s
-    ///     declaration</a> for details.
-    /// </pre>
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    #[deprecated(
-        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn scope(&self) -> Scope<'_, S>
-    where
-        S: for<'lookup> LookupSpan<'lookup>,
-    {
-        Scope(
-            self.lookup_current()
-                .as_ref()
-                .map(registry::SpanRef::scope)
-                .map(registry::Scope::from_root)
-                .into_iter()
-                .flatten(),
-        )
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
@@ -427,7 +368,7 @@ where
         Some(self.event_span(event)?.scope())
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn with_filter(self, filter: FilterId) -> Self {
         // If we already have our own `FilterId`, combine it with the provided
         // one. That way, the new `FilterId` will consider a span to be disabled
@@ -439,7 +380,7 @@ where
         Self { filter, ..self }
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -447,7 +388,7 @@ where
         self.is_enabled_inner(span, filter).unwrap_or(false)
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -459,7 +400,7 @@ where
         }
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn is_enabled_inner(&self, span: &span::Id, filter: FilterId) -> Option<bool>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -486,7 +427,7 @@ impl<'a, S> Clone for Context<'a, S> {
         Context {
             subscriber,
 
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             filter: self.filter,
         }
     }

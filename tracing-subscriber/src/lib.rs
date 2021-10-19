@@ -46,6 +46,9 @@
 //!
 //! ## Feature Flags
 //!
+//! - `std`: Enables APIs that depend on the on the Rust standard library
+//!   (enabled by default).
+//! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
 //!   similar to the [`env_logger` crate].
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
@@ -70,6 +73,34 @@
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
 //!   rather than the Rust standard library's implementation.
 //!
+//! ### `no_std` Support
+//!
+//! In embedded systems and other bare-metal applications, `tracing` can be
+//! used without requiring the Rust standard library, although some features are
+//! disabled. Although most of the APIs provided by `tracing-subscriber`, such
+//! as [`fmt`] and [`EnvFilter`], require the standard library, some
+//! functionality, such as the [`Subscriber`] trait, can still be used in
+//! `no_std` environments.
+//!
+//! The dependency on the standard library is controlled by two crate feature
+//! flags, "std", which enables the dependency on [`libstd`], and "alloc", which
+//! enables the dependency on [`liballoc`] (and is enabled by the "std"
+//! feature). These features are enabled by default, but `no_std` users can
+//! disable them using:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false }
+//! ```
+//!
+//! Additional APIs are available when [`liballoc`] is available. To enable
+//! `liballoc` but not `std`, use:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false, features = ["alloc"] }
+//! ```
+//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -93,6 +124,7 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`time` crate]: https://crates.io/crates/time
+//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.25")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -134,48 +166,51 @@
 // future, reducing diff noise. Allow this even though clippy considers it
 // "needless".
 #![allow(clippy::needless_update)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 mod macros;
 
 pub mod field;
 pub mod filter;
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub mod fmt;
-pub mod layer;
 pub mod prelude;
 pub mod registry;
-pub mod reload;
-pub(crate) mod sync;
+
+pub mod layer;
 pub mod util;
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-pub use filter::EnvFilter;
+feature! {
+    #![feature = "std"]
+    pub mod reload;
+    pub(crate) mod sync;
+}
+
+feature! {
+    #![all(feature = "fmt", feature = "std")]
+    pub mod fmt;
+    pub use fmt::fmt;
+    pub use fmt::Subscriber as FmtSubscriber;
+}
+
+feature! {
+    #![all(feature = "env-filter", feature = "std")]
+    pub use filter::EnvFilter;
+}
 
 pub use layer::Layer;
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use registry::Registry;
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    pub use registry::Registry;
 
-///
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub fn registry() -> Registry {
-    Registry::default()
+    ///
+    pub fn registry() -> Registry {
+        Registry::default()
+    }
 }
-
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::Subscriber as FmtSubscriber;
-
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub use fmt::fmt;
-
-use std::default::Default;
 
 mod sealed {
     pub trait Sealed<A = ()> {}

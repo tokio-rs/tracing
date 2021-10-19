@@ -243,8 +243,14 @@ jobs:
       working-directory: tracing
       # this skips running doctests under the `--no-default-features` flag,
       # as rustdoc isn't aware of cargo's feature flags.
-    - name: "Test tracing-subscriber with all features disabled"
+    - name: "Test tracing-subscriber no-std support"
       run: cargo test --lib --tests --no-default-features
+      working-directory: tracing-subscriber
+    - name: "Test tracing-subscriber with liballoc only"
+      run: cargo test --lib --tests --no-default-features --features "alloc"
+      working-directory: tracing-subscriber
+    - name: "Test tracing-subscriber with no default features"
+      run: cargo test --lib --tests --no-default-features --features "std"
       working-directory: tracing-subscriber
 
   style:

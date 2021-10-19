@@ -8,36 +8,42 @@
 //!
 //! [`layer` module's documentation]: crate::layer#filtering-with-layers
 //! [`Layer`]: crate::layer
-mod directive;
-#[cfg(feature = "env-filter")]
-mod env;
 mod filter_fn;
-#[cfg(feature = "registry")]
-mod layer_filters;
+
+feature! {
+    #![all(feature = "env-filter", feature = "std")]
+    mod env;
+    pub use self::env::*;
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    mod layer_filters;
+    pub use self::layer_filters::*;
+}
+
 mod level;
-pub mod targets;
 
-pub use self::directive::ParseError;
 pub use self::filter_fn::*;
-#[cfg(not(feature = "registry"))]
-pub(crate) use self::has_plf_stubs::*;
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use self::layer_filters::*;
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-pub use self::env::*;
+#[cfg(not(all(feature = "registry", feature = "std")))]
+pub(crate) use self::has_plf_stubs::*;
 
-pub use self::targets::Targets;
+feature! {
+    #![any(feature = "std", feature = "alloc")]
+    pub mod targets;
+    pub use self::targets::Targets;
+
+    mod directive;
+    pub use self::directive::ParseError;
+}
 
 /// Stub implementations of the per-layer-fitler detection functions for when the
 /// `registry` feature is disabled.
-#[cfg(not(feature = "registry"))]
+#[cfg(not(all(feature = "registry", feature = "std")))]
 mod has_plf_stubs {
-    pub(crate) fn is_plf_downcast_marker(_: std::any::TypeId) -> bool {
+    pub(crate) fn is_plf_downcast_marker(_: core::any::TypeId) -> bool {
         false
     }
 

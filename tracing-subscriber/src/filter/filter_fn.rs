@@ -1,10 +1,8 @@
-#[cfg(feature = "registry")]
-use crate::layer::Filter;
 use crate::{
     filter::LevelFilter,
     layer::{Context, Layer},
 };
-use std::{any::type_name, fmt, marker::PhantomData};
+use core::{any::type_name, fmt, marker::PhantomData};
 use tracing_core::{Interest, Metadata, Subscriber};
 
 /// A filter implemented by a closure or function pointer that
@@ -320,25 +318,6 @@ where
             .as_ref()
             .map(|hint| metadata.level() <= hint)
             .unwrap_or(true)
-    }
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<S, F> Filter<S> for FilterFn<F>
-where
-    F: Fn(&Metadata<'_>) -> bool,
-{
-    fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
-        self.is_enabled(metadata)
-    }
-
-    fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.is_callsite_enabled(metadata)
-    }
-
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.max_level_hint
     }
 }
 
@@ -661,26 +640,6 @@ where
     }
 }
 
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<S, F, R> Filter<S> for DynFilterFn<S, F, R>
-where
-    F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
-    R: Fn(&'static Metadata<'static>) -> Interest,
-{
-    fn enabled(&self, metadata: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        self.is_enabled(metadata, cx)
-    }
-
-    fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.is_callsite_enabled(metadata)
-    }
-
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.max_level_hint
-    }
-}
-
 impl<S, F, R> Layer<S> for DynFilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool + 'static,
@@ -738,6 +697,48 @@ where
 {
     fn from(f: F) -> Self {
         Self::new(f)
+    }
+}
+
+// === PLF impls ===
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    use crate::layer::Filter;
+
+    impl<S, F> Filter<S> for FilterFn<F>
+    where
+        F: Fn(&Metadata<'_>) -> bool,
+    {
+        fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+            self.is_enabled(metadata)
+        }
+
+        fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+            self.is_callsite_enabled(metadata)
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.max_level_hint
+        }
+    }
+
+    impl<S, F, R> Filter<S> for DynFilterFn<S, F, R>
+    where
+        F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
+        R: Fn(&'static Metadata<'static>) -> Interest,
+    {
+        fn enabled(&self, metadata: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+            self.is_enabled(metadata, cx)
+        }
+
+        fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+            self.is_callsite_enabled(metadata)
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.max_level_hint
+        }
     }
 }
 

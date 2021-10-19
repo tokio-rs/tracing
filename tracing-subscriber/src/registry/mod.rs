@@ -54,34 +54,32 @@
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
 //! require the root subscriber to be a registry.
 //!
-//! [`Layer`]: ../layer/trait.Layer.html
+//! [`Layer`]: crate::layer::Layer
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [`Registry`]: struct.Registry.html
-//! [ctx]: ../layer/struct.Context.html
-//! [lookup]: ../layer/struct.Context.html#method.span
-//! [`LookupSpan`]: trait.LookupSpan.html
-//! [`SpanData`]: trait.SpanData.html
-use std::fmt::Debug;
-
-#[cfg(feature = "registry")]
-use crate::filter::FilterId;
+//! [ctx]: crate::layer::Context
+//! [lookup]: crate::layer::Context::span()
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
-/// A module containing a type map of span extensions.
-mod extensions;
-#[cfg(feature = "registry")]
-mod sharded;
-#[cfg(feature = "registry")]
-mod stack;
+feature! {
+    #![feature = "std"]
+    /// A module containing a type map of span extensions.
+    mod extensions;
+    pub use extensions::{Extensions, ExtensionsMut};
 
-pub use extensions::{Extensions, ExtensionsMut};
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Data;
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Registry;
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+
+    mod sharded;
+    mod stack;
+
+    pub use sharded::Data;
+    pub use sharded::Registry;
+
+    use crate::filter::FilterId;
+}
 
 /// Provides access to stored span data.
 ///
@@ -174,12 +172,16 @@ pub trait SpanData<'a> {
     ///
     /// The extensions may be used by `Layer`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions(&self) -> Extensions<'_>;
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
     /// The extensions may be used by `Layer`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 
     /// Returns `true` if this span is enabled for the [per-layer filter][plf]
@@ -225,32 +227,82 @@ pub struct Scope<'a, R> {
     registry: &'a R,
     next: Option<Id>,
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     filter: FilterId,
 }
 
-impl<'a, R> Scope<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    /// Flips the order of the iterator, so that it is ordered from root to leaf.
+feature! {
+    #![any(feature = "alloc", feature = "std")]
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::{self, Vec};
+    use core::{fmt,iter};
+
+    /// An iterator over the parents of a span, ordered from root to leaf.
     ///
-    /// The iterator will first return the root span, then that span's immediate child,
-    /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
-    ///
-    /// If any items were consumed from the [`Scope`] before calling this method then they
-    /// will *not* be returned from the [`ScopeFromRoot`].
-    ///
-    /// **Note**: this will allocate if there are many spans remaining, or if the
-    /// "smallvec" feature flag is not enabled.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+    /// This is returned by the [`Scope::from_root`] method.
+    pub struct ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
         #[cfg(feature = "smallvec")]
-        type Buf<T> = smallvec::SmallVec<T>;
+        spans: iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
         #[cfg(not(feature = "smallvec"))]
-        type Buf<T> = Vec<T>;
-        ScopeFromRoot {
-            spans: self.collect::<Buf<_>>().into_iter().rev(),
+        spans: iter::Rev<vec::IntoIter<SpanRef<'a, R>>>,
+    }
+
+    #[cfg(feature = "smallvec")]
+    type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
+    impl<'a, R> Scope<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        /// Flips the order of the iterator, so that it is ordered from root to leaf.
+        ///
+        /// The iterator will first return the root span, then that span's immediate child,
+        /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
+        ///
+        /// If any items were consumed from the [`Scope`] before calling this method then they
+        /// will *not* be returned from the [`ScopeFromRoot`].
+        ///
+        /// **Note**: this will allocate if there are many spans remaining, or if the
+        /// "smallvec" feature flag is not enabled.
+        #[allow(clippy::wrong_self_convention)]
+        pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+            #[cfg(feature = "smallvec")]
+            type Buf<T> = smallvec::SmallVec<T>;
+            #[cfg(not(feature = "smallvec"))]
+            type Buf<T> = Vec<T>;
+            ScopeFromRoot {
+                spans: self.collect::<Buf<_>>().into_iter().rev(),
+            }
+        }
+    }
+
+    impl<'a, R> Iterator for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        type Item = SpanRef<'a, R>;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.spans.next()
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.spans.size_hint()
+        }
+    }
+
+    impl<'a, R> fmt::Debug for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.pad("ScopeFromRoot { .. }")
         }
     }
 }
@@ -265,14 +317,14 @@ where
         loop {
             let curr = self.registry.span(self.next.as_ref()?)?;
 
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             let curr = curr.with_filter(self.filter);
             self.next = curr.data.parent().cloned();
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
 
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if !curr.is_enabled_for(self.filter) {
                     // The current span in the chain is disabled for this
@@ -285,93 +337,6 @@ where
         }
     }
 }
-
-/// An iterator over the parents of a span, ordered from root to leaf.
-///
-/// This is returned by the [`Scope::from_root`] method.
-pub struct ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    #[cfg(feature = "smallvec")]
-    spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
-    #[cfg(not(feature = "smallvec"))]
-    spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
-}
-
-impl<'a, R> Iterator for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.spans.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.spans.size_hint()
-    }
-}
-
-impl<'a, R> Debug for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("ScopeFromRoot { .. }")
-    }
-}
-
-/// An iterator over the parents of a span.
-///
-/// This is returned by the [`SpanRef::parents`] method.
-///
-/// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
-#[deprecated(note = "replaced by `Scope`")]
-#[derive(Debug)]
-pub struct Parents<'a, R>(Scope<'a, R>);
-
-#[allow(deprecated)]
-impl<'a, R> Iterator for Parents<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
-/// An iterator over a span's parents, starting with the root of the trace
-/// tree.
-///
-/// For additonal details, see [`SpanRef::from_root`].
-///
-/// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-#[deprecated(note = "replaced by `ScopeFromRoot`", since = "0.2.19")]
-#[derive(Debug)]
-pub struct FromRoot<'a, R>(ScopeFromRoot<'a, R>)
-where
-    R: LookupSpan<'a>;
-
-#[allow(deprecated)]
-impl<'a, R> Iterator for FromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
-#[cfg(feature = "smallvec")]
-type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
 
 impl<'a, R> SpanRef<'a, R>
 where
@@ -442,7 +407,7 @@ where
         let id = self.data.parent()?;
         let data = self.registry.span_data(id)?;
 
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         {
             // move these into mut bindings if the registry feature is enabled,
             // since they may be mutated in the loop.
@@ -463,7 +428,7 @@ where
             }
         }
 
-        #[cfg(not(feature = "registry"))]
+        #[cfg(not(all(feature = "registry", feature = "std")))]
         Some(Self {
             registry: self.registry,
             data,
@@ -547,48 +512,12 @@ where
         }
     }
 
-    /// Returns an iterator over all parents of this span, starting with the
-    /// immediate parent.
-    ///
-    /// The iterator will first return the span's immediate parent, followed by
-    /// that span's parent, followed by _that_ span's parent, and so on, until a
-    /// it reaches a root span.
-    #[deprecated(
-        note = "equivalent to `self.parent().into_iter().flat_map(SpanRef::scope)`, but consider whether excluding `self` is actually intended"
-    )]
-    #[allow(deprecated)]
-    pub fn parents(&self) -> Parents<'a, R> {
-        Parents(Scope {
-            registry: self.registry,
-            next: self.parent_id().cloned(),
-
-            #[cfg(feature = "registry")]
-            filter: self.filter,
-        })
-    }
-
-    /// Returns an iterator over all parents of this span, starting with the
-    /// root of the trace tree.
-    ///
-    /// The iterator will return the root of the trace tree, followed by the
-    /// next span, and then the next, until this span's immediate parent is
-    /// returned.
-    ///
-    /// **Note**: this will allocate if there are many spans remaining, or if the
-    /// "smallvec" feature flag is not enabled.
-    #[deprecated(
-        note = "equivalent to `self.parent().into_iter().flat_map(|span| span.scope().from_root())`, but consider whether excluding `self` is actually intended",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn from_root(&self) -> FromRoot<'a, R> {
-        FromRoot(self.parents().0.from_root())
-    }
-
     /// Returns a reference to this span's `Extensions`.
     ///
     /// The extensions may be used by `Layer`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions(&self) -> Extensions<'_> {
         self.data.extensions()
     }
@@ -597,11 +526,13 @@ where
     ///
     /// The extensions may be used by `Layer`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn try_with_filter(self, filter: FilterId) -> Option<Self> {
         if self.is_enabled_for(filter) {
             return Some(self.with_filter(filter));
@@ -611,19 +542,19 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn is_enabled_for(&self, filter: FilterId) -> bool {
         self.data.is_enabled_for(filter)
     }
 
     #[inline]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn with_filter(self, filter: FilterId) -> Self {
         Self { filter, ..self }
     }
 }
 
-#[cfg(all(test, feature = "registry"))]
+#[cfg(all(test, feature = "registry", feature = "std"))]
 mod tests {
     use crate::{
         layer::{Context, Layer},

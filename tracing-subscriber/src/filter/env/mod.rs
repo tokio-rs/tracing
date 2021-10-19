@@ -94,16 +94,13 @@ use tracing_core::{
 /// without filtering on field values. When these features are not required,
 /// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 /// [`Targets`]: crate::filter::Targets
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
@@ -121,7 +118,7 @@ type FieldMap<T> = HashMap<Field, T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
