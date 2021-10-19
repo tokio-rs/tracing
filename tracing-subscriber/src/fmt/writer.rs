@@ -3,7 +3,7 @@
 //! [`io::Write`]: std::io::Write
 
 use std::{
-    fmt::{self, Debug},
+    fmt,
     io::{self, Write},
     sync::{Mutex, MutexGuard},
 };
@@ -642,6 +642,7 @@ pub struct Tee<A, B> {
 /// `tracing-subscriber`'s `FormatEvent`/`FormatTime` traits expect a
 /// `fmt::Write` implementation, while `serde_json::Serializer` and `time`'s
 /// `format_into` methods expect an `io::Write`.
+#[cfg(any(feature = "json", feature = "time"))]
 pub(in crate::fmt) struct WriteAdaptor<'a> {
     fmt_write: &'a mut dyn fmt::Write,
 }
@@ -710,8 +711,8 @@ impl BoxMakeWriter {
     }
 }
 
-impl Debug for BoxMakeWriter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for BoxMakeWriter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("BoxMakeWriter")
             .field(&format_args!("<{}>", self.name))
             .finish()
@@ -1097,12 +1098,13 @@ where
 
 // === impl WriteAdaptor ===
 
+#[cfg(any(feature = "json", feature = "time"))]
 impl<'a> WriteAdaptor<'a> {
     pub(in crate::fmt) fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
         Self { fmt_write }
     }
 }
-
+#[cfg(any(feature = "json", feature = "time"))]
 impl<'a> io::Write for WriteAdaptor<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s =
@@ -1120,6 +1122,7 @@ impl<'a> io::Write for WriteAdaptor<'a> {
     }
 }
 
+#[cfg(any(feature = "json", feature = "time"))]
 impl<'a> fmt::Debug for WriteAdaptor<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("WriteAdaptor { .. }")
