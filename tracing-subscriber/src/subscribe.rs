@@ -18,7 +18,6 @@ feature! {
     use core::ops::Deref;
 }
 
-
 /// A composable handler for `tracing` events.
 ///
 /// The [`Collect`] trait in `tracing-core` represents the _complete_ set of
