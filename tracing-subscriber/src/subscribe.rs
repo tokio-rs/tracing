@@ -7,8 +7,9 @@ use tracing_core::{
     span, Event, LevelFilter,
 };
 
-#[cfg(feature = "registry")]
-use crate::registry::{self, LookupSpan, Registry, SpanRef};
+#[cfg(all(feature = "std", feature = "registry"))]
+use crate::registry::Registry;
+use crate::registry::{self, LookupSpan, SpanRef};
 use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull};
 
 /// A composable handler for `tracing` events.
@@ -884,88 +885,90 @@ where
     }
 }
 
-macro_rules! subscriber_impl_body {
-    () => {
-        #[inline]
-        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().new_span(attrs, id, ctx)
-        }
+feature! {
+    #![any(feature = "std", feature = "alloc")]
 
-        #[inline]
-        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-            self.deref().register_callsite(metadata)
-        }
+    macro_rules! subscriber_impl_body {
+        () => {
+            #[inline]
+            fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().new_span(attrs, id, ctx)
+            }
 
-        #[inline]
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            self.deref().enabled(metadata, ctx)
-        }
+            #[inline]
+            fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+                self.deref().register_callsite(metadata)
+            }
 
-        #[inline]
-        fn max_level_hint(&self) -> Option<LevelFilter> {
-            self.deref().max_level_hint()
-        }
+            #[inline]
+            fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+                self.deref().enabled(metadata, ctx)
+            }
 
-        #[inline]
-        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
-            self.deref().on_record(span, values, ctx)
-        }
+            #[inline]
+            fn max_level_hint(&self) -> Option<LevelFilter> {
+                self.deref().max_level_hint()
+            }
 
-        #[inline]
-        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_follows_from(span, follows, ctx)
-        }
+            #[inline]
+            fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+                self.deref().on_record(span, values, ctx)
+            }
 
-        #[inline]
-        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
-            self.deref().on_event(event, ctx)
-        }
+            #[inline]
+            fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_follows_from(span, follows, ctx)
+            }
 
-        #[inline]
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_enter(id, ctx)
-        }
+            #[inline]
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+                self.deref().on_event(event, ctx)
+            }
 
-        #[inline]
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_exit(id, ctx)
-        }
+            #[inline]
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_enter(id, ctx)
+            }
 
-        #[inline]
-        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
-            self.deref().on_close(id, ctx)
-        }
+            #[inline]
+            fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_exit(id, ctx)
+            }
 
-        #[inline]
-        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
-            self.deref().on_id_change(old, new, ctx)
-        }
+            #[inline]
+            fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+                self.deref().on_close(id, ctx)
+            }
 
-        #[doc(hidden)]
-        #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> std::option::Option<NonNull<()>> {
-            self.deref().downcast_raw(id)
-        }
-    };
+            #[inline]
+            fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_id_change(old, new, ctx)
+            }
+
+            #[doc(hidden)]
+            #[inline]
+            unsafe fn downcast_raw(&self, id: TypeId) -> std::option::Option<NonNull<()>> {
+                self.deref().downcast_raw(id)
+            }
+        };
+    }
+
+    impl<S, C> Subscribe<C> for Box<S>
+    where
+        S: Subscribe<C>,
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
+
+    impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
+    where
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
 }
 
-impl<S, C> Subscribe<C> for Box<S>
-where
-    S: Subscribe<C>,
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync>
-where
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
 where
     C: Collect + LookupSpan<'a>,
@@ -1156,8 +1159,6 @@ where
     ///
     /// [stored data]: super::registry::SpanRef
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1175,8 +1176,6 @@ where
     ///
     /// </pre></div>
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn exists(&self, id: &span::Id) -> bool
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1199,8 +1198,6 @@ where
     ///
     /// [stored data]: super::registry::SpanRef
     #[inline]
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
@@ -1241,8 +1238,6 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,
@@ -1271,8 +1266,6 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, C>>
     where
         C: for<'lookup> registry::LookupSpan<'lookup>,

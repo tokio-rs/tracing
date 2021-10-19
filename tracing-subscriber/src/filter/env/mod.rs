@@ -97,8 +97,7 @@ use tracing_core::{
 /// [`Event`]: tracing_core::Event
 /// [`level`]: tracing_core::Level
 /// [`Metadata`]: tracing_core::Metadata
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
@@ -121,7 +120,7 @@ type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,

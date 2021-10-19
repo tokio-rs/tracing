@@ -58,22 +58,27 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
-/// A module containing a type map of span extensions.
-mod extensions;
+feature! {
+    #![feature = "std"]
+    /// A module containing a type map of span extensions.
+    mod extensions;
+    pub use extensions::{Extensions, ExtensionsMut};
 
-cfg_feature!("registry", {
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+
     mod sharded;
     mod stack;
 
     pub use sharded::Data;
     pub use sharded::Registry;
-});
-
-pub use extensions::{Extensions, ExtensionsMut};
+}
 
 /// Provides access to stored span data.
 ///
@@ -136,17 +141,20 @@ pub trait SpanData<'a> {
     /// Returns a reference to the ID
     fn parent(&self) -> Option<&Id>;
 
-    /// Returns a reference to this span's `Extensions`.
-    ///
-    /// The extensions may be used by `Subscriber`s to store additional data
-    /// describing the span.
-    fn extensions(&self) -> Extensions<'_>;
+    feature! {
+        #![feature = "std"]
+        /// Returns a reference to this span's `Extensions`.
+        ///
+        /// The extensions may be used by `Subscriber`s to store additional data
+        /// describing the span.
+        fn extensions(&self) -> Extensions<'_>;
 
-    /// Returns a mutable reference to this span's `Extensions`.
-    ///
-    /// The extensions may be used by `Subscriber`s to store additional data
-    /// describing the span.
-    fn extensions_mut(&self) -> ExtensionsMut<'_>;
+        /// Returns a mutable reference to this span's `Extensions`.
+        ///
+        /// The extensions may be used by `Subscriber`s to store additional data
+        /// describing the span.
+        fn extensions_mut(&self) -> ExtensionsMut<'_>;
+    }
 }
 
 /// A reference to [span data] and the associated [registry].
@@ -172,28 +180,74 @@ pub struct Scope<'a, R> {
     next: Option<Id>,
 }
 
-impl<'a, R> Scope<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    /// Flips the order of the iterator, so that it is ordered from root to leaf.
+feature! {
+    #![feature = "std"]
+
+    /// An iterator over the parents of a span, ordered from root to leaf.
     ///
-    /// The iterator will first return the root span, then that span's immediate child,
-    /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
-    ///
-    /// If any items were consumed from the [`Scope`] before calling this method then they
-    /// will *not* be returned from the [`ScopeFromRoot`].
-    ///
-    /// **Note**: this will allocate if there are many spans remaining, or if the
-    /// "smallvec" feature flag is not enabled.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+    /// This is returned by the [`Scope::from_root`] method.
+    pub struct ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
         #[cfg(feature = "smallvec")]
-        type Buf<T> = smallvec::SmallVec<T>;
+        spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
         #[cfg(not(feature = "smallvec"))]
-        type Buf<T> = Vec<T>;
-        ScopeFromRoot {
-            spans: self.collect::<Buf<_>>().into_iter().rev(),
+        spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
+    }
+
+    #[cfg(feature = "smallvec")]
+    type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
+    impl<'a, R> Scope<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        /// Flips the order of the iterator, so that it is ordered from root to leaf.
+        ///
+        /// The iterator will first return the root span, then that span's immediate child,
+        /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
+        ///
+        /// If any items were consumed from the [`Scope`] before calling this method then they
+        /// will *not* be returned from the [`ScopeFromRoot`].
+        ///
+        /// **Note**: this will allocate if there are many spans remaining, or if the
+        /// "smallvec" feature flag is not enabled.
+        #[allow(clippy::wrong_self_convention)]
+        pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+            #[cfg(feature = "smallvec")]
+            type Buf<T> = smallvec::SmallVec<T>;
+            #[cfg(not(feature = "smallvec"))]
+            type Buf<T> = Vec<T>;
+            ScopeFromRoot {
+                spans: self.collect::<Buf<_>>().into_iter().rev(),
+            }
+        }
+    }
+
+    impl<'a, R> Iterator for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        type Item = SpanRef<'a, R>;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.spans.next()
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.spans.size_hint()
+        }
+    }
+
+    impl<'a, R> Debug for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.pad("ScopeFromRoot { .. }")
         }
     }
 }
@@ -210,48 +264,6 @@ where
         Some(curr)
     }
 }
-
-/// An iterator over the parents of a span, ordered from root to leaf.
-///
-/// This is returned by the [`Scope::from_root`] method.
-pub struct ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    #[cfg(feature = "smallvec")]
-    spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
-    #[cfg(not(feature = "smallvec"))]
-    spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
-}
-
-impl<'a, R> Iterator for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.spans.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.spans.size_hint()
-    }
-}
-
-impl<'a, R> Debug for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("ScopeFromRoot { .. }")
-    }
-}
-
-#[cfg(feature = "smallvec")]
-type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
 
 impl<'a, R> SpanRef<'a, R>
 where
@@ -370,24 +382,27 @@ where
         }
     }
 
-    /// Returns a reference to this span's `Extensions`.
-    ///
-    /// The extensions may be used by `Subscriber`s to store additional data
-    /// describing the span.
-    pub fn extensions(&self) -> Extensions<'_> {
-        self.data.extensions()
-    }
+    feature! {
+        #![feature = "std"]
+        /// Returns a reference to this span's `Extensions`.
+        ///
+        /// The extensions may be used by `Subscriber`s to store additional data
+        /// describing the span.
+        pub fn extensions(&self) -> Extensions<'_> {
+            self.data.extensions()
+        }
 
-    /// Returns a mutable reference to this span's `Extensions`.
-    ///
-    /// The extensions may be used by `Subscriber`s to store additional data
-    /// describing the span.
-    pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        self.data.extensions_mut()
+        /// Returns a mutable reference to this span's `Extensions`.
+        ///
+        /// The extensions may be used by `Subscriber`s to store additional data
+        /// describing the span.
+        pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
+            self.data.extensions_mut()
+        }
     }
 }
 
-#[cfg(all(test, feature = "registry"))]
+#[cfg(all(test, feature = "registry", feature = "std"))]
 mod tests {
     use crate::{
         prelude::*,
