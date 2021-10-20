@@ -500,12 +500,16 @@ impl<E: ?Sized> FormattedFields<E> {
         }
     }
 
+    /// Returns a new [`format::Writer`] for writing to this `FormattedFields`.
+    ///
+    /// The returned [`format::Writer`] can be used with the
+    /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
         format::Writer::new(&mut self.fields)
     }
 }
 
-impl<E> fmt::Debug for FormattedFields<E> {
+impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
@@ -514,13 +518,13 @@ impl<E> fmt::Debug for FormattedFields<E> {
     }
 }
 
-impl<E> fmt::Display for FormattedFields<E> {
+impl<E: ?Sized> fmt::Display for FormattedFields<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.fields)
+        fmt::Display::fmt(&self.fields, f)
     }
 }
 
-impl<E> Deref for FormattedFields<E> {
+impl<E: ?Sized> Deref for FormattedFields<E> {
     type Target = String;
     fn deref(&self) -> &Self::Target {
         &self.fields

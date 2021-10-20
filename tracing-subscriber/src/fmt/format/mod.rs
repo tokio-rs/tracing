@@ -212,8 +212,22 @@ where
     FieldFn(f)
 }
 
+/// A writer to which formatted representations of spans and events are written.
+///
+/// This type is provided as input to the [`FormatEvent::format_event`] and
+/// [`FormatFields::format_fields`] methods, which will write formatted
+/// representations of [`Event`]s and [fields] to the `Writer`.
+///
+/// This type implements the [`std::fmt::Write`] trait, allowing it to be used
+/// with any function that takes an instance of [`std::fmt::Write`].
+/// Additionally, it can be used with the standard library's [`std::write!`] and
+/// [`std::writeln!`] macros.
+///
+/// Additionally, a `Writer` may expose additional `tracing`-specific
+/// information to the formatter implementation.
 pub struct Writer<'writer> {
     writer: &'writer mut dyn fmt::Write,
+    // TODO(eliza): add ANSI support
 }
 
 /// A [`FormatFields`] implementation that formats fields by calling a function
@@ -264,27 +278,77 @@ pub struct Format<F = Full, T = SystemTime> {
 // === impl Writer ===
 
 impl<'writer> Writer<'writer> {
+    // TODO(eliza): consider making this a public API?
+    // We may not want to do that if we choose to expose specialized
+    // constructors instead (e.g. `from_string` that stores whether the string
+    // is empty...?)
     pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
             writer: writer as &mut dyn fmt::Write,
         }
     }
 
+    /// Turns a reference to a `Writer` into a new `Writer`.
+    // TODO(eliza): consider making this a public API?
     pub(crate) fn by_ref(&mut self) -> Writer<'_> {
         Writer::new(self)
     }
 
+    /// Writes a string slice into this `Writer`, returning whether the write succeeded.
+    ///
+    /// This method can only succeed if the entire string slice was successfully
+    /// written, and this method will not return until all data has been written
+    /// or an error occurs.
+    ///
+    /// This is identical to calling the [`write_str` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of [`std::fmt::Error`] on error.
+    ///
+    /// [`write_str` method]: std::fmt::Write::write_str
     #[inline]
     pub fn write_str(&mut self, s: &str) -> fmt::Result {
         self.writer.write_str(s)
     }
 
+    /// Writes a [`char`] into this writer, returning whether the write succeeded.
+    ///
+    /// A single [`char`] may be encoded as more than one byte.
+    /// This method can only succeed if the entire byte sequence was successfully
+    /// written, and this method will not return until all data has been
+    /// written or an error occurs.
+    ///
+    /// This is identical to calling the [`write_char` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of [`std::fmt::Error`] on error.
+    ///
+    /// [`write_char` method]: std::fmt::Write::write_char
     #[inline]
     pub fn write_char(&mut self, c: char) -> fmt::Result {
         self.writer.write_char(c)
     }
 
-    #[inline]
+    /// Glue for usage of the [`write!`] macro with `Wrriter`s.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the [`write!`] macro itself.
+    ///
+    /// This is identical to calling the [`write_fmt` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used with the [`write!` macro]
+    /// without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// [`write_fmt` method]: std::fmt::Write::write_fmt
     pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
         self.writer.write_fmt(args)
     }
