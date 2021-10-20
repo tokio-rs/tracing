@@ -307,6 +307,14 @@ impl fmt::Write for Writer<'_> {
     }
 }
 
+impl fmt::Debug for Writer<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Writer")
+            .field("writer", &format_args!("<&mut dyn fmt::Write>"))
+            .finish()
+    }
+}
+
 // === impl Format ===
 
 impl Default for Format<Full, SystemTime> {
@@ -772,6 +780,7 @@ pub struct DefaultFields {
 ///
 /// [visitor]: super::super::field::Visit
 /// [`MakeVisitor`]: super::super::field::MakeVisitor
+#[derive(Debug)]
 pub struct DefaultVisitor<'a> {
     writer: Writer<'a>,
     is_empty: bool,
@@ -877,16 +886,6 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
 impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut self.writer
-    }
-}
-
-impl<'a> fmt::Debug for DefaultVisitor<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DefaultVisitor")
-            .field("writer", &format_args!("<dyn fmt::Write>"))
-            .field("is_empty", &self.is_empty)
-            .field("result", &self.result)
-            .finish()
     }
 }
 
@@ -1091,8 +1090,8 @@ where
 impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FieldFnVisitor")
-            .field("f", &format_args!("<Fn>"))
-            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("f", &format_args!("{}", std::any::type_name::<F>()))
+            .field("writer", &self.writer)
             .field("result", &self.result)
             .finish()
     }

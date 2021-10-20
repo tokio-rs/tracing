@@ -509,6 +509,7 @@ impl<E> fmt::Debug for FormattedFields<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
+            .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
             .finish()
     }
 }
