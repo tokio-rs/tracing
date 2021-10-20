@@ -485,19 +485,23 @@ where
 ///
 /// [extensions]: crate::registry::Extensions
 #[derive(Default)]
-pub struct FormattedFields<E> {
-    _format_event: PhantomData<fn(E)>,
+pub struct FormattedFields<E: ?Sized> {
+    _format_fields: PhantomData<fn(E)>,
     /// The formatted fields of a span.
     pub fields: String,
 }
 
-impl<E> FormattedFields<E> {
+impl<E: ?Sized> FormattedFields<E> {
     /// Returns a new `FormattedFields`.
     pub fn new(fields: String) -> Self {
         Self {
             fields,
-            _format_event: PhantomData,
+            _format_fields: PhantomData,
         }
+    }
+
+    pub fn as_writer(&mut self) -> format::Writer<'_> {
+        format::Writer::new(&mut self.fields)
     }
 }
 
@@ -552,13 +556,13 @@ where
         let mut extensions = span.extensions_mut();
 
         if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
+            let mut fields = FormattedFields::<N>::new(String::new());
+            if self
+                .fmt_fields
+                .format_fields(fields.as_writer(), attrs)
+                .is_ok()
+            {
+                extensions.insert(fields);
             }
         }
 
@@ -581,19 +585,18 @@ where
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-        if let Some(FormattedFields { ref mut fields, .. }) =
-            extensions.get_mut::<FormattedFields<N>>()
-        {
+        if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
             let _ = self.fmt_fields.add_fields(fields, values);
-        } else {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
-            }
+            return;
+        }
+
+        let mut fields = FormattedFields::<N>::new(String::new());
+        if self
+            .fmt_fields
+            .format_fields(fields.as_writer(), values)
+            .is_ok()
+        {
+            extensions.insert(fields);
         }
     }
 
@@ -695,7 +698,11 @@ where
             };
 
             let ctx = self.make_ctx(ctx);
-            if self.fmt_event.format_event(&ctx, &mut buf, event).is_ok() {
+            if self
+                .fmt_event
+                .format_event(&ctx, format::Writer::new(&mut buf), event)
+                .is_ok()
+            {
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
@@ -738,7 +745,7 @@ where
 {
     fn format_fields<R: RecordFields>(
         &self,
-        writer: &'writer mut dyn fmt::Write,
+        writer: format::Writer<'writer>,
         fields: R,
     ) -> fmt::Result {
         self.fmt_fields.format_fields(writer, fields)

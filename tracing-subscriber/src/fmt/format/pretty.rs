@@ -94,7 +94,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, C, N>,
-        writer: &mut dyn fmt::Write,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
@@ -103,9 +103,9 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        write!(writer, "  ")?;
+        write!(&mut writer, "  ")?;
 
-        self.format_timestamp(writer)?;
+        self.format_timestamp(&mut writer)?;
 
         let style = if self.display_level && self.ansi {
             Pretty::style_for(meta.level())
@@ -114,7 +114,7 @@ where
         };
 
         if self.display_level {
-            self.format_level(*meta.level(), writer)?;
+            self.format_level(*meta.level(), &mut writer)?;
         }
 
         if self.display_target {
@@ -127,7 +127,7 @@ where
                 target_style.infix(style)
             )?;
         }
-        let mut v = PrettyVisitor::new(writer, true)
+        let mut v = PrettyVisitor::new(&mut writer, true)
             .with_style(style)
             .with_ansi(self.ansi);
         event.record(&mut v);
@@ -221,17 +221,22 @@ where
 impl<'writer> FormatFields<'writer> for Pretty {
     fn format_fields<R: RecordFields>(
         &self,
-        writer: &'writer mut dyn fmt::Write,
+        mut writer: Writer<'writer>,
         fields: R,
     ) -> fmt::Result {
-        let mut v = PrettyVisitor::new(writer, true);
+        let mut v = PrettyVisitor::new(&mut writer, false);
         fields.record(&mut v);
         v.finish()
     }
 
-    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
+    fn add_fields(
+        &self,
+        current: &'writer mut FormattedFields<Self>,
+        fields: &span::Record<'_>,
+    ) -> fmt::Result {
         let empty = current.is_empty();
-        let mut v = PrettyVisitor::new(current, empty);
+        let mut writer = current.as_writer();
+        let mut v = PrettyVisitor::new(&mut writer, empty);
         fields.record(&mut v);
         v.finish()
     }
