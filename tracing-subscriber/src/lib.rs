@@ -50,15 +50,16 @@
 //!   (enabled by default).
 //! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
-//!   similar to the [`env_logger` crate].
+//!   similar to the [`env_logger` crate]. **Requires "std"**.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
-//!   Enabled by default.
+//!   Enabled by default. **Requires "std"**.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
+//!   **Requires "std"**.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
-//!   feature does nothing.
+//!   feature does nothing. **Requires "fmt" and "std"**.
 //! - [`local-time`]: Enables local time formatting when using the [`time`
 //!   crate]'s timestamp formatters with the `fmt` subscriber.
 //!
