@@ -45,10 +45,9 @@ where
         if span.extensions().get::<FormattedFields<F>>().is_some() {
             return;
         }
-        let mut fields = String::new();
-        if self.format.format_fields(&mut fields, attrs).is_ok() {
-            span.extensions_mut()
-                .insert(FormattedFields::<F>::new(fields));
+        let mut fields = FormattedFields::<F>::new(String::new());
+        if self.format.format_fields(fields.as_writer(), attrs).is_ok() {
+            span.extensions_mut().insert(fields);
         }
     }
 
