@@ -262,12 +262,12 @@ impl PrettyFields {
     }
 }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for PrettyFields {
+impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
     type Visitor = PrettyVisitor<'a>;
 
     #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        PrettyVisitor::new(target, true).with_ansi(self.ansi)
+    fn make_visitor(&self, target: Writer<'a>) -> Self::Visitor {
+        PrettyVisitor::new(target.writer, true).with_ansi(self.ansi)
     }
 }
 

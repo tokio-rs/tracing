@@ -45,9 +45,13 @@ use fmt::{Debug, Display};
 /// # Examples
 ///
 /// ```rust
-/// use std::fmt::{self, Write};
+/// use std::fmt;
 /// use tracing_core::{Collect, Event};
-/// use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext, FormattedFields};
+/// use tracing_subscriber::fmt::{
+///     format::{self, FormatEvent, FormatFields},
+///     FmtContext,
+///     FormattedFields,
+/// };
 /// use tracing_subscriber::registry::LookupSpan;
 ///
 /// struct MyFormatter;
@@ -60,7 +64,7 @@ use fmt::{Debug, Display};
 ///     fn format_event(
 ///         &self,
 ///         ctx: &FmtContext<'_, C, N>,
-///         writer: &mut dyn fmt::Write,
+///         mut writer: format::Writer<'_>,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
 ///         // Write level and target
@@ -97,7 +101,7 @@ use fmt::{Debug, Display};
 ///         })?;
 ///
 ///         // Write fields on the event
-///         ctx.field_format().format_fields(writer, event)?;
+///         ctx.field_format().format_fields(writer.by_ref(), event)?;
 ///
 ///         writeln!(writer)
 ///     }
@@ -288,9 +292,12 @@ impl<'writer> Writer<'writer> {
         }
     }
 
-    /// Turns a reference to a `Writer` into a new `Writer`.
-    // TODO(eliza): consider making this a public API?
-    pub(crate) fn by_ref(&mut self) -> Writer<'_> {
+    /// Return a new `Writer` that mutably borrows `self`.
+    ///
+    /// This can be used to temporarily borrow a `Writer` to pass a new `Writer`
+    /// to a function that takes a `Writer` by value, allowing the original writer
+    /// to still be used once that function returns.
+    pub fn by_ref(&mut self) -> Writer<'_> {
         Writer::new(self)
     }
 
