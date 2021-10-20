@@ -1056,6 +1056,16 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 /// Configures what points in the span lifecycle are logged as events.
 ///
+/// # Note
+///
+/// `FmtSpan` controls whether synthesized events are emitted for the span
+/// lifecycle (creating, entering, exiting, and closing spans), *not* whether
+/// data from the spans in the current trace is included as context when
+/// logging events. To disable printing the current span context when
+/// formatting events, use [`CollectorBuilder::with_span_context`] instead.
+///
+/// [`CollectorBuilder::with_span_context`]: super::CollectorBuilder::with_span_context
+///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);
@@ -1146,6 +1156,7 @@ impl Debug for FmtSpan {
 pub(super) struct FmtSpanConfig {
     pub(super) kind: FmtSpan,
     pub(super) fmt_timing: bool,
+    pub(super) with_span_context: bool,
 }
 
 impl FmtSpanConfig {
@@ -1153,23 +1164,33 @@ impl FmtSpanConfig {
         Self {
             kind: self.kind,
             fmt_timing: false,
+            with_span_context: true,
         }
     }
+
     pub(super) fn with_kind(self, kind: FmtSpan) -> Self {
+        Self { kind, ..self }
+    }
+
+    pub(super) fn with_span_context(self, with_span_context: bool) -> Self {
         Self {
-            kind,
-            fmt_timing: self.fmt_timing,
+            with_span_context,
+            ..self
         }
     }
+
     pub(super) fn trace_new(&self) -> bool {
         self.kind.contains(FmtSpan::NEW)
     }
+
     pub(super) fn trace_enter(&self) -> bool {
         self.kind.contains(FmtSpan::ENTER)
     }
+
     pub(super) fn trace_exit(&self) -> bool {
         self.kind.contains(FmtSpan::EXIT)
     }
+
     pub(super) fn trace_close(&self) -> bool {
         self.kind.contains(FmtSpan::CLOSE)
     }
@@ -1186,6 +1207,7 @@ impl Default for FmtSpanConfig {
         Self {
             kind: FmtSpan::NONE,
             fmt_timing: true,
+            with_span_context: true,
         }
     }
 }

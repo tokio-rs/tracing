@@ -273,6 +273,14 @@ where
         }
     }
 
+    /// Configures whether or not to include the span context.
+    pub fn with_span_context(self, with_span_context: bool) -> Self {
+        Subscriber {
+            fmt_span: self.fmt_span.with_span_context(with_span_context),
+            ..self
+        }
+    }
+
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
@@ -551,14 +559,16 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
+        if self.fmt_span.with_span_context {
+            if extensions.get_mut::<FormattedFields<N>>().is_none() {
+                let mut buf = String::new();
+                if self.fmt_fields.format_fields(&mut buf, attrs).is_ok() {
+                    let fmt_fields = FormattedFields {
+                        fields: buf,
+                        _format_event: PhantomData::<fn(N)>,
+                    };
+                    extensions.insert(fmt_fields);
+                }
             }
         }
 
@@ -578,21 +588,23 @@ where
         }
     }
 
-    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-        if let Some(FormattedFields { ref mut fields, .. }) =
-            extensions.get_mut::<FormattedFields<N>>()
-        {
-            let _ = self.fmt_fields.add_fields(fields, values);
-        } else {
-            let mut buf = String::new();
-            if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
-                let fmt_fields = FormattedFields {
-                    fields: buf,
-                    _format_event: PhantomData::<fn(N)>,
-                };
-                extensions.insert(fmt_fields);
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        if self.fmt_span.with_span_context {
+            let span = ctx.span(id).expect("Span not found, this is a bug");
+            let mut extensions = span.extensions_mut();
+            if let Some(FormattedFields { ref mut fields, .. }) =
+                extensions.get_mut::<FormattedFields<N>>()
+            {
+                let _ = self.fmt_fields.add_fields(fields, values);
+            } else {
+                let mut buf = String::new();
+                if self.fmt_fields.format_fields(&mut buf, values).is_ok() {
+                    let fmt_fields = FormattedFields {
+                        fields: buf,
+                        _format_event: PhantomData::<fn(N)>,
+                    };
+                    extensions.insert(fmt_fields);
+                }
             }
         }
     }

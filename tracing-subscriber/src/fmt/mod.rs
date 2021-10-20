@@ -694,6 +694,15 @@ where
         }
     }
 
+    /// Configures whether or not to print the spans in the current trace as context
+    /// when formatting events.
+    pub fn with_span_context(self, with_span_context: bool) -> Self {
+        CollectorBuilder {
+            inner: self.inner.with_span_context(with_span_context),
+            ..self
+        }
+    }
+
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
