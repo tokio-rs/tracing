@@ -1,9 +1,7 @@
 name: Security audit
 on:
-  push:
-    paths:
-      - '**/Cargo.toml'
-      - '**/Cargo.lock'
+  schedule:
+    - cron: '0 0 * * *'
 jobs:
   security_audit:
     runs-on: ubuntu-latest
