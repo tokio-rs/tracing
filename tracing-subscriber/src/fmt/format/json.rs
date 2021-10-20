@@ -1,4 +1,4 @@
-use super::{Format, FormatEvent, FormatFields, FormatTime};
+use super::{Format, FormatEvent, FormatFields, FormatTime, Writer};
 use crate::{
     field::{RecordFields, VisitOutput},
     fmt::{
@@ -185,14 +185,14 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, C, N>,
-        writer: &mut dyn fmt::Write,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result
     where
         C: Collect + for<'a> LookupSpan<'a>,
     {
         let mut timestamp = String::new();
-        self.timer.format_time(&mut timestamp)?;
+        self.timer.format_time(&mut Writer::new(&mut timestamp))?;
 
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
@@ -202,7 +202,7 @@ where
         let meta = event.metadata();
 
         let mut visit = || {
-            let mut serializer = Serializer::new(WriteAdaptor::new(writer));
+            let mut serializer = Serializer::new(WriteAdaptor::new(&mut writer));
 
             let mut serializer = serializer.serialize_map(None)?;
 
@@ -318,12 +318,8 @@ impl Default for JsonFields {
 
 impl<'a> FormatFields<'a> for JsonFields {
     /// Format the provided `fields` to the provided `writer`, returning a result.
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'a mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result {
-        let mut v = JsonVisitor::new(writer);
+    fn format_fields<R: RecordFields>(&self, mut writer: Writer<'_>, fields: R) -> fmt::Result {
+        let mut v = JsonVisitor::new(&mut writer);
         fields.record(&mut v);
         v.finish()
     }
@@ -333,37 +329,43 @@ impl<'a> FormatFields<'a> for JsonFields {
     /// By default, this appends a space to the current set of fields if it is
     /// non-empty, and then calls `self.format_fields`. If different behavior is
     /// required, the default implementation of this method can be overridden.
-    fn add_fields(&self, current: &'a mut String, fields: &Record<'_>) -> fmt::Result {
-        if !current.is_empty() {
-            // If fields were previously recorded on this span, we need to parse
-            // the current set of fields as JSON, add the new fields, and
-            // re-serialize them. Otherwise, if we just appended the new fields
-            // to a previously serialized JSON object, we would end up with
-            // malformed JSON.
-            //
-            // XXX(eliza): this is far from efficient, but unfortunately, it is
-            // necessary as long as the JSON formatter is implemented on top of
-            // an interface that stores all formatted fields as strings.
-            //
-            // We should consider reimplementing the JSON formatter as a
-            // separate layer, rather than a formatter for the `fmt` layer —
-            // then, we could store fields as JSON values, and add to them
-            // without having to parse and re-serialize.
-            let mut new = String::new();
-            let map: BTreeMap<&'_ str, serde_json::Value> =
-                serde_json::from_str(current).map_err(|_| fmt::Error)?;
-            let mut v = JsonVisitor::new(&mut new);
-            v.values = map;
-            fields.record(&mut v);
-            v.finish()?;
-            *current = new;
-        } else {
+    fn add_fields(
+        &self,
+        current: &'a mut FormattedFields<Self>,
+        fields: &Record<'_>,
+    ) -> fmt::Result {
+        if current.is_empty() {
             // If there are no previously recorded fields, we can just reuse the
             // existing string.
-            let mut v = JsonVisitor::new(current);
+            let mut writer = current.as_writer();
+            let mut v = JsonVisitor::new(&mut writer);
             fields.record(&mut v);
             v.finish()?;
+            return Ok(());
         }
+
+        // If fields were previously recorded on this span, we need to parse
+        // the current set of fields as JSON, add the new fields, and
+        // re-serialize them. Otherwise, if we just appended the new fields
+        // to a previously serialized JSON object, we would end up with
+        // malformed JSON.
+        //
+        // XXX(eliza): this is far from efficient, but unfortunately, it is
+        // necessary as long as the JSON formatter is implemented on top of
+        // an interface that stores all formatted fields as strings.
+        //
+        // We should consider reimplementing the JSON formatter as a
+        // separate layer, rather than a formatter for the `fmt` layer —
+        // then, we could store fields as JSON values, and add to them
+        // without having to parse and re-serialize.
+        let mut new = String::new();
+        let map: BTreeMap<&'_ str, serde_json::Value> =
+            serde_json::from_str(current).map_err(|_| fmt::Error)?;
+        let mut v = JsonVisitor::new(&mut new);
+        v.values = map;
+        fields.record(&mut v);
+        v.finish()?;
+        current.fields = new;
 
         Ok(())
     }
@@ -484,7 +486,7 @@ mod test {
 
     struct MockTime;
     impl FormatTime for MockTime {
-        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
             write!(w, "fake time")
         }
     }
