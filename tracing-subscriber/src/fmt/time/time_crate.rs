@@ -1,4 +1,4 @@
-use crate::fmt::{time::FormatTime, writer::WriteAdaptor};
+use crate::fmt::{format::Writer, time::FormatTime, writer::WriteAdaptor};
 use std::fmt;
 use time::{format_description::well_known, formatting::Formattable, OffsetDateTime};
 
@@ -134,7 +134,7 @@ impl<F> FormatTime for LocalTime<F>
 where
     F: Formattable,
 {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
         let now = OffsetDateTime::now_local().map_err(|_| fmt::Error)?;
         format_datetime(now, w, &self.format)
     }
@@ -250,7 +250,7 @@ impl<F> FormatTime for UtcTime<F>
 where
     F: Formattable,
 {
-    fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+    fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
         format_datetime(OffsetDateTime::now_utc(), w, &self.format)
     }
 }
@@ -266,7 +266,7 @@ where
 
 fn format_datetime(
     now: OffsetDateTime,
-    into: &mut dyn fmt::Write,
+    into: &mut Writer<'_>,
     fmt: &impl Formattable,
 ) -> fmt::Result {
     let mut into = WriteAdaptor::new(into);
