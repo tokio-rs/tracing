@@ -1,9 +1,9 @@
 use crate::filter::level::{self, LevelFilter};
+#[cfg(not(feature = "smallvec"))]
+use alloc::vec;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    string::String,
-    vec::{self, Vec},
-};
+use alloc::{string::String, vec::Vec};
+
 use core::{cmp::Ordering, fmt, iter::FromIterator, slice, str::FromStr};
 use tracing_core::Metadata;
 /// Indicates that a string could not be parsed as a filtering directive.
