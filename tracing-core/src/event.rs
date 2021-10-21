@@ -118,7 +118,7 @@ impl<'a> Event<'a> {
     /// Returns the new event's explicitly-specified parent, if there is one.
     ///
     /// Otherwise (if the new event is a root or is a child of the current span),
-    /// returns false.
+    /// returns `None`.
     pub fn parent(&self) -> Option<&Id> {
         match self.parent {
             Parent::Explicit(ref p) => Some(p),
