@@ -5,10 +5,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::{
-    fmt::{self, Write},
-    iter,
-};
+use std::fmt::{self, Write};
 use tracing_core::{
     field::{self, Field},
     Collect, Event, Level,
@@ -97,7 +94,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, C, N>,
-        writer: &mut dyn fmt::Write,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
@@ -106,9 +103,9 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        write!(writer, "  ")?;
+        write!(&mut writer, "  ")?;
 
-        self.format_timestamp(writer)?;
+        self.format_timestamp(&mut writer)?;
 
         let style = if self.display_level && self.ansi {
             Pretty::style_for(meta.level())
@@ -117,7 +114,7 @@ where
         };
 
         if self.display_level {
-            self.format_level(*meta.level(), writer)?;
+            self.format_level(*meta.level(), &mut writer)?;
         }
 
         if self.display_target {
@@ -130,7 +127,7 @@ where
                 target_style.infix(style)
             )?;
         }
-        let mut v = PrettyVisitor::new(writer, true)
+        let mut v = PrettyVisitor::new(&mut writer, true)
             .with_style(style)
             .with_ansi(self.ansi);
         event.record(&mut v);
@@ -183,13 +180,10 @@ where
         };
         let span = event
             .parent()
-            .and_then(|id| ctx.span(&id))
+            .and_then(|id| ctx.span(id))
             .or_else(|| ctx.lookup_current());
 
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
+        let scope = span.into_iter().flat_map(|span| span.scope());
 
         for span in scope {
             let meta = span.metadata();
@@ -227,17 +221,22 @@ where
 impl<'writer> FormatFields<'writer> for Pretty {
     fn format_fields<R: RecordFields>(
         &self,
-        writer: &'writer mut dyn fmt::Write,
+        mut writer: Writer<'writer>,
         fields: R,
     ) -> fmt::Result {
-        let mut v = PrettyVisitor::new(writer, true);
+        let mut v = PrettyVisitor::new(&mut writer, false);
         fields.record(&mut v);
         v.finish()
     }
 
-    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
+    fn add_fields(
+        &self,
+        current: &'writer mut FormattedFields<Self>,
+        fields: &span::Record<'_>,
+    ) -> fmt::Result {
         let empty = current.is_empty();
-        let mut v = PrettyVisitor::new(current, empty);
+        let mut writer = current.as_writer();
+        let mut v = PrettyVisitor::new(&mut writer, empty);
         fields.record(&mut v);
         v.finish()
     }
@@ -263,12 +262,12 @@ impl PrettyFields {
     }
 }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for PrettyFields {
+impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
     type Visitor = PrettyVisitor<'a>;
 
     #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        PrettyVisitor::new(target, true).with_ansi(self.ansi)
+    fn make_visitor(&self, target: Writer<'a>) -> Self::Visitor {
+        PrettyVisitor::new(target.writer, true).with_ansi(self.ansi)
     }
 }
 
@@ -337,12 +336,12 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}{}.source{}: {}",
+                    "{}, {}{}.sources{}: {}",
                     value,
                     bold.prefix(),
                     field,
                     bold.infix(self.style),
-                    source,
+                    ErrorSourceList(source),
                 ),
             )
         } else {

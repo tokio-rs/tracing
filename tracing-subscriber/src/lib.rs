@@ -22,26 +22,61 @@
 //!
 //! ## Feature Flags
 //!
+//! - `std`: Enables APIs that depend on the on the Rust standard library
+//!   (enabled by default).
+//! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
-//!   similar to the [`env_logger` crate]. Enabled by default.
+//!   similar to the [`env_logger` crate]. **Requires "std"**.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
-//!   Enabled by default.
+//!   Enabled by default. **Requires "std"**.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
-//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI feature does nothing.
+//!   **Requires "std"**.
+//! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
+//!   feature does nothing. **Requires "fmt" and "std"**.
+//! - [`local-time`]: Enables local time formatting when using the [`time`
+//!   crate]'s timestamp formatters with the `fmt` subscriber.
 //!
 //! ### Optional Dependencies
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
-//!   macros in the `fmt` subscriber. On by default.
-//! - [`chrono`]: Enables human-readable time formatting in the `fmt` subscriber.
-//!   Enabled by default.
+//!   macros in the `fmt` subscriber. Enabled by default.
+//! - [`time`]: Enables support for using the [`time` crate] for timestamp
+//!   formatting in the `fmt` subscriber.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
 //!   rather than the Rust standard library's implementation.
+//!
+//! ### `no_std` Support
+//!
+//! In embedded systems and other bare-metal applications, `tracing` can be
+//! used without requiring the Rust standard library, although some features are
+//! disabled. Although most of the APIs provided by `tracing-subscriber`, such
+//! as [`fmt`] and [`EnvFilter`], require the standard library, some
+//! functionality, such as the [`Subscriber`] trait, can still be used in
+//! `no_std` environments.
+//!
+//! The dependency on the standard library is controlled by two crate feature
+//! flags, "std", which enables the dependency on [`libstd`], and "alloc", which
+//! enables the dependency on [`liballoc`] (and is enabled by the "std"
+//! feature). These features are enabled by default, but `no_std` users can
+//! disable them using:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false }
+//! ```
+//!
+//! Additional APIs are available when [`liballoc`] is available. To enable
+//! `liballoc` but not `std`, use:
+//!
+//! ```toml
+//! # Cargo.toml
+//! tracing-subscriber = { version = "0.3", default-features = false, features = ["alloc"] }
+//! ```
 //!
 //! ## Supported Rust Versions
 //!
@@ -63,9 +98,10 @@
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
-//! [`chrono`]: https://crates.io/crates/chrono
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
+//! [`time` crate]: https://crates.io/crates/time
+//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -100,85 +136,49 @@
 // future, reducing diff noise. Allow this even though clippy considers it
 // "needless".
 #![allow(clippy::needless_update)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use tracing_core::span::Id;
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 mod macros;
 
 pub mod field;
 pub mod filter;
-#[cfg(feature = "fmt")]
-#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
-pub mod fmt;
 pub mod prelude;
 pub mod registry;
-pub mod reload;
+
 pub mod subscribe;
-pub(crate) mod sync;
-pub(crate) mod thread;
 pub mod util;
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-pub use filter::EnvFilter;
+feature! {
+    #![feature = "std"]
+    pub mod reload;
+    pub(crate) mod sync;
+}
+
+feature! {
+    #![all(feature = "fmt", feature = "std")]
+    pub mod fmt;
+    pub use fmt::fmt;
+    pub use fmt::Subscriber as FmtSubscriber;
+}
+
+feature! {
+    #![all(feature = "env-filter", feature = "std")]
+    pub use filter::EnvFilter;
+}
 
 pub use subscribe::Subscribe;
 
-cfg_feature!("fmt", {
-    pub use fmt::fmt;
-    pub use fmt::Subscriber as FmtSubscriber;
-});
-
-cfg_feature!("registry", {
+feature! {
+    #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
     ///
     pub fn registry() -> Registry {
         Registry::default()
-    }
-});
-
-use std::default::Default;
-/// Tracks the currently executing span on a per-thread basis.
-#[derive(Debug)]
-pub struct CurrentSpan {
-    current: thread::Local<Vec<Id>>,
-}
-
-impl CurrentSpan {
-    /// Returns a new `CurrentSpan`.
-    pub fn new() -> Self {
-        Self {
-            current: thread::Local::new(),
-        }
-    }
-
-    /// Returns the [`Id`] of the span in which the current thread is
-    /// executing, or `None` if it is not inside of a span.
-    ///
-    ///
-    /// [`Id`]: tracing::span::Id
-    pub fn id(&self) -> Option<Id> {
-        self.current.with(|current| current.last().cloned())?
-    }
-
-    /// Records that the current thread has entered the span with the provided ID.
-    pub fn enter(&self, span: Id) {
-        self.current.with(|current| current.push(span));
-    }
-
-    /// Records that the current thread has exited a span.
-    pub fn exit(&self) {
-        self.current.with(|current| {
-            let _ = current.pop();
-        });
-    }
-}
-
-impl Default for CurrentSpan {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

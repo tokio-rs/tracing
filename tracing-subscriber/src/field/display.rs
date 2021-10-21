@@ -1,8 +1,8 @@
 //! `MakeVisitor` wrappers for working with `fmt::Display` fields.
-use super::{MakeVisitor, VisitFmt, VisitOutput, VisitWrite};
+use super::{MakeVisitor, VisitFmt, VisitOutput};
 use tracing_core::field::{Field, Visit};
 
-use std::{fmt, io};
+use core::fmt;
 
 /// A visitor wrapper that ensures any strings named "message" are formatted
 /// using `fmt::Display`
@@ -40,6 +40,11 @@ impl<V> Visit for Messages<V>
 where
     V: Visit,
 {
+    #[inline]
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.0.record_f64(field, value)
+    }
+
     #[inline]
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.0.record_i64(field, value)
@@ -85,13 +90,19 @@ where
     }
 }
 
-impl<V> VisitWrite for Messages<V>
-where
-    V: VisitWrite,
-{
-    #[inline]
-    fn writer(&mut self) -> &mut dyn io::Write {
-        self.0.writer()
+feature! {
+    #![feature = "std"]
+    use super::VisitWrite;
+    use std::io;
+
+    impl<V> VisitWrite for Messages<V>
+    where
+        V: VisitWrite,
+    {
+        #[inline]
+        fn writer(&mut self) -> &mut dyn io::Write {
+            self.0.writer()
+        }
     }
 }
 

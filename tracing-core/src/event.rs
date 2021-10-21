@@ -41,8 +41,8 @@ impl<'a> Event<'a> {
     #[inline]
     pub fn new(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'a>) -> Self {
         Event {
-            metadata,
             fields,
+            metadata,
             parent: Parent::Current,
         }
     }
@@ -60,8 +60,8 @@ impl<'a> Event<'a> {
             None => Parent::Root,
         };
         Event {
-            metadata,
             fields,
+            metadata,
             parent,
         }
     }

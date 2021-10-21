@@ -4,6 +4,7 @@ extern crate tracing;
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};
 use tracing::{span, Collect, Event, Id, Level, Metadata};
+use tracing_core::span::Current;
 
 struct State {
     last_level: Mutex<Option<Level>>,
@@ -31,6 +32,10 @@ impl Collect for TestCollector {
     fn enter(&self, _span: &Id) {}
 
     fn exit(&self, _span: &Id) {}
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

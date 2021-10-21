@@ -8,6 +8,7 @@ use tracing_core::{span, Level, Metadata};
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
 #[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
     in_span: Option<String>,
     fields: FilterVec<field::Match>,
@@ -142,7 +143,7 @@ impl Match for Directive {
     fn cares_about(&self, meta: &Metadata<'_>) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
-        if let Some(ref target) = self.target.as_ref() {
+        if let Some(ref target) = self.target {
             if !meta.target().starts_with(&target[..]) {
                 return false;
             }
@@ -561,7 +562,7 @@ impl Match for StaticDirective {
     fn cares_about(&self, meta: &Metadata<'_>) -> bool {
         // Does this directive have a target filter, and does it match the
         // metadata's target?
-        if let Some(ref target) = self.target.as_ref() {
+        if let Some(ref target) = self.target {
             if !meta.target().starts_with(&target[..]) {
                 return false;
             }

@@ -49,7 +49,7 @@ The crate provides the following traits:
 [`WithSubscriber`]: https://docs.rs/tracing-futures/0.2.3/tracing_futures/trait.WithSubscriber.html
 [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
-[`tracing`]: https://crates.io/tracing
+[`tracing`]: https://crates.io/crates/tracing
 
 *Compiler support: [requires `rustc` 1.42+][msrv]*
 

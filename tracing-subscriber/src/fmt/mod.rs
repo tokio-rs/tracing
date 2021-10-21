@@ -261,7 +261,8 @@
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
-//! use tracing_subscriber::prelude::*;
+//! use tracing_subscriber::subscribe::CollectExt;
+//! use tracing_subscriber::util::SubscriberInitExt;
 //!
 //! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
@@ -287,8 +288,11 @@ use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod format;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod time;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
@@ -310,6 +314,7 @@ pub use self::{
 ///
 /// This consists of an inner `Formatter` wrapped in a subscriber that performs filtering.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Collector<
     N = format::DefaultFields,
     E = format::Format,
@@ -321,11 +326,13 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
     subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
     E = format::Format,
@@ -399,6 +406,7 @@ pub struct CollectorBuilder<
 /// [`init`]: CollectorBuilder::init()
 /// [`try_init`]: CollectorBuilder::try_init()
 /// [`finish`]: CollectorBuilder::finish()
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -410,7 +418,8 @@ pub fn fmt() -> CollectorBuilder {
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<S>() -> Subscriber<S> {
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
+pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
 
@@ -610,15 +619,18 @@ where
 {
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See the [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time`"" feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
-    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`time` module]: mod@time
+    /// [`UtcTime`]: time::UtcTime
+    /// [`LocalTime`]: time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
@@ -846,12 +858,12 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// For example:
     /// ```rust
     /// use tracing_subscriber::fmt::format;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::field::MakeExt;
     ///
     /// let formatter =
     ///     // Construct a custom formatter for `Debug` fields
     ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // Use the `tracing_subscriber::MakeExt` trait to wrap the
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
@@ -982,7 +994,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// ```
     /// use tracing::Level;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::util::SubscriberInitExt;
     ///
     /// let builder = tracing_subscriber::fmt()
     ///      // Set a max level filter on the collector

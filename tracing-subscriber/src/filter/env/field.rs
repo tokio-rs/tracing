@@ -36,12 +36,75 @@ pub(crate) struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub(crate) enum ValueMatch {
     Bool(bool),
+    F64(f64),
     U64(u64),
     I64(i64),
+    NaN,
     Pat(Box<MatchPattern>),
+}
+
+impl Eq for ValueMatch {}
+
+impl PartialEq for ValueMatch {
+    fn eq(&self, other: &Self) -> bool {
+        use ValueMatch::*;
+        match (self, other) {
+            (Bool(a), Bool(b)) => a.eq(b),
+            (F64(a), F64(b)) => {
+                debug_assert!(!a.is_nan());
+                debug_assert!(!b.is_nan());
+
+                a.eq(b)
+            }
+            (U64(a), U64(b)) => a.eq(b),
+            (I64(a), I64(b)) => a.eq(b),
+            (NaN, NaN) => true,
+            (Pat(a), Pat(b)) => a.eq(b),
+            _ => false,
+        }
+    }
+}
+
+impl Ord for ValueMatch {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use ValueMatch::*;
+        match (self, other) {
+            (Bool(this), Bool(that)) => this.cmp(that),
+            (Bool(_), _) => Ordering::Less,
+
+            (F64(this), F64(that)) => this
+                .partial_cmp(that)
+                .expect("`ValueMatch::F64` may not contain `NaN` values"),
+            (F64(_), Bool(_)) => Ordering::Greater,
+            (F64(_), _) => Ordering::Less,
+
+            (NaN, NaN) => Ordering::Equal,
+            (NaN, Bool(_)) | (NaN, F64(_)) => Ordering::Greater,
+            (NaN, _) => Ordering::Less,
+
+            (U64(this), U64(that)) => this.cmp(that),
+            (U64(_), Bool(_)) | (U64(_), F64(_)) | (U64(_), NaN) => Ordering::Greater,
+            (U64(_), _) => Ordering::Less,
+
+            (I64(this), I64(that)) => this.cmp(that),
+            (I64(_), Bool(_)) | (I64(_), F64(_)) | (I64(_), NaN) | (I64(_), U64(_)) => {
+                Ordering::Greater
+            }
+            (I64(_), _) => Ordering::Less,
+
+            (Pat(this), Pat(that)) => this.cmp(that),
+            (Pat(_), _) => Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for ValueMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +115,7 @@ pub(crate) struct MatchPattern {
 
 /// Indicates that a field name specified in a filter directive was invalid.
 #[derive(Clone, Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct BadName {
     name: String,
 }
@@ -127,6 +191,14 @@ impl PartialOrd for Match {
 
 // === impl ValueMatch ===
 
+fn value_match_f64(v: f64) -> ValueMatch {
+    if v.is_nan() {
+        ValueMatch::NaN
+    } else {
+        ValueMatch::F64(v)
+    }
+}
+
 impl FromStr for ValueMatch {
     type Err = matchers::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -134,6 +206,7 @@ impl FromStr for ValueMatch {
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
             .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
+            .or_else(|_| s.parse::<f64>().map(value_match_f64))
             .or_else(|_| {
                 s.parse::<MatchPattern>()
                     .map(|p| ValueMatch::Pat(Box::new(p)))
@@ -145,6 +218,8 @@ impl fmt::Display for ValueMatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValueMatch::Bool(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::F64(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::NaN => fmt::Display::fmt(&std::f64::NAN, f),
             ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
@@ -275,6 +350,20 @@ impl SpanMatch {
 }
 
 impl<'a> Visit for MatchVisitor<'a> {
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
+                matched.store(true, Release);
+            }
+            Some((ValueMatch::F64(ref e), ref matched))
+                if (value - *e).abs() < std::f64::EPSILON =>
+            {
+                matched.store(true, Release);
+            }
+            _ => {}
+        }
+    }
+
     fn record_i64(&mut self, field: &Field, value: i64) {
         use std::convert::TryInto;
 

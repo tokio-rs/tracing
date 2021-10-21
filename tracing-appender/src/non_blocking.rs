@@ -103,7 +103,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 #[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {
-    guard: Option<JoinHandle<()>>,
+    _guard: Option<JoinHandle<()>>,
     sender: Sender<Msg>,
     shutdown: Sender<()>,
 }
@@ -250,7 +250,7 @@ impl<'a> MakeWriter<'a> for NonBlocking {
 impl WorkerGuard {
     fn new(handle: JoinHandle<()>, sender: Sender<Msg>, shutdown: Sender<()>) -> Self {
         WorkerGuard {
-            guard: Some(handle),
+            _guard: Some(handle),
             sender,
             shutdown,
         }

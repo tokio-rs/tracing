@@ -29,7 +29,7 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// A filter consists of one or more comma-separated directives which match on [`Span`]s and [`Event`]s.
 /// Each directive may have a corresponding maximum verbosity [`level`] which
 /// enables (e.g., _selects for_) spans and events that match. Like `log`,
 /// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
@@ -78,6 +78,9 @@ use tracing_core::{
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
 ///    - at the level `info` or above.
+/// - `warn,tokio::net=info` will enable all spans and events that:
+///    - are at the level `warn` or above, *or*
+///    - have the `tokio::net` target at the level `info` or above.
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
@@ -94,8 +97,7 @@ use tracing_core::{
 /// [`Event`]: tracing_core::Event
 /// [`level`]: tracing_core::Level
 /// [`Metadata`]: tracing_core::Metadata
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
@@ -118,6 +120,7 @@ type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
@@ -267,7 +270,7 @@ impl EnvFilter {
                     let bold = Style::new().bold();
                     let mut warning = Color::Yellow.paint("warning");
                     warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.clone().paint(":"), bold.paint(msg))
+                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
                 };
                 eprintln!("{}", msg);
             };
@@ -304,7 +307,6 @@ impl EnvFilter {
                 };
                 let level = directive
                     .level
-                    .clone()
                     .into_level()
                     .expect("=off would not have enabled any filters");
                 ctx(&format!(
@@ -363,7 +365,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Collect> Subscribe<S> for EnvFilter {
+impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -392,12 +394,12 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
             return Some(LevelFilter::TRACE);
         }
         std::cmp::max(
-            self.statics.max_level.clone().into(),
-            self.dynamics.max_level.clone().into(),
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
         )
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -440,7 +442,7 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -448,13 +450,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -463,13 +465,13 @@ impl<S: Collect> Subscribe<S> for EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
         if self.cares_about_span(id) {
             SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -591,6 +593,9 @@ mod tests {
         }
         fn enter(&self, _span: &span::Id) {}
         fn exit(&self, _span: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct Cs;
@@ -633,7 +638,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 
@@ -651,7 +656,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
@@ -670,7 +675,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
@@ -689,7 +694,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 

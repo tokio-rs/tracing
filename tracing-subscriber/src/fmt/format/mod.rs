@@ -2,16 +2,12 @@
 use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
-    fmt::fmt_subscriber::FmtContext,
-    fmt::fmt_subscriber::FormattedFields,
+    fmt::fmt_subscriber::{FmtContext, FormattedFields},
     registry::LookupSpan,
+    registry::Scope,
 };
 
-use std::{
-    fmt::{self, Write},
-    iter,
-    marker::PhantomData,
-};
+use std::{fmt, marker::PhantomData};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Collect, Event, Level,
@@ -37,7 +33,7 @@ pub use pretty::*;
 
 use fmt::{Debug, Display};
 
-/// A type that can format a tracing `Event` for a `fmt::Write`.
+/// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
 /// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
 /// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
@@ -49,22 +45,26 @@ use fmt::{Debug, Display};
 /// # Examples
 ///
 /// ```rust
-/// use std::fmt::{self, Write};
+/// use std::fmt;
 /// use tracing_core::{Collect, Event};
-/// use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext, FormattedFields};
+/// use tracing_subscriber::fmt::{
+///     format::{self, FormatEvent, FormatFields},
+///     FmtContext,
+///     FormattedFields,
+/// };
 /// use tracing_subscriber::registry::LookupSpan;
 ///
 /// struct MyFormatter;
 ///
-/// impl<S, N> FormatEvent<S, N> for MyFormatter
+/// impl<C, N> FormatEvent<C, N> for MyFormatter
 /// where
-///     S: Collect + for<'a> LookupSpan<'a>,
+///     C: Collect + for<'a> LookupSpan<'a>,
 ///     N: for<'a> FormatFields<'a> + 'static,
 /// {
 ///     fn format_event(
 ///         &self,
-///         ctx: &FmtContext<'_, S, N>,
-///         writer: &mut dyn fmt::Write,
+///         ctx: &FmtContext<'_, C, N>,
+///         mut writer: format::Writer<'_>,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
 ///         // Write level and target
@@ -101,7 +101,7 @@ use fmt::{Debug, Display};
 ///         })?;
 ///
 ///         // Write fields on the event
-///         ctx.field_format().format_fields(writer, event)?;
+///         ctx.field_format().format_fields(writer.by_ref(), event)?;
 ///
 ///         writeln!(writer)
 ///     }
@@ -116,36 +116,37 @@ use fmt::{Debug, Display};
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
-pub trait FormatEvent<S, N>
+/// [`Event`]: tracing::Event
+pub trait FormatEvent<C, N>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
-    /// Write a log message for `Event` in `Context` to the given `Write`.
+    /// Write a log message for `Event` in `Context` to the given [`Writer`].
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
+        ctx: &FmtContext<'_, C, N>,
+        writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result;
 }
 
-impl<S, N> FormatEvent<S, N>
-    for fn(ctx: &FmtContext<'_, S, N>, &mut dyn fmt::Write, &Event<'_>) -> fmt::Result
+impl<C, N> FormatEvent<C, N>
+    for fn(ctx: &FmtContext<'_, C, N>, Writer<'_>, &Event<'_>) -> fmt::Result
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
+        ctx: &FmtContext<'_, C, N>,
+        writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         (*self)(ctx, writer, event)
     }
 }
-/// A type that can format a [set of fields] to a `fmt::Write`.
+/// A type that can format a [set of fields] to a [`Writer`].
 ///
 /// `FormatFields` is primarily used in the context of [`fmt::Subscriber`]. Each
 /// time a span or event with fields is recorded, the subscriber will format
@@ -154,23 +155,23 @@ where
 /// [set of fields]: RecordFields
 /// [`fmt::Subscriber`]: super::Subscriber
 pub trait FormatFields<'writer> {
-    /// Format the provided `fields` to the provided `writer`, returning a result.
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'writer mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result;
+    /// Format the provided `fields` to the provided [`Writer`], returning a result.
+    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result;
 
     /// Record additional field(s) on an existing span.
     ///
     /// By default, this appends a space to the current set of fields if it is
     /// non-empty, and then calls `self.format_fields`. If different behavior is
     /// required, the default implementation of this method can be overridden.
-    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
-        if !current.is_empty() {
-            current.push(' ');
+    fn add_fields(
+        &self,
+        current: &'writer mut FormattedFields<Self>,
+        fields: &span::Record<'_>,
+    ) -> fmt::Result {
+        if !current.fields.is_empty() {
+            current.fields.push(' ');
         }
-        self.format_fields(current, fields)
+        self.format_fields(current.as_writer(), fields)
     }
 }
 
@@ -210,9 +211,27 @@ pub fn json() -> Format<Json> {
 ///
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
-    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+    F: Fn(&mut Writer<'_>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
 {
     FieldFn(f)
+}
+
+/// A writer to which formatted representations of spans and events are written.
+///
+/// This type is provided as input to the [`FormatEvent::format_event`] and
+/// [`FormatFields::format_fields`] methods, which will write formatted
+/// representations of [`Event`]s and [fields] to the `Writer`.
+///
+/// This type implements the [`std::fmt::Write`] trait, allowing it to be used
+/// with any function that takes an instance of [`std::fmt::Write`].
+/// Additionally, it can be used with the standard library's [`std::write!`] and
+/// [`std::writeln!`] macros.
+///
+/// Additionally, a `Writer` may expose additional `tracing`-specific
+/// information to the formatter implementation.
+pub struct Writer<'writer> {
+    writer: &'writer mut dyn fmt::Write,
+    // TODO(eliza): add ANSI support
 }
 
 /// A [`FormatFields`] implementation that formats fields by calling a function
@@ -226,7 +245,7 @@ pub struct FieldFn<F>(F);
 /// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
-    writer: &'a mut dyn fmt::Write,
+    writer: Writer<'a>,
     result: fmt::Result,
 }
 /// Marker for `Format` that indicates that the compact log format should be used.
@@ -259,6 +278,115 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_id: bool,
     pub(crate) display_thread_name: bool,
 }
+
+// === impl Writer ===
+
+impl<'writer> Writer<'writer> {
+    // TODO(eliza): consider making this a public API?
+    // We may not want to do that if we choose to expose specialized
+    // constructors instead (e.g. `from_string` that stores whether the string
+    // is empty...?)
+    pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
+        Self {
+            writer: writer as &mut dyn fmt::Write,
+        }
+    }
+
+    /// Return a new `Writer` that mutably borrows `self`.
+    ///
+    /// This can be used to temporarily borrow a `Writer` to pass a new `Writer`
+    /// to a function that takes a `Writer` by value, allowing the original writer
+    /// to still be used once that function returns.
+    pub fn by_ref(&mut self) -> Writer<'_> {
+        Writer::new(self)
+    }
+
+    /// Writes a string slice into this `Writer`, returning whether the write succeeded.
+    ///
+    /// This method can only succeed if the entire string slice was successfully
+    /// written, and this method will not return until all data has been written
+    /// or an error occurs.
+    ///
+    /// This is identical to calling the [`write_str` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of [`std::fmt::Error`] on error.
+    ///
+    /// [`write_str` method]: std::fmt::Write::write_str
+    #[inline]
+    pub fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.writer.write_str(s)
+    }
+
+    /// Writes a [`char`] into this writer, returning whether the write succeeded.
+    ///
+    /// A single [`char`] may be encoded as more than one byte.
+    /// This method can only succeed if the entire byte sequence was successfully
+    /// written, and this method will not return until all data has been
+    /// written or an error occurs.
+    ///
+    /// This is identical to calling the [`write_char` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of [`std::fmt::Error`] on error.
+    ///
+    /// [`write_char` method]: std::fmt::Write::write_char
+    #[inline]
+    pub fn write_char(&mut self, c: char) -> fmt::Result {
+        self.writer.write_char(c)
+    }
+
+    /// Glue for usage of the [`write!`] macro with `Wrriter`s.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the [`write!`] macro itself.
+    ///
+    /// This is identical to calling the [`write_fmt` method] from the `Writer`'s
+    /// [`std::fmt::Write`] implementation. However, it is also provided as an
+    /// inherent method, so that `Writer`s can be used with the [`write!` macro]
+    /// without needing to import the
+    /// [`std::fmt::Write`] trait.
+    ///
+    /// [`write_fmt` method]: std::fmt::Write::write_fmt
+    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+        self.writer.write_fmt(args)
+    }
+}
+
+impl fmt::Write for Writer<'_> {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        Writer::write_str(self, s)
+    }
+
+    #[inline]
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        Writer::write_char(self, c)
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+        Writer::write_fmt(self, args)
+    }
+}
+
+impl fmt::Debug for Writer<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Writer")
+            .field("writer", &format_args!("<&mut dyn fmt::Write>"))
+            .finish()
+    }
+}
+
+// === impl Format ===
 
 impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
@@ -363,13 +491,16 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time"` feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
     /// [`timer`]: super::time::FormatTime
     /// [`time` module]: mod@super::time
-    /// [`ChronoUtc`]: super::time::ChronoUtc
-    /// [`ChronoLocal`]: super::time::ChronoLocal
+    /// [`UtcTime`]: super::time::UtcTime
+    /// [`LocalTime`]: super::time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
@@ -462,7 +593,7 @@ impl<F, T> Format<F, T> {
     }
 
     #[inline]
-    fn format_timestamp(&self, writer: &mut dyn fmt::Write) -> fmt::Result
+    fn format_timestamp(&self, writer: &mut Writer<'_>) -> fmt::Result
     where
         T: FormatTime,
     {
@@ -487,6 +618,17 @@ impl<F, T> Format<F, T> {
         // Otherwise, just format the timestamp without ANSI formatting.
         self.timer.format_time(writer)?;
         writer.write_char(' ')
+    }
+
+    fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
     }
 }
 
@@ -531,16 +673,16 @@ impl<T> Format<Json, T> {
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Full, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Full, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
+        ctx: &FmtContext<'_, C, N>,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
@@ -550,8 +692,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        self.format_timestamp(writer)?;
-        self.format_level(*meta.level(), writer)?;
+        self.format_timestamp(&mut writer)?;
+        self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -571,36 +713,47 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let full_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FullCtx::new(ctx, event.parent(), self.ansi)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FullCtx::new(ctx, event.parent())
-            }
-        };
+        if let Some(scope) = ctx.ctx.event_scope(event) {
+            let bold = self.bold();
+            let mut seen = false;
 
-        write!(writer, "{}", full_ctx)?;
+            for span in scope.from_root() {
+                write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                seen = true;
+
+                let ext = span.extensions();
+                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                    }
+                }
+                writer.write_char(':')?;
+            }
+
+            if seen {
+                writer.write_char(' ')?;
+            }
+        }
+
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
-        ctx.format_fields(writer, event)?;
+
+        ctx.format_fields(writer.by_ref(), event)?;
         writeln!(writer)
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Compact, T>
+impl<C, N, T> FormatEvent<C, N> for Format<Compact, T>
 where
-    S: Collect + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
+        ctx: &FmtContext<'_, C, N>,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
@@ -610,8 +763,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        self.format_timestamp(writer)?;
-        self.format_level(*meta.level(), writer)?;
+        self.format_timestamp(&mut writer)?;
+        self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -643,24 +796,21 @@ where
             write!(writer, "{}:", target)?;
         }
 
-        ctx.format_fields(writer, event)?;
+        ctx.format_fields(writer.by_ref(), event)?;
 
-        let span = event
-            .parent()
-            .and_then(|id| ctx.ctx.span(&id))
-            .or_else(|| ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| {
-            let parents = span.parents();
-            iter::once(span).chain(parents)
-        });
         #[cfg(feature = "ansi")]
         let dimmed = if self.ansi {
             Style::new().dimmed()
         } else {
             Style::new()
         };
-        for span in scope {
+        for span in ctx
+            .ctx
+            .event_scope(event)
+            .into_iter()
+            .map(Scope::from_root)
+            .flatten()
+        {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
@@ -676,22 +826,18 @@ where
 }
 
 // === impl FormatFields ===
-
 impl<'writer, M> FormatFields<'writer> for M
 where
-    M: MakeOutput<&'writer mut dyn fmt::Write, fmt::Result>,
+    M: MakeOutput<Writer<'writer>, fmt::Result>,
     M::Visitor: VisitFmt + VisitOutput<fmt::Result>,
 {
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'writer mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result {
+    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
         let mut v = self.make_visitor(writer);
         fields.record(&mut v);
         v.finish()
     }
 }
+
 /// The default [`FormatFields`] implementation.
 ///
 #[derive(Debug)]
@@ -705,8 +851,9 @@ pub struct DefaultFields {
 ///
 /// [visitor]: super::super::field::Visit
 /// [`MakeVisitor`]: super::super::field::MakeVisitor
+#[derive(Debug)]
 pub struct DefaultVisitor<'a> {
-    writer: &'a mut dyn Write,
+    writer: Writer<'a>,
     is_empty: bool,
     result: fmt::Result,
 }
@@ -725,11 +872,11 @@ impl Default for DefaultFields {
     }
 }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for DefaultFields {
+impl<'a> MakeVisitor<Writer<'a>> for DefaultFields {
     type Visitor = DefaultVisitor<'a>;
 
     #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+    fn make_visitor(&self, target: Writer<'a>) -> Self::Visitor {
         DefaultVisitor::new(target, true)
     }
 }
@@ -743,7 +890,7 @@ impl<'a> DefaultVisitor<'a> {
     /// - `writer`: the writer to format to.
     /// - `is_empty`: whether or not any fields have been previously written to
     ///   that writer.
-    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+    pub fn new(writer: Writer<'a>, is_empty: bool) -> Self {
         Self {
             writer,
             is_empty,
@@ -775,7 +922,10 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            self.record_debug(field, &format_args!("{}, {}: {}", value, field, source))
+            self.record_debug(
+                field,
+                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+            )
         } else {
             self.record_debug(field, &format_args!("{}", value))
         }
@@ -806,98 +956,22 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
 
 impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
-        self.writer
+        &mut self.writer
     }
 }
 
-impl<'a> fmt::Debug for DefaultVisitor<'a> {
+/// Renders an error into a list of sources, *including* the error
+struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
+
+impl<'a> Display for ErrorSourceList<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DefaultVisitor")
-            .field("writer", &format_args!("<dyn fmt::Write>"))
-            .field("is_empty", &self.is_empty)
-            .field("result", &self.result)
-            .finish()
-    }
-}
-
-struct FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    ctx: &'a FmtContext<'a, S, N>,
-    span: Option<&'a span::Id>,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
-
-impl<'a, S, N: 'a> FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    #[cfg(feature = "ansi")]
-    pub(crate) fn new(
-        ctx: &'a FmtContext<'a, S, N>,
-        span: Option<&'a span::Id>,
-        ansi: bool,
-    ) -> Self {
-        Self { ctx, span, ansi }
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
+        let mut list = f.debug_list();
+        let mut curr = Some(self.0);
+        while let Some(curr_err) = curr {
+            list.entry(&format_args!("{}", curr_err));
+            curr = curr_err.source();
         }
-
-        Style::new()
-    }
-}
-
-impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
-where
-    S: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bold = self.bold();
-        let mut seen = false;
-
-        let span = self
-            .span
-            .and_then(|id| self.ctx.ctx.span(&id))
-            .or_else(|| self.ctx.ctx.lookup_current());
-
-        let scope = span
-            .into_iter()
-            .flat_map(|span| span.from_root().chain(iter::once(span)));
-
-        for span in scope {
-            write!(f, "{}", bold.paint(span.metadata().name()))?;
-            seen = true;
-
-            let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
-            }
-            f.write_char(':')?;
-        }
-
-        if seen {
-            f.write_char(' ')?;
-        }
-        Ok(())
+        list.finish()
     }
 }
 
@@ -999,11 +1073,11 @@ impl LevelNames for Full {
     const ERROR_STR: &'static str = "ERROR";
 }
 impl LevelNames for Compact {
-    const TRACE_STR: &'static str = "T";
-    const DEBUG_STR: &'static str = "D";
-    const INFO_STR: &'static str = "I";
-    const WARN_STR: &'static str = "W";
-    const ERROR_STR: &'static str = "!";
+    const TRACE_STR: &'static str = ".";
+    const DEBUG_STR: &'static str = ":";
+    const INFO_STR: &'static str = "i";
+    const WARN_STR: &'static str = "!";
+    const ERROR_STR: &'static str = "X";
 }
 
 struct FmtLevel<F: ?Sized> {
@@ -1040,13 +1114,13 @@ impl<'a, F: LevelNames> fmt::Display for FmtLevel<F> {
 
 // === impl FieldFn ===
 
-impl<'a, F> MakeVisitor<&'a mut dyn fmt::Write> for FieldFn<F>
+impl<'a, F> MakeVisitor<Writer<'a>> for FieldFn<F>
 where
-    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+    F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
 {
     type Visitor = FieldFnVisitor<'a, F>;
 
-    fn make_visitor(&self, writer: &'a mut dyn fmt::Write) -> Self::Visitor {
+    fn make_visitor(&self, writer: Writer<'a>) -> Self::Visitor {
         FieldFnVisitor {
             writer,
             f: self.0.clone(),
@@ -1057,7 +1131,7 @@ where
 
 impl<'a, F> Visit for FieldFnVisitor<'a, F>
 where
-    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+    F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if self.result.is_ok() {
@@ -1068,7 +1142,7 @@ where
 
 impl<'a, F> VisitOutput<fmt::Result> for FieldFnVisitor<'a, F>
 where
-    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+    F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
     fn finish(self) -> fmt::Result {
         self.result
@@ -1077,18 +1151,18 @@ where
 
 impl<'a, F> VisitFmt for FieldFnVisitor<'a, F>
 where
-    F: Fn(&mut dyn fmt::Write, &Field, &dyn fmt::Debug) -> fmt::Result,
+    F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
     fn writer(&mut self) -> &mut dyn fmt::Write {
-        &mut *self.writer
+        &mut self.writer
     }
 }
 
 impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FieldFnVisitor")
-            .field("f", &format_args!("<Fn>"))
-            .field("writer", &format_args!("<dyn fmt::Write>"))
+            .field("f", &format_args!("{}", std::any::type_name::<F>()))
+            .field("writer", &self.writer)
             .field("result", &self.result)
             .finish()
     }
@@ -1259,12 +1333,12 @@ pub(super) mod test {
         dispatch::{set_default, Dispatch},
     };
 
-    use super::{FmtSpan, TimingDisplay};
+    use super::{FmtSpan, TimingDisplay, Writer};
     use std::fmt;
 
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
-        fn format_time(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
             write!(w, "fake time")
         }
     }
@@ -1414,27 +1488,27 @@ pub(super) mod test {
     #[test]
     fn fmt_span_combinations() {
         let f = FmtSpan::NONE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::ACTIVE;
-        assert_eq!(f.contains(FmtSpan::NEW), false);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), false);
+        assert!(!f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(!f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::FULL;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), true);
-        assert_eq!(f.contains(FmtSpan::EXIT), true);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(f.contains(FmtSpan::ENTER));
+        assert!(f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
 
         let f = FmtSpan::NEW | FmtSpan::CLOSE;
-        assert_eq!(f.contains(FmtSpan::NEW), true);
-        assert_eq!(f.contains(FmtSpan::ENTER), false);
-        assert_eq!(f.contains(FmtSpan::EXIT), false);
-        assert_eq!(f.contains(FmtSpan::CLOSE), true);
+        assert!(f.contains(FmtSpan::NEW));
+        assert!(!f.contains(FmtSpan::ENTER));
+        assert!(!f.contains(FmtSpan::EXIT));
+        assert!(f.contains(FmtSpan::CLOSE));
     }
 }

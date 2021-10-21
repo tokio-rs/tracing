@@ -1,6 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 use tracing::{dispatch::Dispatch, span, Event, Id, Metadata};
+use tracing_core::span::Current;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 mod support;
@@ -38,6 +39,10 @@ impl tracing::Collect for EnabledSubscriber {
 
     fn exit(&self, span: &Id) {
         let _ = span;
+    }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
     }
 }
 
