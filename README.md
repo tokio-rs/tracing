@@ -448,7 +448,7 @@ Tracing.
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 * [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
-* [Custom Logging in Rust using tracing and tracing-subscriber, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
+* [Custom Logging in Rust using `tracing` and `tracing-subscriber`, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
