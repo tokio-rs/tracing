@@ -448,6 +448,7 @@ Tracing.
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 * [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
+* [Custom Logging in Rust using tracing and tracing-subscriber, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
@@ -463,6 +464,8 @@ Tracing.
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
 [rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
 [production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
+[custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
+[custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
