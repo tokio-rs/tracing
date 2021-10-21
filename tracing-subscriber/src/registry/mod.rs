@@ -234,8 +234,9 @@ pub struct Scope<'a, R> {
 feature! {
     #![any(feature = "alloc", feature = "std")]
 
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(feature = "smallvec"))]
     use alloc::vec::{self, Vec};
+
     use core::{fmt,iter};
 
     /// An iterator over the parents of a span, ordered from root to leaf.
