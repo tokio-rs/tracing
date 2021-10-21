@@ -3,7 +3,7 @@
 //! [`io::Write`]: std::io::Write
 
 use std::{
-    fmt::Debug,
+    fmt,
     io::{self, Write},
     sync::{Mutex, MutexGuard},
 };
@@ -635,6 +635,18 @@ pub struct Tee<A, B> {
     b: B,
 }
 
+/// A bridge between `fmt::Write` and `io::Write`.
+///
+/// This is used by the timestamp formatting implementation for the `time`
+/// crate and by the JSON formatter. In both cases, this is needed because
+/// `tracing-subscriber`'s `FormatEvent`/`FormatTime` traits expect a
+/// `fmt::Write` implementation, while `serde_json::Serializer` and `time`'s
+/// `format_into` methods expect an `io::Write`.
+#[cfg(any(feature = "json", feature = "time"))]
+pub(in crate::fmt) struct WriteAdaptor<'a> {
+    fmt_write: &'a mut dyn fmt::Write,
+}
+
 impl<'a, F, W> MakeWriter<'a> for F
 where
     F: Fn() -> W,
@@ -699,8 +711,8 @@ impl BoxMakeWriter {
     }
 }
 
-impl Debug for BoxMakeWriter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for BoxMakeWriter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("BoxMakeWriter")
             .field(&format_args!("<{}>", self.name))
             .finish()
@@ -1084,10 +1096,41 @@ where
     }
 }
 
+// === impl WriteAdaptor ===
+
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> WriteAdaptor<'a> {
+    pub(in crate::fmt) fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
+        Self { fmt_write }
+    }
+}
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> io::Write for WriteAdaptor<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s =
+            std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        self.fmt_write
+            .write_str(s)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        Ok(s.as_bytes().len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> fmt::Debug for WriteAdaptor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("WriteAdaptor { .. }")
+    }
+}
 // === blanket impls ===
 
 impl<'a, M> MakeWriterExt<'a> for M where M: MakeWriter<'a> {}
-
 #[cfg(test)]
 mod test {
     use super::*;

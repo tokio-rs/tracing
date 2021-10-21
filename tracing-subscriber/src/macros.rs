@@ -1,3 +1,4 @@
+#[cfg(feature = "std")]
 macro_rules! try_lock {
     ($lock:expr) => {
         try_lock!($lock, else return)
@@ -13,11 +14,14 @@ macro_rules! try_lock {
     };
 }
 
-macro_rules! cfg_feature {
-    ($name:literal, { $($item:item)* }) => {
+macro_rules! feature {
+    (
+        #![$meta:meta]
+        $($item:item)*
+    ) => {
         $(
-            #[cfg(feature = $name)]
-            #[cfg_attr(docsrs, doc(cfg(feature = $name)))]
+            #[cfg($meta)]
+            #[cfg_attr(docsrs, doc(cfg($meta)))]
             $item
         )*
     }

@@ -1,7 +1,7 @@
 //! A `MakeVisitor` wrapper that separates formatted fields with a delimiter.
 use super::{MakeVisitor, VisitFmt, VisitOutput};
 
-use std::fmt;
+use core::fmt;
 use tracing_core::field::{Field, Visit};
 
 /// A `MakeVisitor` wrapper that wraps a visitor that writes formatted output so
@@ -133,6 +133,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test {
     use super::*;
     use crate::field::test_util::*;
