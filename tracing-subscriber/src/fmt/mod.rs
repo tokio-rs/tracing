@@ -1195,6 +1195,7 @@ mod test {
             Self { buf }
         }
 
+        #[cfg(feature = "json")]
         pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
             self.buf.lock().unwrap()
         }
