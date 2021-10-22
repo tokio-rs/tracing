@@ -72,40 +72,6 @@ pub struct Layer<
     _inner: PhantomData<S>,
 }
 
-/// A builder for [`Layer`](struct.Layer.html) that logs formatted representations of `tracing`
-/// events and spans.
-///
-/// **Note**: As of `tracing-subscriber` 0.2.4, the separate builder type is now
-/// deprecated, as the `Layer` type itself supports all the builder's
-/// configuration methods. This is now an alias for `Layer`.
-#[deprecated(
-    since = "0.2.4",
-    note = "a separate layer builder type is not necessary, `Layer`s now support configuration"
-)]
-pub type LayerBuilder<
-    S,
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = Layer<S, N, E, W>;
-
-impl<S> Layer<S> {
-    /// Returns a new [`LayerBuilder`](type.LayerBuilder.html) for configuring a `Layer`.
-    #[deprecated(
-        since = "0.2.4",
-        note = "a separate layer builder is not necessary, use `Layer::new`/`Layer::default` instead"
-    )]
-    #[allow(deprecated)]
-    pub fn builder() -> LayerBuilder<S> {
-        Layer::default()
-    }
-
-    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W>
 where
@@ -472,26 +438,6 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             make_writer: self.make_writer,
             _inner: self._inner,
         }
-    }
-}
-
-#[allow(deprecated)]
-impl<S, N, E, W> LayerBuilder<S, N, E, W>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<S, N> + 'static,
-    W: for<'writer> MakeWriter<'writer> + 'static,
-{
-    /// Builds a [`Layer`] with the provided configuration.
-    ///
-    /// [`Layer`]: struct.Layer.html
-    #[deprecated(
-        since = "0.2.4",
-        note = "`LayerBuilder` is no longer a separate type; this method is not necessary"
-    )]
-    pub fn finish(self) -> Layer<S, N, E, W> {
-        self
     }
 }
 
