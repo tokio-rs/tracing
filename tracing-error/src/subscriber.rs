@@ -43,7 +43,7 @@ where
 {
     /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &span::Attributes<'_>,
         id: &span::Id,

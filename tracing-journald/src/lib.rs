@@ -122,7 +122,7 @@ impl<C> tracing_subscriber::Subscribe<C> for Subscriber
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
-    fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<C>) {
+    fn on_new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 

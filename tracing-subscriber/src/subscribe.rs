@@ -289,7 +289,7 @@ where
 
     /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -616,7 +616,7 @@ where
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         let id = self.inner.new_span(span);
-        self.subscriber.new_span(span, &id, self.ctx());
+        self.subscriber.on_new_span(span, &id, self.ctx());
         id
     }
 
@@ -737,9 +737,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-        self.inner.new_span(attrs, id, ctx.clone());
-        self.subscriber.new_span(attrs, id, ctx);
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+        self.inner.on_new_span(attrs, id, ctx.clone());
+        self.subscriber.on_new_span(attrs, id, ctx);
     }
 
     #[inline]
@@ -817,9 +817,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
-            inner.new_span(attrs, id, ctx)
+            inner.on_new_span(attrs, id, ctx)
         }
     }
 
@@ -897,8 +897,8 @@ feature! {
     macro_rules! subscriber_impl_body {
         () => {
             #[inline]
-            fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-                self.deref().new_span(attrs, id, ctx)
+            fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+                self.deref().on_new_span(attrs, id, ctx)
             }
 
             #[inline]
