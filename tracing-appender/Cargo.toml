@@ -25,7 +25,7 @@ time = { version = "0.3", default-features = false, features = ["formatting"] }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
-version = "0.2.7"
+version = "0.3"
 default-features = false
 features = ["fmt", "std"]
 
