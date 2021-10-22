@@ -54,6 +54,16 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -89,6 +99,16 @@ jobs:
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --feature-powerset --no-dev-deps
@@ -110,6 +130,16 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: cargo check
       working-directory: tracing
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -135,6 +165,16 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: cargo check
       working-directory: tracing-subscriber
       run: cargo check --no-default-features --features "${{ matrix.featureset }}"
@@ -154,6 +194,16 @@ jobs:
         toolchain: ${{ matrix.rust }}
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -187,6 +237,16 @@ jobs:
         target: wasm32-unknown-unknown
         toolchain: stable
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: build all tests
       uses: actions-rs/cargo@v1
       with:
@@ -209,6 +269,16 @@ jobs:
         override: true
     - name: install test runner for wasm
       run:  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: run wasm tests
       run: cd ${{ matrix.subcrate }} && wasm-pack test --node
 
@@ -226,6 +296,16 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -246,6 +326,16 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: "Test log support"
       run: cargo test
       working-directory: "tracing/test-log-support"
@@ -276,6 +366,16 @@ jobs:
         components: rustfmt
         profile: minimal
         override: true
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: rustfmt
       uses: actions-rs/cargo@v1
       with:
@@ -292,6 +392,16 @@ jobs:
         toolchain: stable
         components: clippy
         profile: minimal
+    - name: cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
     - name: Clippy
       uses: actions-rs/clippy-check@v1
       with:
