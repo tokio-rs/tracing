@@ -36,7 +36,7 @@ allows events and spans to be recorded in a non-blocking manner through a
 dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] 
 that can be used with _or_ without the non-blocking writer.
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.51+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -145,17 +145,17 @@ fn main() {
 
 ## Supported Rust Versions
 
-Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
-versions earlier than the minimum supported version.
+`tracing-appender` is built against the latest stable release. The minimum supported
+version is 1.51. The current `tracing-appender` version is not guaranteed to build on
+Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
-versions before it will always be supported. For example, if the current stable
-compiler version is 1.45, the minimum supported version will not be increased
-past 1.42, three minor versions prior. Increasing the minimum supported compiler
-version is not considered a semver breaking change as long as doing so complies
-with this policy.
+versions before it will always be supported. For example, if the current
+stable compiler version is 1.45, the minimum supported version will not be
+increased past 1.42, three minor versions prior. Increasing the minimum
+supported compiler version is not considered a semver breaking change as
+long as doing so complies with this policy.
 
 ## License
 

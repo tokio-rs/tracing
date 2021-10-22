@@ -21,14 +21,15 @@ edition = "2018"
 
 [dependencies]
 crossbeam-channel = "0.5.0"
-chrono = { version = "0.4.16", default-features = false, features = ["clock", "std"] }
+time = { version = "0.3", default-features = false, features = ["formatting"] }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
 version = "0.3"
 default-features = false
-features = ["fmt"]
+features = ["fmt", "std"]
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
+time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
 tempfile = "3"
