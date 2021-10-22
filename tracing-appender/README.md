@@ -16,9 +16,9 @@ Writers for logging events and spans
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-appender.svg
-[crates-url]: https://crates.io/crates/tracing-appender/0.1.2
+[crates-url]: https://crates.io/crates/tracing-appender/0.2.0
 [docs-badge]: https://docs.rs/tracing-appender/badge.svg
-[docs-url]: https://docs.rs/tracing-appender/0.1.2
+[docs-url]: https://docs.rs/tracing-appender/0.2.0
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing.rs/tracing-appender
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -44,7 +44,7 @@ that can be used with _or_ without the non-blocking writer.
 
 Add the following to your `Cargo.toml`:
 ```toml
-tracing-appender = "0.1"
+tracing-appender = "0.2"
 ```
 
 This crate can be used in a few ways to record spans/events:
