@@ -60,7 +60,7 @@ impl<C> tracing_subscriber::Subscribe<C> for RegistryAccessCollector
 where
     C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         _attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
@@ -87,7 +87,7 @@ impl<C> tracing_subscriber::Subscribe<C> for OtelDataCollector
 where
     C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
