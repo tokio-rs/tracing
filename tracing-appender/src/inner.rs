@@ -2,23 +2,23 @@ use std::io::{BufWriter, Write};
 use std::{fs, io};
 
 use crate::rolling::Rotation;
-use chrono::prelude::*;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
+use time::OffsetDateTime;
 
 #[derive(Debug)]
 pub(crate) struct InnerAppender {
     log_directory: String,
     log_filename_prefix: String,
     writer: BufWriter<File>,
-    next_date: DateTime<Utc>,
+    next_date: Option<OffsetDateTime>,
     rotation: Rotation,
 }
 
 impl io::Write for InnerAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         self.write_timestamped(buf, now)
     }
 
@@ -32,7 +32,7 @@ impl InnerAppender {
         log_directory: &Path,
         log_filename_prefix: &Path,
         rotation: Rotation,
-        now: DateTime<Utc>,
+        now: OffsetDateTime,
     ) -> io::Result<Self> {
         let log_directory = log_directory.to_str().unwrap();
         let log_filename_prefix = log_filename_prefix.to_str().unwrap();
@@ -49,7 +49,7 @@ impl InnerAppender {
         })
     }
 
-    fn write_timestamped(&mut self, buf: &[u8], date: DateTime<Utc>) -> io::Result<usize> {
+    fn write_timestamped(&mut self, buf: &[u8], date: OffsetDateTime) -> io::Result<usize> {
         // Even if refresh_writer fails, we still have the original writer. Ignore errors
         // and proceed with the write.
         let buf_len = buf.len();
@@ -57,7 +57,7 @@ impl InnerAppender {
         self.writer.write_all(buf).map(|_| buf_len)
     }
 
-    fn refresh_writer(&mut self, now: DateTime<Utc>) {
+    fn refresh_writer(&mut self, now: OffsetDateTime) {
         if self.should_rollover(now) {
             let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 
@@ -75,8 +75,12 @@ impl InnerAppender {
         }
     }
 
-    fn should_rollover(&self, date: DateTime<Utc>) -> bool {
-        date >= self.next_date
+    fn should_rollover(&self, date: OffsetDateTime) -> bool {
+        // the `None` case means that the `InnerAppender` *never* rorates log files.
+        match self.next_date {
+            None => false,
+            Some(next_date) => date >= next_date,
+        }
     }
 }
 
