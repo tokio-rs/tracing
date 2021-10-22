@@ -25,7 +25,7 @@ jobs:
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
-    # Run `cargo check` on our minimum supported Rust version (1.42.0).
+    # Run `cargo check` on our minimum supported Rust version (1.51.0).
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@main
