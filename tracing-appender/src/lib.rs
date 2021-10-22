@@ -109,16 +109,15 @@
 //!
 //! ## Supported Rust Versions
 //!
-//! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42, with the exception of `tracing-appender`, has a minimum supported
-//! version of 1.51. The current Tracing version is not guaranteed to build on
+//! `tracing-appender` is built against the latest stable release. The minimum supported
+//! version is 1.51. The current `tracing-appender` version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.56, the minimum supported version will not be
-//! increased past 1.53, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!

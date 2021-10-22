@@ -145,9 +145,8 @@ fn main() {
 
 ## Supported Rust Versions
 
-Tracing is built against the latest stable release. The minimum supported
-version is 1.42, with the exception of `tracing-appender`, has a minimum supported
-version of 1.51. The current Tracing version is not guaranteed to build on
+`tracing-appender` is built against the latest stable release. The minimum supported
+version is 1.51. The current `tracing-appender` version is not guaranteed to build on
 Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
