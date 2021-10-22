@@ -72,6 +72,13 @@ pub struct Layer<
     _inner: PhantomData<S>,
 }
 
+impl<S> Layer<S> {
+    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W>
 where
