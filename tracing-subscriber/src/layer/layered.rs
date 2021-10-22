@@ -97,7 +97,7 @@ where
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         let id = self.inner.new_span(span);
-        self.layer.new_span(span, &id, self.ctx());
+        self.layer.on_new_span(span, &id, self.ctx());
         id
     }
 
@@ -233,9 +233,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.inner.new_span(attrs, id, ctx.clone());
-        self.layer.new_span(attrs, id, ctx);
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        self.inner.on_new_span(attrs, id, ctx.clone());
+        self.layer.on_new_span(attrs, id, ctx);
     }
 
     #[inline]

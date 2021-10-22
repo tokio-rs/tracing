@@ -650,7 +650,7 @@ where
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -1089,9 +1089,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.new_span(attrs, id, ctx)
+            inner.on_new_span(attrs, id, ctx)
         }
     }
 
@@ -1190,8 +1190,8 @@ feature! {
             }
 
             #[inline]
-            fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-                self.deref().new_span(attrs, id, ctx)
+            fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_new_span(attrs, id, ctx)
             }
 
             #[inline]

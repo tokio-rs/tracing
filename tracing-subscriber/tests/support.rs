@@ -271,7 +271,7 @@ where
         // TODO: it should be possible to expect spans to follow from other spans
     }
 
-    fn new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
+    fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
         let meta = span.metadata();
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",

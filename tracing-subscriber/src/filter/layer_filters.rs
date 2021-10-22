@@ -320,9 +320,9 @@ where
         }
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
         self.did_enable(|| {
-            self.layer.new_span(attrs, id, cx.with_filter(self.id()));
+            self.layer.on_new_span(attrs, id, cx.with_filter(self.id()));
         })
     }
 
