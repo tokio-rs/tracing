@@ -60,7 +60,7 @@ impl<S> tracing_subscriber::Layer<S> for RegistryAccessLayer
 where
     S: tracing_core::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         _attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
@@ -87,7 +87,7 @@ impl<S> tracing_subscriber::Layer<S> for OtelDataLayer
 where
     S: tracing_core::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
