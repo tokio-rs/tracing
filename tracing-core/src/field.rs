@@ -393,8 +393,9 @@ impl_values! {
     record_u64(usize, u32, u16, u8 as u64),
     record_i64(i64),
     record_i64(isize, i32, i16, i8 as i64),
-    record_bool(bool),
-    record_f64(f64, f32 as f64)
+    record_f64(f64),
+    record_f64(f32 as f64),
+    record_bool(bool)
 }
 
 impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
