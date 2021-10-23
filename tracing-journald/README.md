@@ -4,7 +4,7 @@
 
 # tracing-journald
 
-Support for logging [`tracing`][tracing] events natively to [journald],
+Support for logging [`tracing`] events natively to [journald],
 preserving structured information.
 
 [![Crates.io][crates-badge]][crates-url]
@@ -27,7 +27,7 @@ scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
 [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
 and events to [`systemd-journald`][journald], on Linux distributions that use
 `systemd`.
- 
+
 *Compiler support: [requires `rustc` 1.42+][msrv]*
 
 [msrv]: #supported-rust-versions
