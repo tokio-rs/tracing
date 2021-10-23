@@ -1,3 +1,22 @@
+# 0.16.0 (October 23, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.3.0` of `tracing-subscriber` ([#1677])
+  For list of breaking changes in `tracing-subscriber`, see the
+  [v0.3.0 changelog].
+
+### Added
+
+- `OpenTelemetrySpanExt::add_link` method for adding a link between a `tracing`
+  span and a provided OpenTelemetry `Context` ([#1516])
+
+Thanks to @LehMaxence for contributing to this release!
+
+[v0.3.0 changelog]: https://github.com/tokio-rs/tracing/releases/tag/tracing-subscriber-0.3.0
+[#1516]: https://github.com/tokio-rs/tracing/pull/1516
+[#1677]: https://github.com/tokio-rs/tracing/pull/1677
+
 # 0.15.0 (August 7, 2021)
 
 ### Breaking Changes
