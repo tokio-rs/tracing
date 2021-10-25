@@ -1,3 +1,17 @@
+# 0.3.1 (Oct 25, 2021)
+
+This release fixes a few issues related to feature flagging.
+
+### Fixed
+
+- **time**: Compilation error when enabling the "time" feature flag without also
+  enabling the "local-time" feature flag ([#1685])
+- **registry**: Unused method warnings when the "std" feature is enabled but the
+  "registry" feature is disabled ([#1686])
+
+[#1685]: https://github.com/tokio-rs/tracing/pull/1685
+[#1686]: https://github.com/tokio-rs/tracing/pull/1686
+
 # 0.3.0 (Oct 22, 2021)
 
 This is a breaking release of `tracing-subscriber`. The primary breaking change
@@ -24,6 +38,7 @@ deprecated APIs, and more.
   trait object ([#1661])
 - Changed the signature of the `MakeWriter` trait by adding a lifetime parameter
   ([#781])
+
 ### Changed
 
 - **layer**: Renamed `Layer::new_span` to `Layer::on_new_span` ([#1674])
