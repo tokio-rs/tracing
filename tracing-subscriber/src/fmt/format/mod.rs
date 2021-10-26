@@ -609,14 +609,24 @@ impl<F, T> Format<F, T> {
             if self.ansi {
                 let style = Style::new().dimmed();
                 write!(writer, "{}", style.prefix())?;
-                self.timer.format_time(writer)?;
+
+                // If getting the timestamp failed, don't bail --- only bail on
+                // formatting errors.
+                if self.timer.format_time(writer).is_err() {
+                    writer.write_str("<unknown time>")?;
+                }
+
                 write!(writer, "{} ", style.suffix())?;
                 return Ok(());
             }
         }
 
         // Otherwise, just format the timestamp without ANSI formatting.
-        self.timer.format_time(writer)?;
+        // If getting the timestamp failed, don't bail --- only bail on
+        // formatting errors.
+        if self.timer.format_time(writer).is_err() {
+            writer.write_str("<unknown time>")?;
+        }
         writer.write_char(' ')
     }
 
