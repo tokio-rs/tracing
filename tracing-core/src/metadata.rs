@@ -225,14 +225,16 @@ pub struct Level(LevelInner);
 /// A filter comparable to a verbosity [`Level`].
 ///
 /// If a [`Level`] is considered less than a `LevelFilter`, it should be
-/// considered disabled; if greater than or equal to the `LevelFilter`, that
-/// level is enabled.
+/// considered *possibly* enabled; if greater than or equal to the `LevelFilter`,
+/// that level is *definitely* disabled. See [`LevelFilter::current`] for more
+/// details.
 ///
 /// Note that this is essentially identical to the `Level` type, but with the
 /// addition of an [`OFF`] level that completely disables all trace
 /// instrumentation.
 ///
-/// See the documentation for the [`Level`] type for more details.
+/// See the documentation for the [`Level`] type to see how `Level`s
+/// and `LevelFilter`s interact.
 ///
 /// [`OFF`]: LevelFilter::OFF
 #[repr(transparent)]
@@ -582,7 +584,7 @@ impl LevelFilter {
     /// Therefore, comparing a given span or event's level to the returned
     /// `LevelFilter` **can** be used for determining if something is
     /// *disabled*, but **should not** be used for determining if something is
-    /// *enabled*.`
+    /// *enabled*.
     ///
     /// [`Level`]: ../struct.Level.html
     /// [`Subscriber`]: ../../trait.Subscriber.html
