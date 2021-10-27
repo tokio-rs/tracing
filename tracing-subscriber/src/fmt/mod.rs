@@ -13,10 +13,12 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-subscriber = "0.2"
+//! tracing-subscriber = "0.3"
 //! ```
 //!
-//! *Compiler support: requires rustc 1.39+*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//!
+//! [msrv]: ../index.html#supported-rust-versions
 //!
 //! Add the following to your executable to initialize the default subscriber:
 //! ```rust
