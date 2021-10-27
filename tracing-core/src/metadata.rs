@@ -127,7 +127,7 @@ pub struct Kind(KindInner);
 /// verbosity. `Level`s can be compared against [`LevelFilter`]s, and
 /// [`LevelFilter`] has a variant for each `Level`, which compares analogously
 /// to that level. In addition, [`LevelFilter`] adds a [`LevelFilter::OFF`]
-/// variant, which is considered "less verbose" than every other `Level. This is
+/// variant, which is considered "less verbose" than every other `Level`. This is
 /// intended to allow filters to completely disable tracing in a particular context.
 ///
 /// For example:
