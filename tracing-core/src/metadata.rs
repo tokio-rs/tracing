@@ -225,8 +225,8 @@ pub struct Level(LevelInner);
 /// A filter comparable to a verbosity [`Level`].
 ///
 /// If a [`Level`] is considered less than a `LevelFilter`, it should be
-/// considered *possibly* enabled; if greater than or equal to the `LevelFilter`,
-/// that level is *definitely* disabled. See [`LevelFilter::current`] for more
+/// considered enabled; if greater than or equal to the `LevelFilter`,
+/// that level is disabled. See [`LevelFilter::current`] for more
 /// details.
 ///
 /// Note that this is essentially identical to the `Level` type, but with the
