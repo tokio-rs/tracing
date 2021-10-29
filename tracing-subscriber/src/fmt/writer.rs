@@ -757,10 +757,12 @@ impl fmt::Debug for BoxMakeWriter {
 impl<'a> MakeWriter<'a> for BoxMakeWriter {
     type Writer = Box<dyn Write + 'a>;
 
+    #[inline]
     fn make_writer(&'a self) -> Self::Writer {
         self.inner.make_writer()
     }
 
+    #[inline]
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         self.inner.make_writer_for(meta)
     }
@@ -776,6 +778,11 @@ where
 
     fn make_writer(&'a self) -> Self::Writer {
         let w = self.0.make_writer();
+        Box::new(w)
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        let w = self.0.make_writer_for(meta);
         Box::new(w)
     }
 }
