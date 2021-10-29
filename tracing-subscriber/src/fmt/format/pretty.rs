@@ -5,7 +5,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::fmt::{self, Write};
+use std::fmt;
 use tracing_core::{
     field::{self, Field},
     Collect, Event, Level,
@@ -26,10 +26,10 @@ pub struct Pretty {
 ///
 /// [visitor]: field::Visit
 /// [`MakeVisitor`]: crate::field::MakeVisitor
+#[derive(Debug)]
 pub struct PrettyVisitor<'a> {
-    writer: &'a mut dyn Write,
+    writer: Writer<'a>,
     is_empty: bool,
-    ansi: bool,
     style: Style,
     result: fmt::Result,
 }
@@ -107,7 +107,7 @@ where
 
         self.format_timestamp(&mut writer)?;
 
-        let style = if self.display_level && self.ansi {
+        let style = if self.display_level && writer.is_ansi() {
             Pretty::style_for(meta.level())
         } else {
             Style::new()
@@ -118,7 +118,11 @@ where
         }
 
         if self.display_target {
-            let target_style = if self.ansi { style.bold() } else { style };
+            let target_style = if writer.is_ansi() {
+                style.bold()
+            } else {
+                style
+            };
             write!(
                 writer,
                 "{}{}{}: ",
@@ -127,14 +131,12 @@ where
                 target_style.infix(style)
             )?;
         }
-        let mut v = PrettyVisitor::new(&mut writer, true)
-            .with_style(style)
-            .with_ansi(self.ansi);
+        let mut v = PrettyVisitor::new(writer.by_ref(), true).with_style(style);
         event.record(&mut v);
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = if self.ansi {
+        let dimmed = if writer.is_ansi() {
             Style::new().dimmed().italic()
         } else {
             Style::new()
@@ -173,7 +175,7 @@ where
             writer.write_char('\n')?;
         }
 
-        let bold = if self.ansi {
+        let bold = if writer.is_ansi() {
             Style::new().bold()
         } else {
             Style::new()
@@ -219,12 +221,8 @@ where
 }
 
 impl<'writer> FormatFields<'writer> for Pretty {
-    fn format_fields<R: RecordFields>(
-        &self,
-        mut writer: Writer<'writer>,
-        fields: R,
-    ) -> fmt::Result {
-        let mut v = PrettyVisitor::new(&mut writer, false);
+    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
+        let mut v = PrettyVisitor::new(writer, false);
         fields.record(&mut v);
         v.finish()
     }
@@ -235,8 +233,8 @@ impl<'writer> FormatFields<'writer> for Pretty {
         fields: &span::Record<'_>,
     ) -> fmt::Result {
         let empty = current.is_empty();
-        let mut writer = current.as_writer();
-        let mut v = PrettyVisitor::new(&mut writer, empty);
+        let writer = current.as_writer();
+        let mut v = PrettyVisitor::new(writer, empty);
         fields.record(&mut v);
         v.finish()
     }
@@ -267,7 +265,7 @@ impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
 
     #[inline]
     fn make_visitor(&self, target: Writer<'a>) -> Self::Visitor {
-        PrettyVisitor::new(target.writer, true).with_ansi(self.ansi)
+        PrettyVisitor::new(target.with_ansi(self.ansi), true)
     }
 }
 
@@ -280,11 +278,10 @@ impl<'a> PrettyVisitor<'a> {
     /// - `writer`: the writer to format to.
     /// - `is_empty`: whether or not any fields have been previously written to
     ///   that writer.
-    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+    pub fn new(writer: Writer<'a>, is_empty: bool) -> Self {
         Self {
             writer,
             is_empty,
-            ansi: true,
             style: Style::default(),
             result: Ok(()),
         }
@@ -292,10 +289,6 @@ impl<'a> PrettyVisitor<'a> {
 
     pub(crate) fn with_style(self, style: Style) -> Self {
         Self { style, ..self }
-    }
-
-    pub(crate) fn with_ansi(self, ansi: bool) -> Self {
-        Self { ansi, ..self }
     }
 
     fn write_padded(&mut self, value: &impl fmt::Debug) {
@@ -309,7 +302,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     fn bold(&self) -> Style {
-        if self.ansi {
+        if self.writer.is_ansi() {
             self.style.bold()
         } else {
             Style::new()
@@ -378,26 +371,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 }
 
 impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
-    fn finish(self) -> fmt::Result {
-        write!(self.writer, "{}", self.style.suffix())?;
+    fn finish(mut self) -> fmt::Result {
+        write!(&mut self.writer, "{}", self.style.suffix())?;
         self.result
     }
 }
 
 impl<'a> VisitFmt for PrettyVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
-        self.writer
-    }
-}
-
-impl<'a> fmt::Debug for PrettyVisitor<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PrettyVisitor")
-            .field("writer", &format_args!("<dyn fmt::Write>"))
-            .field("is_empty", &self.is_empty)
-            .field("result", &self.result)
-            .field("style", &self.style)
-            .field("ansi", &self.ansi)
-            .finish()
+        &mut self.writer
     }
 }
