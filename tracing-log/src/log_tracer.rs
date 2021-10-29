@@ -188,13 +188,15 @@ impl log::Log for LogTracer {
         // Okay, it wasn't disabled by the max level — do we have any specific
         // modules to ignore?
         #[cfg(feature = "alloc")]
-        if !self.ignore_crates.is_empty() {
-            // If we are ignoring certain module paths, ensure that the metadata
-            // does not start with one of those paths.
-            let target = metadata.target();
-            for ignored in &self.ignore_crates[..] {
-                if target.starts_with(ignored) {
-                    return false;
+        {
+            if !self.ignore_crates.is_empty() {
+                // If we are ignoring certain module paths, ensure that the metadata
+                // does not start with one of those paths.
+                let target = metadata.target();
+                for ignored in &self.ignore_crates[..] {
+                    if target.starts_with(ignored) {
+                        return false;
+                    }
                 }
             }
         }
