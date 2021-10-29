@@ -19,7 +19,8 @@ rust-version = "1.49.0"
 
 [features]
 default = ["log-tracer", "trace-logger", "std"]
-std = ["log/std", "tracing-core/std"]
+std = ["alloc", "log/std", "tracing-core/std"]
+alloc = []
 log-tracer = []
 trace-logger = []
 interest-cache = ["lru", "ahash", "lazy_static"]

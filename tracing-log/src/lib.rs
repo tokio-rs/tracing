@@ -130,6 +130,9 @@
     while_true
 )]
 
+#[cfg(all(feature = "alloc", feature = "log-tracer"))]
+extern crate alloc;
+
 use tracing_core::{
     callsite::{self, Callsite},
     field::{self, Field, Visit},
@@ -138,16 +141,16 @@ use tracing_core::{
     subscriber, Event, Metadata,
 };
 
-#[cfg(all(feature = "log-tracer", feature = "std"))]
-#[cfg_attr(docsrs, doc(all(feature = "log-tracer", feature = "std")))]
+#[cfg(all(feature = "log-tracer"))]
+#[cfg_attr(docsrs, doc(all(feature = "log-tracer")))]
 pub mod log_tracer;
 
 #[cfg(all(feature = "trace-logger", feature = "std"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "trace-logger", feature = "std"))))]
 pub mod trace_logger;
 
-#[cfg(all(feature = "log-tracer", feature = "std"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "log-tracer", feature = "std"))))]
+#[cfg(all(feature = "log-tracer"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
 
@@ -185,7 +188,7 @@ pub fn format_trace(record: &log::Record<'_>) -> std::io::Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "log-tracer"))]
 // XXX(eliza): this is factored out so that we don't have to deal with the pub
 // function `format_trace`'s `Result` return type...maybe we should get rid of
 // that in 0.2...
