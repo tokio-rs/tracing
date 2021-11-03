@@ -107,7 +107,7 @@ where
 
         self.format_timestamp(&mut writer)?;
 
-        let style = if self.display_level && writer.is_ansi() {
+        let style = if self.display_level && writer.has_ansi_escapes() {
             Pretty::style_for(meta.level())
         } else {
             Style::new()
@@ -118,7 +118,7 @@ where
         }
 
         if self.display_target {
-            let target_style = if writer.is_ansi() {
+            let target_style = if writer.has_ansi_escapes() {
                 style.bold()
             } else {
                 style
@@ -136,7 +136,7 @@ where
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = if writer.is_ansi() {
+        let dimmed = if writer.has_ansi_escapes() {
             Style::new().dimmed().italic()
         } else {
             Style::new()
@@ -175,7 +175,7 @@ where
             writer.write_char('\n')?;
         }
 
-        let bold = if writer.is_ansi() {
+        let bold = if writer.has_ansi_escapes() {
             Style::new().bold()
         } else {
             Style::new()
@@ -302,7 +302,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     fn bold(&self) -> Style {
-        if self.writer.is_ansi() {
+        if self.writer.has_ansi_escapes() {
             self.style.bold()
         } else {
             Style::new()
