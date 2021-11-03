@@ -1096,6 +1096,11 @@ impl Style {
     fn new() -> Self {
         Style
     }
+
+    fn bold(self) -> Self {
+        self
+    }
+
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
     }
