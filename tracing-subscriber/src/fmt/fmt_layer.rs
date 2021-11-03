@@ -500,6 +500,7 @@ where
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
+    was_ansi: bool,
     /// The formatted fields of a span.
     pub fields: String,
 }
@@ -509,6 +510,7 @@ impl<E: ?Sized> FormattedFields<E> {
     pub fn new(fields: String) -> Self {
         Self {
             fields,
+            was_ansi: false,
             _format_fields: PhantomData,
         }
     }
@@ -518,7 +520,7 @@ impl<E: ?Sized> FormattedFields<E> {
     /// The returned [`format::Writer`] can be used with the
     /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
-        format::Writer::new(&mut self.fields)
+        format::Writer::new(&mut self.fields).with_ansi(self.was_ansi)
     }
 }
 
@@ -527,6 +529,7 @@ impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
             .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
+            .field("was_ansi", &self.was_ansi)
             .finish()
     }
 }
@@ -580,6 +583,7 @@ where
                 .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
                 .is_ok()
             {
+                fields.was_ansi = self.is_ansi;
                 extensions.insert(fields);
             }
         }
@@ -614,6 +618,7 @@ where
             .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
             .is_ok()
         {
+            fields.was_ansi = self.is_ansi;
             extensions.insert(fields);
         }
     }
