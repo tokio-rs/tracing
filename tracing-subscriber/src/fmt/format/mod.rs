@@ -270,7 +270,7 @@ pub struct Full;
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
-    pub(crate) ansi: bool,
+    pub(crate) ansi: Option<bool>,
     pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
@@ -291,6 +291,7 @@ impl<'writer> Writer<'writer> {
             is_ansi: false,
         }
     }
+
     // TODO(eliza): consider making this a public API?
     pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
         Self { is_ansi, ..self }
@@ -372,7 +373,7 @@ impl<'writer> Writer<'writer> {
     /// and other formatting when writing to this `Writer`.
     ///
     /// If this returns `false`, formatters should not emit ANSI escape codes.
-    pub fn is_ansi(&self) -> bool {
+    pub fn has_ansi_escapes(&self) -> bool {
         self.is_ansi
     }
 }
@@ -398,6 +399,7 @@ impl fmt::Debug for Writer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Writer")
             .field("writer", &format_args!("<&mut dyn fmt::Write>"))
+            .field("is_ansi", &self.is_ansi)
             .finish()
     }
 }
@@ -409,7 +411,7 @@ impl Default for Format<Full, SystemTime> {
         Format {
             format: Full,
             timer: SystemTime,
-            ansi: true,
+            ansi: None,
             display_timestamp: true,
             display_target: true,
             display_level: true,
@@ -547,7 +549,10 @@ impl<F, T> Format<F, T> {
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
-        Format { ansi, ..self }
+        Format {
+            ansi: Some(ansi),
+            ..self
+        }
     }
 
     /// Sets whether or not an event's target is displayed.
@@ -602,7 +607,7 @@ impl<F, T> Format<F, T> {
         // colors.
         #[cfg(feature = "ansi")]
         {
-            if writer.is_ansi() {
+            if writer.has_ansi_escapes() {
                 let style = Style::new().dimmed();
                 write!(writer, "{}", style.prefix())?;
                 self.timer.format_time(writer)?;
@@ -677,6 +682,14 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
         self.format_timestamp(&mut writer)?;
 
         if self.display_level {
@@ -711,14 +724,21 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let full_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FullCtx::new(ctx, event.parent(), self.ansi)
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FullCtx::new(ctx, event.parent())
+        if let Some(scope) = ctx.ctx.event_scope(event) {
+            let bold = self.bold(writer.has_ansi_escapes());
+            let mut seen = false;
+
+            for span in scope.from_root() {
+                write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                seen = true;
+
+                let ext = span.extensions();
+                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                    }
+                }
+                writer.write_char(':')?;
             }
         };
 
@@ -786,8 +806,9 @@ where
         }
 
         if self.display_target {
-            write!(writer, "{}:", meta.target())?;
-            let target = if writer.is_ansi() {
+            let target = meta.target();
+            #[cfg(feature = "ansi")]
+            let target = if writer.has_ansi_escapes() {
                 Style::new().bold().paint(target)
             } else {
                 Style::new().paint(target)
@@ -815,7 +836,7 @@ where
 
         let scope = span.into_iter().flat_map(|span| span.scope());
         #[cfg(feature = "ansi")]
-        let dimmed = if writer.is_ansi() {
+        let dimmed = if writer.has_ansi_escapes() {
             Style::new().dimmed()
         } else {
             Style::new()
