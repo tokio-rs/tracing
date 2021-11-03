@@ -32,7 +32,8 @@ deprecated APIs, and more.
 - Replaced the [`chrono` crate] with the [`time` crate] for timestamp formatting, to
   resolve [RUSTSEC-2020-0159] ([#1646])
 - Removed `json` and `env-filter` from default features. They must now be
-  enabled explictly ([#1647])
+  enabled explictly ([#1647]). This means that `RUST_LOG`-based filters _will not_
+  work unless the `env-filter` feature is enabled.
 - Changed `FormatEvent::format_event` and `FormatFields::format_fields`
   trait methods to take a `Writer` type, rather than a `&mut dyn fmt::Write`
   trait object ([#1661])
