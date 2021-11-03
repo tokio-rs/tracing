@@ -36,7 +36,7 @@
 //!   **Requires "std"**.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
 //!   feature does nothing. **Requires "fmt" and "std"**.
-//! - [`local-time`]: Enables local time formatting when using the [`time`
+//! - `local-time`: Enables local time formatting when using the [`time`
 //!   crate]'s timestamp formatters with the `fmt` subscriber.
 //!
 //! ### Optional Dependencies
