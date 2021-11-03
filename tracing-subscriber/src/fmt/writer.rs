@@ -1025,6 +1025,8 @@ impl<A, B> Tee<A, B> {
     /// outputs.
     ///
     /// See the documentation for [`MakeWriterExt::and`] for details.
+    ///
+    /// [writers]: std::io::Write
     pub fn new(a: A, b: B) -> Self {
         Self { a, b }
     }
