@@ -801,7 +801,12 @@ where
         }
 
         if self.display_target {
-            write!(writer, "{}{} ", meta.target(), dimmed.paint(":"))?;
+            write!(
+                writer,
+                "{}{} ",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
