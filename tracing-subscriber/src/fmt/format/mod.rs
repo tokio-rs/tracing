@@ -378,6 +378,39 @@ impl<'writer> Writer<'writer> {
     pub fn has_ansi_escapes(&self) -> bool {
         self.is_ansi
     }
+
+    pub(in crate::fmt::format) fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().dimmed();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn italic(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().italic();
+            }
+        }
+
+        Style::new()
+    }
 }
 
 impl fmt::Write for Writer<'_> {
@@ -963,9 +996,17 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
+            let italic = self.writer.italic();
             self.record_debug(
                 field,
-                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+                &format_args!(
+                    "{} {}{}{}{}",
+                    value,
+                    italic.paint(field.name()),
+                    italic.paint(".sources"),
+                    self.writer.dimmed().paint("="),
+                    ErrorSourceList(source)
+                ),
             )
         } else {
             self.record_debug(field, &format_args!("{}", value))
@@ -983,8 +1024,20 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
-            name => write!(self.writer, "{}={:?}", name, value),
+            name if name.starts_with("r#") => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(&name[2..]),
+                self.writer.dimmed().paint("="),
+                value
+            ),
+            name => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(name),
+                self.writer.dimmed().paint("="),
+                value
+            ),
         };
     }
 }
