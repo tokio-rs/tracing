@@ -196,7 +196,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> Self {
-        Subscriber {
+        Self {
             is_ansi: ansi,
             ..self
         }

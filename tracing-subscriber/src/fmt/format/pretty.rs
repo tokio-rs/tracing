@@ -24,15 +24,9 @@ pub struct Pretty {
 
 /// The [visitor] produced by [`Pretty`]'s [`MakeVisitor`] implementation.
 ///
-<<<<<<< HEAD
-/// [visitor]: ../../field/trait.Visit.html
-/// [`DefaultFields`]: struct.DefaultFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
-=======
 /// [visitor]: field::Visit
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 #[derive(Debug)]
->>>>>>> 0c21ccfb (wip propagate ANSI color configuration via writer)
 pub struct PrettyVisitor<'a> {
     writer: Writer<'a>,
     is_empty: bool,
@@ -111,6 +105,14 @@ where
         let meta = event.metadata();
         write!(&mut writer, "  ")?;
 
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
         self.format_timestamp(&mut writer)?;
 
         let style = if self.display_level && writer.has_ansi_escapes() {
@@ -120,7 +122,11 @@ where
         };
 
         if self.display_level {
-            write!(writer, "{} ", super::FmtLevel::new(meta.level(), self.ansi))?;
+            write!(
+                writer,
+                "{} ",
+                super::FmtLevel::new(meta.level(), writer.has_ansi_escapes())
+            )?;
         }
 
         if self.display_target {

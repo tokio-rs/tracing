@@ -696,7 +696,7 @@ where
             let fmt_level = {
                 #[cfg(feature = "ansi")]
                 {
-                    FmtLevel::new(meta.level(), self.ansi)
+                    FmtLevel::new(meta.level(), writer.has_ansi_escapes())
                 }
                 #[cfg(not(feature = "ansi"))]
                 {
@@ -725,7 +725,11 @@ where
         }
 
         if let Some(scope) = ctx.ctx.event_scope(event) {
-            let bold = self.bold(writer.has_ansi_escapes());
+            let bold = if writer.has_ansi_escapes() {
+                Style::new().bold()
+            } else {
+                Style::new()
+            };
             let mut seen = false;
 
             for span in scope.from_root() {
@@ -740,9 +744,12 @@ where
                 }
                 writer.write_char(':')?;
             }
+
+            if seen {
+                writer.write_char(' ')?;
+            }
         };
 
-        write!(writer, "{}", full_ctx)?;
         if self.display_target {
             write!(writer, "{}: ", meta.target())?;
         }
@@ -771,13 +778,21 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
         self.format_timestamp(&mut writer)?;
 
         if self.display_level {
             let fmt_level = {
                 #[cfg(feature = "ansi")]
                 {
-                    FmtLevel::new(meta.level(), self.ansi)
+                    FmtLevel::new(meta.level(), writer.has_ansi_escapes())
                 }
                 #[cfg(not(feature = "ansi"))]
                 {
@@ -1064,85 +1079,6 @@ where
         for span in scope {
             seen = true;
             write!(f, "{}:", bold.paint(span.metadata().name()))?;
-        }
-
-        if seen {
-            f.write_char(' ')?;
-        }
-        Ok(())
-    }
-}
-
-struct FullCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    ctx: &'a FmtContext<'a, S, N>,
-    span: Option<&'a span::Id>,
-    #[cfg(feature = "ansi")]
-    ansi: bool,
-}
-
-impl<'a, S, N: 'a> FullCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    #[cfg(feature = "ansi")]
-    pub(crate) fn new(
-        ctx: &'a FmtContext<'a, S, N>,
-        span: Option<&'a span::Id>,
-        ansi: bool,
-    ) -> Self {
-        Self { ctx, span, ansi }
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    pub(crate) fn new(ctx: &'a FmtContext<'a, S, N>, span: Option<&'a span::Id>) -> Self {
-        Self { ctx, span }
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
-        }
-
-        Style::new()
-    }
-}
-
-impl<'a, S, N> fmt::Display for FullCtx<'a, S, N>
-where
-    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bold = self.bold();
-        let mut seen = false;
-
-        let span = self
-            .span
-            .and_then(|id| self.ctx.ctx.span(id))
-            .or_else(|| self.ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| span.scope().from_root());
-
-        for span in scope {
-            write!(f, "{}", bold.paint(span.metadata().name()))?;
-            seen = true;
-
-            let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(f, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
-            }
-            f.write_char(':')?;
         }
 
         if seen {
