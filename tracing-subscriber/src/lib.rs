@@ -80,7 +80,7 @@
 //! used without requiring the Rust standard library, although some features are
 //! disabled. Although most of the APIs provided by `tracing-subscriber`, such
 //! as [`fmt`] and [`EnvFilter`], require the standard library, some
-//! functionality, such as the [`Subscriber`] trait, can still be used in
+//! functionality, such as the [`Subscribe`] trait, can still be used in
 //! `no_std` environments.
 //!
 //! The dependency on the standard library is controlled by two crate feature
