@@ -685,17 +685,6 @@ impl<F, T> Format<F, T> {
         }
         writer.write_char(' ')
     }
-
-    fn bold(&self, is_ansi: bool) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi.unwrap_or(true) && is_ansi {
-                return Style::new().bold();
-            }
-        }
-
-        Style::new()
-    }
 }
 
 #[cfg(feature = "json")]
@@ -787,8 +776,10 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
+        let dimmed = writer.dimmed();
+
         if let Some(scope) = ctx.ctx.event_scope(event) {
-            let bold = self.bold(writer.has_ansi_escapes());
+            let bold = writer.bold();
             let mut seen = false;
 
             for span in scope.from_root() {
@@ -801,7 +792,7 @@ where
                         write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
                 }
-                writer.write_char(':')?;
+                write!(writer, "{}", dimmed.paint(":"))?;
             }
 
             if seen {
@@ -810,7 +801,7 @@ where
         }
 
         if self.display_target {
-            write!(writer, "{}: ", meta.target())?;
+            write!(writer, "{}{} ", meta.target(), dimmed.paint(":"))?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -859,25 +850,17 @@ where
         }
 
         if self.display_target {
-            let target = meta.target();
-            #[cfg(feature = "ansi")]
-            let target = if writer.has_ansi_escapes() {
-                Style::new().bold().paint(target)
-            } else {
-                Style::new().paint(target)
-            };
-
-            write!(writer, "{}:", target)?;
+            write!(
+                writer,
+                "{}{}",
+                writer.bold().paint(meta.target()),
+                writer.dimmed().paint(":")
+            )?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        #[cfg(feature = "ansi")]
-        let dimmed = if writer.has_ansi_escapes() {
-            Style::new().dimmed()
-        } else {
-            Style::new()
-        };
+        let dimmed = writer.dimmed();
         for span in ctx
             .ctx
             .event_scope(event)
@@ -888,9 +871,7 @@ where
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
-                    #[cfg(feature = "ansi")]
-                    let fields = dimmed.paint(fields.as_str());
-                    write!(writer, " {}", fields)?;
+                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
             }
         }
