@@ -229,6 +229,8 @@ where
 ///
 /// Additionally, a `Writer` may expose additional `tracing`-specific
 /// information to the formatter implementation.
+///
+/// [fields]: tracing_core::field
 pub struct Writer<'writer> {
     writer: &'writer mut dyn fmt::Write,
     // TODO(eliza): add ANSI support
