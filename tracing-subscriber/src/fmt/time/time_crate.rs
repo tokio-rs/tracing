@@ -6,12 +6,26 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///
 /// To format the current [UTC time] instead, use the [`UtcTime`] type.
 ///
+/// <div class="example-wrap" style="display:inline-block">
+/// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/"><code>time</code>
+///     crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
+///     local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
+///     events will be logged without timestamps.
+///
+///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
+///    documentation</a> for more details.
+/// </pre></div>
+///
 /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
 /// [UTC time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
 /// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
 /// [`time` crate]: https://docs.rs/time/0.3/time/
 #[derive(Clone, Debug)]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "time", feature = "local-time"))))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(all(unsound_local_offset, feature = "time", feature = "local-time")))
+)]
 #[cfg(feature = "local-time")]
 pub struct LocalTime<F> {
     format: F,
@@ -62,15 +76,28 @@ impl<F: Formattable> LocalTime<F> {
     /// [`time` crate] with the provided provided format. The format may be any
     /// type that implements the [`Formattable`] trait.
     ///
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+    ///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/">
+    ///     <code>time</code> crate</a> must be compiled with <code>--cfg
+    ///     unsound_local_offset</code> in order to use local timestamps. When this
+    ///     cfg is not enabled, local timestamps cannot be recorded, and
+    ///     events will be logged without timestamps.
+    ///
+    ///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags">
+    ///    <code>time</code> documentation</a> for more details.
+    /// </pre></div>
+    ///
     /// Typically, the format will be a format description string, or one of the
     /// `time` crate's [well-known formats].
     ///
     /// If the format description is statically known, then the
     /// [`format_description!`] macro should be used. This is identical to the
-    /// [`time::format_description::parse] method, but runs at compile-time,
+    /// [`time::format_description::parse`] method, but runs at compile-time,
     /// throwing an error if the format description is invalid. If the desired format
     /// is not known statically (e.g., a user is providing a format string), then the
-    /// [`time::format_description::parse]` method should be used. Note that this
+    /// [`time::format_description::parse`] method should be used. Note that this
     /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.
@@ -184,10 +211,10 @@ impl<F: Formattable> UtcTime<F> {
     ///
     /// If the format description is statically known, then the
     /// [`format_description!`] macro should be used. This is identical to the
-    /// [`time::format_description::parse] method, but runs at compile-time,
+    /// [`time::format_description::parse`] method, but runs at compile-time,
     /// failing  an error if the format description is invalid. If the desired format
     /// is not known statically (e.g., a user is providing a format string), then the
-    /// [`time::format_description::parse]` method should be used. Note that this
+    /// [`time::format_description::parse`] method should be used. Note that this
     /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.

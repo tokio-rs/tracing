@@ -229,6 +229,8 @@ where
 ///
 /// Additionally, a `Writer` may expose additional `tracing`-specific
 /// information to the formatter implementation.
+///
+/// [fields]: tracing_core::field
 pub struct Writer<'writer> {
     writer: &'writer mut dyn fmt::Write,
     // TODO(eliza): add ANSI support
@@ -378,7 +380,7 @@ impl<'writer> Writer<'writer> {
     pub fn has_ansi_escapes(&self) -> bool {
         self.is_ansi
     }
-
+  
     pub(in crate::fmt::format) fn bold(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
@@ -780,6 +782,7 @@ where
 
         if let Some(scope) = ctx.ctx.event_scope(event) {
             let bold = writer.bold();
+
             let mut seen = false;
 
             for span in scope.from_root() {
