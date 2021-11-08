@@ -67,6 +67,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
+    is_ansi: bool,
     _inner: PhantomData<C>,
 }
 
@@ -114,6 +115,7 @@ where
             fmt_event: e,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -148,6 +150,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
             make_writer,
             _inner: self._inner,
         }
@@ -180,8 +183,19 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
             make_writer: TestWriter::default(),
             _inner: self._inner,
+        }
+    }
+
+    /// Enable ANSI terminal colors for formatted output.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn with_ansi(self, ansi: bool) -> Self {
+        Subscriber {
+            is_ansi: ansi,
+            ..self
         }
     }
 }
@@ -210,6 +224,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -221,6 +236,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.without_time(),
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -269,16 +285,6 @@ where
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
             fmt_span: self.fmt_span.with_kind(kind),
-            ..self
-        }
-    }
-
-    /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.with_ansi(ansi),
             ..self
         }
     }
@@ -337,6 +343,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -350,6 +357,7 @@ where
             fmt_fields: format::Pretty::default(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -377,6 +385,8 @@ where
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            // always disable ANSI escapes in JSON mode!
+            is_ansi: false,
             _inner: self._inner,
         }
     }
@@ -442,6 +452,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -454,6 +465,7 @@ impl<C> Default for Subscriber<C> {
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
+            is_ansi: cfg!(feature = "ansi"),
             _inner: PhantomData,
         }
     }
@@ -487,6 +499,7 @@ where
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
+    was_ansi: bool,
     /// The formatted fields of a span.
     pub fields: String,
 }
@@ -496,6 +509,7 @@ impl<E: ?Sized> FormattedFields<E> {
     pub fn new(fields: String) -> Self {
         Self {
             fields,
+            was_ansi: false,
             _format_fields: PhantomData,
         }
     }
@@ -505,7 +519,7 @@ impl<E: ?Sized> FormattedFields<E> {
     /// The returned [`format::Writer`] can be used with the
     /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
-        format::Writer::new(&mut self.fields)
+        format::Writer::new(&mut self.fields).with_ansi(self.was_ansi)
     }
 }
 
@@ -514,6 +528,7 @@ impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
             .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
+            .field("was_ansi", &self.was_ansi)
             .finish()
     }
 }
@@ -564,9 +579,10 @@ where
             let mut fields = FormattedFields::<N>::new(String::new());
             if self
                 .fmt_fields
-                .format_fields(fields.as_writer(), attrs)
+                .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
                 .is_ok()
             {
+                fields.was_ansi = self.is_ansi;
                 extensions.insert(fields);
             }
         }
@@ -598,9 +614,10 @@ where
         let mut fields = FormattedFields::<N>::new(String::new());
         if self
             .fmt_fields
-            .format_fields(fields.as_writer(), values)
+            .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
             .is_ok()
         {
+            fields.was_ansi = self.is_ansi;
             extensions.insert(fields);
         }
     }
@@ -705,7 +722,11 @@ where
             let ctx = self.make_ctx(ctx);
             if self
                 .fmt_event
-                .format_event(&ctx, format::Writer::new(&mut buf), event)
+                .format_event(
+                    &ctx,
+                    format::Writer::new(&mut buf).with_ansi(self.is_ansi),
+                    event,
+                )
                 .is_ok()
             {
                 let mut writer = self.make_writer.make_writer_for(event.metadata());

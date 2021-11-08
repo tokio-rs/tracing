@@ -234,6 +234,7 @@ where
 pub struct Writer<'writer> {
     writer: &'writer mut dyn fmt::Write,
     // TODO(eliza): add ANSI support
+    is_ansi: bool,
 }
 
 /// A [`FormatFields`] implementation that formats fields by calling a function
@@ -273,7 +274,7 @@ pub struct Full;
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
-    pub(crate) ansi: bool,
+    pub(crate) ansi: Option<bool>,
     pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
@@ -291,7 +292,13 @@ impl<'writer> Writer<'writer> {
     pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
             writer: writer as &mut dyn fmt::Write,
+            is_ansi: false,
         }
+    }
+
+    // TODO(eliza): consider making this a public API?
+    pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
+        Self { is_ansi, ..self }
     }
 
     /// Return a new `Writer` that mutably borrows `self`.
@@ -300,7 +307,11 @@ impl<'writer> Writer<'writer> {
     /// to a function that takes a `Writer` by value, allowing the original writer
     /// to still be used once that function returns.
     pub fn by_ref(&mut self) -> Writer<'_> {
-        Writer::new(self)
+        let is_ansi = self.is_ansi;
+        Writer {
+            writer: self as &mut dyn fmt::Write,
+            is_ansi,
+        }
     }
 
     /// Writes a string slice into this `Writer`, returning whether the write succeeded.
@@ -346,7 +357,7 @@ impl<'writer> Writer<'writer> {
         self.writer.write_char(c)
     }
 
-    /// Glue for usage of the [`write!`] macro with `Wrriter`s.
+    /// Glue for usage of the [`write!`] macro with `Writer`s.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
@@ -360,6 +371,14 @@ impl<'writer> Writer<'writer> {
     /// [`write_fmt` method]: std::fmt::Write::write_fmt
     pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
         self.writer.write_fmt(args)
+    }
+
+    /// Returns `true` if ANSI escape codes may be used to add colors
+    /// and other formatting when writing to this `Writer`.
+    ///
+    /// If this returns `false`, formatters should not emit ANSI escape codes.
+    pub fn has_ansi_escapes(&self) -> bool {
+        self.is_ansi
     }
 }
 
@@ -384,6 +403,7 @@ impl fmt::Debug for Writer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Writer")
             .field("writer", &format_args!("<&mut dyn fmt::Write>"))
+            .field("is_ansi", &self.is_ansi)
             .finish()
     }
 }
@@ -395,7 +415,7 @@ impl Default for Format<Full, SystemTime> {
         Format {
             format: Full,
             timer: SystemTime,
-            ansi: true,
+            ansi: None,
             display_timestamp: true,
             display_target: true,
             display_level: true,
@@ -532,7 +552,10 @@ impl<F, T> Format<F, T> {
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
-        Format { ansi, ..self }
+        Format {
+            ansi: Some(ansi),
+            ..self
+        }
     }
 
     /// Sets whether or not an event's target is displayed.
@@ -573,7 +596,7 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    fn format_level(&self, level: Level, writer: &mut dyn fmt::Write) -> fmt::Result
+    fn format_level(&self, level: Level, writer: &mut Writer<'_>) -> fmt::Result
     where
         F: LevelNames,
     {
@@ -581,7 +604,7 @@ impl<F, T> Format<F, T> {
             let fmt_level = {
                 #[cfg(feature = "ansi")]
                 {
-                    F::format_level(level, self.ansi)
+                    F::format_level(level, writer.has_ansi_escapes())
                 }
                 #[cfg(not(feature = "ansi"))]
                 {
@@ -608,7 +631,7 @@ impl<F, T> Format<F, T> {
         // colors.
         #[cfg(feature = "ansi")]
         {
-            if self.ansi {
+            if writer.has_ansi_escapes() {
                 let style = Style::new().dimmed();
                 write!(writer, "{}", style.prefix())?;
 
@@ -632,10 +655,10 @@ impl<F, T> Format<F, T> {
         writer.write_char(' ')
     }
 
-    fn bold(&self) -> Style {
+    fn bold(&self, is_ansi: bool) -> Style {
         #[cfg(feature = "ansi")]
         {
-            if self.ansi {
+            if self.ansi.unwrap_or(true) && is_ansi {
                 return Style::new().bold();
             }
         }
@@ -704,6 +727,14 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
         self.format_timestamp(&mut writer)?;
         self.format_level(*meta.level(), &mut writer)?;
 
@@ -726,7 +757,7 @@ where
         }
 
         if let Some(scope) = ctx.ctx.event_scope(event) {
-            let bold = self.bold();
+            let bold = self.bold(writer.has_ansi_escapes());
             let mut seen = false;
 
             for span in scope.from_root() {
@@ -799,7 +830,7 @@ where
         if self.display_target {
             let target = meta.target();
             #[cfg(feature = "ansi")]
-            let target = if self.ansi {
+            let target = if writer.has_ansi_escapes() {
                 Style::new().bold().paint(target)
             } else {
                 Style::new().paint(target)
@@ -811,7 +842,7 @@ where
         ctx.format_fields(writer.by_ref(), event)?;
 
         #[cfg(feature = "ansi")]
-        let dimmed = if self.ansi {
+        let dimmed = if writer.has_ansi_escapes() {
             Style::new().dimmed()
         } else {
             Style::new()
