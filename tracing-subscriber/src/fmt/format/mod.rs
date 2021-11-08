@@ -1445,7 +1445,7 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: hello\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
         test_ansi(true, expected);
     }
 
