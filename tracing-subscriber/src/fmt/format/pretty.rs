@@ -187,11 +187,7 @@ where
             writer.write_char('\n')?;
         }
 
-        let bold = if writer.has_ansi_escapes() {
-            Style::new().bold()
-        } else {
-            Style::new()
-        };
+        let bold = writer.bold();
         let span = event
             .parent()
             .and_then(|id| ctx.span(id))

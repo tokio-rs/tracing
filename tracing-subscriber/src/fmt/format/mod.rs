@@ -376,6 +376,39 @@ impl<'writer> Writer<'writer> {
     pub fn has_ansi_escapes(&self) -> bool {
         self.is_ansi
     }
+
+    pub(in crate::fmt::format) fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().dimmed();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn italic(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().italic();
+            }
+        }
+
+        Style::new()
+    }
 }
 
 impl fmt::Write for Writer<'_> {
@@ -724,12 +757,11 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
+        let dimmed = writer.dimmed();
+
         if let Some(scope) = ctx.ctx.event_scope(event) {
-            let bold = if writer.has_ansi_escapes() {
-                Style::new().bold()
-            } else {
-                Style::new()
-            };
+            let bold = writer.bold();
+
             let mut seen = false;
 
             for span in scope.from_root() {
@@ -742,7 +774,7 @@ where
                         write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
                 }
-                writer.write_char(':')?;
+                write!(writer, "{}", dimmed.paint(":"))?;
             }
 
             if seen {
@@ -751,7 +783,12 @@ where
         };
 
         if self.display_target {
-            write!(writer, "{}: ", meta.target())?;
+            write!(
+                writer,
+                "{}{} ",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -821,15 +858,12 @@ where
         }
 
         if self.display_target {
-            let target = meta.target();
-            #[cfg(feature = "ansi")]
-            let target = if writer.has_ansi_escapes() {
-                Style::new().bold().paint(target)
-            } else {
-                Style::new().paint(target)
-            };
-
-            write!(writer, "{}:", target)?;
+            write!(
+                writer,
+                "{}{}",
+                writer.bold().paint(meta.target()),
+                writer.dimmed().paint(":")
+            )?;
         }
 
         let fmt_ctx = {
@@ -844,25 +878,18 @@ where
         };
         write!(writer, "{}", fmt_ctx)?;
 
-        let span = event
-            .parent()
-            .and_then(|id| ctx.ctx.span(id))
-            .or_else(|| ctx.ctx.lookup_current());
-
-        let scope = span.into_iter().flat_map(|span| span.scope());
-        #[cfg(feature = "ansi")]
-        let dimmed = if writer.has_ansi_escapes() {
-            Style::new().dimmed()
-        } else {
-            Style::new()
-        };
-        for span in scope {
+        let dimmed = writer.dimmed();
+        for span in ctx
+            .ctx
+            .event_scope(event)
+            .into_iter()
+            .map(crate::registry::Scope::from_root)
+            .flatten()
+        {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
-                    #[cfg(feature = "ansi")]
-                    let fields = dimmed.paint(fields.as_str());
-                    write!(writer, " {}", fields)?;
+                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
             }
         }
@@ -969,9 +996,17 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
+            let italic = self.writer.italic();
             self.record_debug(
                 field,
-                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+                &format_args!(
+                    "{} {}{}{}{}",
+                    value,
+                    italic.paint(field.name()),
+                    italic.paint(".sources"),
+                    self.writer.dimmed().paint("="),
+                    ErrorSourceList(source)
+                ),
             )
         } else {
             self.record_debug(field, &format_args!("{}", value))
@@ -989,8 +1024,20 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
-            name => write!(self.writer, "{}={:?}", name, value),
+            name if name.starts_with("r#") => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(&name[2..]),
+                self.writer.dimmed().paint("="),
+                value
+            ),
+            name => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(name),
+                self.writer.dimmed().paint("="),
+                value
+            ),
         };
     }
 }
@@ -1459,7 +1506,7 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: hello\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
         test_ansi(true, expected);
     }
 
