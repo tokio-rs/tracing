@@ -103,7 +103,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 #[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {
-    _guard: Option<JoinHandle<()>>,
+    handle: Option<JoinHandle<()>>,
     sender: Sender<Msg>,
     shutdown: Sender<()>,
 }
@@ -259,7 +259,7 @@ impl<'a> MakeWriter<'a> for NonBlocking {
 impl WorkerGuard {
     fn new(handle: JoinHandle<()>, sender: Sender<Msg>, shutdown: Sender<()>) -> Self {
         WorkerGuard {
-            _guard: Some(handle),
+            handle: Some(handle),
             sender,
             shutdown,
         }
@@ -277,7 +277,16 @@ impl Drop for WorkerGuard {
                 // when the `Worker` calls `recv()` on a zero-capacity channel. Use `send_timeout`
                 // so that drop is not blocked indefinitely.
                 // TODO: Make timeout configurable.
-                let _ = self.shutdown.send_timeout((), Duration::from_millis(1000));
+                match self.shutdown.send_timeout((), Duration::from_millis(1000)) {
+                    Err(SendTimeoutError::Disconnected(_)) => (),
+                    Err(SendTimeoutError::Timeout(e)) => {
+                        println!("Failed to wait for logging worker shutdown. Error: {:?}", e);
+                    }
+                    Ok(_) => {
+                        // At this point it is safe to wait for `Worker` destruction without blocking
+                        self.handle.take().map(std::thread::JoinHandle::join);
+                    }
+                }
             }
             Err(SendTimeoutError::Disconnected(_)) => (),
             Err(SendTimeoutError::Timeout(e)) => println!(

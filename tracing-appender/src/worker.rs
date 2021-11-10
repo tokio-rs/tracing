@@ -74,15 +74,12 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
                     Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
                     Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
                         let _ = self.shutdown.recv();
-                        break;
+                        return;
                     }
                     Err(_) => {
                         // TODO: Expose a metric for IO Errors, or print to stderr
                     }
                 }
-            }
-            if let Err(e) = self.writer.flush() {
-                eprintln!("Failed to flush. Error: {}", e);
             }
         })
     }
