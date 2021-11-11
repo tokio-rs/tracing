@@ -18,7 +18,7 @@ Macro attributes for application-level tracing.
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
 [docs-badge]: https://docs.rs/tracing-attributes/badge.svg
-[docs-url]: https://docs.rs/tracing-attributes/0.1.11
+[docs-url]: https://docs.rs/tracing-attributes
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_attributes
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg

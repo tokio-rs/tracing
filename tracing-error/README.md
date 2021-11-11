@@ -18,9 +18,9 @@ information.
 [Documentation (release)][docs-url] | [Documentation (master)][docs-master-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-error.svg
-[crates-url]: https://crates.io/crates/tracing-error/0.1.2
+[crates-url]: https://crates.io/crates/tracing-error
 [docs-badge]: https://docs.rs/tracing-error/badge.svg
-[docs-url]: https://docs.rs/tracing-error/0.1.2/tracing_error
+[docs-url]: https://docs.rs/tracing-error
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_error
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg

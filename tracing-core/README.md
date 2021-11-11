@@ -16,9 +16,9 @@ Core primitives for application-level tracing.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
-[crates-url]: https://crates.io/crates/tracing-core/0.1.17
+[crates-url]: https://crates.io/crates/tracing-core
 [docs-badge]: https://docs.rs/tracing-core/badge.svg
-[docs-url]: https://docs.rs/tracing-core/0.1.17
+[docs-url]: https://docs.rs/tracing-core
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
