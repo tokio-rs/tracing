@@ -277,10 +277,11 @@ impl Drop for WorkerGuard {
                 // when the `Worker` calls `recv()` on a zero-capacity channel. Use `send_timeout`
                 // so that drop is not blocked indefinitely.
                 // TODO: Make timeout configurable.
-                match self.shutdown.send_timeout((), Duration::from_millis(1000)) {
+                let timeout = Duration::from_millis(1000);
+                match self.shutdown.send_timeout((), timeout) {
                     Err(SendTimeoutError::Disconnected(_)) => (),
-                    Err(SendTimeoutError::Timeout(e)) => {
-                        println!("Failed to wait for logging worker shutdown. Error: {:?}", e);
+                    Err(SendTimeoutError::Timeout(_)) => {
+                        eprintln!("Shutting down logging worker timed out after {:?}.", timeout);
                     }
                     Ok(_) => {
                         // At this point it is safe to wait for `Worker` destruction without blocking
