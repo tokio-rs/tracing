@@ -277,14 +277,13 @@ impl Drop for WorkerGuard {
                 // TODO: Make timeout configurable.
                 let timeout = Duration::from_millis(1000);
                 match self.shutdown.send_timeout((), timeout) {
-                    Err(SendTimeoutError::Disconnected(_)) => (),
                     Err(SendTimeoutError::Timeout(_)) => {
                         eprintln!(
                             "Shutting down logging worker timed out after {:?}.",
                             timeout
                         );
                     }
-                    Ok(_) => {
+                    _ => {
                         // At this point it is safe to wait for `Worker` destruction without blocking
                         self.handle.take().map(std::thread::JoinHandle::join);
                     }
