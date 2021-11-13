@@ -285,7 +285,11 @@ impl Drop for WorkerGuard {
                     }
                     _ => {
                         // At this point it is safe to wait for `Worker` destruction without blocking
-                        self.handle.take().map(std::thread::JoinHandle::join);
+                        if let Some(handle) = self.handle.take() {
+                            if handle.join().is_err() {
+                                eprintln!("Logging worker thread panicked");
+                            }
+                        };
                     }
                 }
             }
