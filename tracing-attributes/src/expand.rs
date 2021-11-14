@@ -9,7 +9,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{ErrorMode, Field, Fields, InstrumentArgs},
+    attr::{Field, Fields, FormatMode, InstrumentArgs},
     MaybeItemFnRef,
 };
 
@@ -191,8 +191,14 @@ fn gen_block<B: ToTokens>(
     })();
 
     let err_event = match args.err_mode {
-        Some(ErrorMode::Display) => Some(quote!(tracing::error!(error = %e))),
-        Some(ErrorMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        Some(FormatMode::Display) => Some(quote!(tracing::error!(error = %e))),
+        Some(FormatMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        _ => None,
+    };
+
+    let ret_event = match args.ret_mode {
+        Some(FormatMode::Display) => Some(quote!(tracing::trace!(return = %#block))),
+        Some(FormatMode::Debug) => Some(quote!(tracing::trace!(return = ?#block))),
         _ => None,
     };
 
@@ -202,8 +208,21 @@ fn gen_block<B: ToTokens>(
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
     if async_context {
-        let mk_fut = match err_event {
-            Some(err_event) => quote_spanned!(block.span()=>
+        let mk_fut = match (err_event, ret_event) {
+            (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
+                async move {
+                    #ret_event;
+                    match async move { #block }.await {
+                        #[allow(clippy::unit_arg)]
+                        Ok(x) => Ok(x),
+                        Err(e) => {
+                            #err_event;
+                            Err(e)
+                        }
+                    }
+                }
+            ),
+            (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
@@ -215,7 +234,13 @@ fn gen_block<B: ToTokens>(
                     }
                 }
             ),
-            None => quote_spanned!(block.span()=>
+            (None, Some(ret_event)) => quote_spanned!(block.span()=>
+                async move {
+                    #ret_event;
+                    #block
+                }
+            ),
+            (None, None) => quote_spanned!(block.span()=>
                 async move { #block }
             ),
         };
@@ -254,8 +279,21 @@ fn gen_block<B: ToTokens>(
         }
     );
 
-    if let Some(err_event) = err_event {
-        return quote_spanned!(block.span()=>
+    match (err_event, ret_event) {
+        (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
+            #span
+            #ret_event;
+            #[allow(clippy::redundant_closure_call)]
+            match (move || #block)() {
+                #[allow(clippy::unit_arg)]
+                Ok(x) => Ok(x),
+                Err(e) => {
+                    #err_event;
+                    Err(e)
+                }
+            }
+        },
+        (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
@@ -266,22 +304,26 @@ fn gen_block<B: ToTokens>(
                     Err(e)
                 }
             }
-        );
-    }
-
-    quote_spanned!(block.span() =>
-        // Because `quote` produces a stream of tokens _without_ whitespace, the
-        // `if` and the block will appear directly next to each other. This
-        // generates a clippy lint about suspicious `if/else` formatting.
-        // Therefore, suppress the lint inside the generated code...
-        #[allow(clippy::suspicious_else_formatting)]
-        {
+        ),
+        (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
-            // ...but turn the lint back on inside the function body.
-            #[warn(clippy::suspicious_else_formatting)]
+            #ret_event;
             #block
-        }
-    )
+        ),
+        (None, None) => quote_spanned!(block.span() =>
+            // Because `quote` produces a stream of tokens _without_ whitespace, the
+            // `if` and the block will appear directly next to each other. This
+            // generates a clippy lint about suspicious `if/else` formatting.
+            // Therefore, suppress the lint inside the generated code...
+            #[allow(clippy::suspicious_else_formatting)]
+            {
+                #span
+                // ...but turn the lint back on inside the function body.
+                #[warn(clippy::suspicious_else_formatting)]
+                #block
+            }
+        ),
+    }
 }
 
 /// Indicates whether a field should be recorded as `Value` or `Debug`.
