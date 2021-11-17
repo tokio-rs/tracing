@@ -197,8 +197,8 @@ fn gen_block<B: ToTokens>(
     };
 
     let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::trace!(return = %x))),
-        Some(FormatMode::Debug) => Some(quote!(tracing::trace!(return = ?x))),
+        Some(FormatMode::Display) => Some(quote!(tracing::event!(#level, return = %x))),
+        Some(FormatMode::Debug) => Some(quote!(tracing::event!(#level, return = ?x))),
         _ => None,
     };
 

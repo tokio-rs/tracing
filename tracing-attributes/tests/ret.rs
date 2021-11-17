@@ -24,7 +24,7 @@ fn test() {
         .event(
             event::mock()
                 .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -32,6 +32,31 @@ fn test() {
         .run_with_handle();
 
     with_default(collector, ret);
+    handle.assert_finished();
+}
+
+#[instrument(level = "warn", ret)]
+fn ret_warn() -> i32 {
+    42
+}
+
+#[test]
+fn test_warn() {
+    let span = span::mock().named("ret_warn");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock()
+                .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
+                .at_level(Level::WARN),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, ret_warn);
     handle.assert_finished();
 }
 
@@ -56,7 +81,7 @@ fn test_mut() {
         .event(
             event::mock()
                 .with_fields(field::mock("return").with_value(&tracing::field::display(2)))
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -81,7 +106,7 @@ fn test_async() {
         .event(
             event::mock()
                 .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -106,7 +131,7 @@ fn test_impl_type() {
         .event(
             event::mock()
                 .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -131,7 +156,7 @@ fn test_dbg() {
         .event(
             event::mock()
                 .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -189,7 +214,7 @@ fn test_ret_and_ok() {
                         .with_value(&tracing::field::display(u8::try_from(123).unwrap()))
                         .only(),
                 )
-                .at_level(Level::TRACE),
+                .at_level(Level::INFO),
         )
         .exit(span.clone())
         .drop_span(span)
