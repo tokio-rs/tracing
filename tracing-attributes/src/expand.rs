@@ -197,8 +197,8 @@ fn gen_block<B: ToTokens>(
     };
 
     let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::trace!(return = %#block))),
-        Some(FormatMode::Debug) => Some(quote!(tracing::trace!(return = ?#block))),
+        Some(FormatMode::Display) => Some(quote!(tracing::trace!(return = %x))),
+        Some(FormatMode::Debug) => Some(quote!(tracing::trace!(return = ?x))),
         _ => None,
     };
 
@@ -207,6 +207,8 @@ fn gen_block<B: ToTokens>(
     // which is `instrument`ed using `tracing-futures`. Otherwise, this will
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
+    // If `ret` is in args, instrument any resulting `Ok`s when the function
+    // returns `Result`s, otherwise instrument any resulting values.
     if async_context {
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
@@ -214,7 +216,10 @@ fn gen_block<B: ToTokens>(
                     #ret_event;
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
-                        Ok(x) => Ok(x),
+                        Ok(x) => {
+                            #ret_event;
+                            Ok(x)
+                        },
                         Err(e) => {
                             #err_event;
                             Err(e)
@@ -236,8 +241,9 @@ fn gen_block<B: ToTokens>(
             ),
             (None, Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
+                    let x = async move { #block }.await;
                     #ret_event;
-                    #block
+                    x
                 }
             ),
             (None, None) => quote_spanned!(block.span()=>
@@ -282,11 +288,13 @@ fn gen_block<B: ToTokens>(
     match (err_event, ret_event) {
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
             #span
-            #ret_event;
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
-                Ok(x) => Ok(x),
+                Ok(x) => {
+                    #ret_event;
+                    Ok(x)
+                },
                 Err(e) => {
                     #err_event;
                     Err(e)
@@ -307,8 +315,9 @@ fn gen_block<B: ToTokens>(
         ),
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
+            let x = (move || #block)();
             #ret_event;
-            #block
+            x
         ),
         (None, None) => quote_spanned!(block.span() =>
             // Because `quote` produces a stream of tokens _without_ whitespace, the

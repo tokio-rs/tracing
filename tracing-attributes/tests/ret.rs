@@ -36,6 +36,38 @@ fn test() {
 }
 
 #[instrument(ret)]
+fn ret_mut(a: &mut i32) -> i32 {
+    *a *= 2;
+    tracing::info!(?a);
+    *a
+}
+
+#[test]
+fn test_mut() {
+    let span = span::mock().named("ret_mut");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock()
+                .with_fields(field::mock("a").with_value(&tracing::field::display(2)))
+                .at_level(Level::INFO),
+        )
+        .event(
+            event::mock()
+                .with_fields(field::mock("return").with_value(&tracing::field::display(2)))
+                .at_level(Level::TRACE),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || ret_mut(&mut 1));
+    handle.assert_finished();
+}
+
+#[instrument(ret)]
 async fn ret_async() -> i32 {
     42
 }
@@ -121,14 +153,14 @@ fn test_ret_and_err() {
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::mock().with_fields(
-            field::mock("return").with_value(&tracing::field::debug(u8::try_from(1234))),
-        ))
         .event(
-            event::mock().with_fields(
-                field::mock("error")
-                    .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())),
-            ),
+            event::mock()
+                .with_fields(
+                    field::mock("error")
+                        .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err()))
+                        .only(),
+                )
+                .at_level(Level::ERROR),
         )
         .exit(span.clone())
         .drop_span(span)
@@ -136,5 +168,34 @@ fn test_ret_and_err() {
         .run_with_handle();
 
     with_default(collector, || ret_and_err().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err, ret(Debug))]
+fn ret_and_ok() -> Result<u8, TryFromIntError> {
+    u8::try_from(123)
+}
+
+#[test]
+fn test_ret_and_ok() {
+    let span = span::mock().named("ret_and_ok");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock()
+                .with_fields(
+                    field::mock("return")
+                        .with_value(&tracing::field::display(u8::try_from(123).unwrap()))
+                        .only(),
+                )
+                .at_level(Level::TRACE),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || ret_and_ok().ok());
     handle.assert_finished();
 }
