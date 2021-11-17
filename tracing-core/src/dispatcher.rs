@@ -255,11 +255,11 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// Can only be set once; subsequent attempts to set the global default will fail.
 /// Returns `Err` if the global default has already been set.
 ///
-/// <pre class="compile_fail" style="white-space:normal;font:inherit;">
+/// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 ///     <strong>Warning</strong>: In general, libraries should <em>not</em> call
 ///     <code>set_global_default()</code>! Doing so will cause conflicts when
 ///     executables that depend on the library try to set the default later.
-/// </pre>
+/// </pre></div>
 ///
 /// [span]: ../span/index.html
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html

@@ -51,13 +51,14 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
-//! </pre>
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  `Span::enter` may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
+//! </pre></div>
 //!
 //! ## Events
 //!
