@@ -76,7 +76,7 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
 //!  [`Span::enter`] may produce incorrect traces if the returned drop
