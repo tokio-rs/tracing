@@ -176,6 +176,31 @@ mod expand;
 /// }
 /// ```
 ///
+/// To record a returned value from a function, you can use `ret`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret)]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
+///
+/// Note that if the function returns a `Result<T, E>`, `ret` will record returned values iff the
+/// function returns [`Result::Ok`].
+///
+/// By default, returned values will be recorded using their [`std::fmt::Display`] implementations.
+/// If a returned value implements [`std::fmt::Debug`], it can be recorded using its `Debug`
+/// implementation instead, by writing `ret(Debug)`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(Debug))]
+/// fn my_function() -> Option<()> {
+///     Some(())
+/// }
+/// ```
+///
 /// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, you can add
 /// `err` or `err(Display)` to emit error events when the function returns `Err`:
 ///
@@ -194,6 +219,17 @@ mod expand;
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err(Debug))]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
+/// With the aforementioned `ret`, you can record a returned value in either case whether a function
+/// returns [`Result::Ok`] or [`Result::Err`]:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err, ret(Debug))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
