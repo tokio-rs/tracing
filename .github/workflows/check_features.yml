@@ -28,6 +28,7 @@ env:
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
 
+jobs:
   cargo-hack:
     runs-on: ubuntu-latest
     strategy:
