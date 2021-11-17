@@ -167,7 +167,7 @@ fn test_dbg() {
     handle.assert_finished();
 }
 
-#[instrument(err, ret(Debug))]
+#[instrument(err, ret)]
 fn ret_and_err() -> Result<u8, TryFromIntError> {
     u8::try_from(1234)
 }
@@ -196,7 +196,7 @@ fn test_ret_and_err() {
     handle.assert_finished();
 }
 
-#[instrument(err, ret(Debug))]
+#[instrument(err, ret)]
 fn ret_and_ok() -> Result<u8, TryFromIntError> {
     u8::try_from(123)
 }
