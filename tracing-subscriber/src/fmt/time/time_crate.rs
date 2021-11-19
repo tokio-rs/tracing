@@ -67,10 +67,10 @@ impl<F: Formattable> LocalTime<F> {
     ///
     /// If the format description is statically known, then the
     /// [`format_description!`] macro should be used. This is identical to the
-    /// [`time::format_description::parse] method, but runs at compile-time,
+    /// [`time::format_description::parse`] method, but runs at compile-time,
     /// throwing an error if the format description is invalid. If the desired format
     /// is not known statically (e.g., a user is providing a format string), then the
-    /// [`time::format_description::parse]` method should be used. Note that this
+    /// [`time::format_description::parse`] method should be used. Note that this
     /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.
@@ -184,10 +184,10 @@ impl<F: Formattable> UtcTime<F> {
     ///
     /// If the format description is statically known, then the
     /// [`format_description!`] macro should be used. This is identical to the
-    /// [`time::format_description::parse] method, but runs at compile-time,
+    /// [`time::format_description::parse`] method, but runs at compile-time,
     /// failing  an error if the format description is invalid. If the desired format
     /// is not known statically (e.g., a user is providing a format string), then the
-    /// [`time::format_description::parse]` method should be used. Note that this
+    /// [`time::format_description::parse`] method should be used. Note that this
     /// method is fallible.
     ///
     /// See the [`time` book] for details on the format description syntax.
