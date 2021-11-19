@@ -2,7 +2,7 @@ use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     layer::{self, Context},
-    registry::{LookupSpan, SpanRef},
+    registry::{self, LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
@@ -92,7 +92,7 @@ where
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]
     /// trait, which is implemented for all functions taking a [`FmtContext`], a
-    /// `&mut dyn Write`, and an [`Event`].
+    /// [`Writer`], and an [`Event`].
     ///
     /// # Examples
     ///
@@ -106,9 +106,9 @@ where
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
-    /// [`FormatEvent`]: ./format/trait.FormatEvent.html
-    /// [`FmtContext`]: ./struct.FmtContext.html
-    /// [`Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
+    /// [`FormatEvent`]: format::FormatEvent
+    /// [`Event`]: tracing::Event
+    /// [`Writer`]: crate::format::Writer
     pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
@@ -480,10 +480,11 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
-    fn make_ctx<'a>(&'a self, ctx: Context<'a, S>) -> FmtContext<'a, S, N> {
+    fn make_ctx<'a>(&'a self, ctx: Context<'a, S>, event: &'a Event<'a>) -> FmtContext<'a, S, N> {
         FmtContext {
             ctx,
             fmt_fields: &self.fmt_fields,
+            event,
         }
     }
 }
@@ -720,7 +721,7 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(ctx);
+            let ctx = self.make_ctx(ctx, event);
             if self
                 .fmt_event
                 .format_event(
@@ -757,6 +758,7 @@ where
 pub struct FmtContext<'a, S, N> {
     pub(crate) ctx: Context<'a, S>,
     pub(crate) fmt_fields: &'a N,
+    pub(crate) event: &'a Event<'a>,
 }
 
 impl<'a, S, N> fmt::Debug for FmtContext<'a, S, N> {
@@ -794,8 +796,8 @@ where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
     {
         // visit all the current spans
-        if let Some(leaf) = self.ctx.lookup_current() {
-            for span in leaf.scope().from_root() {
+        if let Some(scope) = self.event_scope() {
+            for span in scope.from_root() {
                 f(&span)?;
             }
         }
@@ -854,6 +856,82 @@ where
     /// Returns the current span for this formatter.
     pub fn current_span(&self) -> Current {
         self.ctx.current_span()
+    }
+
+    /// Returns [stored data] for the parent span of the event currently being
+    /// formatted.
+    ///
+    /// If the event has a contextual parent, this will return the current span. If
+    /// the event has an explicit parent span, this will return that span. If
+    /// the event does not have a parent span, this will return `None`.
+    ///
+    /// [stored data]: SpanRef
+    pub fn parent_span(&self) -> Option<SpanRef<'_, S>> {
+        self.ctx.event_span(self.event)
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting with the specified span and ending with the
+    /// root of the trace tree and ending with the current span.
+    ///
+    /// This is equivalent to the [`Context::span_scope`] method.
+    ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: crate::registry::SpanRef
+    pub fn span_scope(&self, id: &Id) -> Option<registry::Scope<'_, S>>
+    where
+        S: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.span_scope(id)
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// event's span context, starting with its parent span and ending with the
+    /// root of the trace tree.
+    ///
+    /// This is equivalent to calling the [`Context::event_scope`] method and
+    /// passing the event currently being formatted.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: crate::registry::SpanRef
+    pub fn event_scope(&self) -> Option<registry::Scope<'_, S>>
+    where
+        S: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        self.ctx.event_scope(self.event)
     }
 
     /// Returns the [field formatter] configured by the subscriber invoking
