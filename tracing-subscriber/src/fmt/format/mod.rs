@@ -64,7 +64,7 @@ use fmt::{Debug, Display};
 ///   can be used with the [`std::write!`] and [`std::writeln!`] macros, as well
 ///   as calling [`std::fmt::Write`] methods directly.
 ///
-///   The [`Writer`] type also provides additional methods that provide
+///   The [`Writer`] type also implements additional methods that provide
 ///   information about how the event should be formatted. The
 ///   [`Writer::has_ansi_escapes`] method indicates whether [ANSI terminal
 ///   escape codes] are supported by the underlying I/O writer that the event
