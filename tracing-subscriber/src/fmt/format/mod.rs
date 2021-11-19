@@ -155,7 +155,7 @@ pub use pretty::*;
 ///
 /// [`fmt::Layer`]: super::Layer
 /// [`fmt::Subscriber`]: super::Subscriber
-/// [`layer::Context`]: crate::layer::Context
+/// [`Event`]: tracing::Event
 /// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
 /// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
