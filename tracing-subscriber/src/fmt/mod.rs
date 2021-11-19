@@ -1,13 +1,13 @@
 //! A Collector for formatting and logging `tracing` data.
 //!
-//! ## Overview
+//! # Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
 //! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
-//! ## Usage
+//! # Usage
 //!
 //! First, add this to your `Cargo.toml` file:
 //!
@@ -43,12 +43,12 @@
 //! **Note**: This should **not** be called by libraries. Libraries should use
 //! [`tracing`] to publish `tracing` `Event`s.
 //!
-//! ## Configuration
+//! # Configuration
 //!
 //! You can configure a collector instead of using the defaults with
 //! the following functions:
 //!
-//! ### Collector
+//! ## Collector
 //!
 //! The [`FmtCollector`] formats and records `tracing` events as line-oriented logs.
 //! You can create one by calling:
@@ -62,7 +62,7 @@
 //! The configuration methods for [`FmtCollector`] can be found in
 //! [`fmtBuilder`].
 //!
-//! ### Formatters
+//! ## Formatters
 //!
 //! The output format used by the subscriber and collector in this module is
 //! represented by implementing the [`FormatEvent`] trait, and can be
@@ -223,7 +223,140 @@
 //!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaving completed&quot;,&quot;all_yaks_shaved&quot;:false},&quot;target&quot;:&quot;fmt_json&quot;}
 //!   </pre>
 //!
-//! ### Filters
+//! ### Customizing Formatters
+//!
+//! The formatting of log lines for spans and events is controlled by two
+//! traits, [`FormatEvent`] and [`FormatFields`]. The [`FormatEvent`] trait
+//! determines the overall formatting of the log line, such as what information
+//! from the event's metadata and span context is included and in what order.
+//! The [`FormatFields`] trait determines how fields &mdash; both the event's
+//! fields and fields on spans &mdash; are formatted.
+//!
+//! The [`format`] module provides several types which implement these traits,
+//! many of which expose additional configuration options to customize their
+//! output. The [`format::Format`] type implements common configuration used by
+//! all the formatters provided in this crate, and can be used as a builder to
+//! set specific formatting settings. For example:
+//!
+//! ```
+//! use tracing_subscriber::fmt;
+//!
+//! // Configure a custom event formatter
+//! let format = fmt::format()
+//!    .with_level(false) // don't include levels in formatted output
+//!    .with_target(false) // don't include targets
+//!    .with_thread_ids(true) // include the thread ID of the current thread
+//!    .with_thread_names(true) // include the name of the current thread
+//!    .compact(); // use the `Compact` formatting style.
+//!
+//! // Create a `fmt` collector that uses our custom event format, and set it
+//! // as the default.
+//! tracing_subscriber::fmt()
+//!     .event_format(format)
+//!     .init();
+//! ```
+//!
+//! However, if a specific output format is needed, other crates can
+//! also implement [`FormatEvent`] and [`FormatFields`].
+//!
+//! #### Implementing [`FormatEvent`]
+//!
+//! The [`FormatEvent`] trait defines one method, named (unsurprisingly)
+//! [`format_event`]. This method is passed the following parameters:
+//!
+//! * A [`FmtContext`]. This is an extension of the [`subscribe::Context`] type,
+//!   which can be used for accessing stored information such as the current
+//!   span context an event occurred in.
+//!
+//!   In addition, [`FmtContext`] exposes access to the [`FormatFields`]
+//!   implementation that the subscriber was configured to use via the
+//!   [`FmtContext::field_format`] method. This can be used when the
+//!   [`FormatEvent`] implementation needs to format the event's fields.
+//!
+//!   For convenience, [`FmtContext`] also [implements `FormatFields`],
+//!   forwarding to the configured [`FormatFields`] type.
+//!
+//! * A [`format::Writer`] to which the formatted representation of the event is
+//!   written. This type implements the [`std::fmt::Write`] trait, and therefore
+//!   can be used with the [`std::write!`] and [`std::writeln!`] macros, as well
+//!   as calling [`std::fmt::Write`] methods directly.
+//!
+//!   The [`format::Writer`] type also provides additional methods that provide
+//!   information about how the event should be formatted. The
+//!   [`Writer::has_ansi_escapes`] method indicates whether [ANSI terminal
+//!   escape codes] are supported by the underlying I/O writer that the event
+//!   will be written to. If this returns `true`, the formatter is permitted to
+//!   use ANSI escape codes to add colors and other text formatting to its
+//!   output. If it returns `false`, the event will be written to an output that
+//!   does not support ANSI escape codes (such as a log file), and they should
+//!   not be emitted.
+//!
+//!   Crates like [`ansi_term`] and [`owo-colors`] can be used to add ANSI
+//!   escape codes to formatted output.
+//!
+//! * The actual [`Event`] to be formatted.
+//!
+//! For example, a simple [`FormatEvent`] implementation might look like this:
+//! ```
+//! use tracing_subscriber::{
+//!    registry::{Registry, LookupSpan},
+//!    fmt::{self, format::{self, FormatEvent, FormatFields}},
+//! };
+//!
+//! struct MyFormatter;
+//!
+//! impl<C, F> FormatEvent<C, F> for MyFormatter
+//! where
+//!     C: tracing::Collect + for<'lookup> LookupSpan<'lookup>,
+//!     F: for<'writer> FormatFields<'writer> + 'static,
+//! {
+//!     fn format_event(
+//!         &self,
+//!         ctx: &fmt::FmtContext<'_, C, F>,
+//!         mut writer: format::Writer<'_>,
+//!         event: &tracing::Event<'_>
+//!     ) -> std::fmt::Result {
+//!         // Format values from the event's's metadata:
+//!         let metadata = event.metadata();
+//!         write!(&mut writer, "{} {} ", metadata.level(), metadata.target())?;
+//!
+//!         // Format the event's fields:
+//!         ctx.format_fields(writer.by_ref(), event)?;
+//!         writer.write_str("; ")?;
+//!
+//!         // Format all the spans in the event's span context.
+//!         ctx.visit_spans(|span| {
+//!             write!(&mut writer, "{}: ", span.name())?;
+//!
+//!             // Does the span have formatted fields stored in its extensions?
+//!             let exts = span.extensions();
+//!             if let Some(fields) = exts.get::<fmt::FormattedFields<F>>() {
+//!                 // Skip formatting the fields if the span had no fields.
+//!                 if !fields.is_empty() {
+//!                     write!(writer, ": {}", fields)?;
+//!                 }
+//!             }
+//!             writer.write_str("; ")
+//!         })
+//!     }
+//! }
+//!
+//! let _subscriber = tracing_subscriber::fmt()
+//!     .event_format(MyFormatter)
+//!     .init();
+//!
+//! let _span = tracing::info_span!("my_span", answer = 42).entered();
+//! tracing::info!(question = "life, the universe, and everything", "hello world");
+//! ```
+//!
+//! [`format_event`]: FormatEvent::format_event
+//! [implements `FormatFields`]: FmtContext#impl-FormatFields<'writer>
+//! [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
+//! [`Writer::has_ansi_escapes`]: format::Writer::has_ansi_escapes
+//! [`ansi_term`]: https://crates.io/crates/ansi_term
+//! [`owo-colors`]: https://crates.io/crates/owo-colors
+//!
+//! ## Filters
 //!
 //! If you want to filter the `tracing` `Events` based on environment
 //! variables, you can use the [`EnvFilter`] as follows:
@@ -257,7 +390,7 @@
 //! // collector multiple times
 //! ```
 //!
-//! ### Composing Subscribers
+//! ## Composing Subscribers
 //!
 //! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
