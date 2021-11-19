@@ -43,7 +43,7 @@
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
 //!   macros in the `fmt` subscriber. Enabled by default.
-//! - [`time`]: Enables support for using the [`time` crate] for timestamp
+//! - [`time`][`time` crate]: Enables support for using the [`time` crate] for timestamp
 //!   formatting in the `fmt` subscriber.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
