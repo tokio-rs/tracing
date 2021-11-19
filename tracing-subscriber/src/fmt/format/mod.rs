@@ -112,27 +112,27 @@ use fmt::{Debug, Display};
 ///         write!(&mut writer, "{} {}: ", metadata.level(), metadata.target())?;
 ///
 ///         // Format all the spans in the event's span context.
-///         ctx.visit_spans(|span| {
-///             write!(writer, "{}", span.name())?;
+///         if let Some(scope) = ctx.event_scope() {
+///             for span in scope.from_root() {
+///                 write!(writer, "{}", span.name())?;
 ///
-///             // `FormattedFields` is a formatted representation of the span's
-///             // fields, which is stored in its extensions by the `fmt` layer's
-///             // `new_span` method. The fields will have been formatted
-///             // by the same field formatter that's provided to the event
-///             // formatter in the `FmtContext`.
-///             let ext = span.extensions();
-///             let fields = &ext
-///                 .get::<FormattedFields<N>>()
-///                 .expect("will never be `None`");
+///                 // `FormattedFields` is a formatted representation of the span's
+///                 // fields, which is stored in its extensions by the `fmt` layer's
+///                 // `new_span` method. The fields will have been formatted
+///                 // by the same field formatter that's provided to the event
+///                 // formatter in the `FmtContext`.
+///                 let ext = span.extensions();
+///                 let fields = &ext
+///                     .get::<FormattedFields<N>>()
+///                     .expect("will never be `None`");
 ///
-///             // Skip formatting the fields if the span had no fields.
-///             if !fields.is_empty() {
-///                 write!(writer, "{{{}}}", fields)?;
+///                 // Skip formatting the fields if the span had no fields.
+///                 if !fields.is_empty() {
+///                     write!(writer, "{{{}}}", fields)?;
+///                 }
+///                 write!(writer, ": ")?;
 ///             }
-///             write!(writer, ": ")?;
-///
-///             Ok(())
-///         })?;
+///         }
 ///
 ///         // Write fields on the event
 ///         ctx.field_format().format_fields(writer.by_ref(), event)?;
@@ -142,7 +142,7 @@ use fmt::{Debug, Display};
 /// }
 ///
 /// let _subscriber = tracing_subscriber::fmt()
-///    .event_format(MyFormatter)
+///     .event_format(MyFormatter)
 ///     .init();
 ///
 /// let _span = tracing::info_span!("my_span", answer = 42).entered();
@@ -830,7 +830,7 @@ where
 
         let dimmed = writer.dimmed();
 
-        if let Some(scope) = ctx.ctx.event_scope(event) {
+        if let Some(scope) = ctx.event_scope() {
             let bold = writer.bold();
 
             let mut seen = false;
@@ -920,8 +920,7 @@ where
 
         let dimmed = writer.dimmed();
         for span in ctx
-            .ctx
-            .event_scope(event)
+            .event_scope()
             .into_iter()
             .map(Scope::from_root)
             .flatten()
