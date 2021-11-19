@@ -59,12 +59,12 @@ use fmt::{Debug, Display};
 ///   For convenience, [`FmtContext`] also [implements `FormatFields`],
 ///   forwarding to the configured [`FormatFields`] type.
 ///
-/// * A [`format::Writer`] to which the formatted representation of the event is
+/// * A [`Writer`] to which the formatted representation of the event is
 ///   written. This type implements the [`std::fmt::Write`] trait, and therefore
 ///   can be used with the [`std::write!`] and [`std::writeln!`] macros, as well
 ///   as calling [`std::fmt::Write`] methods directly.
 ///
-///   The [`format::Writer`] type also provides additional methods that provide
+///   The [`Writer`] type also provides additional methods that provide
 ///   information about how the event should be formatted. The
 ///   [`Writer::has_ansi_escapes`] method indicates whether [ANSI terminal
 ///   escape codes] are supported by the underlying I/O writer that the event
@@ -157,12 +157,14 @@ use fmt::{Debug, Display};
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
+/// [`subscribe::Context`]: crate::subscribe::Context
 /// [`Event`]: tracing::Event
 /// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
 /// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
 /// [`ansi_term`]: https://crates.io/crates/ansi_term
 /// [`owo-colors`]: https://crates.io/crates/owo-colors
+/// [default formatter]: Full
 pub trait FormatEvent<C, N>
 where
     C: Collect + for<'a> LookupSpan<'a>,

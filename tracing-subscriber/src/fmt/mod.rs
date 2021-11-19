@@ -232,7 +232,7 @@
 //! The [`FormatFields`] trait determines how fields &mdash; both the event's
 //! fields and fields on spans &mdash; are formatted.
 //!
-//! The [`format`] module provides several types which implement these traits,
+//! The [`fmt::format`] module provides several types which implement these traits,
 //! many of which expose additional configuration options to customize their
 //! output. The [`format::Format`] type implements common configuration used by
 //! all the formatters provided in this crate, and can be used as a builder to
@@ -320,9 +320,9 @@
 //! [`filter`]: super::filter
 //! [`fmtBuilder`]: CollectorBuilder
 //! [`FmtCollector`]: Collector
-//! [`Collect`]:
-//!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
+//! [`fmt::format`]: mod@crate::fmt::format
 use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
