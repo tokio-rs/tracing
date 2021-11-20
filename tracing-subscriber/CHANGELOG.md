@@ -1,3 +1,26 @@
+# 0.3.2 (Nov 19, 2021)
+
+### Fixed
+
+- **fmt**: Fixed `MakeWriter` filtering not working with `BoxMakeWriter`
+  ([#1694])
+
+### Added
+
+- **fmt**: `Writer::has_ansi_escapes` method to check if an output supports ANSI
+  terminal formatting escape codes ([#1696])
+- **fmt**: Added additional ANSI terminal formatting to field formatters when
+  supported ([#1702])
+- **fmt**: Added `FmtContext::span_scope`, `FmtContext::event_scope`, and
+  `FmtContext::parent_span` methods for accessing the current span and its scope
+  when formatting an event ([#1728])
+- **fmt**: Improved documentation on implementing event formatters ([#1727])
+
+[#1694]: https://github.com/tokio-rs/tracing/pull/1694
+[#1696]: https://github.com/tokio-rs/tracing/pull/1696
+[#1702]: https://github.com/tokio-rs/tracing/pull/1702
+[#1728]: https://github.com/tokio-rs/tracing/pull/1728
+[#1727]: https://github.com/tokio-rs/tracing/pull/1727
 # 0.3.1 (Oct 25, 2021)
 
 This release fixes a few issues related to feature flagging.
