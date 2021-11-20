@@ -88,8 +88,7 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
             .args(&["--user", "--output=json"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
-            // tracing-journald logs strings in their debug representation
-            .arg(format!("TEST_NAME={:?}", test_name))
+            .arg(format!("TEST_NAME={}", test_name))
             .output()
             .unwrap()
             .stdout,
