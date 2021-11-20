@@ -314,6 +314,7 @@ fn gen_block<B: ToTokens>(
         ),
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
+            #[allow(clippy::redundant_closure_call)]
             let x = (move || #block)();
             #ret_event;
             x
