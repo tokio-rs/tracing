@@ -15,6 +15,7 @@ categories = [
 ]
 keywords = ["logging", "tracing"]
 license = "MIT"
+rust = "1.42.0"
 
 [features]
 default = ["tower-layer", "tower-make"]
