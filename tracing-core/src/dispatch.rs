@@ -372,9 +372,9 @@ impl error::Error for SetGlobalDefaultError {}
 ///
 /// [dispatcher]: super::dispatch::Dispatch
 #[cfg(feature = "std")]
-pub fn get_default<T, F>(mut f: F) -> T
+pub fn get_default<T, F>(f: F) -> T
 where
-    F: FnMut(&Dispatch) -> T,
+    F: FnOnce(&Dispatch) -> T,
 {
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped dispatcher has been set; just use the global
@@ -393,6 +393,10 @@ where
         }
     }
 
+    // workaround to allow `f` to be `FnOnce. The `f` in this function will be executed
+    // only once thus it is safe to call `f.take().unwrap()`
+    let mut f = Some(f);
+
     CURRENT_STATE
         .try_with(|state| {
             if state.can_enter.replace(false) {
@@ -404,12 +408,12 @@ where
                     // don't redo this call on the next check
                     *default = get_global().clone();
                 }
-                return f(&*default);
+                return f.take().unwrap()(&*default);
             }
 
-            f(&Dispatch::none())
+            f.take().unwrap()(&Dispatch::none())
         })
-        .unwrap_or_else(|_| f(&Dispatch::none()))
+        .unwrap_or_else(|_| f.take().unwrap()(&Dispatch::none()))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
