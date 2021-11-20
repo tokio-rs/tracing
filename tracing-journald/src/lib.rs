@@ -188,14 +188,29 @@ struct SpanVisitor<'a> {
     prefix: Option<&'a str>,
 }
 
-impl Visit for SpanVisitor<'_> {
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+impl SpanVisitor<'_> {
+    fn put_span_prefix(&mut self) {
         write!(self.buf, "S{}", self.depth).unwrap();
         if let Some(prefix) = self.prefix {
             self.buf.extend_from_slice(prefix.as_bytes());
         }
         self.buf.push(b'_');
-        put_debug(self.buf, field.name(), value);
+    }
+}
+
+impl Visit for SpanVisitor<'_> {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.put_span_prefix();
+        put_field_length_encoded(self.buf, field.name(), |buf| {
+            buf.extend_from_slice(value.as_bytes())
+        });
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        self.put_span_prefix();
+        put_field_length_encoded(self.buf, field.name(), |buf| {
+            write!(buf, "{:?}", value).unwrap()
+        });
     }
 }
 
@@ -210,23 +225,37 @@ impl<'a> EventVisitor<'a> {
     fn new(buf: &'a mut Vec<u8>, prefix: Option<&'a str>) -> Self {
         Self { buf, prefix }
     }
-}
 
-impl Visit for EventVisitor<'_> {
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+    fn put_prefix(&mut self, field: &Field) {
         if let Some(prefix) = self.prefix {
             if field.name() != "message" {
+                // message maps to the standard MESSAGE field so don't prefix it
                 self.buf.extend_from_slice(prefix.as_bytes());
                 self.buf.push(b'_');
             }
         }
-        put_debug(self.buf, field.name(), value);
+    }
+}
+
+impl Visit for EventVisitor<'_> {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.put_prefix(field);
+        put_field_length_encoded(self.buf, field.name(), |buf| {
+            buf.extend_from_slice(value.as_bytes())
+        });
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        self.put_prefix(field);
+        put_field_length_encoded(self.buf, field.name(), |buf| {
+            write!(buf, "{:?}", value).unwrap()
+        });
     }
 }
 
 fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
     if span.is_none() {
-        put_field(
+        put_field_wellformed(
             buf,
             "PRIORITY",
             match *meta.level() {
@@ -241,12 +270,12 @@ fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
     if let Some(n) = span {
         write!(buf, "S{}_", n).unwrap();
     }
-    put_field(buf, "TARGET", meta.target().as_bytes());
+    put_field_wellformed(buf, "TARGET", meta.target().as_bytes());
     if let Some(file) = meta.file() {
         if let Some(n) = span {
             write!(buf, "S{}_", n).unwrap();
         }
-        put_field(buf, "CODE_FILE", file.as_bytes());
+        put_field_wellformed(buf, "CODE_FILE", file.as_bytes());
     }
     if let Some(line) = meta.line() {
         if let Some(n) = span {
@@ -257,12 +286,21 @@ fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
     }
 }
 
-fn put_debug(buf: &mut Vec<u8>, name: &str, value: &dyn fmt::Debug) {
+/// Append a sanitized and length-encoded field into `buf`.
+///
+/// Unlike `put_field_wellformed` this function handles arbitrary field names and values.
+///
+/// `name` denotes the field name. It gets sanitized before being appended to `buf`.
+///
+/// `write_value` is invoked with `buf` as argument to append the value data to `buf`.  It must
+/// not delete from `buf`, but may append arbitrary data.  This function then determines the length
+/// of the data written and adds it in the appropriate place in `buf`.
+fn put_field_length_encoded(buf: &mut Vec<u8>, name: &str, write_value: impl FnOnce(&mut Vec<u8>)) {
     sanitize_name(name, buf);
     buf.push(b'\n');
     buf.extend_from_slice(&[0; 8]); // Length tag, to be populated
     let start = buf.len();
-    write!(buf, "{:?}", value).unwrap();
+    write_value(buf);
     let end = buf.len();
     buf[start - 8..start].copy_from_slice(&((end - start) as u64).to_le_bytes());
     buf.push(b'\n');
@@ -279,14 +317,23 @@ fn sanitize_name(name: &str, buf: &mut Vec<u8>) {
     );
 }
 
-/// Append arbitrary data with a well-formed name
-fn put_field(buf: &mut Vec<u8>, name: &str, value: &[u8]) {
+/// Append arbitrary data with a well-formed name and value.
+///
+/// `value` must not contain an internal newline, because this function writes
+/// `value` in the new-line separated format.
+///
+/// For a "newline-safe" variant, see `put_field_length_encoded`.
+fn put_field_wellformed(buf: &mut Vec<u8>, name: &str, value: &[u8]) {
     buf.extend_from_slice(name.as_bytes());
     buf.push(b'\n');
     put_value(buf, value);
 }
 
-/// Write the value portion of a key-value pair
+/// Write the value portion of a key-value pair, in newline separated format.
+///
+/// `value` must not contain an internal newline.
+///
+/// For a "newline-safe" variant, see `put_field_length_encoded`.
 fn put_value(buf: &mut Vec<u8>, value: &[u8]) {
     buf.extend_from_slice(&(value.len() as u64).to_le_bytes());
     buf.extend_from_slice(value);
