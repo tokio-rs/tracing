@@ -882,9 +882,6 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[macro_use]
-extern crate cfg_if;
-
 #[cfg(feature = "log")]
 #[doc(hidden)]
 pub use log;
