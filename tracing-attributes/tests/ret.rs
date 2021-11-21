@@ -80,7 +80,7 @@ fn test_mut() {
         )
         .event(
             event::mock()
-                .with_fields(field::mock("return").with_value(&tracing::field::display(2)))
+                .with_fields(field::mock("return").with_value(&tracing::field::debug(2)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -142,20 +142,20 @@ fn test_impl_type() {
     handle.assert_finished();
 }
 
-#[instrument(ret(Debug))]
-fn ret_dbg() -> i32 {
+#[instrument(ret(Display))]
+fn ret_display() -> i32 {
     42
 }
 
 #[test]
 fn test_dbg() {
-    let span = span::mock().named("ret_dbg");
+    let span = span::mock().named("ret_display");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
             event::mock()
-                .with_fields(field::mock("return").with_value(&tracing::field::debug(42)))
+                .with_fields(field::mock("return").with_value(&tracing::field::display(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -163,7 +163,7 @@ fn test_dbg() {
         .done()
         .run_with_handle();
 
-    with_default(collector, ret_dbg);
+    with_default(collector, ret_display);
     handle.assert_finished();
 }
 
@@ -211,7 +211,7 @@ fn test_ret_and_ok() {
             event::mock()
                 .with_fields(
                     field::mock("return")
-                        .with_value(&tracing::field::display(u8::try_from(123).unwrap()))
+                        .with_value(&tracing::field::debug(u8::try_from(123).unwrap()))
                         .only(),
                 )
                 .at_level(Level::INFO),

@@ -189,15 +189,15 @@ mod expand;
 /// Note that if the function returns a `Result<T, E>`, `ret` will record returned values iff the
 /// function returns [`Result::Ok`].
 ///
-/// By default, returned values will be recorded using their [`std::fmt::Display`] implementations.
-/// If a returned value implements [`std::fmt::Debug`], it can be recorded using its `Debug`
-/// implementation instead, by writing `ret(Debug)`:
+/// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
+/// If a returned value implements [`std::fmt::Display`], it can be recorded using its `Display`
+/// implementation instead, by writing `ret(Display)`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(ret(Debug))]
-/// fn my_function() -> Option<()> {
-///     Some(())
+/// #[instrument(ret(Display))]
+/// fn my_function() -> i32 {
+///     42
 /// }
 /// ```
 ///
@@ -229,7 +229,7 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err, ret(Debug))]
+/// #[instrument(err, ret)]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }

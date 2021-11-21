@@ -205,13 +205,14 @@ impl Parse for Skips {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum FormatMode {
+    Default,
     Display,
     Debug,
 }
 
 impl Default for FormatMode {
     fn default() -> Self {
-        FormatMode::Display
+        FormatMode::Default
     }
 }
 

@@ -191,14 +191,18 @@ fn gen_block<B: ToTokens>(
     })();
 
     let err_event = match args.err_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::error!(error = %e))),
+        Some(FormatMode::Default | FormatMode::Display) => {
+            Some(quote!(tracing::error!(error = %e)))
+        }
         Some(FormatMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
         _ => None,
     };
 
     let ret_event = match args.ret_mode {
         Some(FormatMode::Display) => Some(quote!(tracing::event!(#level, return = %x))),
-        Some(FormatMode::Debug) => Some(quote!(tracing::event!(#level, return = ?x))),
+        Some(FormatMode::Default | FormatMode::Debug) => {
+            Some(quote!(tracing::event!(#level, return = ?x)))
+        }
         _ => None,
     };
 
