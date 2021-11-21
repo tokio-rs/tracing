@@ -366,7 +366,7 @@ maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
@@ -386,7 +386,7 @@ please let us know! We'd love to add your project to the list!
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
