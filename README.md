@@ -396,7 +396,7 @@ are not maintained by the `tokio` project. These include:
   _inside_ of functions.
 - [`tracing-wasm`] provides a `Collector`/`Subscriber` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Collector`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
@@ -425,7 +425,7 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
