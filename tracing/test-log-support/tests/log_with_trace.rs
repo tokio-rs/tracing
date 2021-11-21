@@ -1,7 +1,5 @@
-use tracing::{debug, error, info, span, trace, warn, Level};
-
 use test_log_support::Test;
-use tracing::Level;
+use tracing::{error, info, span, trace, warn, Level};
 use tracing_core::span::Current;
 
 pub struct NopCollector;

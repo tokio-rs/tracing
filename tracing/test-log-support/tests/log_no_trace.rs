@@ -1,5 +1,5 @@
 use test_log_support::Test;
-use tracing::{debug, error, info, trace, warn, Level};
+use tracing::{error, info, span, trace, warn, Level};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
