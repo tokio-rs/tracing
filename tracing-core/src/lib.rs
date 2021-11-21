@@ -124,9 +124,7 @@ extern crate alloc;
 ///
 /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
-/// use tracing_core::callsite;
+/// use tracing_core::{callsite, identify_callsite};
 /// # use tracing_core::{Metadata, subscriber::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
@@ -160,9 +158,8 @@ macro_rules! identify_callsite {
 ///
 /// /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
 /// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// use tracing_core::metadata;
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
