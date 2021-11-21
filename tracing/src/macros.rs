@@ -576,9 +576,7 @@ macro_rules! error_span {
 // ///
 // /// For example, the following does not compile:
 // /// ```rust,compile_fail
-// /// # #[macro_use]
-// /// # extern crate tracing;
-// /// # use tracing::Level;
+// /// # use tracing::{Level, event};
 // /// # fn main() {
 // /// event!(Level::INFO, foo = 5, bad_field, bar = "hello")
 // /// #}
