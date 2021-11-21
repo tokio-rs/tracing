@@ -12,7 +12,7 @@ use crate::{
     subscriber::Interest,
 };
 
-lazy_static! {
+crate::lazy_static! {
     static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry {
         callsites: Vec::new(),
         dispatchers: Vec::new(),

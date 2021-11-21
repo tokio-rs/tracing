@@ -246,8 +246,7 @@ pub trait Subscriber: 'static {
     /// but values for them won't be recorded at this time.
     ///
     /// ```rust,ignore
-    /// #[macro_use]
-    /// extern crate tracing;
+    /// # use tracing::span;
     ///
     /// let mut span = span!("my_span", foo = 3, bar, baz);
     ///

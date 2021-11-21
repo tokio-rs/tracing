@@ -53,10 +53,6 @@ tracing-serde = "0.1"
 Next, add this to your crate:
 
 ```rust
-#[macro_use]
-extern crate tracing;
-extern crate tracing_serde;
-
 use tracing_serde::AsSerde;
 ```
 

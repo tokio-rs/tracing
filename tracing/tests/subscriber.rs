@@ -5,9 +5,6 @@
 // The alternative would be for each of these tests to be defined in a separate
 // file, which is :(
 #![cfg(feature = "std")]
-
-#[macro_use]
-extern crate tracing;
 use tracing::{
     field::display,
     span::{Attributes, Id, Record},
@@ -34,7 +31,7 @@ fn event_macros_dont_infinite_loop() {
 
         fn enabled(&self, meta: &Metadata<'_>) -> bool {
             assert!(meta.fields().iter().any(|f| f.name() == "foo"));
-            event!(Level::TRACE, bar = false);
+            tracing::event!(Level::TRACE, bar = false);
             true
         }
 
@@ -48,7 +45,7 @@ fn event_macros_dont_infinite_loop() {
 
         fn event(&self, event: &Event<'_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
-            event!(Level::TRACE, baz = false);
+            tracing::event!(Level::TRACE, baz = false);
         }
 
         fn enter(&self, _: &Id) {}
@@ -57,7 +54,7 @@ fn event_macros_dont_infinite_loop() {
     }
 
     with_default(TestSubscriber, || {
-        event!(Level::TRACE, foo = false);
+        tracing::event!(Level::TRACE, foo = false);
     })
 }
 
@@ -81,7 +78,7 @@ fn boxed_subscriber() {
 
     with_default(subscriber, || {
         let from = "my span";
-        let span = span!(
+        let span = tracing::span!(
             Level::TRACE,
             "foo",
             bar = format_args!("hello from {}", from)
@@ -119,7 +116,7 @@ fn arced_subscriber() {
     // Test using a clone of the `Arc`ed subscriber
     with_default(subscriber.clone(), || {
         let from = "my span";
-        let span = span!(
+        let span = tracing::span!(
             Level::TRACE,
             "foo",
             bar = format_args!("hello from {}", from)
