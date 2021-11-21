@@ -186,7 +186,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// Note that if the function returns a `Result<T, E>`, `ret` will record returned values iff the
+/// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values iff the
 /// function returns [`Result::Ok`].
 ///
 /// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
