@@ -85,7 +85,7 @@ fn message_without_delims() {
                     .and(field::mock("question").with_value(&"life, the universe, and everything"))
                     .and(
                         field::mock("message").with_value(&tracing::field::debug(format_args!(
-                            "hello from my tracing::event! tricky? {:?}!",
+                            "hello from my event! tricky? {:?}!",
                             true
                         ))),
                     )
