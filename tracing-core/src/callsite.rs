@@ -67,6 +67,7 @@ pub use self::inner::{rebuild_interest_cache, register};
 #[cfg(feature = "std")]
 mod inner {
     use super::*;
+    use lazy_static::lazy_static;
     use std::sync::RwLock;
     use std::vec::Vec;
 

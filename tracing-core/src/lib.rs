@@ -274,11 +274,6 @@ macro_rules! metadata {
     };
 }
 
-// std uses lazy_static from crates.io
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate lazy_static;
-
 // Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]
 #[doc(hidden)]

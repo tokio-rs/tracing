@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate tracing;
+use tracing::{debug, error, info, trace, warn, Level};
 
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};

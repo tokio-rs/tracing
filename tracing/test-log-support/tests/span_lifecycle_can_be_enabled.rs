@@ -1,6 +1,4 @@
-#[macro_use]
-extern crate tracing;
-extern crate test_log_support;
+use tracing::{debug, error, info, span, trace, warn, Level};
 
 use test_log_support::Test;
 use tracing::Level;
