@@ -5,17 +5,15 @@
 // The alternative would be for each of these tests to be defined in a separate
 // file, which is :(
 #![cfg(feature = "std")]
-
-#[macro_use]
-extern crate tracing;
 mod support;
 
 use self::support::*;
 
 use tracing::{
     collect::with_default,
+    debug, error,
     field::{debug, display},
-    Level,
+    info, trace, warn, Level,
 };
 
 macro_rules! event_without_message {
@@ -61,13 +59,16 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 fn event_with_message() {
     let (collector, handle) = collector::mock()
         .event(event::mock().with_fields(field::mock("message").with_value(
-            &tracing::field::debug(format_args!("hello from my event! yak shaved = {:?}", true)),
+            &tracing::field::debug(format_args!(
+                "hello from my tracing::event! yak shaved = {:?}",
+                true
+            )),
         )))
         .done()
         .run_with_handle();
 
     with_default(collector, || {
-        debug!("hello from my event! yak shaved = {:?}", true);
+        debug!("hello from my tracing::event! yak shaved = {:?}", true);
     });
 
     handle.assert_finished();
@@ -155,7 +156,7 @@ fn one_with_everything() {
         .run_with_handle();
 
     with_default(collector, || {
-        event!(
+        tracing::event!(
             target: "whatever",
             Level::ERROR,
             { foo = 666, bar = false, like_a_butterfly = 42.0 },
@@ -181,7 +182,7 @@ fn moved_field() {
         .run_with_handle();
     with_default(collector, || {
         let from = "my event";
-        event!(Level::INFO, foo = display(format!("hello from {}", from)))
+        tracing::event!(Level::INFO, foo = display(format!("hello from {}", from)))
     });
 
     handle.assert_finished();
@@ -202,7 +203,7 @@ fn dotted_field_name() {
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::INFO, foo.bar = true, foo.baz = false);
+        tracing::event!(Level::INFO, foo.bar = true, foo.baz = false);
     });
 
     handle.assert_finished();
@@ -224,7 +225,7 @@ fn borrowed_field() {
     with_default(collector, || {
         let from = "my event";
         let mut message = format!("hello from {}", from);
-        event!(Level::INFO, foo = display(&message));
+        tracing::event!(Level::INFO, foo = display(&message));
         message.push_str(", which happened!");
     });
 
@@ -286,7 +287,7 @@ fn display_shorthand() {
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::TRACE, my_field = %"hello world");
+        tracing::event!(Level::TRACE, my_field = %"hello world");
     });
 
     handle.assert_finished();
@@ -306,7 +307,7 @@ fn debug_shorthand() {
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::TRACE, my_field = ?"hello world");
+        tracing::event!(Level::TRACE, my_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -327,7 +328,7 @@ fn both_shorthands() {
         .done()
         .run_with_handle();
     with_default(collector, || {
-        event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
+        tracing::event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -343,8 +344,8 @@ fn explicit_child() {
         .run_with_handle();
 
     with_default(collector, || {
-        let foo = span!(Level::TRACE, "foo");
-        event!(parent: foo.id(), Level::TRACE, "bar");
+        let foo = tracing::span!(Level::TRACE, "foo");
+        tracing::event!(parent: foo.id(), Level::TRACE, "bar");
     });
 
     handle.assert_finished();
@@ -364,7 +365,7 @@ fn explicit_child_at_levels() {
         .run_with_handle();
 
     with_default(collector, || {
-        let foo = span!(Level::TRACE, "foo");
+        let foo = tracing::span!(Level::TRACE, "foo");
         trace!(parent: foo.id(), "a");
         debug!(parent: foo.id(), "b");
         info!(parent: foo.id(), "c");
