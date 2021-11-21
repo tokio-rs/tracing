@@ -35,14 +35,54 @@ use fmt::{Debug, Display};
 
 /// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
-/// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
-/// the collector or subscriber forwards it to its associated `FormatEvent` to emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or
+/// [`fmt::Subscriber`]. Each time an event is dispatched to [`fmt::Collector`]
+/// or [`fmt::Subscriber`], the collector or subscriber forwards it to its
+/// associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
+/// # Arguments
+///
+/// The following arguments are passed to `FormatEvent::format_event`:
+///
+/// * A [`FmtContext`]. This is an extension of the [`subscribe::Context`] type,
+///   which can be used for accessing stored information such as the current
+///   span context an event occurred in.
+///
+///   In addition, [`FmtContext`] exposes access to the [`FormatFields`]
+///   implementation that the subscriber was configured to use via the
+///   [`FmtContext::field_format`] method. This can be used when the
+///   [`FormatEvent`] implementation needs to format the event's fields.
+///
+///   For convenience, [`FmtContext`] also [implements `FormatFields`],
+///   forwarding to the configured [`FormatFields`] type.
+///
+/// * A [`Writer`] to which the formatted representation of the event is
+///   written. This type implements the [`std::fmt::Write`] trait, and therefore
+///   can be used with the [`std::write!`] and [`std::writeln!`] macros, as well
+///   as calling [`std::fmt::Write`] methods directly.
+///
+///   The [`Writer`] type also implements additional methods that provide
+///   information about how the event should be formatted. The
+///   [`Writer::has_ansi_escapes`] method indicates whether [ANSI terminal
+///   escape codes] are supported by the underlying I/O writer that the event
+///   will be written to. If this returns `true`, the formatter is permitted to
+///   use ANSI escape codes to add colors and other text formatting to its
+///   output. If it returns `false`, the event will be written to an output that
+///   does not support ANSI escape codes (such as a log file), and they should
+///   not be emitted.
+///
+///   Crates like [`ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   escape codes to formatted output.
+///
+/// * The actual [`Event`] to be formatted.
+///
 /// # Examples
+///
+/// This example re-implements a simiplified version of this crate's [default
+/// formatter]:
 ///
 /// ```rust
 /// use std::fmt;
@@ -67,38 +107,32 @@ use fmt::{Debug, Display};
 ///         mut writer: format::Writer<'_>,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
-///         // Write level and target
-///         let level = *event.metadata().level();
-///         let target = event.metadata().target();
-///         write!(
-///             writer,
-///             "{} {}: ",
-///             level,
-///             target,
-///         )?;
+///         // Format values from the event's's metadata:
+///         let metadata = event.metadata();
+///         write!(&mut writer, "{} {}: ", metadata.level(), metadata.target())?;
 ///
-///         // Write spans and fields of each span
-///         ctx.visit_spans(|span| {
-///             write!(writer, "{}", span.name())?;
+///         // Format all the spans in the event's span context.
+///         if let Some(scope) = ctx.event_scope() {
+///             for span in scope.from_root() {
+///                 write!(writer, "{}", span.name())?;
 ///
-///             let ext = span.extensions();
+///                 // `FormattedFields` is a formatted representation of the span's
+///                 // fields, which is stored in its extensions by the `fmt` layer's
+///                 // `new_span` method. The fields will have been formatted
+///                 // by the same field formatter that's provided to the event
+///                 // formatter in the `FmtContext`.
+///                 let ext = span.extensions();
+///                 let fields = &ext
+///                     .get::<FormattedFields<N>>()
+///                     .expect("will never be `None`");
 ///
-///             // `FormattedFields` is a a formatted representation of the span's
-///             // fields, which is stored in its extensions by the `fmt` layer's
-///             // `new_span` method. The fields will have been formatted
-///             // by the same field formatter that's provided to the event
-///             // formatter in the `FmtContext`.
-///             let fields = &ext
-///                 .get::<FormattedFields<N>>()
-///                 .expect("will never be `None`");
-///
-///             if !fields.is_empty() {
-///                 write!(writer, "{{{}}}", fields)?;
+///                 // Skip formatting the fields if the span had no fields.
+///                 if !fields.is_empty() {
+///                     write!(writer, "{{{}}}", fields)?;
+///                 }
+///                 write!(writer, ": ")?;
 ///             }
-///             write!(writer, ": ")?;
-///
-///             Ok(())
-///         })?;
+///         }
 ///
 ///         // Write fields on the event
 ///         ctx.field_format().format_fields(writer.by_ref(), event)?;
@@ -106,6 +140,13 @@ use fmt::{Debug, Display};
 ///         writeln!(writer)
 ///     }
 /// }
+///
+/// let _subscriber = tracing_subscriber::fmt()
+///     .event_format(MyFormatter)
+///     .init();
+///
+/// let _span = tracing::info_span!("my_span", answer = 42).entered();
+/// tracing::info!(question = "life, the universe, and everything", "hello world");
 /// ```
 ///
 /// This formatter will print events like this:
@@ -116,7 +157,14 @@ use fmt::{Debug, Display};
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
+/// [`subscribe::Context`]: crate::subscribe::Context
 /// [`Event`]: tracing::Event
+/// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
+/// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
+/// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
+/// [`ansi_term`]: https://crates.io/crates/ansi_term
+/// [`owo-colors`]: https://crates.io/crates/owo-colors
+/// [default formatter]: Full
 pub trait FormatEvent<C, N>
 where
     C: Collect + for<'a> LookupSpan<'a>,
@@ -373,14 +421,16 @@ impl<'writer> Writer<'writer> {
         self.writer.write_fmt(args)
     }
 
-    /// Returns `true` if ANSI escape codes may be used to add colors
+    /// Returns `true` if [ANSI escape codes] may be used to add colors
     /// and other formatting when writing to this `Writer`.
     ///
     /// If this returns `false`, formatters should not emit ANSI escape codes.
+    ///
+    /// [ANSI escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
     pub fn has_ansi_escapes(&self) -> bool {
         self.is_ansi
     }
-  
+
     pub(in crate::fmt::format) fn bold(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
@@ -780,7 +830,7 @@ where
 
         let dimmed = writer.dimmed();
 
-        if let Some(scope) = ctx.ctx.event_scope(event) {
+        if let Some(scope) = ctx.event_scope() {
             let bold = writer.bold();
 
             let mut seen = false;
@@ -870,8 +920,7 @@ where
 
         let dimmed = writer.dimmed();
         for span in ctx
-            .ctx
-            .event_scope(event)
+            .event_scope()
             .into_iter()
             .map(Scope::from_root)
             .flatten()

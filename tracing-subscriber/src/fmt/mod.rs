@@ -1,13 +1,13 @@
 //! A Collector for formatting and logging `tracing` data.
 //!
-//! ## Overview
+//! # Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
 //! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
-//! ## Usage
+//! # Usage
 //!
 //! First, add this to your `Cargo.toml` file:
 //!
@@ -43,12 +43,12 @@
 //! **Note**: This should **not** be called by libraries. Libraries should use
 //! [`tracing`] to publish `tracing` `Event`s.
 //!
-//! ## Configuration
+//! # Configuration
 //!
 //! You can configure a collector instead of using the defaults with
 //! the following functions:
 //!
-//! ### Collector
+//! ## Collector
 //!
 //! The [`FmtCollector`] formats and records `tracing` events as line-oriented logs.
 //! You can create one by calling:
@@ -62,7 +62,7 @@
 //! The configuration methods for [`FmtCollector`] can be found in
 //! [`fmtBuilder`].
 //!
-//! ### Formatters
+//! ## Formatters
 //!
 //! The output format used by the subscriber and collector in this module is
 //! represented by implementing the [`FormatEvent`] trait, and can be
@@ -223,7 +223,44 @@
 //!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaving completed&quot;,&quot;all_yaks_shaved&quot;:false},&quot;target&quot;:&quot;fmt_json&quot;}
 //!   </pre>
 //!
-//! ### Filters
+//! ### Customizing Formatters
+//!
+//! The formatting of log lines for spans and events is controlled by two
+//! traits, [`FormatEvent`] and [`FormatFields`]. The [`FormatEvent`] trait
+//! determines the overall formatting of the log line, such as what information
+//! from the event's metadata and span context is included and in what order.
+//! The [`FormatFields`] trait determines how fields &mdash; both the event's
+//! fields and fields on spans &mdash; are formatted.
+//!
+//! The [`fmt::format`] module provides several types which implement these traits,
+//! many of which expose additional configuration options to customize their
+//! output. The [`format::Format`] type implements common configuration used by
+//! all the formatters provided in this crate, and can be used as a builder to
+//! set specific formatting settings. For example:
+//!
+//! ```
+//! use tracing_subscriber::fmt;
+//!
+//! // Configure a custom event formatter
+//! let format = fmt::format()
+//!    .with_level(false) // don't include levels in formatted output
+//!    .with_target(false) // don't include targets
+//!    .with_thread_ids(true) // include the thread ID of the current thread
+//!    .with_thread_names(true) // include the name of the current thread
+//!    .compact(); // use the `Compact` formatting style.
+//!
+//! // Create a `fmt` collector that uses our custom event format, and set it
+//! // as the default.
+//! tracing_subscriber::fmt()
+//!     .event_format(format)
+//!     .init();
+//! ```
+//!
+//! However, if a specific output format is needed, other crates can
+//! also implement [`FormatEvent`] and [`FormatFields`]. See those traits'
+//! documentation for details on how to implement them.
+//!
+//! ## Filters
 //!
 //! If you want to filter the `tracing` `Events` based on environment
 //! variables, you can use the [`EnvFilter`] as follows:
@@ -257,7 +294,7 @@
 //! // collector multiple times
 //! ```
 //!
-//! ### Composing Subscribers
+//! ## Composing Subscribers
 //!
 //! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
@@ -283,9 +320,9 @@
 //! [`filter`]: super::filter
 //! [`fmtBuilder`]: CollectorBuilder
 //! [`FmtCollector`]: Collector
-//! [`Collect`]:
-//!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
+//! [`fmt::format`]: mod@crate::fmt::format
 use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
