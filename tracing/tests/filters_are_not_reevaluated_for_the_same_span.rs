@@ -10,13 +10,10 @@
 
 #[cfg(not(feature = "std"))]
 extern crate std;
-
-#[macro_use]
-extern crate tracing;
 mod support;
 
 use self::support::*;
-use tracing::Level;
+use tracing::{span, Level};
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
