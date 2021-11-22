@@ -1,9 +1,6 @@
-#[macro_use]
-extern crate tracing;
-
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};
-use tracing::{span, Collect, Event, Id, Level, Metadata};
+use tracing::{debug, error, info, span, trace, warn, Collect, Event, Id, Level, Metadata};
 use tracing_core::span::Current;
 
 struct State {

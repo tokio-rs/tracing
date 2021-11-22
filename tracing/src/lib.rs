@@ -929,9 +929,6 @@
     while_true
 )]
 
-#[macro_use]
-extern crate cfg_if;
-
 #[cfg(feature = "log")]
 #[doc(hidden)]
 pub use log;
