@@ -225,8 +225,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// With the aforementioned `ret`, you can record a returned value in either case whether a function
-/// returns [`Result::Ok`] or [`Result::Err`]:
+/// The `ret` and `err` arguments can be combined in order to record an event if a
+/// function returns [`Result::Ok`] or [`Result::Err`]:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
