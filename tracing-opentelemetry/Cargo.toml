@@ -17,7 +17,7 @@ categories = [
 keywords = ["tracing", "opentelemetry", "jaeger", "zipkin", "async"]
 license = "MIT"
 edition = "2018"
-rust = "1.42.0"
+rust-version = "1.42.0"
 
 [features]
 default = ["tracing-log"]

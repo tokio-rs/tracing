@@ -13,7 +13,7 @@ categories = [
     "development-tools::profiling",
 ]
 keywords = ["tracing", "journald"]
-rust = "1.42.0"
+rust-version = "1.42.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.10" }
