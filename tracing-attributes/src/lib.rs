@@ -176,7 +176,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// To record a returned value from a function, you can use `ret`:
+/// Adding the `ret` argument to `#[instrument]` will emit an event with the function's
+/// return value when the function returns:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
