@@ -52,7 +52,7 @@
 //! The [`span` module][mod@span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
 //!  `Span::enter` may produce incorrect traces if the returned drop
@@ -482,7 +482,7 @@
 //! use tracing::{debug, error, info, span, warn, Level};
 //!
 //! // the `#[tracing::instrument]` attribute creates and enters a span
-//! // every time the instrumented function is called. The span is named after the
+//! // every time the instrumented function is called. The span is named after
 //! // the function or method. Parameters passed to the function are recorded as fields.
 //! #[tracing::instrument]
 //! pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -524,7 +524,7 @@
 //!
 //!         if let Err(ref error) = res {
 //!             // Like spans, events can also use the field initialization shorthand.
-//!             // In this instance, `yak` is the field being initalized.
+//!             // In this instance, `yak` is the field being initialized.
 //!             error!(yak, error = error.as_ref(), "failed to shave yak!");
 //!         } else {
 //!             yaks_shaved += 1;
@@ -791,7 +791,7 @@
 //!  - [`tracing-wasm`] provides a `Collect`/`Subscribe` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
-//!  - [`test-env-log`] takes care of initializing `tracing` for tests, based on
+//!  - [`test-log`] takes care of initializing `tracing` for tests, based on
 //!    environment variables with an `env_logger` compatible syntax.
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
 //!    on `Result` or `Option` types to a [`collect`].
@@ -820,7 +820,7 @@
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
-//! [`test-env-log`]: https://crates.io/crates/test-env-log
+//! [`test-log`]: https://crates.io/crates/test-log
 //! [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 //! [`diesel`]: https://crates.io/crates/diesel
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
@@ -928,9 +928,6 @@
     unused_parens,
     while_true
 )]
-
-#[macro_use]
-extern crate cfg_if;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]

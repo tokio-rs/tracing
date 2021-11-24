@@ -1,7 +1,7 @@
 use crate::{
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
-    registry::{LookupSpan, SpanRef},
+    registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
@@ -67,6 +67,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
+    is_ansi: bool,
     _inner: PhantomData<C>,
 }
 
@@ -89,7 +90,7 @@ where
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]
     /// trait, which is implemented for all functions taking a [`FmtContext`], a
-    /// `&mut dyn Write`, and an [`Event`].
+    /// [`Writer`], and an [`Event`].
     ///
     /// # Examples
     ///
@@ -105,6 +106,7 @@ where
     /// ```
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
+    /// [`Writer`]: crate::format::Writer
     pub fn event_format<E2>(self, e: E2) -> Subscriber<C, N, E2, W>
     where
         E2: FormatEvent<C, N> + 'static,
@@ -114,6 +116,7 @@ where
             fmt_event: e,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -148,6 +151,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
             make_writer,
             _inner: self._inner,
         }
@@ -180,8 +184,19 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
             make_writer: TestWriter::default(),
             _inner: self._inner,
+        }
+    }
+
+    /// Enable ANSI terminal colors for formatted output.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn with_ansi(self, ansi: bool) -> Self {
+        Subscriber {
+            is_ansi: ansi,
+            ..self
         }
     }
 }
@@ -210,6 +225,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -221,6 +237,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.without_time(),
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -269,16 +286,6 @@ where
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Subscriber {
             fmt_span: self.fmt_span.with_kind(kind),
-            ..self
-        }
-    }
-
-    /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.with_ansi(ansi),
             ..self
         }
     }
@@ -337,6 +344,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -350,6 +358,7 @@ where
             fmt_fields: format::Pretty::default(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -377,6 +386,8 @@ where
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            // always disable ANSI escapes in JSON mode!
+            is_ansi: false,
             _inner: self._inner,
         }
     }
@@ -442,6 +453,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_fields,
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
             _inner: self._inner,
         }
     }
@@ -454,6 +466,7 @@ impl<C> Default for Subscriber<C> {
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
+            is_ansi: cfg!(feature = "ansi"),
             _inner: PhantomData,
         }
     }
@@ -467,10 +480,11 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
-    fn make_ctx<'a>(&'a self, ctx: Context<'a, C>) -> FmtContext<'a, C, N> {
+    fn make_ctx<'a>(&'a self, ctx: Context<'a, C>, event: &'a Event<'a>) -> FmtContext<'a, C, N> {
         FmtContext {
             ctx,
             fmt_fields: &self.fmt_fields,
+            event,
         }
     }
 }
@@ -487,6 +501,7 @@ where
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
+    was_ansi: bool,
     /// The formatted fields of a span.
     pub fields: String,
 }
@@ -496,6 +511,7 @@ impl<E: ?Sized> FormattedFields<E> {
     pub fn new(fields: String) -> Self {
         Self {
             fields,
+            was_ansi: false,
             _format_fields: PhantomData,
         }
     }
@@ -505,7 +521,7 @@ impl<E: ?Sized> FormattedFields<E> {
     /// The returned [`format::Writer`] can be used with the
     /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
-        format::Writer::new(&mut self.fields)
+        format::Writer::new(&mut self.fields).with_ansi(self.was_ansi)
     }
 }
 
@@ -514,6 +530,7 @@ impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
             .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
+            .field("was_ansi", &self.was_ansi)
             .finish()
     }
 }
@@ -564,9 +581,10 @@ where
             let mut fields = FormattedFields::<N>::new(String::new());
             if self
                 .fmt_fields
-                .format_fields(fields.as_writer(), attrs)
+                .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
                 .is_ok()
             {
+                fields.was_ansi = self.is_ansi;
                 extensions.insert(fields);
             }
         }
@@ -598,9 +616,10 @@ where
         let mut fields = FormattedFields::<N>::new(String::new());
         if self
             .fmt_fields
-            .format_fields(fields.as_writer(), values)
+            .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
             .is_ok()
         {
+            fields.was_ansi = self.is_ansi;
             extensions.insert(fields);
         }
     }
@@ -702,10 +721,14 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(ctx);
+            let ctx = self.make_ctx(ctx, event);
             if self
                 .fmt_event
-                .format_event(&ctx, format::Writer::new(&mut buf), event)
+                .format_event(
+                    &ctx,
+                    format::Writer::new(&mut buf).with_ansi(self.is_ansi),
+                    event,
+                )
                 .is_ok()
             {
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
@@ -735,6 +758,7 @@ where
 pub struct FmtContext<'a, C, N> {
     pub(crate) ctx: Context<'a, C>,
     pub(crate) fmt_fields: &'a N,
+    pub(crate) event: &'a Event<'a>,
 }
 
 impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
@@ -772,8 +796,8 @@ where
         F: FnMut(&SpanRef<'_, C>) -> Result<(), E>,
     {
         // visit all the current spans
-        if let Some(leaf) = self.ctx.lookup_current() {
-            for span in leaf.scope().from_root() {
+        if let Some(scope) = self.event_scope() {
+            for span in scope.from_root() {
                 f(&span)?;
             }
         }
@@ -832,6 +856,82 @@ where
     /// Returns the current span for this formatter.
     pub fn current_span(&self) -> Current {
         self.ctx.current_span()
+    }
+
+    /// Returns [stored data] for the parent span of the event currently being
+    /// formatted.
+    ///
+    /// If the event has a contextual parent, this will return the current span. If
+    /// the event has an explicit parent span, this will return that span. If
+    /// the event does not have a parent span, this will return `None`.
+    ///
+    /// [stored data]: SpanRef
+    pub fn parent_span(&self) -> Option<SpanRef<'_, C>> {
+        self.ctx.event_span(self.event)
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// current context, starting with the specified span and ending with the
+    /// root of the trace tree and ending with the current span.
+    ///
+    /// This is equivalent to the [`Context::span_scope`] method.
+    ///
+    /// <div class="information">
+    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
+    /// </div>
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: crate::registry::SpanRef
+    pub fn span_scope(&self, id: &Id) -> Option<registry::Scope<'_, C>>
+    where
+        C: for<'lookup> LookupSpan<'lookup>,
+    {
+        self.ctx.span_scope(id)
+    }
+
+    /// Returns an iterator over the [stored data] for all the spans in the
+    /// event's span context, starting with its parent span and ending with the
+    /// root of the trace tree.
+    ///
+    /// This is equivalent to calling the [`Context::event_scope`] method and
+    /// passing the event currently being formatted.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
+    /// returns the spans in reverse order (from leaf to root). Use
+    /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
+    /// in case root-to-leaf ordering is desired.
+    /// </pre></div>
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
+    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
+    /// declaration</a> for details.
+    /// </pre></div>
+    ///
+    /// [stored data]: crate::registry::SpanRef
+    pub fn event_scope(&self) -> Option<registry::Scope<'_, C>>
+    where
+        C: for<'lookup> registry::LookupSpan<'lookup>,
+    {
+        self.ctx.event_scope(self.event)
     }
 
     /// Returns the [field formatter] configured by the subscriber invoking

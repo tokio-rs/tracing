@@ -36,7 +36,7 @@
 //!   **Requires "std"**.
 //! - `json`: Enables `fmt` support for JSON output. In JSON output, the ANSI
 //!   feature does nothing. **Requires "fmt" and "std"**.
-//! - [`local-time`]: Enables local time formatting when using the [`time`
+//! - `local-time`: Enables local time formatting when using the [`time`
 //!   crate]'s timestamp formatters with the `fmt` subscriber.
 //! - `reload`: Allows the `Collect` or `Subscribe` to be reloaded dynamically at runtime.
 //!
@@ -44,7 +44,7 @@
 //!
 //! - [`tracing-log`]: Enables better formatting for events emitted by `log`
 //!   macros in the `fmt` subscriber. Enabled by default.
-//! - [`time`]: Enables support for using the [`time` crate] for timestamp
+//! - [`time`][`time` crate]: Enables support for using the [`time` crate] for timestamp
 //!   formatting in the `fmt` subscriber.
 //! - [`smallvec`]: Causes the `EnvFilter` type to use the `smallvec` crate (rather
 //!   than `Vec`) as a performance optimization. Enabled by default.
@@ -57,7 +57,7 @@
 //! used without requiring the Rust standard library, although some features are
 //! disabled. Although most of the APIs provided by `tracing-subscriber`, such
 //! as [`fmt`] and [`EnvFilter`], require the standard library, some
-//! functionality, such as the [`Subscriber`] trait, can still be used in
+//! functionality, such as the [`Subscribe`] trait, can still be used in
 //! `no_std` environments.
 //!
 //! The dependency on the standard library is controlled by two crate feature
@@ -103,6 +103,7 @@
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`time` crate]: https://crates.io/crates/time
 //! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
+//! [`libstd`]: https://doc.rust-lang.org/std/index.html
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.12")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

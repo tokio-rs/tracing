@@ -24,6 +24,7 @@ categories = [
 ]
 keywords = ["logging", "tracing", "profiling"]
 edition = "2018"
+rust-version = "1.42.0"
 
 [features]
 default = ["std"]

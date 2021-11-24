@@ -18,6 +18,7 @@ categories = [
 ]
 keywords = ["logging", "tracing", "file-appender", "non-blocking-writer"]
 edition = "2018"
+rust-version = "1.51.0"
 
 [dependencies]
 crossbeam-channel = "0.5.0"

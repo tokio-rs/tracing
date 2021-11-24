@@ -15,6 +15,7 @@ categories = [
 keywords = ["logging", "tracing", "log"]
 license = "MIT"
 readme = "README.md"
+rust-version = "1.42.0"
 
 [features]
 default = ["log-tracer", "std"]

@@ -76,7 +76,7 @@ impl InnerAppender {
     }
 
     fn should_rollover(&self, date: OffsetDateTime) -> bool {
-        // the `None` case means that the `InnerAppender` *never* rorates log files.
+        // the `None` case means that the `InnerAppender` *never* rotates log files.
         match self.next_date {
             None => false,
             Some(next_date) => date >= next_date,

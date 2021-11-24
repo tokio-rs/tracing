@@ -173,9 +173,7 @@ extern crate alloc;
 ///
 /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
-/// use tracing_core::callsite;
+/// use tracing_core::{callsite, identify_callsite};
 /// # use tracing_core::{Metadata, collect::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
@@ -209,9 +207,8 @@ macro_rules! identify_callsite {
 ///
 /// /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
 /// # use tracing_core::{callsite::Callsite, collect::Interest};
+/// use tracing_core::metadata;
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -276,11 +273,6 @@ macro_rules! metadata {
         )
     };
 }
-
-// std uses lazy_static from crates.io
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate lazy_static;
 
 // Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]

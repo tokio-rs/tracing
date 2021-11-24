@@ -35,14 +35,54 @@ use fmt::{Debug, Display};
 
 /// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or [`fmt::Subscriber`].
-/// Each time an event is dispatched to [`fmt::Collector`] or [`fmt::Subscriber`],
-/// the collector or subscriber forwards it to its associated `FormatEvent` to emit a log message.
+/// `FormatEvent` is primarily used in the context of [`fmt::Collector`] or
+/// [`fmt::Subscriber`]. Each time an event is dispatched to [`fmt::Collector`]
+/// or [`fmt::Subscriber`], the collector or subscriber forwards it to its
+/// associated `FormatEvent` to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
+/// # Arguments
+///
+/// The following arguments are passed to `FormatEvent::format_event`:
+///
+/// * A [`FmtContext`]. This is an extension of the [`subscribe::Context`] type,
+///   which can be used for accessing stored information such as the current
+///   span context an event occurred in.
+///
+///   In addition, [`FmtContext`] exposes access to the [`FormatFields`]
+///   implementation that the subscriber was configured to use via the
+///   [`FmtContext::field_format`] method. This can be used when the
+///   [`FormatEvent`] implementation needs to format the event's fields.
+///
+///   For convenience, [`FmtContext`] also [implements `FormatFields`],
+///   forwarding to the configured [`FormatFields`] type.
+///
+/// * A [`Writer`] to which the formatted representation of the event is
+///   written. This type implements the [`std::fmt::Write`] trait, and therefore
+///   can be used with the [`std::write!`] and [`std::writeln!`] macros, as well
+///   as calling [`std::fmt::Write`] methods directly.
+///
+///   The [`Writer`] type also implements additional methods that provide
+///   information about how the event should be formatted. The
+///   [`Writer::has_ansi_escapes`] method indicates whether [ANSI terminal
+///   escape codes] are supported by the underlying I/O writer that the event
+///   will be written to. If this returns `true`, the formatter is permitted to
+///   use ANSI escape codes to add colors and other text formatting to its
+///   output. If it returns `false`, the event will be written to an output that
+///   does not support ANSI escape codes (such as a log file), and they should
+///   not be emitted.
+///
+///   Crates like [`ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   escape codes to formatted output.
+///
+/// * The actual [`Event`] to be formatted.
+///
 /// # Examples
+///
+/// This example re-implements a simiplified version of this crate's [default
+/// formatter]:
 ///
 /// ```rust
 /// use std::fmt;
@@ -67,38 +107,32 @@ use fmt::{Debug, Display};
 ///         mut writer: format::Writer<'_>,
 ///         event: &Event<'_>,
 ///     ) -> fmt::Result {
-///         // Write level and target
-///         let level = *event.metadata().level();
-///         let target = event.metadata().target();
-///         write!(
-///             writer,
-///             "{} {}: ",
-///             level,
-///             target,
-///         )?;
+///         // Format values from the event's's metadata:
+///         let metadata = event.metadata();
+///         write!(&mut writer, "{} {}: ", metadata.level(), metadata.target())?;
 ///
-///         // Write spans and fields of each span
-///         ctx.visit_spans(|span| {
-///             write!(writer, "{}", span.name())?;
+///         // Format all the spans in the event's span context.
+///         if let Some(scope) = ctx.event_scope() {
+///             for span in scope.from_root() {
+///                 write!(writer, "{}", span.name())?;
 ///
-///             let ext = span.extensions();
+///                 // `FormattedFields` is a formatted representation of the span's
+///                 // fields, which is stored in its extensions by the `fmt` layer's
+///                 // `new_span` method. The fields will have been formatted
+///                 // by the same field formatter that's provided to the event
+///                 // formatter in the `FmtContext`.
+///                 let ext = span.extensions();
+///                 let fields = &ext
+///                     .get::<FormattedFields<N>>()
+///                     .expect("will never be `None`");
 ///
-///             // `FormattedFields` is a a formatted representation of the span's
-///             // fields, which is stored in its extensions by the `fmt` layer's
-///             // `new_span` method. The fields will have been formatted
-///             // by the same field formatter that's provided to the event
-///             // formatter in the `FmtContext`.
-///             let fields = &ext
-///                 .get::<FormattedFields<N>>()
-///                 .expect("will never be `None`");
-///
-///             if !fields.is_empty() {
-///                 write!(writer, "{{{}}}", fields)?;
+///                 // Skip formatting the fields if the span had no fields.
+///                 if !fields.is_empty() {
+///                     write!(writer, "{{{}}}", fields)?;
+///                 }
+///                 write!(writer, ": ")?;
 ///             }
-///             write!(writer, ": ")?;
-///
-///             Ok(())
-///         })?;
+///         }
 ///
 ///         // Write fields on the event
 ///         ctx.field_format().format_fields(writer.by_ref(), event)?;
@@ -106,6 +140,13 @@ use fmt::{Debug, Display};
 ///         writeln!(writer)
 ///     }
 /// }
+///
+/// let _subscriber = tracing_subscriber::fmt()
+///     .event_format(MyFormatter)
+///     .init();
+///
+/// let _span = tracing::info_span!("my_span", answer = 42).entered();
+/// tracing::info!(question = "life, the universe, and everything", "hello world");
 /// ```
 ///
 /// This formatter will print events like this:
@@ -116,7 +157,14 @@ use fmt::{Debug, Display};
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
+/// [`subscribe::Context`]: crate::subscribe::Context
 /// [`Event`]: tracing::Event
+/// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
+/// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
+/// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
+/// [`ansi_term`]: https://crates.io/crates/ansi_term
+/// [`owo-colors`]: https://crates.io/crates/owo-colors
+/// [default formatter]: Full
 pub trait FormatEvent<C, N>
 where
     C: Collect + for<'a> LookupSpan<'a>,
@@ -229,9 +277,12 @@ where
 ///
 /// Additionally, a `Writer` may expose additional `tracing`-specific
 /// information to the formatter implementation.
+///
+/// [fields]: tracing_core::field
 pub struct Writer<'writer> {
     writer: &'writer mut dyn fmt::Write,
     // TODO(eliza): add ANSI support
+    is_ansi: bool,
 }
 
 /// A [`FormatFields`] implementation that formats fields by calling a function
@@ -271,7 +322,7 @@ pub struct Full;
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
     pub(crate) timer: T,
-    pub(crate) ansi: bool,
+    pub(crate) ansi: Option<bool>,
     pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
@@ -289,7 +340,13 @@ impl<'writer> Writer<'writer> {
     pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
             writer: writer as &mut dyn fmt::Write,
+            is_ansi: false,
         }
+    }
+
+    // TODO(eliza): consider making this a public API?
+    pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
+        Self { is_ansi, ..self }
     }
 
     /// Return a new `Writer` that mutably borrows `self`.
@@ -298,7 +355,11 @@ impl<'writer> Writer<'writer> {
     /// to a function that takes a `Writer` by value, allowing the original writer
     /// to still be used once that function returns.
     pub fn by_ref(&mut self) -> Writer<'_> {
-        Writer::new(self)
+        let is_ansi = self.is_ansi;
+        Writer {
+            writer: self as &mut dyn fmt::Write,
+            is_ansi,
+        }
     }
 
     /// Writes a string slice into this `Writer`, returning whether the write succeeded.
@@ -344,7 +405,7 @@ impl<'writer> Writer<'writer> {
         self.writer.write_char(c)
     }
 
-    /// Glue for usage of the [`write!`] macro with `Wrriter`s.
+    /// Glue for usage of the [`write!`] macro with `Writer`s.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
@@ -358,6 +419,49 @@ impl<'writer> Writer<'writer> {
     /// [`write_fmt` method]: std::fmt::Write::write_fmt
     pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
         self.writer.write_fmt(args)
+    }
+
+    /// Returns `true` if [ANSI escape codes] may be used to add colors
+    /// and other formatting when writing to this `Writer`.
+    ///
+    /// If this returns `false`, formatters should not emit ANSI escape codes.
+    ///
+    /// [ANSI escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
+    pub fn has_ansi_escapes(&self) -> bool {
+        self.is_ansi
+    }
+
+    pub(in crate::fmt::format) fn bold(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().bold();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().dimmed();
+            }
+        }
+
+        Style::new()
+    }
+
+    pub(in crate::fmt::format) fn italic(&self) -> Style {
+        #[cfg(feature = "ansi")]
+        {
+            if self.is_ansi {
+                return Style::new().italic();
+            }
+        }
+
+        Style::new()
     }
 }
 
@@ -382,6 +486,7 @@ impl fmt::Debug for Writer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Writer")
             .field("writer", &format_args!("<&mut dyn fmt::Write>"))
+            .field("is_ansi", &self.is_ansi)
             .finish()
     }
 }
@@ -393,7 +498,7 @@ impl Default for Format<Full, SystemTime> {
         Format {
             format: Full,
             timer: SystemTime,
-            ansi: true,
+            ansi: None,
             display_timestamp: true,
             display_target: true,
             display_level: true,
@@ -530,7 +635,10 @@ impl<F, T> Format<F, T> {
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
-        Format { ansi, ..self }
+        Format {
+            ansi: Some(ansi),
+            ..self
+        }
     }
 
     /// Sets whether or not an event's target is displayed.
@@ -571,7 +679,7 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    fn format_level(&self, level: Level, writer: &mut dyn fmt::Write) -> fmt::Result
+    fn format_level(&self, level: Level, writer: &mut Writer<'_>) -> fmt::Result
     where
         F: LevelNames,
     {
@@ -579,7 +687,7 @@ impl<F, T> Format<F, T> {
             let fmt_level = {
                 #[cfg(feature = "ansi")]
                 {
-                    F::format_level(level, self.ansi)
+                    F::format_level(level, writer.has_ansi_escapes())
                 }
                 #[cfg(not(feature = "ansi"))]
                 {
@@ -606,29 +714,28 @@ impl<F, T> Format<F, T> {
         // colors.
         #[cfg(feature = "ansi")]
         {
-            if self.ansi {
+            if writer.has_ansi_escapes() {
                 let style = Style::new().dimmed();
                 write!(writer, "{}", style.prefix())?;
-                self.timer.format_time(writer)?;
+
+                // If getting the timestamp failed, don't bail --- only bail on
+                // formatting errors.
+                if self.timer.format_time(writer).is_err() {
+                    writer.write_str("<unknown time>")?;
+                }
+
                 write!(writer, "{} ", style.suffix())?;
                 return Ok(());
             }
         }
 
         // Otherwise, just format the timestamp without ANSI formatting.
-        self.timer.format_time(writer)?;
-        writer.write_char(' ')
-    }
-
-    fn bold(&self) -> Style {
-        #[cfg(feature = "ansi")]
-        {
-            if self.ansi {
-                return Style::new().bold();
-            }
+        // If getting the timestamp failed, don't bail --- only bail on
+        // formatting errors.
+        if self.timer.format_time(writer).is_err() {
+            writer.write_str("<unknown time>")?;
         }
-
-        Style::new()
+        writer.write_char(' ')
     }
 }
 
@@ -692,6 +799,14 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
         self.format_timestamp(&mut writer)?;
         self.format_level(*meta.level(), &mut writer)?;
 
@@ -713,8 +828,11 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        if let Some(scope) = ctx.ctx.event_scope(event) {
-            let bold = self.bold();
+        let dimmed = writer.dimmed();
+
+        if let Some(scope) = ctx.event_scope() {
+            let bold = writer.bold();
+
             let mut seen = false;
 
             for span in scope.from_root() {
@@ -727,7 +845,7 @@ where
                         write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
                 }
-                writer.write_char(':')?;
+                write!(writer, "{}", dimmed.paint(":"))?;
             }
 
             if seen {
@@ -736,7 +854,12 @@ where
         }
 
         if self.display_target {
-            write!(writer, "{}: ", meta.target())?;
+            write!(
+                writer,
+                "{}{} ",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -785,28 +908,19 @@ where
         }
 
         if self.display_target {
-            let target = meta.target();
-            #[cfg(feature = "ansi")]
-            let target = if self.ansi {
-                Style::new().bold().paint(target)
-            } else {
-                Style::new().paint(target)
-            };
-
-            write!(writer, "{}:", target)?;
+            write!(
+                writer,
+                "{}{}",
+                writer.bold().paint(meta.target()),
+                writer.dimmed().paint(":")
+            )?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        #[cfg(feature = "ansi")]
-        let dimmed = if self.ansi {
-            Style::new().dimmed()
-        } else {
-            Style::new()
-        };
+        let dimmed = writer.dimmed();
         for span in ctx
-            .ctx
-            .event_scope(event)
+            .event_scope()
             .into_iter()
             .map(Scope::from_root)
             .flatten()
@@ -814,9 +928,7 @@ where
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
-                    #[cfg(feature = "ansi")]
-                    let fields = dimmed.paint(fields.as_str());
-                    write!(writer, " {}", fields)?;
+                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
             }
         }
@@ -922,9 +1034,17 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
+            let italic = self.writer.italic();
             self.record_debug(
                 field,
-                &format_args!("{} {}.sources={}", value, field, ErrorSourceList(source)),
+                &format_args!(
+                    "{} {}{}{}{}",
+                    value,
+                    italic.paint(field.name()),
+                    italic.paint(".sources"),
+                    self.writer.dimmed().paint("="),
+                    ErrorSourceList(source)
+                ),
             )
         } else {
             self.record_debug(field, &format_args!("{}", value))
@@ -942,8 +1062,20 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(self.writer, "{}={:?}", &name[2..], value),
-            name => write!(self.writer, "{}={:?}", name, value),
+            name if name.starts_with("r#") => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(&name[2..]),
+                self.writer.dimmed().paint("="),
+                value
+            ),
+            name => write!(
+                self.writer,
+                "{}{}{:?}",
+                self.writer.italic().paint(name),
+                self.writer.dimmed().paint("="),
+                value
+            ),
         };
     }
 }
@@ -1362,7 +1494,7 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m tracing_subscriber::fmt::format::test: hello\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
         test_ansi(true, expected);
     }
 

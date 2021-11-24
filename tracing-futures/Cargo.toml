@@ -16,6 +16,7 @@ categories = [
 ]
 keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
+rust-version = "1.42.0"
 
 [features]
 default = ["std-future", "std"]
