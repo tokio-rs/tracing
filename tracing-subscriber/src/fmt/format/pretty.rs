@@ -250,6 +250,10 @@ impl PrettyFields {
         Self { ansi: true }
     }
 
+    #[deprecated(
+        since = "0.3.3",
+        note = "Use `fmt::Subscriber::with_ansi` or `fmt::Collector::with_ansi` instead."
+    )]
     /// Enable ANSI encoding for formatted fields.
     pub fn with_ansi(self, ansi: bool) -> Self {
         Self { ansi, ..self }
@@ -298,6 +302,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     fn bold(&self) -> Style {
+        dbg!(self.writer.has_ansi_escapes());
         if self.writer.has_ansi_escapes() {
             self.style.bold()
         } else {
@@ -342,27 +347,42 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        let bold = self.bold();
-        match field.name() {
-            "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => self.result = Ok(()),
-            name if name.starts_with("r#") => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                &name[2..],
-                bold.infix(self.style),
-                value
-            )),
-            name => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                name,
-                bold.infix(self.style),
-                value
-            )),
-        };
+        if self.writer.has_ansi_escapes() {
+            let bold = self.bold();
+            match field.name() {
+                "message" => {
+                    self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,))
+                }
+                // Skip fields that are actually log metadata that have already been handled
+                #[cfg(feature = "tracing-log")]
+                name if name.starts_with("log.") => self.result = Ok(()),
+                name if name.starts_with("r#") => self.write_padded(&format_args!(
+                    "{}{}{}: {:?}",
+                    bold.prefix(),
+                    &name[2..],
+                    bold.infix(self.style),
+                    value
+                )),
+                name => self.write_padded(&format_args!(
+                    "{}{}{}: {:?}",
+                    bold.prefix(),
+                    name,
+                    bold.infix(self.style),
+                    value
+                )),
+            };
+        } else {
+            match field.name() {
+                "message" => self.write_padded(&format_args!("{:?}", value)),
+                // Skip fields that are actually log metadata that have already been handled
+                #[cfg(feature = "tracing-log")]
+                name if name.starts_with("log.") => self.result = Ok(()),
+                name if name.starts_with("r#") => {
+                    self.write_padded(&format_args!("{}: {:?}", &name[2..], value))
+                }
+                name => self.write_padded(&format_args!("{}: {:?}", name, value)),
+            };
+        }
     }
 }
 

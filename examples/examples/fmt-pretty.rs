@@ -1,10 +1,14 @@
 #![deny(rust_2018_idioms)]
+
+use tracing_subscriber::fmt::format::PrettyFields;
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
 fn main() {
     tracing_subscriber::fmt()
         .pretty()
+        .with_ansi(false)
+        .fmt_fields(PrettyFields::new())
         .with_thread_names(true)
         // enable everything
         .with_max_level(tracing::Level::TRACE)
