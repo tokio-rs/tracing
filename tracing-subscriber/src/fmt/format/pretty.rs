@@ -39,7 +39,17 @@ pub struct PrettyVisitor<'a> {
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 #[derive(Debug)]
 pub struct PrettyFields {
-    ansi: bool,
+    /// A value to override the provided `Writer`'s ANSI formatting
+    /// configuration.
+    ///
+    /// If this is `Some`, we override the `Writer`'s ANSI setting. This is
+    /// necessary in order to continue supporting the deprecated
+    /// `PrettyFields::with_ansi` method. If it is `None`, we don't override the
+    /// ANSI formatting configuration (because the deprecated method was not
+    /// called).
+    // TODO: when `PrettyFields::with_ansi` is removed, we can get rid
+    // of this entirely.
+    ansi: Option<bool>,
 }
 
 // === impl Pretty ===
@@ -259,12 +269,22 @@ impl Default for PrettyFields {
 impl PrettyFields {
     /// Returns a new default [`PrettyFields`] implementation.
     pub fn new() -> Self {
-        Self { ansi: true }
+        // By default, don't override the `Writer`'s ANSI colors
+        // configuration. We'll only do this if the user calls the
+        // deprecated `PrettyFields::with_ansi` method.
+        Self { ansi: None }
     }
 
     /// Enable ANSI encoding for formatted fields.
+    #[deprecated(
+        since = "0.3.3",
+        note = "Use `fmt::Subscriber::with_ansi` or `fmt::Layer::with_ansi` instead."
+    )]
     pub fn with_ansi(self, ansi: bool) -> Self {
-        Self { ansi, ..self }
+        Self {
+            ansi: Some(ansi),
+            ..self
+        }
     }
 }
 
@@ -272,8 +292,11 @@ impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
     type Visitor = PrettyVisitor<'a>;
 
     #[inline]
-    fn make_visitor(&self, target: Writer<'a>) -> Self::Visitor {
-        PrettyVisitor::new(target.with_ansi(self.ansi), true)
+    fn make_visitor(&self, mut target: Writer<'a>) -> Self::Visitor {
+        if let Some(ansi) = self.ansi {
+            target = target.with_ansi(ansi);
+        }
+        PrettyVisitor::new(target, true)
     }
 }
 
