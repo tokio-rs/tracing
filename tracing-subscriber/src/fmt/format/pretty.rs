@@ -263,11 +263,11 @@ impl PrettyFields {
         Self { ansi: None }
     }
 
+    /// Enable ANSI encoding for formatted fields.
     #[deprecated(
         since = "0.3.3",
         note = "Use `fmt::Subscriber::with_ansi` or `fmt::Collector::with_ansi` instead."
     )]
-    /// Enable ANSI encoding for formatted fields.
     pub fn with_ansi(self, ansi: bool) -> Self {
         Self {
             ansi: Some(ansi),
