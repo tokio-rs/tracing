@@ -7,7 +7,6 @@ mod yak_shave;
 fn main() {
     tracing_subscriber::fmt()
         .pretty()
-        .with_ansi(false)
         .fmt_fields(PrettyFields::new())
         .with_thread_names(true)
         // enable everything
