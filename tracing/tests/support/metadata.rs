@@ -9,12 +9,18 @@ pub struct Expect {
 }
 
 impl Expect {
-    pub(in crate::support) fn check(&self, actual: &Metadata<'_>, ctx: fmt::Arguments<'_>) {
+    pub(in crate::support) fn check(
+        &self,
+        actual: &Metadata<'_>,
+        ctx: fmt::Arguments<'_>,
+        subscriber_name: &str,
+    ) {
         if let Some(ref expected_name) = self.name {
             let name = actual.name();
             assert!(
                 expected_name == name,
-                "expected {} to be named `{}`, but got one named `{}`",
+                "\n[{}] expected {} to be named `{}`, but got one named `{}`",
+                subscriber_name,
                 ctx,
                 expected_name,
                 name
@@ -25,7 +31,8 @@ impl Expect {
             let level = actual.level();
             assert!(
                 expected_level == level,
-                "expected {} to be at level `{:?}`, but it was at level `{:?}` instead",
+                "\n[{}] expected {} to be at level `{:?}`, but it was at level `{:?}` instead",
+                subscriber_name,
                 ctx,
                 expected_level,
                 level,
@@ -36,7 +43,8 @@ impl Expect {
             let target = actual.target();
             assert!(
                 expected_target == target,
-                "expected {} to have target `{}`, but it had target `{}` instead",
+                "\n[{}] expected {} to have target `{}`, but it had target `{}` instead",
+                subscriber_name,
                 ctx,
                 expected_target,
                 target,
