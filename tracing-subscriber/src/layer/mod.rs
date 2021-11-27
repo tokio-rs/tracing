@@ -427,6 +427,7 @@ pub(crate) mod tests;
 /// [module-level documentation](crate::layer) for details.
 ///
 /// [`Subscriber`]: tracing_core::Subscriber
+#[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Layer<S>
 where
     S: Subscriber,
@@ -784,7 +785,8 @@ where
 /// A per-[`Layer`] filter that determines whether a span or event is enabled
 /// for an individual layer.
 #[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry"), notable_trait))]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+#[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Filter<S> {
     /// Returns `true` if this layer is interested in a span or event with the
     /// given [`Metadata`] in the current [`Context`], similarly to
