@@ -380,7 +380,7 @@ where
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
                 Some(&self.id as *const _ as *const ())
             }
-            _ => None,
+            _ => self.layer.downcast_raw(id),
         }
     }
 }
