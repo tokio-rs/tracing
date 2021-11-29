@@ -198,7 +198,7 @@ thread_local! {
 // === impl Filter ===
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<S> layer::Filter<S> for LevelFilter {
+impl<S> subscribe::Filter<S> for LevelFilter {
     fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
         meta.level() <= self
     }
@@ -281,15 +281,15 @@ impl<L, F, S> Filtered<L, F, S> {
     }
 }
 
-impl<S, L, F> Layer<S> for Filtered<L, F, S>
+impl<C, L, F> Subscribe<C> for Filtered<L, F, C>
 where
-    S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
-    F: layer::Filter<S> + 'static,
-    L: Layer<S>,
+    C: Collect + for<'span> registry::LookupSpan<'span> + 'static,
+    F: subscribe::Filter<C> + 'static,
+    L: Subscribe<C>,
 {
-    fn on_layer(&mut self, subscriber: &mut S) {
-        self.id = MagicPlfDowncastMarker(subscriber.register_filter());
-        self.layer.on_layer(subscriber);
+    fn on_subscribe(&mut self, collector: &mut C) {
+        self.id = MagicPlfDowncastMarker(collector.register_filter());
+        self.layer.on_layer(collector);
     }
 
     // TODO(eliza): can we figure out a nice way to make the `Filtered` layer

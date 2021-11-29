@@ -781,12 +781,12 @@ where
     }
 }
 
-/// A per-[`Layer`] filter that determines whether a span or event is enabled
-/// for an individual layer.
+/// A per-[`Subscribe`] filter that determines whether a span or event is enabled
+/// for an individual subscriber.
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry"), notable_trait))]
 pub trait Filter<S> {
-    /// Returns `true` if this layer is interested in a span or event with the
+    /// Returns `true` if this subscriber is interested in a span or event with the
     /// given [`Metadata`] in the current [`Context`], similarly to
     /// [`Subscriber::enabled`].
     ///

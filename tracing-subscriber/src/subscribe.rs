@@ -213,6 +213,37 @@ where
     C: Collect,
     Self: 'static,
 {
+    /// Performs late initialization when attaching a `Subscribe` to a
+    /// [`Collect`].
+    ///
+    /// This is a callback that is called when the `Layer` is added to a
+    /// [`Collect`] (e.g. in [`Subscribe::with_collector`] and
+    /// [`SubscriberExt::with`]). Since this can only occur before the
+    /// [`Collect`] has been set as the default, both the subscriber and
+    /// [`Collect`] are passed to this method _mutably_. This gives the
+    /// subscribe the opportunity to set any of its own fields with values
+    /// recieved by method calls on the [`Collect`].
+    ///
+    /// For example, [`Filtered`] layers implement `on_subscribe` to call the
+    /// [`Collect`]'s [`register_filter`] method, and store the returned
+    /// [`FilterId`] as a field.
+    ///
+    /// **Note** In most cases, subscriber implementations will not need to
+    /// implement this method. However, in cases where a type implementing
+    /// subscriber wraps one or more other types that implement `Subscribe`, like the
+    /// [`Layered`] and [`Filtered`] types in this crate, that type MUST ensure
+    /// that the inner `Layer`s' `on_subscribe` methods are called. Otherwise,
+    /// functionality that relies on `on_subscribe`, such as [per-subscriber filtering],
+    /// may not work correctly.
+    ///
+    /// [`Filtered`]: crate::filter::Filtered
+    /// [`register_filter`]: crate::registry::LookupSpan::register_filter
+    /// [per-subscribe filtering]: #per-layer-filtering
+    /// [`FilterId`]: crate::filter::FilterId
+    fn on_subscribe(&mut self, subscriber: &mut C) {
+        let _ = subscriber;
+    }
+
     /// Registers a new callsite with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite, similarly
     /// to [`Collect::register_callsite`].
