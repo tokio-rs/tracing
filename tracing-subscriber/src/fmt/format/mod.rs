@@ -906,15 +906,6 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        if self.display_target {
-            write!(
-                writer,
-                "{}{}",
-                writer.bold().paint(meta.target()),
-                writer.dimmed().paint(":")
-            )?;
-        }
-
         let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
@@ -926,6 +917,17 @@ where
             }
         };
         write!(writer, "{}", fmt_ctx)?;
+
+        if self.display_target {
+            write!(
+                writer,
+                "{}{} ",
+                writer.bold().paint(meta.target()),
+                writer.dimmed().paint(":")
+            )?;
+        }
+
+        ctx.format_fields(writer.by_ref(), event)?;
 
         let dimmed = writer.dimmed();
         for span in ctx
@@ -1525,7 +1527,7 @@ pub(super) mod test {
         subscriber::with_default,
     };
 
-    use super::{FmtSpan, TimingDisplay, Writer};
+    use super::*;
     use std::fmt;
 
     pub(crate) struct MockTime;
@@ -1551,52 +1553,102 @@ pub(super) mod test {
         run_test(subscriber, make_writer, "hello\n")
     }
 
-    #[cfg(feature = "ansi")]
-    #[test]
-    fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
-        test_ansi(true, expected);
-    }
-
-    #[cfg(feature = "ansi")]
-    #[test]
-    fn with_ansi_false() {
-        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
-        test_ansi(false, expected);
-    }
-
-    #[cfg(not(feature = "ansi"))]
-    #[test]
-    fn without_ansi() {
+    fn test_ansi<T>(
+        is_ansi: bool,
+        expected: &str,
+        builder: crate::fmt::SubscriberBuilder<DefaultFields, Format<T>>,
+    ) where
+        Format<T, MockTime>: FormatEvent<crate::Registry, DefaultFields>,
+        T: Send + Sync + 'static,
+    {
         let make_writer = MockMakeWriter::default();
-        let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer)
-            .with_timer(MockTime);
-        run_test(subscriber, make_writer, expected);
-    }
-
-    #[test]
-    fn without_level() {
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime);
-        let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
-
-        run_test(subscriber, make_writer, expected);
-    }
-
-    #[cfg(feature = "ansi")]
-    fn test_ansi(is_ansi: bool, expected: &str) {
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt::Subscriber::builder()
+        let subscriber = builder
             .with_writer(make_writer.clone())
             .with_ansi(is_ansi)
             .with_timer(MockTime);
         run_test(subscriber, make_writer, expected)
+    }
+
+    #[cfg(not(feature = "ansi"))]
+    fn test_without_ansi<T>(
+        expected: &str,
+        builder: crate::fmt::SubscriberBuilder<DefaultFields, Format<T>>,
+    ) where
+        Format<T, MockTime>: FormatEvent<crate::Registry, DefaultFields>,
+        T: Send + Sync,
+    {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = builder.with_writer(make_writer).with_timer(MockTime);
+        run_test(subscriber, make_writer, expected)
+    }
+
+    fn test_without_level<T>(
+        expected: &str,
+        builder: crate::fmt::SubscriberBuilder<DefaultFields, Format<T>>,
+    ) where
+        Format<T, MockTime>: FormatEvent<crate::Registry, DefaultFields>,
+        T: Send + Sync + 'static,
+    {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = builder
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        run_test(subscriber, make_writer, expected);
+    }
+
+    fn test_overridden_parents<T>(
+        expected: &str,
+        builder: crate::fmt::SubscriberBuilder<DefaultFields, Format<T>>,
+    ) where
+        Format<T, MockTime>: FormatEvent<crate::Registry, DefaultFields>,
+        T: Send + Sync + 'static,
+    {
+        let make_writer = MockMakeWriter::default();
+        let collector = builder
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(collector, || {
+            let span1 = tracing::info_span!("span1", span = 1);
+            let span2 = tracing::info_span!(parent: &span1, "span2", span = 2);
+            tracing::info!(parent: &span2, "hello");
+        });
+        assert_eq!(expected, make_writer.get_string());
+    }
+
+    fn test_overridden_parents_in_scope<T>(
+        expected1: &str,
+        expected2: &str,
+        builder: crate::fmt::SubscriberBuilder<DefaultFields, Format<T>>,
+    ) where
+        Format<T, MockTime>: FormatEvent<crate::Registry, DefaultFields>,
+        T: Send + Sync + 'static,
+    {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = builder
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            let span1 = tracing::info_span!("span1", span = 1);
+            let span2 = tracing::info_span!(parent: &span1, "span2", span = 2);
+            let span3 = tracing::info_span!("span3", span = 3);
+            let _e3 = span3.enter();
+
+            tracing::info!("hello");
+            assert_eq!(expected1, make_writer.get_string().as_str());
+
+            tracing::info!(parent: &span2, "hello");
+            assert_eq!(expected2, make_writer.get_string().as_str());
+        });
     }
 
     fn run_test(subscriber: impl Into<Dispatch>, buf: MockMakeWriter, expected: &str) {
@@ -1605,55 +1657,95 @@ pub(super) mod test {
         assert_eq!(expected, buf.get_string())
     }
 
-    #[test]
-    fn overridden_parents() {
-        let make_writer = MockMakeWriter::default();
-        let collector = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime)
-            .finish();
+    mod default {
+        use super::*;
+        #[cfg(feature = "ansi")]
+        #[test]
+        fn with_ansi_true() {
+            let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
+            test_ansi(true, expected, crate::fmt::Subscriber::builder());
+        }
 
-        with_default(collector, || {
-            let span1 = tracing::info_span!("span1");
-            let span2 = tracing::info_span!(parent: &span1, "span2");
-            tracing::info!(parent: &span2, "hello");
-        });
-        assert_eq!(
-            "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-            make_writer.get_string()
-        );
+        #[cfg(feature = "ansi")]
+        #[test]
+        fn with_ansi_false() {
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+            test_ansi(false, expected, crate::fmt::Subscriber::builder());
+        }
+
+        #[cfg(not(feature = "ansi"))]
+        #[test]
+        fn without_ansi() {
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+            test_without_ansi(expected, crate::fmt::Subscriber::builder())
+        }
+
+        #[test]
+        fn without_level() {
+            let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
+            test_without_level(expected, crate::fmt::Subscriber::builder())
+        }
+
+        #[test]
+        fn overridden_parents() {
+            let expected = "fake time span1{span=1}:span2{span=2}: tracing_subscriber::fmt::format::test: hello\n";
+            test_overridden_parents(expected, crate::fmt::Subscriber::builder())
+        }
+
+        #[test]
+        fn overridden_parents_in_scope() {
+            test_overridden_parents_in_scope(
+                "fake time span3{span=3}: tracing_subscriber::fmt::format::test: hello\n",
+                "fake time span1{span=1}:span2{span=2}: tracing_subscriber::fmt::format::test: hello\n",
+                crate::fmt::Subscriber::builder(),
+            )
+        }
     }
 
-    #[test]
-    fn overridden_parents_in_scope() {
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime)
-            .finish();
+    mod compact {
+        use super::*;
 
-        with_default(subscriber, || {
-            let span1 = tracing::info_span!("span1");
-            let span2 = tracing::info_span!(parent: &span1, "span2");
-            let span3 = tracing::info_span!("span3");
-            let _e3 = span3.enter();
+        #[cfg(feature = "ansi")]
+        #[test]
+        fn with_ansi_true() {
+            let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[1mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
+            test_ansi(true, expected, crate::fmt::Subscriber::builder().compact())
+        }
 
-            tracing::info!("hello");
-            assert_eq!(
-                "fake time span3: tracing_subscriber::fmt::format::test: hello\n",
-                make_writer.get_string().as_str()
-            );
+        #[cfg(feature = "ansi")]
+        #[test]
+        fn with_ansi_false() {
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+            test_ansi(false, expected, crate::fmt::Subscriber::builder().compact());
+        }
 
-            tracing::info!(parent: &span2, "hello");
-            assert_eq!(
-                "fake time span1:span2: tracing_subscriber::fmt::format::test: hello\n",
-                make_writer.get_string().as_str()
-            );
-        });
+        #[cfg(not(feature = "ansi"))]
+        #[test]
+        fn without_ansi() {
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+            test_without_ansi(expected, crate::fmt::Subscriber::builder().compact())
+        }
+
+        #[test]
+        fn without_level() {
+            let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
+            test_without_level(expected, crate::fmt::Subscriber::builder().compact());
+        }
+
+        #[test]
+        fn overridden_parents() {
+            let expected = "fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n";
+            test_overridden_parents(expected, crate::fmt::Subscriber::builder().compact())
+        }
+
+        #[test]
+        fn overridden_parents_in_scope() {
+            test_overridden_parents_in_scope(
+                "fake time span3: tracing_subscriber::fmt::format::test: hello span=3\n",
+                "fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n",
+                crate::fmt::Subscriber::builder().compact(),
+            )
+        }
     }
 
     #[test]
