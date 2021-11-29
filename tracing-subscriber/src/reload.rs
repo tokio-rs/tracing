@@ -58,7 +58,7 @@ where
     S: crate::Subscribe<C> + 'static,
     C: Collect,
 {
-    fn on_layer(&mut self, subscriber: &mut S) {
+    fn on_subscribe(&mut self, subscriber: &mut S) {
         try_lock!(self.inner.write(), else return).on_layer(subscriber);
     }
 

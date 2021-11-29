@@ -37,6 +37,7 @@ use std::{
     cell::{Cell, RefCell},
     fmt,
     marker::PhantomData,
+    ptr::NonNull,
     sync::Arc,
     thread_local,
 };
@@ -55,11 +56,11 @@ use tracing_core::{
 /// [plf]: crate::layer#per-layer-filtering
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[derive(Clone)]
-pub struct Filtered<L, F, S> {
+pub struct Filtered<S, F, C> {
     filter: F,
-    layer: L,
+    subscriber: S,
     id: MagicPlfDowncastMarker,
-    _s: PhantomData<fn(S)>,
+    _s: PhantomData<fn(C)>,
 }
 
 /// A per-layer [`Filter`] implemented by a closure or function pointer that
@@ -73,15 +74,15 @@ pub struct Filtered<L, F, S> {
 /// [plf]: crate::layer#per-layer-filtering
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 pub struct DynFilterFn<
-    S,
+    C,
     // TODO(eliza): should these just be boxed functions?
-    F = fn(&Metadata<'_>, &Context<'_, S>) -> bool,
+    F = fn(&Metadata<'_>, &Context<'_, C>) -> bool,
     R = fn(&'static Metadata<'static>) -> Interest,
 > {
     enabled: F,
     register_callsite: Option<R>,
     max_level_hint: Option<LevelFilter>,
-    _s: PhantomData<fn(S)>,
+    _s: PhantomData<fn(C)>,
 }
 
 /// A per-layer [`Filter`] implemented by a closure or function pointer that
@@ -198,8 +199,8 @@ thread_local! {
 // === impl Filter ===
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-impl<S> subscribe::Filter<S> for LevelFilter {
-    fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+impl<C> subscribe::Filter<C> for LevelFilter {
+    fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, C>) -> bool {
         meta.level() <= self
     }
 
@@ -216,9 +217,9 @@ impl<S> subscribe::Filter<S> for LevelFilter {
     }
 }
 
-impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
+impl<C> subscribe::Filter<C> for Arc<dyn subscribe::Filter<C> + Send + Sync + 'static> {
     #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, C>) -> bool {
         (**self).enabled(meta, cx)
     }
 
@@ -233,9 +234,9 @@ impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
     }
 }
 
-impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
+impl<C> subscribe::Filter<C> for Box<dyn subscribe::Filter<C> + Send + Sync + 'static> {
     #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, C>) -> bool {
         (**self).enabled(meta, cx)
     }
 
@@ -252,7 +253,7 @@ impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
 
 // === impl Filtered ===
 
-impl<L, F, S> Filtered<L, F, S> {
+impl<S, F, C> Filtered<S, F, C> {
     /// Wraps the provided [`Layer`] so that it is filtered by the given
     /// [`Filter`].
     ///
@@ -262,9 +263,9 @@ impl<L, F, S> Filtered<L, F, S> {
     ///
     /// [`Filter`]: crate::layer::Filter
     /// [plf]: crate::layer#per-layer-filtering
-    pub fn new(layer: L, filter: F) -> Self {
+    pub fn new(subscriber: S, filter: F) -> Self {
         Self {
-            layer,
+            subscriber,
             filter,
             id: MagicPlfDowncastMarker(FilterId::disabled()),
             _s: PhantomData,
@@ -281,15 +282,15 @@ impl<L, F, S> Filtered<L, F, S> {
     }
 }
 
-impl<C, L, F> Subscribe<C> for Filtered<L, F, C>
+impl<C, S, F> Subscribe<C> for Filtered<S, F, C>
 where
     C: Collect + for<'span> registry::LookupSpan<'span> + 'static,
     F: subscribe::Filter<C> + 'static,
-    L: Subscribe<C>,
+    S: Subscribe<C>,
 {
     fn on_subscribe(&mut self, collector: &mut C) {
         self.id = MagicPlfDowncastMarker(collector.register_filter());
-        self.layer.on_layer(collector);
+        self.subscriber.on_subscribe(collector);
     }
 
     // TODO(eliza): can we figure out a nice way to make the `Filtered` layer
@@ -309,7 +310,7 @@ where
         // to be able to perform any other registration steps. However, we'll
         // ignore its `Interest`.
         if !interest.is_never() {
-            self.layer.register_callsite(metadata);
+            self.subscriber.register_callsite(metadata);
         }
 
         // Add our `Interest` to the current sum of per-layer filter `Interest`s
@@ -325,7 +326,7 @@ where
         Interest::always()
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, C>) -> bool {
         let cx = cx.with_filter(self.id());
         let enabled = self.filter.enabled(metadata, &cx);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));
@@ -333,7 +334,7 @@ where
         if enabled {
             // If the filter enabled this metadata, ask the wrapped layer if
             // _it_ wants it --- it might have a global filter.
-            self.layer.enabled(metadata, cx)
+            self.subscriber.enabled(metadata, cx)
         } else {
             // Otherwise, return `true`. The _per-layer_ filter disabled this
             // metadata, but returning `false` in `Layer::enabled` will
@@ -352,9 +353,10 @@ where
         }
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, C>) {
         self.did_enable(|| {
-            self.layer.new_span(attrs, id, cx.with_filter(self.id()));
+            self.subscriber
+                .on_new_span(attrs, id, cx.with_filter(self.id()));
         })
     }
 
@@ -363,57 +365,57 @@ where
         self.filter.max_level_hint()
     }
 
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(span, self.id()) {
-            self.layer.on_record(span, values, cx)
+            self.subscriber.on_record(span, values, cx)
         }
     }
 
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, cx: Context<'_, S>) {
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, cx: Context<'_, C>) {
         // only call `on_follows_from` if both spans are enabled by us
         if cx.is_enabled_for(span, self.id()) && cx.is_enabled_for(follows, self.id()) {
-            self.layer
+            self.subscriber
                 .on_follows_from(span, follows, cx.with_filter(self.id()))
         }
     }
 
-    fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, cx: Context<'_, C>) {
         self.did_enable(|| {
-            self.layer.on_event(event, cx.with_filter(self.id()));
+            self.subscriber.on_event(event, cx.with_filter(self.id()));
         })
     }
 
-    fn on_enter(&self, id: &span::Id, cx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.layer.on_enter(id, cx)
+            self.subscriber.on_enter(id, cx)
         }
     }
 
-    fn on_exit(&self, id: &span::Id, cx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.layer.on_exit(id, cx)
+            self.subscriber.on_exit(id, cx)
         }
     }
 
-    fn on_close(&self, id: span::Id, cx: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(&id, self.id()) {
-            self.layer.on_close(id, cx)
+            self.subscriber.on_close(id, cx)
         }
     }
 
     // XXX(eliza): the existence of this method still makes me sad...
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, cx: Context<'_, S>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(old, self.id()) {
-            self.layer.on_id_change(old, new, cx)
+            self.subscriber.on_id_change(old, new, cx)
         }
     }
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
             id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
-            id if id == TypeId::of::<L>() => Some(&self.layer as *const _ as *const ()),
+            id if id == TypeId::of::<S>() => Some(&self.subscriber as *const _ as *const ()),
             id if id == TypeId::of::<F>() => Some(&self.filter as *const _ as *const ()),
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
                 Some(&self.id as *const _ as *const ())
@@ -431,7 +433,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Filtered")
             .field("filter", &self.filter)
-            .field("layer", &self.layer)
+            .field("layer", &self.subscriber)
             .field("id", &self.id)
             .finish()
     }
@@ -653,7 +655,7 @@ where
     }
 }
 
-impl<S, F> layer::Filter<S> for FilterFn<F>
+impl<S, F> subscribe::Filter<S> for FilterFn<F>
 where
     F: Fn(&Metadata<'_>) -> bool,
 {
@@ -955,7 +957,7 @@ where
     }
 }
 
-impl<S, F, R> layer::Filter<S> for DynFilterFn<S, F, R>
+impl<S, F, R> subscribe::Filter<S> for DynFilterFn<S, F, R>
 where
     F: Fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     R: Fn(&'static Metadata<'static>) -> Interest,
@@ -1405,25 +1407,25 @@ pub(crate) fn is_plf_downcast_marker(type_id: TypeId) -> bool {
 }
 
 /// Does a type implementing `Subscriber` contain any per-layer filters?
-pub(crate) fn subscriber_has_plf<S>(subscriber: &S) -> bool
+pub(crate) fn subscriber_has_plf<C>(collector: &C) -> bool
 where
-    S: Subscriber,
+    C: Collect,
 {
-    (subscriber as &dyn Subscriber).is::<MagicPlfDowncastMarker>()
+    (collector as &dyn Collect).is::<MagicPlfDowncastMarker>()
 }
 
-/// Does a type implementing `Layer` contain any per-layer filters?
-pub(crate) fn layer_has_plf<L, S>(layer: &L) -> bool
+/// Does a type implementing `Subscriber` contain any per-layer filters?
+pub(crate) fn layer_has_plf<S, C>(subscriber: &S) -> bool
 where
-    L: Layer<S>,
-    S: Subscriber,
+    S: Subscribe<C>,
+    C: Collect,
 {
     unsafe {
         // Safety: we're not actually *doing* anything with this pointer --- we
         // only care about the `Option`, which we're turning into a `bool`. So
         // even if the layer decides to be evil and give us some kind of invalid
         // pointer, we don't ever dereference it, so this is always safe.
-        layer.downcast_raw(TypeId::of::<MagicPlfDowncastMarker>())
+        subscriber.downcast_raw(TypeId::of::<MagicPlfDowncastMarker>())
     }
     .is_some()
 }

@@ -1,4 +1,4 @@
-use tracing_core::{metadata::Metadata, span, subscriber::Subscriber, Event};
+use tracing_core::{collect::Collect, metadata::Metadata, span, Event};
 
 use crate::registry::{self, LookupSpan, SpanRef};
 #[cfg(feature = "registry")]
@@ -73,11 +73,11 @@ where
 
 // === impl Context ===
 
-impl<'a, S> Context<'a, S>
+impl<'a, C> Context<'a, C>
 where
-    S: Subscriber,
+    C: Collect,
 {
-    pub(super) fn new(subscriber: &'a S) -> Self {
+    pub(super) fn new(subscriber: &'a C) -> Self {
         Self {
             subscriber: Some(subscriber),
 
@@ -90,7 +90,7 @@ where
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber
-            .map(Subscriber::current_span)
+            .map(Collect::current_span)
             // TODO: this would be more correct as "unknown", so perhaps
             // `tracing-core` should make `Current::unknown()` public?
             .unwrap_or_else(span::Current::none)
@@ -191,9 +191,9 @@ where
     /// declaration</a> for details.
     /// </pre></div>
     #[inline]
-    pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, S>>
+    pub fn event_span(&self, event: &Event<'_>) -> Option<SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         if event.is_root() {
             None
@@ -212,7 +212,7 @@ where
     #[inline]
     pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         let span = self.span(id)?;
         Some(span.metadata())
@@ -233,9 +233,9 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         let span = self.subscriber.as_ref()?.span(id)?;
 
@@ -258,7 +258,7 @@ where
     #[inline]
     pub fn exists(&self, id: &span::Id) -> bool
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
     }
@@ -278,9 +278,9 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
+    pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         let subscriber = *self.subscriber.as_ref()?;
         let current = subscriber.current_span();
@@ -325,12 +325,12 @@ where
     #[cfg(feature = "registry")]
     fn lookup_current_filtered<'lookup>(
         &self,
-        subscriber: &'lookup S,
-    ) -> Option<registry::SpanRef<'lookup, S>>
+        subscriber: &'lookup C,
+    ) -> Option<registry::SpanRef<'lookup, C>>
     where
-        S: LookupSpan<'lookup>,
+        C: LookupSpan<'lookup>,
     {
-        let registry = (subscriber as &dyn Subscriber).downcast_ref::<Registry>()?;
+        let registry = (subscriber as &dyn Collect).downcast_ref::<Registry>()?;
         registry
             .span_stack()
             .iter()
@@ -357,9 +357,9 @@ where
         since = "0.2.19"
     )]
     #[allow(deprecated)]
-    pub fn scope(&self) -> Scope<'_, S>
+    pub fn scope(&self) -> Scope<'_, C>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         Scope(
             self.lookup_current()
@@ -398,9 +398,9 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
+    pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         Some(self.span(id)?.scope())
     }
@@ -426,9 +426,9 @@ where
     /// </pre></div>
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
-    pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, S>>
+    pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, C>>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         Some(self.event_span(event)?.scope())
     }
@@ -448,7 +448,7 @@ where
     #[cfg(feature = "registry")]
     pub(crate) fn is_enabled_for(&self, span: &span::Id, filter: FilterId) -> bool
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         self.is_enabled_inner(span, filter).unwrap_or(false)
     }
@@ -456,7 +456,7 @@ where
     #[cfg(feature = "registry")]
     pub(crate) fn if_enabled_for(self, span: &span::Id, filter: FilterId) -> Option<Self>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         if self.is_enabled_inner(span, filter)? {
             Some(self.with_filter(filter))
@@ -468,7 +468,7 @@ where
     #[cfg(feature = "registry")]
     fn is_enabled_inner(&self, span: &span::Id, filter: FilterId) -> Option<bool>
     where
-        S: for<'lookup> LookupSpan<'lookup>,
+        C: for<'lookup> LookupSpan<'lookup>,
     {
         Some(self.span(span)?.is_enabled_for(filter))
     }
