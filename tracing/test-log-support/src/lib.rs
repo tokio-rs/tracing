@@ -1,4 +1,3 @@
-extern crate log;
 use log::{LevelFilter, Log, Metadata, Record};
 use std::sync::{Arc, Mutex};
 

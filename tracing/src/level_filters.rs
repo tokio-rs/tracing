@@ -65,7 +65,7 @@ pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 /// [module-level documentation]: self#compile-time-filters
 pub const STATIC_MAX_LEVEL: LevelFilter = MAX_LEVEL;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(all(not(debug_assertions), feature = "release_max_level_off"))] {
         const MAX_LEVEL: LevelFilter = LevelFilter::OFF;
     } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_error"))] {
