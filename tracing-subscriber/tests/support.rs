@@ -1,5 +1,5 @@
 #![allow(missing_docs, dead_code)]
-pub use self::support::{event, field, span, subscriber};
+pub use self::support::{collector, event, field, span};
 // This has to have the same name as the module in `tracing`.
 // path attribute requires referenced module to have same name so allow module inception here
 #[allow(clippy::module_inception)]
@@ -7,17 +7,17 @@ pub use self::support::{event, field, span, subscriber};
 mod support;
 
 use self::{
+    collector::{Expect, MockHandle},
     event::MockEvent,
     span::{MockSpan, NewSpan},
-    subscriber::{Expect, MockHandle},
 };
 use tracing_core::{
     span::{Attributes, Id, Record},
-    Event, Subscriber,
+    Collect, Event,
 };
 use tracing_subscriber::{
-    layer::{Context, Layer},
     registry::{LookupSpan, SpanRef},
+    subscribe::{Context, Subscribe},
 };
 
 use std::{
@@ -196,9 +196,9 @@ impl ExpectLayer {
     }
 }
 
-impl<S> Layer<S> for ExpectLayer
+impl<C> Subscribe<C> for ExpectLayer
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Collect + for<'a> LookupSpan<'a>,
 {
     fn register_callsite(
         &self,
@@ -208,7 +208,7 @@ where
         tracing_core::Interest::always()
     }
 
-    fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, C>) {
         unimplemented!(
             "so far, we don't have any tests that need an `on_record` \
             implementation.\nif you just wrote one that does, feel free to \
@@ -216,7 +216,7 @@ where
         );
     }
 
-    fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, cx: Context<'_, C>) {
         let name = event.metadata().name();
         println!(
             "[{}] event: {}; level: {}; target: {}",
@@ -267,11 +267,11 @@ where
         }
     }
 
-    fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, S>) {
+    fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, C>) {
         // TODO: it should be possible to expect spans to follow from other spans
     }
 
-    fn new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
+    fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, C>) {
         let meta = span.metadata();
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",
@@ -295,7 +295,7 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, cx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, cx: Context<'_, C>) {
         let span = cx
             .span(id)
             .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
@@ -310,7 +310,7 @@ where
         self.current.lock().unwrap().push(id.clone());
     }
 
-    fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `exit()` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -339,7 +339,7 @@ where
         };
     }
 
-    fn on_close(&self, id: Id, cx: Context<'_, S>) {
+    fn on_close(&self, id: Id, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `try_close` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -385,7 +385,7 @@ where
         }
     }
 
-    fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, S>) {
+    fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
     }
 }

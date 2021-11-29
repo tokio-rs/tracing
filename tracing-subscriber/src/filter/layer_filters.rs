@@ -414,11 +414,11 @@ where
     #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
-            id if id == TypeId::of::<S>() => Some(&self.subscriber as *const _ as *const ()),
-            id if id == TypeId::of::<F>() => Some(&self.filter as *const _ as *const ()),
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            id if id == TypeId::of::<S>() => Some(NonNull::from(&self.subscriber).cast()),
+            id if id == TypeId::of::<F>() => Some(NonNull::from(&self.filter).cast()),
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
-                Some(&self.id as *const _ as *const ())
+                Some(NonNull::from(&self.id).cast())
             }
             _ => None,
         }
@@ -1406,8 +1406,8 @@ pub(crate) fn is_plf_downcast_marker(type_id: TypeId) -> bool {
     type_id == TypeId::of::<MagicPlfDowncastMarker>()
 }
 
-/// Does a type implementing `Subscriber` contain any per-layer filters?
-pub(crate) fn subscriber_has_plf<C>(collector: &C) -> bool
+/// Does a type implementing `Collect` contain any per-subscriber filters?
+pub(crate) fn collector_has_plf<C>(collector: &C) -> bool
 where
     C: Collect,
 {
@@ -1415,7 +1415,7 @@ where
 }
 
 /// Does a type implementing `Subscriber` contain any per-layer filters?
-pub(crate) fn layer_has_plf<S, C>(subscriber: &S) -> bool
+pub(crate) fn subscriber_has_plf<S, C>(subscriber: &S) -> bool
 where
     S: Subscribe<C>,
     C: Collect,

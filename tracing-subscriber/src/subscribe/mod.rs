@@ -403,8 +403,7 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{any::TypeId, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
-use tracing::collect;
+use std::{any::TypeId, ops::Deref, ptr::NonNull, sync::Arc};
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
@@ -686,11 +685,8 @@ where
         S: Subscribe<C>,
         Self: Sized,
     {
-        Layered {
-            subscriber,
-            inner: self,
-            _s: PhantomData,
-        }
+        let inner_has_subscriber_filter = filter::subscriber_has_plf(&self);
+        Layered::new(subscriber, self, inner_has_subscriber_filter)
     }
 
     /// Composes this subscriber with the given collector, returning a
@@ -738,15 +734,31 @@ where
     ///```
     ///
     /// [`Collect`]: tracing_core::Collect
-    fn with_collector(self, inner: C) -> Layered<Self, C>
+    fn with_collector(mut self, mut inner: C) -> Layered<Self, C>
     where
         Self: Sized,
     {
-        Layered {
-            subscriber: self,
-            inner,
-            _s: PhantomData,
-        }
+        let inner_has_subscriber_filter = filter::collector_has_plf(&inner);
+        self.on_subscribe(&mut inner);
+        Layered::new(self, inner, inner_has_subscriber_filter)
+    }
+
+    /// Combines `self` with a [`Filter`], returning a [`Filtered`] subscriber.
+    ///
+    /// The [`Filter`] will control which spans and events are enabled for
+    /// this subscriber. See [the trait-level documentation][plf] for details on
+    /// per-subscriber filtering.
+    ///
+    /// [`Filtered`]: crate::filter::Filtered
+    /// [plf]: #per-layer-filtering
+    #[cfg(all(feature = "registry", feature = "std"))]
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
+    fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, C>
+    where
+        Self: Sized,
+        F: Filter<C>,
+    {
+        filter::Filtered::new(self, filter)
     }
 
     #[doc(hidden)]
@@ -1048,7 +1060,7 @@ where
     #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }

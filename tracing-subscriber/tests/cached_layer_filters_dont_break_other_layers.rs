@@ -102,7 +102,7 @@ fn filter() -> LevelFilter {
     LevelFilter::INFO
 }
 
-fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
+fn unfiltered(name: &str) -> (ExpectLayer, collector::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::DEBUG))
@@ -113,7 +113,7 @@ fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
         .run_with_handle()
 }
 
-fn filtered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
+fn filtered(name: &str) -> (ExpectLayer, collector::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))

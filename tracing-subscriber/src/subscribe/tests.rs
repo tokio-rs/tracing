@@ -64,22 +64,26 @@ impl Collect for StringCollector {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+
+    fn current_span(&self) -> span::Current {
+        todo!()
+    }
 }
 
-fn assert_subscriber(_s: impl Collect) {}
+fn assert_collector(_s: impl Collect) {}
 
 #[test]
 fn layer_is_subscriber() {
-    let s = NopSubscriber.with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+    let s = NopSubscriber.with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
 fn two_layers_are_subscriber() {
     let s = NopSubscriber
         .and_then(NopSubscriber)
-        .with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+        .with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
@@ -87,8 +91,8 @@ fn three_layers_are_subscriber() {
     let s = NopSubscriber
         .and_then(NopSubscriber)
         .and_then(NopSubscriber)
-        .with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+        .with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
@@ -96,9 +100,9 @@ fn downcasts_to_subscriber() {
     let s = NopSubscriber
         .and_then(NopSubscriber)
         .and_then(NopSubscriber)
-        .with_subscriber(StringSubscriber("subscriber".into()));
+        .with_collector(StringCollector("subscriber".into()));
     let subscriber =
-        <dyn Collect>::downcast_ref::<StringSubscriber>(&s).expect("subscriber should downcast");
+        <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
     assert_eq!(&subscriber.0, "subscriber");
 }
 
@@ -107,7 +111,7 @@ fn downcasts_to_layer() {
     let s = StringSubscriber("layer_1".into())
         .and_then(StringSubscriber2("layer_2".into()))
         .and_then(StringSubscriber3("layer_3".into()))
-        .with_subscriber(NopSubscriber);
+        .with_collector(NopCollector);
     let layer =
         <dyn Collect>::downcast_ref::<StringSubscriber>(&s).expect("subscriber 1 should downcast");
     assert_eq!(&layer.0, "layer_1");

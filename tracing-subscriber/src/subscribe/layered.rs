@@ -187,7 +187,7 @@ where
 
         // If downcasting to `Self`, return a pointer to `self`.
         if id == TypeId::of::<Self>() {
-            return Some(self as *const _ as *const ());
+            return Some(NonNull::from(self).cast());
         }
 
         self.subscriber
@@ -282,7 +282,7 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         match id {
             // If downcasting to `Self`, return a pointer to `self`.
-            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
 
             // Oh, we're looking for per-layer filters!
             //
@@ -354,16 +354,16 @@ where
     A: Subscribe<C>,
     C: Collect,
 {
-    pub(super) fn new(layer: A, inner: B, inner_has_layer_filter: bool) -> Self {
+    pub(super) fn new(subscriber: A, inner: B, inner_has_layer_filter: bool) -> Self {
         #[cfg(feature = "registry")]
         let inner_is_registry = TypeId::of::<C>() == TypeId::of::<crate::registry::Registry>();
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
         let inner_has_layer_filter = inner_has_layer_filter || inner_is_registry;
-        let has_layer_filter = filter::layer_has_plf(&layer);
+        let has_layer_filter = filter::subscriber_has_plf(&subscriber);
         Self {
-            subscriber: layer,
+            subscriber,
             inner,
             has_layer_filter,
             inner_has_layer_filter,
