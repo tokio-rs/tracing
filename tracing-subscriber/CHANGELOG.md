@@ -1,3 +1,16 @@
+# 0.3.3 (Nov 29, 2021)
+
+This release fixes a pair of regressions in `tracing-subscriber`'s `fmt` module.
+
+### Fixed
+
+- **fmt**: Fixed missing event fields with `Compact` formatter ([#1755])
+- **fmt**: Fixed `PrettyFields` formatter (and thus `format::Pretty` event
+  formatter) ignoring the `fmt::Layer`'s ANSI color code configuration ([#1747])
+
+[#1755]: https://github.com/tokio-rs/tracing/pull/1755
+[#1747]: https://github.com/tokio-rs/tracing/pull/1747
+
 # 0.3.2 (Nov 19, 2021)
 
 ### Fixed
