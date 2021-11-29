@@ -146,7 +146,7 @@
 //! information provided by the wrapped subscriber (such as [the current span])
 //! to the layer.
 //!
-//! ## Filtering with `Layer`s
+//! ## Filtering with `Subscribers`s
 //!
 //! As well as strategies for handling trace events, the `Layer` trait may also
 //! be used to represent composable _filters_. This allows the determination of
@@ -405,10 +405,9 @@
 use crate::filter;
 use std::{any::TypeId, ops::Deref, sync::Arc};
 use tracing_core::{
+    collect::{Collect, Interest},
     metadata::Metadata,
-    span,
-    subscriber::{Interest, Subscriber},
-    Event, LevelFilter,
+    span, Event, LevelFilter,
 };
 
 mod context;
@@ -422,44 +421,44 @@ pub(crate) mod tests;
 
 /// A composable handler for `tracing` events.
 ///
-/// A `Layer` implements a behavior for recording or collecting traces that can
-/// be composed together with other `Layer`s to build a [`Subscriber`]. See the
-/// [module-level documentation](crate::layer) for details.
+/// A `Subscribe` implements a behavior for recording or collecting traces that can
+/// be composed together with other subscribers to build a [`collector`]. See the
+/// [module-level documentation](crate::subscribe) for details.
 ///
-/// [`Subscriber`]: tracing_core::Subscriber
-pub trait Layer<S>
+/// [`collector`]: tracing_core::Collect
+pub trait Subscribe<C>
 where
-    S: Subscriber,
+    C: Collect,
     Self: 'static,
 {
-    /// Performs late initialization when attaching a `Layer` to a
-    /// [`Subscriber`].
+    /// Performs late initialization when attaching a `Subscribe` to a
+    /// [`Collect`].
     ///
     /// This is a callback that is called when the `Layer` is added to a
-    /// [`Subscriber`] (e.g. in [`Layer::with_subscriber`] and
+    /// [`Collect`] (e.g. in [`Subscribe::with_collector`] and
     /// [`SubscriberExt::with`]). Since this can only occur before the
-    /// [`Subscriber`] has been set as the default, both the `Layer` and
-    /// [`Subscriber`] are passed to this method _mutably_. This gives the
-    /// `Layer` the opportunity to set any of its own fields with values
-    /// recieved by method calls on the [`Subscriber`].
+    /// [`Collect`] has been set as the default, both the subscriber and
+    /// [`Collect`] are passed to this method _mutably_. This gives the
+    /// subscribe the opportunity to set any of its own fields with values
+    /// recieved by method calls on the [`Collect`].
     ///
-    /// For example, [`Filtered`] layers implement `on_layer` to call the
-    /// [`Subscriber`]'s [`register_filter`] method, and store the returned
+    /// For example, [`Filtered`] layers implement `on_subscribe` to call the
+    /// [`Collect`]'s [`register_filter`] method, and store the returned
     /// [`FilterId`] as a field.
     ///
-    /// **Note** In most cases, `Layer` implementations will not need to
+    /// **Note** In most cases, subscriber implementations will not need to
     /// implement this method. However, in cases where a type implementing
-    /// `Layer` wraps one or more other types that implement `Layer`, like the
+    /// subscriber wraps one or more other types that implement `Subscribe`, like the
     /// [`Layered`] and [`Filtered`] types in this crate, that type MUST ensure
-    /// that the inner `Layer`s' `on_layer` methods are called. Otherwise,
-    /// functionality that relies on `on_layer`, such as [per-layer filtering],
+    /// that the inner `Layer`s' `on_subscribe` methods are called. Otherwise,
+    /// functionality that relies on `on_subscribe`, such as [per-subscriber filtering],
     /// may not work correctly.
     ///
     /// [`Filtered`]: crate::filter::Filtered
     /// [`register_filter`]: crate::registry::LookupSpan::register_filter
-    /// [per-layer filtering]: #per-layer-filtering
+    /// [per-subscribe filtering]: #per-layer-filtering
     /// [`FilterId`]: crate::filter::FilterId
-    fn on_layer(&mut self, subscriber: &mut S) {
+    fn on_subscribe(&mut self, subscriber: &mut C) {
         let _ = subscriber;
     }
 
@@ -546,14 +545,14 @@ where
     /// [`on_enter`]: #method.on_enter
     /// [`on_exit`]: #method.on_exit
     /// [the trait-level documentation]: #filtering-with-layers
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
         true
     }
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -570,30 +569,30 @@ where
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, S>) {}
+    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that a span with the ID `span` recorded that it
     /// follows from the span with the ID `follows`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that an event has occurred.
-    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
+    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that a span with the given ID was entered.
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that the span with the given ID was exited.
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that the span with the given ID has been closed.
-    fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
+    fn on_close(&self, _id: span::Id, _ctx: Context<'_, C>) {}
 
     /// Notifies this layer that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, C>) {}
 
     /// Composes this layer around the given `Layer`, returning a `Layered`
     /// struct implementing `Layer`.
@@ -635,7 +634,7 @@ where
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
