@@ -906,15 +906,6 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        if self.display_target {
-            write!(
-                writer,
-                "{}{}",
-                writer.bold().paint(meta.target()),
-                writer.dimmed().paint(":")
-            )?;
-        }
-
         let fmt_ctx = {
             #[cfg(feature = "ansi")]
             {
@@ -926,6 +917,17 @@ where
             }
         };
         write!(writer, "{}", fmt_ctx)?;
+
+        if self.display_target {
+            write!(
+                writer,
+                "{}{}",
+                writer.bold().paint(meta.target()),
+                writer.dimmed().paint(":")
+            )?;
+        }
+
+        ctx.format_fields(writer.by_ref(), event)?;
 
         let dimmed = writer.dimmed();
         for span in ctx
