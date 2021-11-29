@@ -921,7 +921,7 @@ where
         if self.display_target {
             write!(
                 writer,
-                "{}{}",
+                "{}{} ",
                 writer.bold().paint(meta.target()),
                 writer.dimmed().paint(":")
             )?;
