@@ -16,6 +16,7 @@ keywords = ["tracing", "journald"]
 rust-version = "1.42.0"
 
 [dependencies]
+libc = "0.2.107"
 tracing-core = { path = "../tracing-core", version = "0.1.10" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
 
