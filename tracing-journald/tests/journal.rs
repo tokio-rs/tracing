@@ -54,14 +54,14 @@ impl PartialEq<[u8]> for Field {
     }
 }
 
-/// Retry `f` 10 times 100ms apart.
+/// Retry `f` 30 times 100ms apart, i.e. a total of three seconds.
 ///
 /// When `f` returns an error wait 100ms and try it again, up to ten times.
 /// If the last attempt failed return the error returned by that attempt.
 ///
 /// If `f` returns Ok immediately return the result.
 fn retry<T, E>(f: impl Fn() -> Result<T, E>) -> Result<T, E> {
-    let attempts = 10;
+    let attempts = 30;
     let interval = Duration::from_millis(100);
     for attempt in (0..attempts).rev() {
         match f() {
@@ -85,7 +85,8 @@ fn retry<T, E>(f: impl Fn() -> Result<T, E>) -> Result<T, E> {
 fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
     let stdout = String::from_utf8(
         Command::new("journalctl")
-            .args(&["--user", "--output=json"])
+            // We pass --all to circumvent journalctl's default limit of 4096 bytes for field values
+            .args(&["--user", "--output=json", "--all"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
             .arg(format!("TEST_NAME={}", test_name))
@@ -97,10 +98,7 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
 
     stdout
         .lines()
-        .map(|l| {
-            dbg!(l);
-            serde_json::from_str(l).unwrap()
-        })
+        .map(|l| serde_json::from_str(l).unwrap())
         .collect()
 }
 
@@ -166,6 +164,21 @@ fn internal_null_byte() {
 
         let message = retry_read_one_line_from_journal("internal_null_byte");
         assert_eq!(message["MESSAGE"], b"An internal\x00byte"[..]);
+        assert_eq!(message["PRIORITY"], "6");
+    });
+}
+
+#[test]
+fn large_message() {
+    let large_string = "b".repeat(512_000);
+    with_journald(|| {
+        debug!(test.name = "large_message", "Message: {}", large_string);
+
+        let message = retry_read_one_line_from_journal("large_message");
+        assert_eq!(
+            message["MESSAGE"],
+            format!("Message: {}", large_string).as_str()
+        );
         assert_eq!(message["PRIORITY"], "6");
     });
 }
