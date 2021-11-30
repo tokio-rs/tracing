@@ -38,20 +38,48 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// `RollingFileAppender` implements [`std:io::Write` trait][write] and will block on write operations.
-/// It may be used with [`NonBlocking`][non-blocking] to perform writes without
-/// blocking the current thread.
+/// `RollingFileAppender` implements the [`std:io::Write` trait][write] and will
+/// block on write operations. It may be used with [`NonBlocking`] to perform
+/// writes without blocking the current thread.
+///
+/// Additionally, `RollingFileAppender` also implements the [`MakeWriter`
+/// trait][make_writer] from `tracing-appender`, so it may also be used
+/// directly, without [`NonBlocking`].
 ///
 /// [write]: std::io::Write
-/// [non-blocking]: super::non_blocking::NonBlocking
+/// [`NonBlocking`]: super::non_blocking::NonBlocking
 ///
 /// # Examples
 ///
+/// Rolling a log file once every hour:
+///
 /// ```rust
 /// # fn docs() {
-/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix");
 /// # }
 /// ```
+///
+/// Combining a `RollingFileAppender` with another [`MakeWriter`] implementation:
+///
+/// ```rust
+/// # fn docs() {
+/// use tracing_subscriber::fmt::writer::MakeWriterExt;
+///
+/// // Log all events to a rolling log file.
+/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
+
+/// // Log `INFO` and above to stdout.
+/// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
+///
+/// tracing_subscriber::fmt()
+///     // Combine the stdout and log file `MakeWriter`s into one
+///     // `MakeWriter` that writes to both
+///     .with_writer(stdout.and(logfile))
+///     .init();
+/// # }
+/// ```
+///
+/// [make_writer] tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
 pub struct RollingFileAppender {
     state: Inner,
