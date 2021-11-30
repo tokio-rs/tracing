@@ -153,8 +153,6 @@ use crate::non_blocking::{NonBlocking, WorkerGuard};
 
 use std::io::Write;
 
-mod inner;
-
 pub mod non_blocking;
 
 pub mod rolling;
