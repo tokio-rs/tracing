@@ -58,6 +58,12 @@ pub struct RollingFileAppender {
     writer: RwLock<File>,
 }
 
+/// A [writer] that writes to a rolling log file.
+///
+/// This is returned by the [`MakeWriter`] implementation for [`RollingFileAppender`].
+///
+/// [writer]: std::io::Write
+/// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
 pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
 
