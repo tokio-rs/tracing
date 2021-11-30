@@ -27,6 +27,7 @@
 //! # }
 //! ```
 use crate::inner::InnerAppender;
+pub use crate::inner::RollingWriter;
 use std::io;
 use std::path::Path;
 use time::{format_description, Duration, OffsetDateTime, Time};
@@ -100,6 +101,13 @@ impl io::Write for RollingFileAppender {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
+    type Writer = RollingWriter<'a>;
+    fn make_writer(&'a self) -> Self::Writer {
+        self.inner.make_writer()
     }
 }
 
