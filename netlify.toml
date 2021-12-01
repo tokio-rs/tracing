@@ -3,8 +3,14 @@
     rustup install nightly --profile minimal \
       && cargo doc --no-deps
     """
-  environment = { RUSTDOCFLAGS= "--cfg docsrs" }
   publish = "target/doc"
+
+[build.environment]
+  RUSTDOCFLAGS="""
+    --cfg docsrs \
+    --html-before-content $(pwd)/assets/warning.html \
+    --extend-css $(pwd)/assets/warning.css
+    """
 
 [[redirects]]
   from = "/"
