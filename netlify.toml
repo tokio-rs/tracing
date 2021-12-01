@@ -8,9 +8,9 @@
 [build.environment]
   RUSTDOCFLAGS="""
     --cfg docsrs \
-    --html-before-content $(pwd)/assets/warning.html \
-    --html-in-header $(pwd)/assets/noindex.html \
-    --extend-css $(pwd)/assets/warning.css \
+    --html-before-content /opt/build/repo/assets/warning.html \
+    --html-in-header /opt/build/repo/noindex.html \
+    --extend-css /opt/build/repo/assets/warning.css \
     """
 
 [[redirects]]
