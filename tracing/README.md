@@ -372,6 +372,7 @@ maintained by the `tokio` project. These include:
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-fluent-assertions`] provides a fluent assertions-style testing framework for validating the behavior of `tracing` spans.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -392,6 +393,7 @@ please let us know! We'd love to add your project to the list!
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
