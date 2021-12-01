@@ -372,6 +372,8 @@ maintained by the `tokio` project. These include:
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`tracing-fluent-assertions`] provides a fluent assertions-style testing framework for validating the behavior of `tracing` spans.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
@@ -393,6 +395,10 @@ please let us know! We'd love to add your project to the list!
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 
 **Note:** that some of the ecosystem crates are currently unreleased and
