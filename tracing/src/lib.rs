@@ -800,7 +800,7 @@
 //!    applications.
 //!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 //!  - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
-//!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing 
+//!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
 //!    framework for validating the behavior of `tracing` spans.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
