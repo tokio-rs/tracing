@@ -10,7 +10,7 @@
     --cfg docsrs \
     --html-before-content $(pwd)/assets/warning.html \
     --html-in-header $(pwd)/assets/noindex.html \
-    --extend-css $(pwd)/assets/warning.css
+    --extend-css $(pwd)/assets/warning.css \
     """
 
 [[redirects]]
