@@ -394,7 +394,7 @@ where
     }
 
     // workaround to allow `f` to be `FnOnce. The `f` in this function will be executed
-    // only once thus it is safe to call `f.take().unwrap()`
+    // only once thus it is safe to call `f.take().expect()`
     let mut f = Some(f);
 
     CURRENT_STATE
@@ -408,12 +408,12 @@ where
                     // don't redo this call on the next check
                     *default = get_global().clone();
                 }
-                return f.take().unwrap()(&*default);
+                return f.take().expect("Failed to get callback (1)")(&*default);
             }
 
-            f.take().unwrap()(&Dispatch::none())
+            f.take().expect("Failed to get callback (2)")(&Dispatch::none())
         })
-        .unwrap_or_else(|_| f.take().unwrap()(&Dispatch::none()))
+        .unwrap_or_else(|_| f.take().expect("Failed to get callback (3)")(&Dispatch::none()))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
