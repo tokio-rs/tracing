@@ -198,7 +198,7 @@ where
         let normalized_meta = event.normalized_metadata();
         #[cfg(feature = "tracing-log")]
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
+        // #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
         let mut visit = || {
@@ -248,7 +248,7 @@ where
 
             if self.display_line_number {
                 if let Some(line_number) = meta.line() {
-                    serializer.serialize_entry("line_number", line_number)?;
+                    serializer.serialize_entry("line_number", &line_number)?;
                 }
             }
 
