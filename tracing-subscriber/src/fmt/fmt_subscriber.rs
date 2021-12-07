@@ -298,6 +298,23 @@ where
         }
     }
 
+    /// Sets whether or not an event's source code filename is displayed.
+    pub fn with_filename(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_filename(display_filename),
+            ..self
+        }
+    }
+
+
+    /// Sets whether or not an event's target line number is displayed.
+    pub fn with_line_number(self, display_line_number: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_line_number(display_line_number),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's level is displayed.
     pub fn with_level(self, display_level: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {

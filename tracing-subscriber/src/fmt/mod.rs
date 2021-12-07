@@ -754,6 +754,28 @@ where
         }
     }
 
+    /// Sets whether or not an event's source code filename is displayed.
+    pub fn with_filename(
+        self,
+        display_filename: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_filename(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's target line number is displayed.
+    pub fn with_line_number(
+        self,
+        display_target: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_line_number(display_target),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's level is displayed.
     pub fn with_level(
         self,

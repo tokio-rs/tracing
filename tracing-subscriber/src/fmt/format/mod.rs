@@ -328,6 +328,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
     pub(crate) display_thread_name: bool,
+    pub(crate) display_filename: bool,
+    pub(crate) display_line_number: bool,
 }
 
 // === impl Writer ===
@@ -504,6 +506,8 @@ impl Default for Format<Full, SystemTime> {
             display_level: true,
             display_thread_id: false,
             display_thread_name: false,
+            display_filename: false,
+            display_line_number: false,
         }
     }
 }
@@ -522,6 +526,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -559,6 +565,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -589,6 +597,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -616,6 +626,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -630,6 +642,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -675,6 +689,28 @@ impl<F, T> Format<F, T> {
     pub fn with_thread_names(self, display_thread_name: bool) -> Format<F, T> {
         Format {
             display_thread_name,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [line_number] of the tracing logs is displayed
+    /// when formatting events
+    ///
+    /// [name]: std::thread#naming-threads
+    pub fn with_filename(self, display_filename: bool) -> Format<F, T> {
+        Format {
+            display_filename,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [line_number] of the tracing logs is displayed
+    /// when formatting events
+    ///
+    /// [name]: std::thread#naming-threads
+    pub fn with_line_number(self, display_line_number: bool) -> Format<F, T> {
+        Format {
+            display_line_number,
             ..self
         }
     }
@@ -862,6 +898,24 @@ where
             )?;
         }
 
+        if self.display_filename {
+            write!(
+                writer,
+                "{}{} ",
+                dimmed.paint(format!("{}", meta.file().unwrap_or(""))),
+                dimmed.paint(":")
+            )?;
+        }
+
+        if self.display_line_number {
+            write!(
+                writer,
+                "{}{} ",
+                dimmed.paint(format!("{}", meta.line().unwrap_or(0))),
+                dimmed.paint(":")
+            )?;
+        }
+
         ctx.format_fields(writer.by_ref(), event)?;
         writeln!(writer)
     }
@@ -913,6 +967,15 @@ where
                 "{}{}",
                 writer.bold().paint(meta.target()),
                 writer.dimmed().paint(":")
+            )?;
+        }
+
+        if self.display_line_number {
+            write!(
+                writer,
+                "line {:?}",
+                writer.bold().paint(format!("{}",meta.line().unwrap_or(0))),
+                // writer.dimmed().paint(":")
             )?;
         }
 
@@ -1467,6 +1530,7 @@ pub(super) mod test {
 
     use super::{FmtSpan, TimingDisplay, Writer};
     use std::fmt;
+    use regex::Regex;
 
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
@@ -1529,6 +1593,54 @@ pub(super) mod test {
         run_test(subscriber, make_writer, expected);
     }
 
+    #[test]
+    fn with_line_number_and_file_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_filename(true)
+            .with_line_number(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let expected = Regex::new("^fake time tracing_subscriber::fmt::format::test: tracing-subscriber/src/fmt/format/mod.rs: [0-9]+: hello\n$").unwrap();
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        let res = make_writer.get_string();
+        assert!(expected.is_match(&res));
+    }
+
+    #[test]
+    fn with_line_number() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_line_number(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let expected = Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$").unwrap();
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        let res = make_writer.get_string();
+        assert!(expected.is_match(&res));
+    }
+
+    #[test]
+    fn with_filename() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_filename(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let expected = "fake time tracing_subscriber::fmt::format::test: tracing-subscriber/src/fmt/format/mod.rs: hello\n";
+        run_test(subscriber, make_writer, expected);
+    }
+
     #[cfg(feature = "ansi")]
     fn test_ansi(is_ansi: bool, expected: &str) {
         let make_writer = MockMakeWriter::default();
@@ -1544,6 +1656,7 @@ pub(super) mod test {
         tracing::info!("hello");
         assert_eq!(expected, buf.get_string())
     }
+
 
     #[test]
     fn overridden_parents() {

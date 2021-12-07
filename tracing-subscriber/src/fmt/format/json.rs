@@ -240,6 +240,22 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
+            if self.display_filename {
+                if let Some(filename) = meta.file() {
+                    serializer.serialize_entry("filename", filename)?;
+                }
+            }
+
+            if self.display_line_number {
+                if let Some(line_number) = meta.line() {
+                    serializer.serialize_entry("line_number", line_number)?;
+                }
+            }
+
+            if self.display_target {
+                serializer.serialize_entry("target", meta.target())?;
+            }
+
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer
@@ -502,6 +518,22 @@ mod test {
         let collector = collector()
             .flatten_event(false)
             .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_filename_what() {
+        let expected =
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_filename(true)
             .with_span_list(true);
         test_json(expected, collector, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
