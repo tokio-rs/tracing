@@ -495,6 +495,7 @@ mod test {
     use tracing::{self, collect::with_default};
 
     use std::fmt;
+    use std::path::Path;
 
     struct MockTime;
     impl FormatTime for MockTime {
@@ -524,8 +525,12 @@ mod test {
 
     #[test]
     fn json_filename() {
+        let current_path = Path::new("tracing-subscriber").join("src").join("fmt").join("format").join("json.rs");
         let expected =
-            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"filename\":\"tracing-subscriber/src/fmt/format/json.rs\",\"fields\":{\"message\":\"some json test\"}}\n";
+            &format!("{}{}{}",
+                    "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"filename\":\"",
+                    &current_path.to_str().unwrap(),
+                    "\",\"fields\":{\"message\":\"some json test\"}}\n");
         let collector = collector()
             .flatten_event(false)
             .with_current_span(true)
