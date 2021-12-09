@@ -765,7 +765,7 @@ where
         }
     }
 
-    /// Sets whether or not an event's target line number is displayed.
+    /// Sets whether or not an event's source code line number is displayed.
     pub fn with_line_number(
         self,
         display_target: bool,

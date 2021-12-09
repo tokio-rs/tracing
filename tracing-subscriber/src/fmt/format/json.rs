@@ -252,10 +252,6 @@ where
                 }
             }
 
-            if self.display_target {
-                serializer.serialize_entry("target", meta.target())?;
-            }
-
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer

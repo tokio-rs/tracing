@@ -307,7 +307,7 @@ where
     }
 
 
-    /// Sets whether or not an event's target line number is displayed.
+    /// Sets whether or not an event's source code line number is displayed.
     pub fn with_line_number(self, display_line_number: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_line_number(display_line_number),

@@ -693,10 +693,8 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Sets whether or not the [line_number] of the tracing logs is displayed
+    /// Sets whether or not the [filename] of the tracing logs source code is displayed
     /// when formatting events
-    ///
-    /// [name]: std::thread#naming-threads
     pub fn with_filename(self, display_filename: bool) -> Format<F, T> {
         Format {
             display_filename,
@@ -704,10 +702,8 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Sets whether or not the [line_number] of the tracing logs is displayed
+    /// Sets whether or not the [line_number] of the tracing logs is source codedisplayed
     /// when formatting events
-    ///
-    /// [name]: std::thread#naming-threads
     pub fn with_line_number(self, display_line_number: bool) -> Format<F, T> {
         Format {
             display_line_number,
@@ -974,13 +970,26 @@ where
             )?;
         }
 
+        if self.display_filename {
+            if let Some(filename) = meta.file() {
+                write!(
+                    writer,
+                    "{}{}",
+                    writer.bold().paint(filename),
+                    writer.dimmed().paint(":")
+                )?;
+            }
+        }
+
         if self.display_line_number {
-            write!(
-                writer,
-                "line {:?}",
-                writer.bold().paint(format!("{}",meta.line().unwrap_or(0))),
-                // writer.dimmed().paint(":")
-            )?;
+            if let Some(line_number) = meta.line() {
+                write!(
+                    writer,
+                    "{}{}",
+                    writer.bold().paint(line_number.to_string()),
+                    writer.dimmed().paint(":")
+                )?;
+            }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -1660,7 +1669,6 @@ pub(super) mod test {
         tracing::info!("hello");
         assert_eq!(expected, buf.get_string())
     }
-
 
     #[test]
     fn overridden_parents() {
