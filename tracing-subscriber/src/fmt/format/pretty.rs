@@ -141,6 +141,30 @@ where
                 target_style.infix(style)
             )?;
         }
+
+        if self.display_filename {
+            if let Some(filename) = meta.file() {
+                write!(
+                    writer,
+                    "{}{}{}: ",
+                    style.prefix(),
+                    filename,
+                    style.infix(style)
+                )?;
+            }
+        }
+
+        if self.display_line_number {
+            if let Some(line_number) = meta.line() {
+                write!(
+                    writer,
+                    "{}{}{}: ",
+                    style.prefix(),
+                    line_number,
+                    style.infix(style)
+                )?;
+            }
+        }
         let mut v = PrettyVisitor::new(writer.by_ref(), true).with_style(style);
         event.record(&mut v);
         v.finish()?;

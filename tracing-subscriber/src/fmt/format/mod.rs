@@ -899,21 +899,25 @@ where
         }
 
         if self.display_filename {
-            write!(
-                writer,
-                "{}{} ",
-                dimmed.paint(format!("{}", meta.file().unwrap_or(""))),
-                dimmed.paint(":")
-            )?;
+            if let Some(filename) = meta.file() {
+                write!(
+                    writer,
+                    "{}{} ",
+                    dimmed.paint(filename),
+                    dimmed.paint(":")
+                )?;
+            }
         }
 
         if self.display_line_number {
-            write!(
-                writer,
-                "{}{} ",
-                dimmed.paint(format!("{}", meta.line().unwrap_or(0))),
-                dimmed.paint(":")
-            )?;
+            if let Some(line_number) = meta.line() {
+                write!(
+                    writer,
+                    "{}{} ",
+                    dimmed.paint(line_number.to_string()),
+                    dimmed.paint(":")
+                )?;
+            }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
