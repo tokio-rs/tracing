@@ -86,7 +86,7 @@ impl RollingFileAppender {
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
                 rotation,
-                OffsetDateTime::now_utc()
+                OffsetDateTime::now_utc(),
             )
             .expect("Failed to create appender"),
         }
@@ -283,7 +283,7 @@ enum RotationKind {
     Minutely,
     Hourly,
     Daily,
-    Never
+    Never,
 }
 
 impl Rotation {
