@@ -23,6 +23,7 @@ rust-version = "1.51.0"
 [dependencies]
 crossbeam-channel = "0.5.0"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
+flate2 = { version = "1.0.22" }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"

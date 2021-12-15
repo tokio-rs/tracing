@@ -86,7 +86,7 @@ impl RollingFileAppender {
                 directory.as_ref(),
                 file_name_prefix.as_ref(),
                 rotation,
-                OffsetDateTime::now_utc(),
+                OffsetDateTime::now_utc()
             )
             .expect("Failed to create appender"),
         }
@@ -283,7 +283,7 @@ enum RotationKind {
     Minutely,
     Hourly,
     Daily,
-    Never,
+    Never
 }
 
 impl Rotation {
@@ -331,7 +331,7 @@ impl Rotation {
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
+    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime, compress: bool) -> String {
         match *self {
             Rotation::MINUTELY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
@@ -340,7 +340,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, compress, date)
             }
             Rotation::HOURLY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]")
@@ -349,7 +349,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, compress, date)
             }
             Rotation::DAILY => {
                 let format = format_description::parse("[year]-[month]-[day]")
@@ -357,9 +357,21 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, compress, date)
             }
-            Rotation::NEVER => filename.to_string(),
+            Rotation::NEVER => if compress {
+                format!("{}.gz", filename.to_string())
+            } else {
+                filename.to_string()
+            },
+        }
+    }
+
+    fn format_params(filename: &str, compress: bool, date: String) -> String {
+        if compress {
+            format!("{}.{}.gz", filename, date)
+        } else {
+            format!("{}.{}", filename, date)
         }
     }
 }
@@ -392,7 +404,7 @@ mod test {
         appender.flush().expect("Failed to flush!");
     }
 
-    fn test_appender(rotation: Rotation, file_prefix: &str) {
+    fn test_appender(rotation: Rotation, file_prefix: &str, compress: bool) {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
 
@@ -407,23 +419,17 @@ mod test {
 
     #[test]
     fn write_minutely_log() {
-        test_appender(Rotation::HOURLY, "minutely.log");
+        test_appender(Rotation::HOURLY, "minutely.log", false);
     }
 
     #[test]
-    fn write_hourly_log() {
-        test_appender(Rotation::HOURLY, "hourly.log");
-    }
+    fn write_hourly_log() { test_appender(Rotation::HOURLY, "hourly.log", false); }
 
     #[test]
-    fn write_daily_log() {
-        test_appender(Rotation::DAILY, "daily.log");
-    }
+    fn write_daily_log() { test_appender(Rotation::DAILY, "daily.log", false); }
 
     #[test]
-    fn write_never_log() {
-        test_appender(Rotation::NEVER, "never.log");
-    }
+    fn write_never_log() { test_appender(Rotation::NEVER, "never.log", false); }
 
     #[test]
     fn test_rotations() {
@@ -468,19 +474,35 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
         // per-minute
-        let path = Rotation::MINUTELY.join_date("app.log", &now);
+        let path = Rotation::MINUTELY.join_date("app.log", &now, false);
         assert_eq!("app.log.2020-02-01-10-01", path);
 
         // per-hour
-        let path = Rotation::HOURLY.join_date("app.log", &now);
+        let path = Rotation::HOURLY.join_date("app.log", &now, false);
         assert_eq!("app.log.2020-02-01-10", path);
 
         // per-day
-        let path = Rotation::DAILY.join_date("app.log", &now);
+        let path = Rotation::DAILY.join_date("app.log", &now, false);
         assert_eq!("app.log.2020-02-01", path);
 
         // never
-        let path = Rotation::NEVER.join_date("app.log", &now);
+        let path = Rotation::NEVER.join_date("app.log", &now, false);
         assert_eq!("app.log", path);
+
+        // per-minute compressed
+        let path = Rotation::MINUTELY.join_date("app.log", &now, true);
+        assert_eq!("app.log.2020-02-01-10-01.gz", path);
+
+        // per-hour compressed
+        let path = Rotation::HOURLY.join_date("app.log", &now, true);
+        assert_eq!("app.log.2020-02-01-10.gz", path);
+
+        // per-day compressed
+        let path = Rotation::DAILY.join_date("app.log", &now, true);
+        assert_eq!("app.log.2020-02-01.gz", path);
+
+        // never compressed
+        let path = Rotation::NEVER.join_date("app.log", &now, true);
+        assert_eq!("app.log.gz", path)
     }
 }

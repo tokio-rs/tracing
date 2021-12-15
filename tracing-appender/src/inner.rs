@@ -6,14 +6,18 @@ use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use time::OffsetDateTime;
+use flate2::Compression;
+use flate2::write::GzEncoder;
+use crate::writer::WriterChannel;
 
 #[derive(Debug)]
 pub(crate) struct InnerAppender {
     log_directory: String,
     log_filename_prefix: String,
-    writer: BufWriter<File>,
+    writer: WriterChannel,
     next_date: Option<OffsetDateTime>,
     rotation: Rotation,
+    compress: bool
 }
 
 impl io::Write for InnerAppender {
@@ -23,7 +27,7 @@ impl io::Write for InnerAppender {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.writer.flush()
+        self.writer.get_writer().flush()
     }
 }
 
@@ -32,12 +36,14 @@ impl InnerAppender {
         log_directory: &Path,
         log_filename_prefix: &Path,
         rotation: Rotation,
-        now: OffsetDateTime,
+        now: OffsetDateTime
     ) -> io::Result<Self> {
         let log_directory = log_directory.to_str().unwrap();
-        let log_filename_prefix = log_filename_prefix.to_str().unwrap();
 
-        let filename = rotation.join_date(log_filename_prefix, &now);
+        let compress = log_filename_prefix.to_str().unwrap().ends_with(".gz");
+        let log_filename_prefix = log_filename_prefix.to_str().unwrap().trim_end_matches(".gz");
+
+        let filename = rotation.join_date(log_filename_prefix, &now, compress);
         let next_date = rotation.next_date(&now);
 
         Ok(InnerAppender {
@@ -46,6 +52,7 @@ impl InnerAppender {
             writer: create_writer(log_directory, &filename)?,
             next_date,
             rotation,
+            compress
         })
     }
 
@@ -54,18 +61,19 @@ impl InnerAppender {
         // and proceed with the write.
         let buf_len = buf.len();
         self.refresh_writer(date);
-        self.writer.write_all(buf).map(|_| buf_len)
+        self.writer.get_writer().write_all(buf).map(|_| buf_len)
     }
 
     fn refresh_writer(&mut self, now: OffsetDateTime) {
         if self.should_rollover(now) {
-            let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
+            let filename = self.rotation.join_date(
+                &self.log_filename_prefix, &now, self.compress);
 
             self.next_date = self.rotation.next_date(&now);
 
             match create_writer(&self.log_directory, &filename) {
                 Ok(writer) => {
-                    if let Err(err) = self.writer.flush() {
+                    if let Err(err) = self.writer.get_writer().flush() {
                         eprintln!("Couldn't flush previous writer: {}", err);
                     }
                     self.writer = writer
@@ -84,9 +92,17 @@ impl InnerAppender {
     }
 }
 
-fn create_writer(directory: &str, filename: &str) -> io::Result<BufWriter<File>> {
+fn create_writer(directory: &str, filename: &str) -> io::Result<WriterChannel> {
     let file_path = Path::new(directory).join(filename);
-    Ok(BufWriter::new(open_file_create_parent_dirs(&file_path)?))
+    let file = open_file_create_parent_dirs(&file_path)?;
+    if filename.ends_with(".gz") {
+        let buf = BufWriter::new(file);
+        let gzfile = GzEncoder::new(buf, Compression::default());
+        let writer = BufWriter::new(gzfile);
+        Ok(WriterChannel::CompressedFileGzip(writer))
+    } else {
+        Ok(WriterChannel::File(BufWriter::new(file)))
+    }
 }
 
 fn open_file_create_parent_dirs(path: &Path) -> io::Result<File> {
