@@ -137,7 +137,7 @@ fn main() {
 [tracing]: https://docs.rs/tracing/latest/tracing/
 [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 [write]: https://doc.rust-lang.org/std/io/trait.Write.html
-[non_blocking]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/indexx.html
+[non_blocking]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/index.html
 [rolling]: https://docs.rs/tracing-appender/latest/tracing_appender/rolling/index.html
 [guard]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/struct.WorkerGuard.html
 [file_appender]: https://docs.rs/tracing-appender/latest/tracing_appender/rolling/struct.RollingFileAppender.html
