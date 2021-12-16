@@ -86,6 +86,9 @@ pub struct Layer {
     field_prefix: Option<String>,
 }
 
+#[cfg(unix)]
+const JOURNALD_PATH: &str = "/run/systemd/journal/socket";
+
 impl Layer {
     /// Construct a journald layer
     ///
@@ -95,11 +98,14 @@ impl Layer {
         #[cfg(unix)]
         {
             let socket = UnixDatagram::unbound()?;
-            socket.connect("/run/systemd/journal/socket")?;
-            Ok(Self {
+            let layer = Self {
                 socket,
                 field_prefix: Some("F".into()),
-            })
+            };
+            // Check that we can talk to journald, by sending empty payload which journald discards.
+            // However if the socket didn't exist or if none listened we'd get an error here.
+            layer.send_payload(&[])?;
+            Ok(layer)
         }
         #[cfg(not(unix))]
         Err(io::Error::new(
@@ -125,13 +131,15 @@ impl Layer {
 
     #[cfg(unix)]
     fn send_payload(&self, payload: &[u8]) -> io::Result<usize> {
-        self.socket.send(payload).or_else(|error| {
-            if Some(libc::EMSGSIZE) == error.raw_os_error() {
-                self.send_large_payload(payload)
-            } else {
-                Err(error)
-            }
-        })
+        self.socket
+            .send_to(payload, JOURNALD_PATH)
+            .or_else(|error| {
+                if Some(libc::EMSGSIZE) == error.raw_os_error() {
+                    self.send_large_payload(payload)
+                } else {
+                    Err(error)
+                }
+            })
     }
 
     #[cfg(all(unix, not(target_os = "linux")))]
@@ -154,7 +162,7 @@ impl Layer {
         // Fully seal the memfd to signal journald that its backing data won't resize anymore
         // and so is safe to mmap.
         memfd::seal_fully(mem.as_raw_fd())?;
-        socket::send_one_fd(&self.socket, mem.as_raw_fd())
+        socket::send_one_fd_to(&self.socket, mem.as_raw_fd(), JOURNALD_PATH)
     }
 }
 
