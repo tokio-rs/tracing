@@ -552,14 +552,8 @@ impl Interest {
 ///
 /// [`NoCollector`] implements the [`Collect`] trait by never being enabled,
 /// never being interested in any callsite, and drops all spans and events.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct NoCollector(());
-
-impl Default for NoCollector {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl NoCollector {
     /// Returns a new `NoCollector` instance.
