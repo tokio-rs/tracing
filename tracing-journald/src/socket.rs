@@ -2,8 +2,10 @@
 
 use std::io::{Error, Result};
 use std::mem::{size_of, zeroed};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::net::UnixDatagram;
 use std::os::unix::prelude::{AsRawFd, RawFd};
+use std::path::Path;
 use std::ptr;
 
 use libc::*;
@@ -31,18 +33,38 @@ fn cmsg_buffer_size_for_one_fd() {
     assert_cmsg_bufsize()
 }
 
-pub fn send_one_fd(socket: &UnixDatagram, fd: RawFd) -> Result<usize> {
+pub fn send_one_fd_to<P: AsRef<Path>>(socket: &UnixDatagram, fd: RawFd, path: P) -> Result<usize> {
     assert_cmsg_bufsize();
 
-    let mut cmsg_buffer = AlignedBuffer {
-        buffer: ([0u8; CMSG_BUFSIZE]),
+    let mut addr: sockaddr_un = unsafe { zeroed() };
+    let path_bytes = path.as_ref().as_os_str().as_bytes();
+    // path_bytes may have at most sun_path + 1 bytes, to account for the trailing NUL byte.
+    if addr.sun_path.len() <= path_bytes.len() {
+        return Err(Error::from_raw_os_error(ENAMETOOLONG));
+    }
+
+    addr.sun_family = AF_UNIX as _;
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            path_bytes.as_ptr(),
+            addr.sun_path.as_mut_ptr() as *mut u8,
+            path_bytes.len(),
+        )
     };
+
     let mut msg: msghdr = unsafe { zeroed() };
+    // Set the target address.
+    msg.msg_name = &mut addr as *mut _ as *mut c_void;
+    msg.msg_namelen = size_of::<sockaddr_un>() as socklen_t;
 
     // We send no data body with this message.
     msg.msg_iov = ptr::null_mut();
     msg.msg_iovlen = 0;
 
+    // Create and fill the control message buffer with our file descriptor
+    let mut cmsg_buffer = AlignedBuffer {
+        buffer: ([0u8; CMSG_BUFSIZE]),
+    };
     msg.msg_control = unsafe { cmsg_buffer.buffer.as_mut_ptr() as _ };
     msg.msg_controllen = unsafe { CMSG_SPACE(size_of::<RawFd>() as _) as _ };
 

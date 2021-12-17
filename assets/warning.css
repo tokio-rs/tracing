@@ -1,0 +1,25 @@
+#tracing-warning-header {
+    z-index: 400;
+    position: fixed;
+    background-color: orange;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 50px;
+    display: block;
+    color: black;
+    font-size-adjust: 0.55;
+    line-height: 0.6;
+    padding-top: 10px;
+    padding-left: 230px;
+}
+
+body {
+    /* add top padding to fit the warning header */
+    padding-top: 50px !important;
+}
+
+.sidebar {
+    /* add top padding to fit the warning header */
+    margin-top: 50px !important;
+}
