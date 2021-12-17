@@ -568,14 +568,8 @@ impl Interest {
 ///
 /// [`NoSubscriber`] implements the [`Subscriber`] trait by never being enabled,
 /// never being interested in any callsite, and dropping all spans and events.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct NoSubscriber(());
-
-impl Default for NoSubscriber {
-    fn default() -> Self {
-        NoSubscriber(())
-    }
-}
 
 impl Subscriber for NoSubscriber {
     #[inline]
