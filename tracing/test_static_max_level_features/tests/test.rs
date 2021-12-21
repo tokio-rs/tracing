@@ -1,9 +1,6 @@
-#[macro_use]
-extern crate tracing;
-
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};
-use tracing::{span, Event, Id, Level, Metadata, Subscriber};
+use tracing::{debug, error, info, span, trace, warn, Event, Id, Level, Metadata, Subscriber};
 
 struct State {
     last_level: Mutex<Option<Level>>,

@@ -124,9 +124,7 @@ extern crate alloc;
 ///
 /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
-/// use tracing_core::callsite;
+/// use tracing_core::{callsite, identify_callsite};
 /// # use tracing_core::{Metadata, subscriber::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
@@ -160,9 +158,8 @@ macro_rules! identify_callsite {
 ///
 /// /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
 /// # use tracing_core::{callsite::Callsite, subscriber::Interest};
+/// use tracing_core::metadata;
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -228,14 +225,11 @@ macro_rules! metadata {
     };
 }
 
-// std uses lazy_static from crates.io
+// when `std` is enabled, use the `lazy_static` crate from crates.io
 #[cfg(feature = "std")]
-#[macro_use]
-extern crate lazy_static;
+pub(crate) use lazy_static::lazy_static;
 
-// no_std uses vendored version of lazy_static 1.4.0 (4216696) with spin
-// This can conflict when included in a project already using std lazy_static
-// Remove this module when cargo enables specifying dependencies for no_std
+// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]
 #[macro_use]
 mod lazy_static;

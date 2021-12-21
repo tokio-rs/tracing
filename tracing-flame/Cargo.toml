@@ -1,6 +1,6 @@
 [package]
 name = "tracing-flame"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     "Jane Lusby <jlusby@yaah.dev>",
     "Tokio Contributors <team@tokio.rs>"

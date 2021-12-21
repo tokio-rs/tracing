@@ -1,6 +1,3 @@
-extern crate criterion;
-extern crate tracing;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
