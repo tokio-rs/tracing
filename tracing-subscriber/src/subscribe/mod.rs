@@ -36,24 +36,24 @@
 //!
 //! For example:
 //! ```rust
-//! use tracing_subscriber::Layer;
+//! use tracing_subscriber::Subscribe;
 //! use tracing_subscriber::prelude::*;
-//! use tracing::Subscriber;
-//!
-//! pub struct MyLayer {
-//!     // ...
-//! }
-//!
-//! impl<S: Subscriber> Subscribe<C> for MyLayer {
-//!     // ...
-//! }
+//! use tracing::Collect;
 //!
 //! pub struct MySubscriber {
 //!     // ...
 //! }
 //!
+//! impl<C: Collect> Subscribe<C> for MySubscriber {
+//!     // ...
+//! }
+//!
+//! pub struct MyCollector {
+//!     // ...
+//! }
+//!
 //! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-//! impl Subscriber for MySubscriber {
+//! impl Collect for MyCollector {
 //!     // ...
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -62,71 +62,73 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> tracing_core::span::Current { tracing_core::span::Current::none() }
 //! }
-//! # impl MyLayer {
+//! # impl MySubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
-//! # impl MySubscriber {
+//! # impl MyCollector {
 //! # fn new() -> Self { Self { }}
 //! # }
 //!
-//! let subscriber = MySubscriber::new()
-//!     .with(MyLayer::new());
+//! let collector = MyCollector::new()
+//!     .with(MySubscriber::new());
 //!
-//! tracing::subscriber::set_global_default(subscriber);
+//! tracing::collect::set_global_default(collector);
 //! ```
 //!
-//! Multiple `Layer`s may be composed in the same manner:
+//! Multiple subscriber may be composed in the same manner:
 //! ```rust
-//! # use tracing_subscriber::{Layer, layer::SubscriberExt};
-//! # use tracing::Subscriber;
-//! pub struct MyOtherLayer {
+//! # use tracing_subscriber::{Subscribe, subscribe::CollectExt};
+//! # use tracing::Collect;
+//! pub struct MyOtherSubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S: Subscriber> Subscribe<C> for MyOtherLayer {
+//! impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 //!     // ...
 //! }
 //!
-//! pub struct MyThirdLayer {
+//! pub struct MyThirdSubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S: Subscriber> Subscribe<C> for MyThirdLayer {
+//! impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 //!     // ...
 //! }
-//! # pub struct MyLayer {}
-//! # impl<S: Subscriber> Subscribe<C> for MyLayer {}
-//! # pub struct MySubscriber { }
+//! # pub struct MySubscriber {}
+//! # impl<C: Collect> Subscribe<C> for MySubscriber {}
+//! # pub struct MyCollector { }
 //! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-//! # impl Subscriber for MySubscriber {
+//! # impl Collect for MyCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
+//! #   fn current_span(&self) -> tracing_core::span::Current { tracing_core::span::Current::none() }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! }
-//! # impl MyLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
-//! # impl MyOtherLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
-//! # impl MyThirdLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
 //! # impl MySubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyOtherSubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyThirdSubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyCollector {
 //! # fn new() -> Self { Self { }}
 //! # }
 //!
-//! let subscriber = MySubscriber::new()
-//!     .with(MyLayer::new())
-//!     .with(MyOtherLayer::new())
-//!     .with(MyThirdLayer::new());
+//! let collect = MyCollector::new()
+//!     .with(MySubscriber::new())
+//!     .with(MyOtherSubscriber::new())
+//!     .with(MyThirdSubscriber::new());
 //!
-//! tracing::subscriber::set_global_default(subscriber);
+//! tracing::collect::set_global_default(collect);
 //! ```
 //!
 //! The [`Layer::with_subscriber`] constructs the [`Layered`] type from a
@@ -231,7 +233,7 @@
 //! }));
 //!
 //! // A general-purpose logging layer.
-//! let fmt_layer = tracing_subscriber::fmt::layer();
+//! let fmt_layer = tracing_subscriber::fmt::subscriber();
 //!
 //! // Build a subscriber that combines the access log and stdout log
 //! // layers.
@@ -251,7 +253,7 @@
 //!
 //! let access_log = // ...
 //!     # LevelFilter::INFO;
-//! let fmt_layer = tracing_subscriber::fmt::layer();
+//! let fmt_layer = tracing_subscriber::fmt::subscriber();
 //!
 //! tracing_subscriber::registry()
 //!     // Add the filter for the "http_access" target to the access
@@ -340,13 +342,13 @@
 //!
 //! // A layer that logs events to stdout using the human-readable "pretty"
 //! // format.
-//! let stdout_log = tracing_subscriber::fmt::layer()
+//! let stdout_log = tracing_subscriber::fmt::subscriber()
 //!     .pretty();
 //!
 //! // A layer that logs events to a file.
 //! let file = File::create("debug.log")?;
-//! let debug_log = tracing_subscriber::fmt::layer()
-//!     .with_writer(Arc::new(file));
+//! let debug_log = tracing_subscriber::fmt::subscriber()
+//!     .with_writer(file);
 //!
 //! // A layer that collects metrics using specific events.
 //! let metrics_layer = /* ... */ filter::LevelFilter::INFO;
@@ -857,8 +859,8 @@ pub trait Filter<S> {
     /// follows:
     ///
     /// ```
-    /// use tracing_subscriber::layer;
-    /// use tracing_core::{Metadata, subscriber::Interest};
+    /// use tracing_subscriber::subscribe;
+    /// use tracing_core::{Metadata, collect::Interest};
     ///
     /// struct MyFilter {
     ///     // ...
@@ -875,8 +877,8 @@ pub trait Filter<S> {
     ///     }
     /// }
     ///
-    /// impl<S> layer::Filter<S> for MyFilter {
-    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &layer::Context<'_, C>) -> bool {
+    /// impl<C> subscribe::Filter<C> for MyFilter {
+    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &subscribe::Context<'_, C>) -> bool {
     ///         // Even though we are implementing `callsite_enabled`, we must still provide a
     ///         // working implementation of `enabled`, as returning `Interest::always()` or
     ///         // `Interest::never()` will *allow* caching, but will not *guarantee* it.

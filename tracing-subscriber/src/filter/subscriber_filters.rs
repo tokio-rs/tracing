@@ -456,7 +456,7 @@ where
 ///
 /// ```
 /// use tracing_subscriber::{
-///     layer::{Layer, SubscriberExt},
+///     subscribe::{Subscribe, CollectExt},
 ///     filter,
 ///     util::SubscriberInitExt,
 /// };
@@ -466,7 +466,7 @@ where
 ///     metadata.target() == "interesting_things"
 /// });
 ///
-/// let my_layer = tracing_subscriber::fmt::layer();
+/// let my_layer = tracing_subscriber::fmt::subscriber();
 ///
 /// tracing_subscriber::registry()
 ///     .with(my_layer.with_filter(my_filter))
@@ -506,7 +506,7 @@ where
 ///
 /// ```
 /// use tracing_subscriber::{
-///     layer::{Layer, SubscriberExt},
+///     subscribe::{Subscribe, CollectExt},
 ///     filter,
 ///     util::SubscriberInitExt,
 /// };
@@ -526,7 +526,7 @@ where
 ///     false
 /// });
 ///
-/// let my_layer = tracing_subscriber::fmt::layer();
+/// let my_layer = tracing_subscriber::fmt::subscriber();
 ///
 /// tracing_subscriber::registry()
 ///     .with(my_layer.with_filter(my_filter))
@@ -574,7 +574,7 @@ where
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     layer::{Layer, SubscriberExt},
+    ///     subscribe::{Subscribe, CollectExt},
     ///     filter::FilterFn,
     ///     util::SubscriberInitExt,
     /// };
@@ -584,7 +584,7 @@ where
     ///     metadata.target() == "interesting_things"
     /// });
     ///
-    /// let my_layer = tracing_subscriber::fmt::layer();
+    /// let my_layer = tracing_subscriber::fmt::subscriber();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
@@ -616,7 +616,7 @@ where
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     layer::{Layer, SubscriberExt},
+    ///     subscribe::{Subscribe, CollectExt},
     ///     filter::{filter_fn, LevelFilter},
     ///     util::SubscriberInitExt,
     /// };
@@ -631,7 +631,7 @@ where
     ///     // below, set the max level hint
     ///     .with_max_level_hint(LevelFilter::INFO);
     ///
-    /// let my_layer = tracing_subscriber::fmt::layer();
+    /// let my_layer = tracing_subscriber::fmt::subscriber();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
@@ -747,7 +747,7 @@ where
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     layer::{Layer, SubscriberExt},
+    ///     subscribe::{Subscribe, CollectExt},
     ///     filter::DynFilterFn,
     ///     util::SubscriberInitExt,
     /// };
@@ -767,7 +767,7 @@ where
     ///     false
     /// });
     ///
-    /// let my_layer = tracing_subscriber::fmt::layer();
+    /// let my_layer = tracing_subscriber::fmt::subscriber();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
@@ -808,7 +808,7 @@ where
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     layer::{Layer, SubscriberExt},
+    ///     subscribe::{Subscribe, CollectExt},
     ///     filter::{DynFilterFn, LevelFilter},
     ///     util::SubscriberInitExt,
     /// };
@@ -837,7 +837,7 @@ where
     ///     // below, set the max level hint
     ///     .with_max_level_hint(LevelFilter::INFO);
     ///
-    /// let my_layer = tracing_subscriber::fmt::layer();
+    /// let my_layer = tracing_subscriber::fmt::subscriber();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))
@@ -873,11 +873,11 @@ where
     ///
     /// ```
     /// use tracing_subscriber::{
-    ///     layer::{Layer, SubscriberExt},
+    ///     subscribe::{Subscribe, CollectExt},
     ///     filter::DynFilterFn,
     ///     util::SubscriberInitExt,
     /// };
-    /// use tracing_core::subscriber::Interest;
+    /// use tracing_core::collect::Interest;
     ///
     /// // Only enable spans or events within a span named "interesting_span".
     /// let my_filter = DynFilterFn::new(|metadata, cx| {
@@ -904,7 +904,7 @@ where
     ///     Interest::sometimes()
     /// });
     ///
-    /// let my_layer = tracing_subscriber::fmt::layer();
+    /// let my_layer = tracing_subscriber::fmt::subscriber();
     ///
     /// tracing_subscriber::registry()
     ///     .with(my_layer.with_filter(my_filter))

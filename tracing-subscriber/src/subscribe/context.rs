@@ -11,14 +11,14 @@ use crate::{filter::FilterId, registry::Registry};
 /// [`LookupSpan`]:
 ///
 /// ```rust
-/// use tracing::Subscriber;
-/// use tracing_subscriber::{Layer, registry::LookupSpan};
+/// use tracing::Collect;
+/// use tracing_subscriber::{Subscribe, registry::LookupSpan};
 ///
-/// pub struct MyLayer;
+/// pub struct MySubscriber;
 ///
-/// impl<S> Layer<S> for MyLayer
+/// impl<C> Subscribe<C> for MySubscriber
 /// where
-///     S: Subscriber + for<'a> LookupSpan<'a>,
+///     C: Collect + for<'a> LookupSpan<'a>,
 /// {
 ///     // ...
 /// }
@@ -151,25 +151,25 @@ where
     /// span, if required.
     ///
     /// ```rust
-    /// use tracing::{Event, Subscriber};
+    /// use tracing::{Event, Collect};
     /// use tracing_subscriber::{
-    ///     layer::{Context, Layer},
+    ///     subscribe::{Context, Subscribe},
     ///     prelude::*,
     ///     registry::LookupSpan,
     /// };
     ///
-    /// struct PrintingLayer;
-    /// impl<S> Layer<S> for PrintingLayer
+    /// struct PrintingSubscriber;
+    /// impl<C> Subscribe<C> for PrintingSubscriber
     /// where
-    ///     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    ///     C: Collect + for<'lookup> LookupSpan<'lookup>,
     /// {
-    ///     fn on_event(&self, event: &Event, ctx: Context<S>) {
+    ///     fn on_event(&self, event: &Event, ctx: Context<C>) {
     ///         let span = ctx.event_span(event);
     ///         println!("Event in span: {:?}", span.map(|s| s.name()));
     ///     }
     /// }
     ///
-    /// tracing::subscriber::with_default(tracing_subscriber::registry().with(PrintingLayer), || {
+    /// tracing::collect::with_default(tracing_subscriber::registry().with(PrintingSubscriber), || {
     ///     tracing::info!("no span");
     ///     // Prints: Event in span: None
     ///
