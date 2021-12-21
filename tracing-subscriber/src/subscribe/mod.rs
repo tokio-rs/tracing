@@ -36,24 +36,24 @@
 //!
 //! For example:
 //! ```rust
-//! use tracing_subscriber::Layer;
+//! use tracing_subscriber::Subscribe;
 //! use tracing_subscriber::prelude::*;
-//! use tracing::Subscriber;
-//!
-//! pub struct MyLayer {
-//!     // ...
-//! }
-//!
-//! impl<S: Subscriber> Layer<S> for MyLayer {
-//!     // ...
-//! }
+//! use tracing::Collect;
 //!
 //! pub struct MySubscriber {
 //!     // ...
 //! }
 //!
+//! impl<C: Collect> Subscribe<C> for MySubscriber {
+//!     // ...
+//! }
+//!
+//! pub struct MyCollector {
+//!     // ...
+//! }
+//!
 //! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-//! impl Subscriber for MySubscriber {
+//! impl Collect for MyCollector {
 //!     // ...
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
@@ -62,71 +62,73 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> tracing_core::span::Current { tracing_core::span::Current::none() }
 //! }
-//! # impl MyLayer {
+//! # impl MySubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
-//! # impl MySubscriber {
+//! # impl MyCollector {
 //! # fn new() -> Self { Self { }}
 //! # }
 //!
-//! let subscriber = MySubscriber::new()
-//!     .with(MyLayer::new());
+//! let collector = MyCollector::new()
+//!     .with(MySubscriber::new());
 //!
-//! tracing::subscriber::set_global_default(subscriber);
+//! tracing::collect::set_global_default(collector);
 //! ```
 //!
-//! Multiple `Layer`s may be composed in the same manner:
+//! Multiple subscriber may be composed in the same manner:
 //! ```rust
-//! # use tracing_subscriber::{Layer, layer::SubscriberExt};
-//! # use tracing::Subscriber;
-//! pub struct MyOtherLayer {
+//! # use tracing_subscriber::{Subscribe, subscribe::CollectExt};
+//! # use tracing::Collect;
+//! pub struct MyOtherSubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S: Subscriber> Layer<S> for MyOtherLayer {
+//! impl<C: Collect> Subscribe<C> for MyOtherSubscriber {
 //!     // ...
 //! }
 //!
-//! pub struct MyThirdLayer {
+//! pub struct MyThirdSubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S: Subscriber> Layer<S> for MyThirdLayer {
+//! impl<C: Collect> Subscribe<C> for MyThirdSubscriber {
 //!     // ...
 //! }
-//! # pub struct MyLayer {}
-//! # impl<S: Subscriber> Layer<S> for MyLayer {}
-//! # pub struct MySubscriber { }
+//! # pub struct MySubscriber {}
+//! # impl<C: Collect> Subscribe<C> for MySubscriber {}
+//! # pub struct MyCollector { }
 //! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-//! # impl Subscriber for MySubscriber {
+//! # impl Collect for MyCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
+//! #   fn current_span(&self) -> tracing_core::span::Current { tracing_core::span::Current::none() }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
 //! }
-//! # impl MyLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
-//! # impl MyOtherLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
-//! # impl MyThirdLayer {
-//! # fn new() -> Self { Self {} }
-//! # }
 //! # impl MySubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyOtherSubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyThirdSubscriber {
+//! # fn new() -> Self { Self {} }
+//! # }
+//! # impl MyCollector {
 //! # fn new() -> Self { Self { }}
 //! # }
 //!
-//! let subscriber = MySubscriber::new()
-//!     .with(MyLayer::new())
-//!     .with(MyOtherLayer::new())
-//!     .with(MyThirdLayer::new());
+//! let collect = MyCollector::new()
+//!     .with(MySubscriber::new())
+//!     .with(MyOtherSubscriber::new())
+//!     .with(MyThirdSubscriber::new());
 //!
-//! tracing::subscriber::set_global_default(subscriber);
+//! tracing::collect::set_global_default(collect);
 //! ```
 //!
 //! The [`Layer::with_subscriber`] constructs the [`Layered`] type from a
@@ -146,7 +148,7 @@
 //! information provided by the wrapped subscriber (such as [the current span])
 //! to the layer.
 //!
-//! ## Filtering with `Layer`s
+//! ## Filtering with `Subscribers`s
 //!
 //! As well as strategies for handling trace events, the `Layer` trait may also
 //! be used to represent composable _filters_. This allows the determination of
@@ -231,7 +233,7 @@
 //! }));
 //!
 //! // A general-purpose logging layer.
-//! let fmt_layer = tracing_subscriber::fmt::layer();
+//! let fmt_layer = tracing_subscriber::fmt::subscriber();
 //!
 //! // Build a subscriber that combines the access log and stdout log
 //! // layers.
@@ -251,7 +253,7 @@
 //!
 //! let access_log = // ...
 //!     # LevelFilter::INFO;
-//! let fmt_layer = tracing_subscriber::fmt::layer();
+//! let fmt_layer = tracing_subscriber::fmt::subscriber();
 //!
 //! tracing_subscriber::registry()
 //!     // Add the filter for the "http_access" target to the access
@@ -340,13 +342,13 @@
 //!
 //! // A layer that logs events to stdout using the human-readable "pretty"
 //! // format.
-//! let stdout_log = tracing_subscriber::fmt::layer()
+//! let stdout_log = tracing_subscriber::fmt::subscriber()
 //!     .pretty();
 //!
 //! // A layer that logs events to a file.
 //! let file = File::create("debug.log")?;
-//! let debug_log = tracing_subscriber::fmt::layer()
-//!     .with_writer(Arc::new(file));
+//! let debug_log = tracing_subscriber::fmt::subscriber()
+//!     .with_writer(file);
 //!
 //! // A layer that collects metrics using specific events.
 //! let metrics_layer = /* ... */ filter::LevelFilter::INFO;
@@ -403,12 +405,11 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{any::TypeId, ops::Deref, sync::Arc};
+use std::{any::TypeId, ops::Deref, ptr::NonNull, sync::Arc};
 use tracing_core::{
+    collect::{Collect, Interest},
     metadata::Metadata,
-    span,
-    subscriber::{Interest, Subscriber},
-    Event, LevelFilter,
+    span, Event, LevelFilter,
 };
 
 mod context;
@@ -422,89 +423,86 @@ pub(crate) mod tests;
 
 /// A composable handler for `tracing` events.
 ///
-/// A `Layer` implements a behavior for recording or collecting traces that can
-/// be composed together with other `Layer`s to build a [`Subscriber`]. See the
-/// [module-level documentation](crate::layer) for details.
+/// A `Subscribe` implements a behavior for recording or collecting traces that can
+/// be composed together with other subscribers to build a [`collector`]. See the
+/// [module-level documentation](crate::subscribe) for details.
 ///
+<<<<<<< HEAD:tracing-subscriber/src/layer/mod.rs
 /// [`Subscriber`]: tracing_core::Subscriber
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Layer<S>
+=======
+/// [`collector`]: tracing_core::Collect
+pub trait Subscribe<C>
+>>>>>>> david/update-filter-changes:tracing-subscriber/src/subscribe/mod.rs
 where
-    S: Subscriber,
+    C: Collect,
     Self: 'static,
 {
-    /// Performs late initialization when attaching a `Layer` to a
-    /// [`Subscriber`].
+    /// Performs late initialization when attaching a `Subscribe` to a
+    /// [`Collect`].
     ///
     /// This is a callback that is called when the `Layer` is added to a
-    /// [`Subscriber`] (e.g. in [`Layer::with_subscriber`] and
+    /// [`Collect`] (e.g. in [`Subscribe::with_collector`] and
     /// [`SubscriberExt::with`]). Since this can only occur before the
-    /// [`Subscriber`] has been set as the default, both the `Layer` and
-    /// [`Subscriber`] are passed to this method _mutably_. This gives the
-    /// `Layer` the opportunity to set any of its own fields with values
-    /// recieved by method calls on the [`Subscriber`].
+    /// [`Collect`] has been set as the default, both the subscriber and
+    /// [`Collect`] are passed to this method _mutably_. This gives the
+    /// subscribe the opportunity to set any of its own fields with values
+    /// recieved by method calls on the [`Collect`].
     ///
-    /// For example, [`Filtered`] layers implement `on_layer` to call the
-    /// [`Subscriber`]'s [`register_filter`] method, and store the returned
+    /// For example, [`Filtered`] layers implement `on_subscribe` to call the
+    /// [`Collect`]'s [`register_filter`] method, and store the returned
     /// [`FilterId`] as a field.
     ///
-    /// **Note** In most cases, `Layer` implementations will not need to
+    /// **Note** In most cases, subscriber implementations will not need to
     /// implement this method. However, in cases where a type implementing
-    /// `Layer` wraps one or more other types that implement `Layer`, like the
+    /// subscriber wraps one or more other types that implement `Subscribe`, like the
     /// [`Layered`] and [`Filtered`] types in this crate, that type MUST ensure
-    /// that the inner `Layer`s' `on_layer` methods are called. Otherwise,
-    /// functionality that relies on `on_layer`, such as [per-layer filtering],
+    /// that the inner `Layer`s' `on_subscribe` methods are called. Otherwise,
+    /// functionality that relies on `on_subscribe`, such as [per-subscriber filtering],
     /// may not work correctly.
     ///
     /// [`Filtered`]: crate::filter::Filtered
     /// [`register_filter`]: crate::registry::LookupSpan::register_filter
-    /// [per-layer filtering]: #per-layer-filtering
+    /// [per-subscribe filtering]: #per-layer-filtering
     /// [`FilterId`]: crate::filter::FilterId
-    fn on_layer(&mut self, subscriber: &mut S) {
-        let _ = subscriber;
+    fn on_subscribe(&mut self, collector: &mut C) {
+        let _ = collector;
     }
 
-    /// Registers a new callsite with this layer, returning whether or not
-    /// the layer is interested in being notified about the callsite, similarly
-    /// to [`Subscriber::register_callsite`].
+    /// Registers a new callsite with this subscriber, returning whether or not
+    /// the subscriber is interested in being notified about the callsite, similarly
+    /// to [`Collect::register_callsite`].
     ///
     /// By default, this returns [`Interest::always()`] if [`self.enabled`] returns
     /// true, or [`Interest::never()`] if it returns false.
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This method (and <a href="#method.enabled">
-    /// <code>Layer::enabled</code></a>) determine whether a span or event is
-    /// globally enabled, <em>not</em> whether the individual layer will be
-    /// notified about that span or event. This is intended to be used
-    /// by layers that implement filtering for the entire stack. Layers which do
-    /// not wish to be notified about certain spans or events but do not wish to
-    /// globally disable them should ignore those spans or events in their
-    /// <a href="#method.on_event"><code>on_event</code></a>,
-    /// <a href="#method.on_enter"><code>on_enter</code></a>,
-    /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
-    /// methods.
+    ///
+    /// **Note**: This method (and [`Subscribe::enabled`]) determine whether a span or event is
+    /// globally enabled, *not* whether the individual subscriber will be notified about that
+    /// span or event.  This is intended to be used by subscribers that implement filtering for
+    /// the entire stack. Subscribers which do not wish to be notified about certain spans or
+    /// events but do not wish to globally disable them should ignore those spans or events in
+    /// their [on_event][Self::on_event], [on_enter][Self::on_enter], [on_exit][Self::on_exit],
+    /// and other notification methods.
+    ///
     /// </pre></div>
     ///
     /// See [the trait-level documentation] for more information on filtering
-    /// with `Layer`s.
+    /// with `Subscriber`s.
     ///
-    /// Layers may also implement this method to perform any behaviour that
-    /// should be run once per callsite. If the layer wishes to use
+    /// Subscribers may also implement this method to perform any behaviour that
+    /// should be run once per callsite. If the subscriber wishes to use
     /// `register_callsite` for per-callsite behaviour, but does not want to
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
-    /// [`self.enabled`]: #method.enabled
-    /// [`Layer::enabled`]: #method.enabled
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
-    /// [the trait-level documentation]: #filtering-with-layers
+    /// [`Interest`]: tracing_core::Interest
+    /// [`Collect::register_callsite`]: tracing_core::Collect::register_callsite()
+    /// [`self.enabled`]: Subscribe::enabled()
+    /// [the trait-level documentation]: #filtering-with-subscribers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata, Context::none()) {
             Interest::always()
@@ -513,130 +511,125 @@ where
         }
     }
 
-    /// Returns `true` if this layer is interested in a span or event with the
+    /// Returns `true` if this subscriber is interested in a span or event with the
     /// given `metadata` in the current [`Context`], similarly to
-    /// [`Subscriber::enabled`].
+    /// [`Collect::enabled`].
     ///
-    /// By default, this always returns `true`, allowing the wrapped subscriber
+    /// By default, this always returns `true`, allowing the wrapped collector
     /// to choose to disable the span.
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This method (and <a href="#method.register_callsite">
-    /// <code>Layer::register_callsite</code></a>) determine whether a span or event is
-    /// globally enabled, <em>not</em> whether the individual layer will be
+    ///
+    /// **Note**: This method (and [`register_callsite`][Self::register_callsite])
+    /// determine whether a span or event is
+    /// globally enabled, *not* whether the individual subscriber will be
     /// notified about that span or event. This is intended to be used
     /// by layers that implement filtering for the entire stack. Layers which do
     /// not wish to be notified about certain spans or events but do not wish to
     /// globally disable them should ignore those spans or events in their
-    /// <a href="#method.on_event"><code>on_event</code></a>,
-    /// <a href="#method.on_enter"><code>on_enter</code></a>,
-    /// <a href="#method.on_exit"><code>on_exit</code></a>, and other notification
-    /// methods.
+    /// [on_event][Self::on_event], [on_enter][Self::on_enter], [on_exit][Self::on_exit],
+    /// and other notification methods.
+    ///
     /// </pre></div>
     ///
     ///
     /// See [the trait-level documentation] for more information on filtering
-    /// with `Layer`s.
+    /// with `Subscriber`s.
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Context`]: ../struct.Context.html
-    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Layer::register_callsite`]: #method.register_callsite
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
-    /// [the trait-level documentation]: #filtering-with-layers
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+    /// [`Interest`]: tracing_core::Interest
+    /// [the trait-level documentation]: #filtering-with-subscribers
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
         true
     }
 
-    /// Notifies this layer that a new span was constructed with the given
+    /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         let _ = (attrs, id, ctx);
     }
 
     // TODO(eliza): do we want this to be a public API? If we end up moving
-    // filtering layers to a separate trait, we may no longer want `Layer`s to
+    // filtering subscribers to a separate trait, we may no longer want `Subscriber`s to
     // be able to participate in max level hinting...
     #[doc(hidden)]
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
 
-    /// Notifies this layer that a span with the given `Id` recorded the given
+    /// Notifies this subscriber that a span with the given `Id` recorded the given
     /// `values`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, S>) {}
+    fn on_record(&self, _span: &span::Id, _values: &span::Record<'_>, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that a span with the ID `span` recorded that it
+    /// Notifies this subscriber that a span with the ID `span` recorded that it
     /// follows from the span with the ID `follows`.
     // Note: it's unclear to me why we'd need the current span in `record` (the
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
-    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that an event has occurred.
-    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
+    /// Notifies this subscriber that an event has occurred.
+    fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that a span with the given ID was entered.
-    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    /// Notifies this subscriber that a span with the given ID was entered.
+    fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that the span with the given ID was exited.
-    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+    /// Notifies this subscriber that the span with the given ID was exited.
+    fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that the span with the given ID has been closed.
-    fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
+    /// Notifies this subscriber that the span with the given ID has been closed.
+    fn on_close(&self, _id: span::Id, _ctx: Context<'_, C>) {}
 
-    /// Notifies this layer that a span ID has been cloned, and that the
+    /// Notifies this subscriber that a span ID has been cloned, and that the
     /// subscriber returned a different ID.
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, S>) {}
+    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Composes this layer around the given `Layer`, returning a `Layered`
-    /// struct implementing `Layer`.
+    /// Composes this subscriber around the given collector, returning a `Layered`
+    /// struct implementing `Subscribe`.
     ///
-    /// The returned `Layer` will call the methods on this `Layer` and then
-    /// those of the new `Layer`, before calling the methods on the subscriber
+    /// The returned subscriber will call the methods on this subscriber and then
+    /// those of the new subscriber, before calling the methods on the collector
     /// it wraps. For example:
     ///
     /// ```rust
-    /// # use tracing_subscriber::layer::Layer;
-    /// # use tracing_core::Subscriber;
-    /// pub struct FooLayer {
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
+    /// pub struct FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// pub struct BarLayer {
+    /// pub struct BarSubscriber {
     ///     // ...
     /// }
     ///
-    /// pub struct MySubscriber {
+    /// pub struct MyCollector {
     ///     // ...
     /// }
     ///
-    /// impl<S: Subscriber> Layer<S> for FooLayer {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Subscriber> Layer<S> for BarLayer {
+    /// impl<C: Collect> Subscribe<C> for BarSubscriber {
     ///     // ...
     /// }
     ///
-    /// # impl FooLayer {
+    /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
-    /// # impl BarLayer {
+    /// # impl BarSubscriber {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # impl MySubscriber {
+    /// # impl MyCollector {
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
@@ -644,33 +637,34 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
-    /// let subscriber = FooLayer::new()
-    ///     .and_then(BarLayer::new())
-    ///     .with_subscriber(MySubscriber::new());
+    /// let collector = FooSubscriber::new()
+    ///     .and_then(BarSubscriber::new())
+    ///     .with_collector(MyCollector::new());
     /// ```
     ///
-    /// Multiple layers may be composed in this manner:
+    /// Multiple subscribers may be composed in this manner:
     ///
     /// ```rust
-    /// # use tracing_subscriber::layer::Layer;
-    /// # use tracing_core::Subscriber;
-    /// # pub struct FooLayer {}
-    /// # pub struct BarLayer {}
-    /// # pub struct MySubscriber {}
-    /// # impl<S: Subscriber> Layer<S> for FooLayer {}
-    /// # impl<S: Subscriber> Layer<S> for BarLayer {}
-    /// # impl FooLayer {
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::{Collect, span::Current};
+    /// # pub struct FooSubscriber {}
+    /// # pub struct BarSubscriber {}
+    /// # pub struct MyCollector {}
+    /// # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+    /// # impl<C: Collect> Subscribe<C> for BarSubscriber {}
+    /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
-    /// # impl BarLayer {
+    /// # impl BarSubscriber {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # impl MySubscriber {
+    /// # impl MyCollector {
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
-    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
@@ -678,60 +672,62 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
-    /// pub struct BazLayer {
+    /// pub struct BazSubscriber {
     ///     // ...
     /// }
     ///
-    /// impl<S: Subscriber> Layer<S> for BazLayer {
+    /// impl<C: Collect> Subscribe<C> for BazSubscriber {
     ///     // ...
     /// }
-    /// # impl BazLayer { fn new() -> Self { BazLayer {} } }
+    /// # impl BazSubscriber { fn new() -> Self { BazSubscriber {} } }
     ///
-    /// let subscriber = FooLayer::new()
-    ///     .and_then(BarLayer::new())
-    ///     .and_then(BazLayer::new())
-    ///     .with_subscriber(MySubscriber::new());
+    /// let collector = FooSubscriber::new()
+    ///     .and_then(BarSubscriber::new())
+    ///     .and_then(BazSubscriber::new())
+    ///     .with_collector(MyCollector::new());
     /// ```
-    fn and_then<L>(self, layer: L) -> Layered<L, Self, S>
+    fn and_then<S>(self, subscriber: S) -> Layered<S, Self, C>
     where
-        L: Layer<S>,
+        S: Subscribe<C>,
         Self: Sized,
     {
-        let inner_has_layer_filter = filter::layer_has_plf(&self);
-        Layered::new(layer, self, inner_has_layer_filter)
+        let inner_has_subscriber_filter = filter::subscriber_has_plf(&self);
+        Layered::new(subscriber, self, inner_has_subscriber_filter)
     }
 
-    /// Composes this `Layer` with the given [`Subscriber`], returning a
-    /// `Layered` struct that implements [`Subscriber`].
+    /// Composes this subscriber with the given collector, returning a
+    /// `Layered` struct that implements [`Collect`].
     ///
-    /// The returned `Layered` subscriber will call the methods on this `Layer`
-    /// and then those of the wrapped subscriber.
+    /// The returned `Layered` subscriber will call the methods on this subscriber
+    /// and then those of the wrapped collector.
     ///
     /// For example:
     /// ```rust
-    /// # use tracing_subscriber::layer::Layer;
-    /// # use tracing_core::Subscriber;
-    /// pub struct FooLayer {
+    /// # use tracing_subscriber::subscribe::Subscribe;
+    /// # use tracing_core::Collect;
+    /// # use tracing_core::span::Current;
+    /// pub struct FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// pub struct MySubscriber {
+    /// pub struct MyCollector {
     ///     // ...
     /// }
     ///
-    /// impl<S: Subscriber> Layer<S> for FooLayer {
+    /// impl<C: Collect> Subscribe<C> for FooSubscriber {
     ///     // ...
     /// }
     ///
-    /// # impl FooLayer {
+    /// # impl FooSubscriber {
     /// # fn new() -> Self { Self {} }
     /// # }
-    /// # impl MySubscriber {
+    /// # impl MyCollector {
     /// # fn new() -> Self { Self { }}
     /// # }
     /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata};
-    /// # impl tracing_core::Subscriber for MySubscriber {
+    /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &tracing_core::Event) {}
@@ -739,56 +735,57 @@ where
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
     /// #   fn exit(&self, _: &Id) {}
+    /// #   fn current_span(&self) -> Current { Current::unknown() }
     /// # }
-    /// let subscriber = FooLayer::new()
-    ///     .with_subscriber(MySubscriber::new());
+    /// let collector = FooSubscriber::new()
+    ///     .with_collector(MyCollector::new());
     ///```
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
-    fn with_subscriber(mut self, mut inner: S) -> Layered<Self, S>
+    /// [`Collect`]: tracing_core::Collect
+    fn with_collector(mut self, mut inner: C) -> Layered<Self, C>
     where
         Self: Sized,
     {
-        let inner_has_layer_filter = filter::subscriber_has_plf(&inner);
-        self.on_layer(&mut inner);
-        Layered::new(self, inner, inner_has_layer_filter)
+        let inner_has_subscriber_filter = filter::collector_has_plf(&inner);
+        self.on_subscribe(&mut inner);
+        Layered::new(self, inner, inner_has_subscriber_filter)
     }
 
-    /// Combines `self` with a [`Filter`], returning a [`Filtered`] layer.
+    /// Combines `self` with a [`Filter`], returning a [`Filtered`] subscriber.
     ///
     /// The [`Filter`] will control which spans and events are enabled for
-    /// this layer. See [the trait-level documentation][plf] for details on
-    /// per-layer filtering.
+    /// this subscriber. See [the trait-level documentation][plf] for details on
+    /// per-subscriber filtering.
     ///
     /// [`Filtered`]: crate::filter::Filtered
     /// [plf]: #per-layer-filtering
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
+    #[cfg(all(feature = "registry", feature = "std"))]
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
+    fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, C>
     where
         Self: Sized,
-        F: Filter<S>,
+        F: Filter<C>,
     {
         filter::Filtered::new(self, filter)
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
     }
 }
 
-/// A per-[`Layer`] filter that determines whether a span or event is enabled
-/// for an individual layer.
+/// A per-[`Subscribe`] filter that determines whether a span or event is enabled
+/// for an individual subscriber.
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Filter<S> {
-    /// Returns `true` if this layer is interested in a span or event with the
+    /// Returns `true` if this subscriber is interested in a span or event with the
     /// given [`Metadata`] in the current [`Context`], similarly to
     /// [`Subscriber::enabled`].
     ///
@@ -869,8 +866,8 @@ pub trait Filter<S> {
     /// follows:
     ///
     /// ```
-    /// use tracing_subscriber::layer;
-    /// use tracing_core::{Metadata, subscriber::Interest};
+    /// use tracing_subscriber::subscribe;
+    /// use tracing_core::{Metadata, collect::Interest};
     ///
     /// struct MyFilter {
     ///     // ...
@@ -887,8 +884,8 @@ pub trait Filter<S> {
     ///     }
     /// }
     ///
-    /// impl<S> layer::Filter<S> for MyFilter {
-    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
+    /// impl<C> subscribe::Filter<C> for MyFilter {
+    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &subscribe::Context<'_, C>) -> bool {
     ///         // Even though we are implementing `callsite_enabled`, we must still provide a
     ///         // working implementation of `enabled`, as returning `Interest::always()` or
     ///         // `Interest::never()` will *allow* caching, but will not *guarantee* it.
@@ -959,14 +956,14 @@ pub trait Filter<S> {
 }
 
 /// Extension trait adding a `with(Layer)` combinator to `Subscriber`s.
-pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
-    /// Wraps `self` with the provided `layer`.
-    fn with<L>(self, layer: L) -> Layered<L, Self>
+pub trait CollectExt: Collect + crate::sealed::Sealed {
+    /// Wraps `self` with the provided `Subscribe`.
+    fn with<S>(self, subscriber: S) -> Layered<S, Self>
     where
-        L: Layer<Self>,
+        S: Subscribe<Self>,
         Self: Sized,
     {
-        layer.with_subscriber(self)
+        subscriber.with_collector(self)
     }
 }
 /// A layer that does nothing.
@@ -977,21 +974,21 @@ pub struct Identity {
 
 // === impl Layer ===
 
-impl<L, S> Layer<S> for Option<L>
+impl<S, C> Subscribe<C> for Option<S>
 where
-    L: Layer<S>,
-    S: Subscriber,
+    S: Subscribe<C>,
+    C: Collect,
 {
-    fn on_layer(&mut self, subscriber: &mut S) {
+    fn on_subscribe(&mut self, collector: &mut C) {
         if let Some(ref mut layer) = self {
-            layer.on_layer(subscriber)
+            layer.on_subscribe(collector)
         }
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
-            inner.new_span(attrs, id, ctx)
+            inner.on_new_span(attrs, id, ctx)
         }
     }
 
@@ -1004,7 +1001,7 @@ where
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
         match self {
             Some(ref inner) => inner.enabled(metadata, ctx),
             None => true,
@@ -1020,49 +1017,49 @@ where
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_record(span, values, ctx);
         }
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_follows_from(span, follows, ctx);
         }
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_event(event, ctx);
         }
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_enter(id, ctx);
         }
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_exit(id, ctx);
         }
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_close(id, ctx);
         }
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_id_change(old, new, ctx)
         }
@@ -1070,9 +1067,9 @@ where
 
     #[doc(hidden)]
     #[inline]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const _ as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }
@@ -1082,8 +1079,8 @@ where
 macro_rules! layer_impl_body {
     () => {
         #[inline]
-        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-            self.deref().new_span(attrs, id, ctx)
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+            self.deref().on_new_span(attrs, id, ctx)
         }
 
         #[inline]
@@ -1092,7 +1089,7 @@ macro_rules! layer_impl_body {
         }
 
         #[inline]
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
             self.deref().enabled(metadata, ctx)
         }
 
@@ -1102,86 +1099,86 @@ macro_rules! layer_impl_body {
         }
 
         #[inline]
-        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
             self.deref().on_record(span, values, ctx)
         }
 
         #[inline]
-        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_follows_from(span, follows, ctx)
         }
 
         #[inline]
-        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
             self.deref().on_event(event, ctx)
         }
 
         #[inline]
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_enter(id, ctx)
         }
 
         #[inline]
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_exit(id, ctx)
         }
 
         #[inline]
-        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
             self.deref().on_close(id, ctx)
         }
 
         #[inline]
-        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
+        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_id_change(old, new, ctx)
         }
 
         #[doc(hidden)]
         #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
             self.deref().downcast_raw(id)
         }
     };
 }
 
-impl<L, S> Layer<S> for Arc<L>
+impl<S, C> Subscribe<C> for Arc<S>
 where
-    L: Layer<S>,
-    S: Subscriber,
+    S: Subscribe<C>,
+    C: Collect,
 {
     layer_impl_body! {}
 }
 
-impl<S> Layer<S> for Arc<dyn Layer<S>>
+impl<C> Subscribe<C> for Arc<dyn Subscribe<C>>
 where
-    S: Subscriber,
+    C: Collect,
 {
     layer_impl_body! {}
 }
 
-impl<L, S> Layer<S> for Box<L>
+impl<S, C> Subscribe<C> for Box<S>
 where
-    L: Layer<S>,
-    S: Subscriber,
+    S: Subscribe<C>,
+    C: Collect,
 {
     layer_impl_body! {}
 }
 
-impl<S> Layer<S> for Box<dyn Layer<S>>
+impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
 where
-    S: Subscriber,
+    C: Collect,
 {
     layer_impl_body! {}
 }
 
-// === impl SubscriberExt ===
+// === impl CollectExt ===
 
-impl<S: Subscriber> crate::sealed::Sealed for S {}
-impl<S: Subscriber> SubscriberExt for S {}
+impl<C: Collect> crate::sealed::Sealed for C {}
+impl<C: Collect> CollectExt for C {}
 
 // === impl Identity ===
 
-impl<S: Subscriber> Layer<S> for Identity {}
+impl<C: Collect> Subscribe<C> for Identity {}
 
 impl Identity {
     /// Returns a new `Identity` layer.

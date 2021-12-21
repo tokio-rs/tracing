@@ -1,8 +1,8 @@
 use super::*;
 
-pub(crate) struct NopSubscriber;
+pub(crate) struct NopCollector;
 
-impl Subscriber for NopSubscriber {
+impl Collect for NopCollector {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::never()
     }
@@ -20,30 +20,33 @@ impl Subscriber for NopSubscriber {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }
 
 #[derive(Debug)]
-pub(crate) struct NopLayer;
-impl<S: Subscriber> Layer<S> for NopLayer {}
+pub(crate) struct NopSubscriber;
+impl<S: Collect> Subscribe<S> for NopSubscriber {}
 
 #[allow(dead_code)]
-struct NopLayer2;
-impl<S: Subscriber> Layer<S> for NopLayer2 {}
+struct NopSubscriber2;
+impl<C: Collect> Subscribe<C> for NopSubscriber2 {}
 
 /// A layer that holds a string.
 ///
 /// Used to test that pointers returned by downcasting are actually valid.
-struct StringLayer(String);
-impl<S: Subscriber> Layer<S> for StringLayer {}
-struct StringLayer2(String);
-impl<S: Subscriber> Layer<S> for StringLayer2 {}
+struct StringSubscriber(String);
+impl<C: Collect> Subscribe<C> for StringSubscriber {}
+struct StringSubscriber2(String);
+impl<C: Collect> Subscribe<C> for StringSubscriber2 {}
 
-struct StringLayer3(String);
-impl<S: Subscriber> Layer<S> for StringLayer3 {}
+struct StringSubscriber3(String);
+impl<C: Collect> Subscribe<C> for StringSubscriber3 {}
 
-pub(crate) struct StringSubscriber(String);
+pub(crate) struct StringCollector(String);
 
-impl Subscriber for StringSubscriber {
+impl Collect for StringCollector {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::never()
     }
@@ -61,55 +64,62 @@ impl Subscriber for StringSubscriber {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+
+    fn current_span(&self) -> span::Current {
+        todo!()
+    }
 }
 
-fn assert_subscriber(_s: impl Subscriber) {}
+fn assert_collector(_s: impl Collect) {}
 
 #[test]
 fn layer_is_subscriber() {
-    let s = NopLayer.with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+    let s = NopSubscriber.with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
 fn two_layers_are_subscriber() {
-    let s = NopLayer.and_then(NopLayer).with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+    let s = NopSubscriber
+        .and_then(NopSubscriber)
+        .with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
 fn three_layers_are_subscriber() {
-    let s = NopLayer
-        .and_then(NopLayer)
-        .and_then(NopLayer)
-        .with_subscriber(NopSubscriber);
-    assert_subscriber(s)
+    let s = NopSubscriber
+        .and_then(NopSubscriber)
+        .and_then(NopSubscriber)
+        .with_collector(NopCollector);
+    assert_collector(s)
 }
 
 #[test]
 fn downcasts_to_subscriber() {
-    let s = NopLayer
-        .and_then(NopLayer)
-        .and_then(NopLayer)
-        .with_subscriber(StringSubscriber("subscriber".into()));
+    let s = NopSubscriber
+        .and_then(NopSubscriber)
+        .and_then(NopSubscriber)
+        .with_collector(StringCollector("subscriber".into()));
     let subscriber =
-        <dyn Subscriber>::downcast_ref::<StringSubscriber>(&s).expect("subscriber should downcast");
+        <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
     assert_eq!(&subscriber.0, "subscriber");
 }
 
 #[test]
 fn downcasts_to_layer() {
-    let s = StringLayer("layer_1".into())
-        .and_then(StringLayer2("layer_2".into()))
-        .and_then(StringLayer3("layer_3".into()))
-        .with_subscriber(NopSubscriber);
-    let layer = <dyn Subscriber>::downcast_ref::<StringLayer>(&s).expect("layer 1 should downcast");
+    let s = StringSubscriber("layer_1".into())
+        .and_then(StringSubscriber2("layer_2".into()))
+        .and_then(StringSubscriber3("layer_3".into()))
+        .with_collector(NopCollector);
+    let layer =
+        <dyn Collect>::downcast_ref::<StringSubscriber>(&s).expect("subscriber 1 should downcast");
     assert_eq!(&layer.0, "layer_1");
     let layer =
-        <dyn Subscriber>::downcast_ref::<StringLayer2>(&s).expect("layer 2 should downcast");
+        <dyn Collect>::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
     assert_eq!(&layer.0, "layer_2");
     let layer =
-        <dyn Subscriber>::downcast_ref::<StringLayer3>(&s).expect("layer 3 should downcast");
+        <dyn Collect>::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
     assert_eq!(&layer.0, "layer_3");
 }
 
@@ -123,22 +133,22 @@ mod registry_tests {
         use std::sync::{Arc, Mutex};
         let last_event_span = Arc::new(Mutex::new(None));
 
-        struct RecordingLayer {
+        struct RecordingSubscriber {
             last_event_span: Arc<Mutex<Option<&'static str>>>,
         }
 
-        impl<S> Layer<S> for RecordingLayer
+        impl<C> Subscribe<C> for RecordingSubscriber
         where
-            S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+            C: Collect + for<'lookup> LookupSpan<'lookup>,
         {
-            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
                 let span = ctx.event_span(event);
                 *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
             }
         }
 
-        tracing::subscriber::with_default(
-            crate::registry().with(RecordingLayer {
+        tracing::collect::with_default(
+            crate::registry().with(RecordingSubscriber {
                 last_event_span: last_event_span.clone(),
             }),
             || {
@@ -166,17 +176,17 @@ mod registry_tests {
         #[test]
         fn mixed_with_unfiltered() {
             let subscriber = crate::registry()
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO));
+                .with(NopSubscriber)
+                .with(NopSubscriber.with_filter(LevelFilter::INFO));
             assert_eq!(subscriber.max_level_hint(), None);
         }
 
         #[test]
         fn mixed_with_unfiltered_layered() {
-            let subscriber = crate::registry().with(NopLayer).with(
-                NopLayer
+            let subscriber = crate::registry().with(NopSubscriber).with(
+                NopSubscriber
                     .with_filter(LevelFilter::INFO)
-                    .and_then(NopLayer.with_filter(LevelFilter::TRACE)),
+                    .and_then(NopSubscriber.with_filter(LevelFilter::TRACE)),
             );
             assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
@@ -184,26 +194,30 @@ mod registry_tests {
         #[test]
         fn mixed_interleaved() {
             let subscriber = crate::registry()
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer)
-                .with(NopLayer.with_filter(LevelFilter::INFO));
+                .with(NopSubscriber)
+                .with(NopSubscriber.with_filter(LevelFilter::INFO))
+                .with(NopSubscriber)
+                .with(NopSubscriber.with_filter(LevelFilter::INFO));
             assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
         fn mixed_layered() {
             let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::INFO).and_then(NopLayer))
-                .with(NopLayer.and_then(NopLayer.with_filter(LevelFilter::INFO)));
+                .with(
+                    NopSubscriber
+                        .with_filter(LevelFilter::INFO)
+                        .and_then(NopSubscriber),
+                )
+                .with(NopSubscriber.and_then(NopSubscriber.with_filter(LevelFilter::INFO)));
             assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
         #[test]
         fn plf_only_unhinted() {
             let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer.with_filter(filter_fn(|_| true)));
+                .with(NopSubscriber.with_filter(LevelFilter::INFO))
+                .with(NopSubscriber.with_filter(filter_fn(|_| true)));
             assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
 
@@ -213,14 +227,14 @@ mod registry_tests {
             // no max level hint, it should return `None`.
             let subscriber = crate::registry()
                 .with(
-                    NopLayer
+                    NopSubscriber
                         .with_filter(LevelFilter::INFO)
-                        .and_then(NopLayer.with_filter(LevelFilter::WARN)),
+                        .and_then(NopSubscriber.with_filter(LevelFilter::WARN)),
                 )
                 .with(
-                    NopLayer
+                    NopSubscriber
                         .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                        .and_then(NopSubscriber.with_filter(LevelFilter::DEBUG)),
                 );
             assert_eq!(dbg!(subscriber).max_level_hint(), None);
         }
@@ -233,9 +247,9 @@ mod registry_tests {
             // will disable the spans/events before they make it to the inner
             // filter.
             let subscriber = dbg!(crate::registry().with(
-                NopLayer
+                NopSubscriber
                     .with_filter(filter_fn(|_| true))
-                    .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                    .and_then(NopSubscriber.with_filter(filter_fn(|_| true)))
                     .with_filter(LevelFilter::INFO),
             ));
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
@@ -244,11 +258,15 @@ mod registry_tests {
         #[test]
         fn unhinted_nested_inner() {
             let subscriber = dbg!(crate::registry()
-                .with(NopLayer.and_then(NopLayer).with_filter(LevelFilter::INFO))
                 .with(
-                    NopLayer
+                    NopSubscriber
+                        .and_then(NopSubscriber)
+                        .with_filter(LevelFilter::INFO)
+                )
+                .with(
+                    NopSubscriber
                         .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                        .and_then(NopSubscriber.with_filter(filter_fn(|_| true)))
                         .with_filter(LevelFilter::WARN),
                 ));
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
@@ -258,14 +276,14 @@ mod registry_tests {
         fn unhinted_nested_inner_mixed() {
             let subscriber = dbg!(crate::registry()
                 .with(
-                    NopLayer
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                    NopSubscriber
+                        .and_then(NopSubscriber.with_filter(filter_fn(|_| true)))
                         .with_filter(LevelFilter::INFO)
                 )
                 .with(
-                    NopLayer
+                    NopSubscriber
                         .with_filter(filter_fn(|_| true))
-                        .and_then(NopLayer.with_filter(filter_fn(|_| true)))
+                        .and_then(NopSubscriber.with_filter(filter_fn(|_| true)))
                         .with_filter(LevelFilter::WARN),
                 ));
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::INFO));
@@ -274,18 +292,18 @@ mod registry_tests {
         #[test]
         fn plf_only_picks_max() {
             let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::WARN))
-                .with(NopLayer.with_filter(LevelFilter::DEBUG));
+                .with(NopSubscriber.with_filter(LevelFilter::WARN))
+                .with(NopSubscriber.with_filter(LevelFilter::DEBUG));
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
 
         #[test]
         fn many_plf_only_picks_max() {
             let subscriber = crate::registry()
-                .with(NopLayer.with_filter(LevelFilter::WARN))
-                .with(NopLayer.with_filter(LevelFilter::DEBUG))
-                .with(NopLayer.with_filter(LevelFilter::INFO))
-                .with(NopLayer.with_filter(LevelFilter::ERROR));
+                .with(NopSubscriber.with_filter(LevelFilter::WARN))
+                .with(NopSubscriber.with_filter(LevelFilter::DEBUG))
+                .with(NopSubscriber.with_filter(LevelFilter::INFO))
+                .with(NopSubscriber.with_filter(LevelFilter::ERROR));
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
 
@@ -293,16 +311,16 @@ mod registry_tests {
         fn nested_plf_only_picks_max() {
             let subscriber = crate::registry()
                 .with(
-                    NopLayer.with_filter(LevelFilter::INFO).and_then(
-                        NopLayer
+                    NopSubscriber.with_filter(LevelFilter::INFO).and_then(
+                        NopSubscriber
                             .with_filter(LevelFilter::WARN)
-                            .and_then(NopLayer.with_filter(LevelFilter::DEBUG)),
+                            .and_then(NopSubscriber.with_filter(LevelFilter::DEBUG)),
                     ),
                 )
                 .with(
-                    NopLayer
+                    NopSubscriber
                         .with_filter(LevelFilter::INFO)
-                        .and_then(NopLayer.with_filter(LevelFilter::ERROR)),
+                        .and_then(NopSubscriber.with_filter(LevelFilter::ERROR)),
                 );
             assert_eq!(dbg!(subscriber).max_level_hint(), Some(LevelFilter::DEBUG));
         }
