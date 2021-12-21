@@ -1,8 +1,8 @@
 #![cfg(feature = "registry")]
 mod support;
 use self::support::*;
-use tracing::{Collect, Level, Metadata};
-use tracing_subscriber::{filter::DynFilterFn, prelude::*, subscribe::Context};
+use tracing::{Level, Metadata, Subscriber};
+use tracing_subscriber::{filter::DynFilterFn, layer::Context, prelude::*};
 
 #[test]
 fn layer_filters() {
@@ -103,14 +103,14 @@ fn events() {
 
 fn filter<S>() -> DynFilterFn<S> {
     DynFilterFn::new(
-        (|metadata: &Metadata<'_>, _: &tracing_subscriber::subscribe::Context<'_, S>| {
+        (|metadata: &Metadata<'_>, _: &tracing_subscriber::layer::Context<'_, S>| {
             metadata.level() <= &Level::INFO
         }) as fn(&Metadata<'_>, &Context<'_, S>) -> bool,
     )
     .with_max_level_hint(Level::INFO)
 }
 
-fn unfiltered(name: &str) -> (ExpectLayer, collector::MockHandle) {
+fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::DEBUG))
@@ -121,7 +121,7 @@ fn unfiltered(name: &str) -> (ExpectLayer, collector::MockHandle) {
         .run_with_handle()
 }
 
-fn filtered(name: &str) -> (ExpectLayer, collector::MockHandle) {
+fn filtered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))

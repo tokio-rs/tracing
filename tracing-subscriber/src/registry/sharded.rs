@@ -532,7 +532,7 @@ mod tests {
 
     #[derive(Debug)]
     struct DoesNothing;
-    impl<C: Collect> Subscribe<C> for DoesNothing {}
+    impl<C: Collect> Collect<C> for DoesNothing {}
 
     struct AssertionSubscriber;
     impl<C> Subscribe<C> for AssertionSubscriber

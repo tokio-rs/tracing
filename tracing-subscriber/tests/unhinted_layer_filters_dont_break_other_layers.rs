@@ -102,7 +102,7 @@ fn filter<S>() -> DynFilterFn<S> {
     DynFilterFn::new(|metadata, _| metadata.level() <= &Level::INFO)
 }
 
-fn unfiltered(name: &str) -> (ExpectLayer, collector::MockHandle) {
+fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::DEBUG))
@@ -113,7 +113,7 @@ fn unfiltered(name: &str) -> (ExpectLayer, collector::MockHandle) {
         .run_with_handle()
 }
 
-fn filtered(name: &str) -> (ExpectLayer, collector::MockHandle) {
+fn filtered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))

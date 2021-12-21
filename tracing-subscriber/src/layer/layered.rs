@@ -1,17 +1,18 @@
 use tracing_core::{
-    collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span,
+    subscriber::{Interest, Subscriber},
+    Event, LevelFilter,
 };
 
 use crate::{
     filter,
+    layer::{Context, Layer},
     registry::LookupSpan,
-    subscribe::{Context, Subscribe},
 };
 #[cfg(feature = "registry")]
 use crate::{filter::FilterId, registry::Registry};
-use std::{any::TypeId, fmt, marker::PhantomData, ptr::NonNull};
+use std::{any::TypeId, fmt, marker::PhantomData};
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
 /// [`Layer`]s.
@@ -19,9 +20,9 @@ use std::{any::TypeId, fmt, marker::PhantomData, ptr::NonNull};
 /// [`Layer`]: crate::Layer
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
 #[derive(Clone)]
-pub struct Layered<S, I, C = I> {
+pub struct Layered<L, I, S = I> {
     /// The layer.
-    subscriber: S,
+    layer: L,
 
     /// The inner value that `self.layer` was layered onto.
     ///
@@ -57,24 +58,24 @@ pub struct Layered<S, I, C = I> {
     /// This is determined according to the same rules as
     /// `has_layer_filter` above.
     inner_has_layer_filter: bool,
-    _s: PhantomData<fn(C)>,
+    _s: PhantomData<fn(S)>,
 }
 
 // === impl Layered ===
 
-impl<S, C> Collect for Layered<S, C>
+impl<L, S> Subscriber for Layered<L, S>
 where
-    S: Subscribe<C>,
-    C: Collect,
+    L: Layer<S>,
+    S: Subscriber,
 {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.pick_interest(self.subscriber.register_callsite(metadata), || {
+        self.pick_interest(self.layer.register_callsite(metadata), || {
             self.inner.register_callsite(metadata)
         })
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        if self.subscriber.enabled(metadata, self.ctx()) {
+        if self.layer.enabled(metadata, self.ctx()) {
             // if the outer layer enables the callsite metadata, ask the subscriber.
             self.inner.enabled(metadata)
         } else {
@@ -91,47 +92,44 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.pick_level_hint(
-            self.subscriber.max_level_hint(),
-            self.inner.max_level_hint(),
-        )
+        self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         let id = self.inner.new_span(span);
-        self.subscriber.on_new_span(span, &id, self.ctx());
+        self.layer.new_span(span, &id, self.ctx());
         id
     }
 
     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.inner.record(span, values);
-        self.subscriber.on_record(span, values, self.ctx());
+        self.layer.on_record(span, values, self.ctx());
     }
 
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.inner.record_follows_from(span, follows);
-        self.subscriber.on_follows_from(span, follows, self.ctx());
+        self.layer.on_follows_from(span, follows, self.ctx());
     }
 
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
-        self.subscriber.on_event(event, self.ctx());
+        self.layer.on_event(event, self.ctx());
     }
 
     fn enter(&self, span: &span::Id) {
         self.inner.enter(span);
-        self.subscriber.on_enter(span, self.ctx());
+        self.layer.on_enter(span, self.ctx());
     }
 
     fn exit(&self, span: &span::Id) {
         self.inner.exit(span);
-        self.subscriber.on_exit(span, self.ctx());
+        self.layer.on_exit(span, self.ctx());
     }
 
     fn clone_span(&self, old: &span::Id) -> span::Id {
         let new = self.inner.clone_span(old);
         if &new != old {
-            self.subscriber.on_id_change(old, &new, self.ctx())
+            self.layer.on_id_change(old, &new, self.ctx())
         };
         new
     }
@@ -143,7 +141,7 @@ where
 
     fn try_close(&self, id: span::Id) -> bool {
         #[cfg(feature = "registry")]
-        let subscriber = &self.inner as &dyn Collect;
+        let subscriber = &self.inner as &dyn Subscriber;
         #[cfg(feature = "registry")]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
@@ -158,7 +156,7 @@ where
                 };
             }
 
-            self.subscriber.on_close(id, self.ctx());
+            self.layer.on_close(id, self.ctx());
             true
         } else {
             false
@@ -171,7 +169,7 @@ where
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         // Unlike the implementation of `Layer` for `Layered`, we don't have to
         // handle the "magic PLF downcast marker" here. If a `Layered`
         // implements `Subscriber`, we already know that the `inner` branch is
@@ -194,34 +192,34 @@ where
 
         // If downcasting to `Self`, return a pointer to `self`.
         if id == TypeId::of::<Self>() {
-            return Some(NonNull::from(self).cast());
+            return Some(self as *const _ as *const ());
         }
 
-        self.subscriber
+        self.layer
             .downcast_raw(id)
             .or_else(|| self.inner.downcast_raw(id))
     }
 }
 
-impl<C, A, B> Subscribe<C> for Layered<A, B, C>
+impl<S, A, B> Layer<S> for Layered<A, B, S>
 where
-    A: Subscribe<C>,
-    B: Subscribe<C>,
-    C: Collect,
+    A: Layer<S>,
+    B: Layer<S>,
+    S: Subscriber,
 {
-    fn on_subscribe(&mut self, collect: &mut C) {
-        self.subscriber.on_subscribe(collect);
-        self.inner.on_subscribe(collect);
+    fn on_layer(&mut self, subscriber: &mut S) {
+        self.layer.on_layer(subscriber);
+        self.inner.on_layer(subscriber);
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        self.pick_interest(self.subscriber.register_callsite(metadata), || {
+        self.pick_interest(self.layer.register_callsite(metadata), || {
             self.inner.register_callsite(metadata)
         })
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-        if self.subscriber.enabled(metadata, ctx.clone()) {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        if self.layer.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner layer.
             self.inner.enabled(metadata, ctx)
         } else {
@@ -231,65 +229,62 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.pick_level_hint(
-            self.subscriber.max_level_hint(),
-            self.inner.max_level_hint(),
-        )
+        self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
-        self.inner.on_new_span(attrs, id, ctx.clone());
-        self.subscriber.on_new_span(attrs, id, ctx);
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        self.inner.new_span(attrs, id, ctx.clone());
+        self.layer.new_span(attrs, id, ctx);
     }
 
     #[inline]
-    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         self.inner.on_record(span, values, ctx.clone());
-        self.subscriber.on_record(span, values, ctx);
+        self.layer.on_record(span, values, ctx);
     }
 
     #[inline]
-    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+    fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_follows_from(span, follows, ctx.clone());
-        self.subscriber.on_follows_from(span, follows, ctx);
+        self.layer.on_follows_from(span, follows, ctx);
     }
 
     #[inline]
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         self.inner.on_event(event, ctx.clone());
-        self.subscriber.on_event(event, ctx);
+        self.layer.on_event(event, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_enter(id, ctx.clone());
-        self.subscriber.on_enter(id, ctx);
+        self.layer.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_exit(id, ctx.clone());
-        self.subscriber.on_exit(id, ctx);
+        self.layer.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         self.inner.on_close(id.clone(), ctx.clone());
-        self.subscriber.on_close(id, ctx);
+        self.layer.on_close(id, ctx);
     }
 
     #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
+    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
         self.inner.on_id_change(old, new, ctx.clone());
-        self.subscriber.on_id_change(old, new, ctx);
+        self.layer.on_id_change(old, new, ctx);
     }
 
     #[doc(hidden)]
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         match id {
             // If downcasting to `Self`, return a pointer to `self`.
-            id if id == TypeId::of::<Self>() => Some(NonNull::from(self).cast()),
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
 
             // Oh, we're looking for per-layer filters!
             //
@@ -317,25 +312,24 @@ where
             //
             // If you don't understand this...that's fine, just don't mess with
             // it. :)
-            id if filter::is_plf_downcast_marker(id) => self
-                .subscriber
-                .downcast_raw(id)
-                .and(self.inner.downcast_raw(id)),
+            id if filter::is_plf_downcast_marker(id) => {
+                self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
+            }
 
             // Otherwise, try to downcast both branches normally...
             _ => self
-                .subscriber
+                .layer
                 .downcast_raw(id)
                 .or_else(|| self.inner.downcast_raw(id)),
         }
     }
 }
 
-impl<'a, S, C> LookupSpan<'a> for Layered<S, C>
+impl<'a, L, S> LookupSpan<'a> for Layered<L, S>
 where
-    C: Collect + LookupSpan<'a>,
+    S: Subscriber + LookupSpan<'a>,
 {
-    type Data = C::Data;
+    type Data = S::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -347,30 +341,30 @@ where
     }
 }
 
-impl<S, C> Layered<S, C>
+impl<L, S> Layered<L, S>
 where
-    C: Collect,
+    S: Subscriber,
 {
-    fn ctx(&self) -> Context<'_, C> {
+    fn ctx(&self) -> Context<'_, S> {
         Context::new(&self.inner)
     }
 }
 
-impl<A, B, C> Layered<A, B, C>
+impl<A, B, S> Layered<A, B, S>
 where
-    A: Subscribe<C>,
-    C: Collect,
+    A: Layer<S>,
+    S: Subscriber,
 {
-    pub(super) fn new(subscriber: A, inner: B, inner_has_layer_filter: bool) -> Self {
+    pub(super) fn new(layer: A, inner: B, inner_has_layer_filter: bool) -> Self {
         #[cfg(feature = "registry")]
-        let inner_is_registry = TypeId::of::<C>() == TypeId::of::<crate::registry::Registry>();
+        let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
         #[cfg(not(feature = "registry"))]
         let inner_is_registry = false;
 
         let inner_has_layer_filter = inner_has_layer_filter || inner_is_registry;
-        let has_layer_filter = filter::subscriber_has_plf(&subscriber);
+        let has_layer_filter = filter::layer_has_plf(&layer);
         Self {
-            subscriber,
+            layer,
             inner,
             has_layer_filter,
             inner_has_layer_filter,
@@ -468,7 +462,7 @@ where
                 .field("inner_has_layer_filter", &self.inner_has_layer_filter);
         }
 
-        s.field("layer", &self.subscriber)
+        s.field("layer", &self.layer)
             .field("inner", &self.inner)
             .finish()
     }

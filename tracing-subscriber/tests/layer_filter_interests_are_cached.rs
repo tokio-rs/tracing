@@ -6,7 +6,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tracing::{Collect, Level};
+use tracing::{Level, Subscriber};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
