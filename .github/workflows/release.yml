@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "tracing[\-a-z]*-v[0-9]+.*"
+
+jobs:
+  create-release:
+    name: Create GitHub release
+    # only publish from the origin repository
+    if: github.repository_owner == 'tokio-rs'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: taiki-e/create-gh-release-action@v1.3.0
+        with:
+          prefix: "tracing[\-a-z]*"
+          changelog: "$prefix/CHANGELOG.md"
+          title: "$prefix $version"
+          branch: v0.1.x
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
