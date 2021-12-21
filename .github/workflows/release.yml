@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "tracing[\-a-z]*-v[0-9]+.*"
+      - tracing[\-a-z]*-v[0-9]+.*
 
 jobs:
   create-release:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: taiki-e/create-gh-release-action@v1.3.0
         with:
-          prefix: "tracing[\-a-z]*"
+          prefix: tracing[\-a-z]*
           changelog: "$prefix/CHANGELOG.md"
           title: "$prefix $version"
           branch: v0.1.x
