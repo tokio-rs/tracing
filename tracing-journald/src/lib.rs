@@ -49,6 +49,11 @@ use tracing_core::{
 };
 use tracing_subscriber::{registry::LookupSpan, subscribe::Context};
 
+#[cfg(target_os = "linux")]
+mod memfd;
+#[cfg(target_os = "linux")]
+mod socket;
+
 /// Sends events and their fields to journald
 ///
 /// [journald conventions] for structured field names differ from typical tracing idioms, and journald
@@ -81,6 +86,9 @@ pub struct Subscriber {
     field_prefix: Option<String>,
 }
 
+#[cfg(unix)]
+const JOURNALD_PATH: &str = "/run/systemd/journal/socket";
+
 impl Subscriber {
     /// Construct a journald subscriber
     ///
@@ -90,11 +98,14 @@ impl Subscriber {
         #[cfg(unix)]
         {
             let socket = UnixDatagram::unbound()?;
-            socket.connect("/run/systemd/journal/socket")?;
-            Ok(Self {
+            let sub = Self {
                 socket,
                 field_prefix: Some("F".into()),
-            })
+            };
+            // Check that we can talk to journald, by sending empty payload which journald discards.
+            // However if the socket didn't exist or if none listened we'd get an error here.
+            sub.send_payload(&[])?;
+            Ok(sub)
         }
         #[cfg(not(unix))]
         Err(io::Error::new(
@@ -108,6 +119,50 @@ impl Subscriber {
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
         self
+    }
+
+    #[cfg(not(unix))]
+    fn send_payload(&self, _opayload: &[u8]) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "journald not supported on non-Unix",
+        ))
+    }
+
+    #[cfg(unix)]
+    fn send_payload(&self, payload: &[u8]) -> io::Result<usize> {
+        self.socket
+            .send_to(payload, JOURNALD_PATH)
+            .or_else(|error| {
+                if Some(libc::EMSGSIZE) == error.raw_os_error() {
+                    self.send_large_payload(payload)
+                } else {
+                    Err(error)
+                }
+            })
+    }
+
+    #[cfg(all(unix, not(target_os = "linux")))]
+    fn send_large_payload(&self, _payload: &[u8]) -> io::Result<usize> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "Large payloads not supported on non-Linux OS",
+        ))
+    }
+
+    /// Send large payloads to journald via a memfd.
+    #[cfg(target_os = "linux")]
+    fn send_large_payload(&self, payload: &[u8]) -> io::Result<usize> {
+        // If the payload's too large for a single datagram, send it through a memfd, see
+        // https://systemd.io/JOURNAL_NATIVE_PROTOCOL/
+        use std::os::unix::prelude::AsRawFd;
+        // Write the whole payload to a memfd
+        let mut mem = memfd::create_sealable()?;
+        mem.write_all(payload)?;
+        // Fully seal the memfd to signal journald that its backing data won't resize anymore
+        // and so is safe to mmap.
+        memfd::seal_fully(mem.as_raw_fd())?;
+        socket::send_one_fd_to(&self.socket, mem.as_raw_fd(), JOURNALD_PATH)
     }
 }
 
@@ -174,9 +229,8 @@ where
             self.field_prefix.as_ref().map(|x| &x[..]),
         ));
 
-        // What could we possibly do on error?
-        #[cfg(unix)]
-        let _ = self.socket.send(&buf);
+        // At this point we can't handle the error anymore so just ignore it.
+        let _ = self.send_payload(&buf);
     }
 }
 

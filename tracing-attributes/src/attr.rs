@@ -13,7 +13,8 @@ pub(crate) struct InstrumentArgs {
     target: Option<LitStr>,
     pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
-    pub(crate) err_mode: Option<ErrorMode>,
+    pub(crate) err_mode: Option<FormatMode>,
+    pub(crate) ret_mode: Option<FormatMode>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -139,8 +140,12 @@ impl Parse for InstrumentArgs {
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>();
-                let mode = ErrorMode::parse(input)?;
+                let mode = FormatMode::parse(input)?;
                 args.err_mode = Some(mode);
+            } else if lookahead.peek(kw::ret) {
+                let _ = input.parse::<kw::ret>()?;
+                let mode = FormatMode::parse(input)?;
+                args.ret_mode = Some(mode);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -199,29 +204,30 @@ impl Parse for Skips {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum ErrorMode {
+pub(crate) enum FormatMode {
+    Default,
     Display,
     Debug,
 }
 
-impl Default for ErrorMode {
+impl Default for FormatMode {
     fn default() -> Self {
-        ErrorMode::Display
+        FormatMode::Default
     }
 }
 
-impl Parse for ErrorMode {
+impl Parse for FormatMode {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         if !input.peek(syn::token::Paren) {
-            return Ok(ErrorMode::default());
+            return Ok(FormatMode::default());
         }
         let content;
         let _ = syn::parenthesized!(content in input);
         let maybe_mode: Option<Ident> = content.parse()?;
-        maybe_mode.map_or(Ok(ErrorMode::default()), |ident| {
+        maybe_mode.map_or(Ok(FormatMode::default()), |ident| {
             match ident.to_string().as_str() {
-                "Debug" => Ok(ErrorMode::Debug),
-                "Display" => Ok(ErrorMode::Display),
+                "Debug" => Ok(FormatMode::Debug),
+                "Display" => Ok(FormatMode::Display),
                 _ => Err(syn::Error::new(
                     ident.span(),
                     "unknown error mode, must be Debug or Display",
@@ -356,4 +362,5 @@ mod kw {
     syn::custom_keyword!(target);
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
+    syn::custom_keyword!(ret);
 }
