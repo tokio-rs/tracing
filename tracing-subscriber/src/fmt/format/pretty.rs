@@ -186,13 +186,12 @@ where
                 if let Some(name) = thread.name() {
                     write!(writer, "{}", name)?;
                     if self.display_thread_id {
-                        write!(writer, " ({:?})", thread.id())?;
+                        writer.write_char(' ')?;
                     }
-                } else if !self.display_thread_id {
-                    write!(writer, " {:?}", thread.id())?;
                 }
-            } else if self.display_thread_id {
-                write!(writer, " {:?}", thread.id())?;
+            }
+            if self.display_thread_id {
+                write!(writer, "{:?}", thread.id())?;
             }
             writer.write_char('\n')?;
         }
