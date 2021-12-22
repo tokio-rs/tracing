@@ -6,7 +6,7 @@ use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
 /// Combines two [`Filter`]s so that spans and events are enabled if and only if
 /// *both* filters return `true`.
 ///
-/// Typically, this type is returned by the [`FilterExt::and`] method. See that
+/// This type is typically returned by the [`FilterExt::and`] method. See that
 /// method's documentation for details.
 ///
 /// [`Filter`]: crate::layer::Filter
@@ -20,7 +20,7 @@ pub struct And<A, B, S> {
 /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
 /// returns `true`.
 ///
-/// Typically, this type is returned by the [`FilterExt::or`] method. See that
+/// This type is typically returned by the [`FilterExt::or`] method. See that
 /// method's documentation for details.
 ///
 /// [`Filter`]: crate::layer::Filter
@@ -36,7 +36,7 @@ pub struct Or<A, B, S> {
 /// If the wrapped filter would enable a span or event, it will be disabled. If
 /// it would disable a span or event, that span or event will be enabled.
 ///
-/// Typically, this type is returned by the [`FilterExt::or`] method. See that
+/// This type is typically returned by the [`FilterExt::or`] method. See that
 /// method's documentation for details.
 ///
 /// [`Filter`]: crate::layer::Filter
