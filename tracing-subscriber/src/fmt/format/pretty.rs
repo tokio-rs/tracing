@@ -174,7 +174,7 @@ where
                 if let Some(name) = thread.name() {
                     write!(writer, "{}", name)?;
                     if self.display_thread_id {
-                        write!(writer, " ")?;
+                        writer.write_char(' ')?;
                     }
                 }
             }
