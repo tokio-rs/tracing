@@ -22,7 +22,7 @@ pub trait OpenTelemetrySpanExt {
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
-    /// // Example carrier, could be a framework header map that impls otel's `Extract`.
+    /// // Example carrier, could be a framework header map that impls otel's `Extractor`.
     /// let mut carrier = HashMap::new();
     ///
     /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
@@ -56,7 +56,7 @@ pub trait OpenTelemetrySpanExt {
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
-    /// // Example carrier, could be a framework header map that impls otel's `Extract`.
+    /// // Example carrier, could be a framework header map that impls otel's `Extractor`.
     /// let mut carrier = HashMap::new();
     ///
     /// // Propagator can be swapped with b3 propagator, jaeger propagator, etc.
