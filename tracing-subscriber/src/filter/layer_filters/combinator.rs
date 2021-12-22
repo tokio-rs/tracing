@@ -61,7 +61,7 @@ where
     /// Enabling spans or events if they have both a particular target *and* are
     /// above a certain level:
     ///
-    /// ```
+    /// ```ignore
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator::And},
     ///     prelude::*,
@@ -94,7 +94,7 @@ where
     /// ```
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub fn new(a: A, b: B) -> Self {
+    pub(crate) fn new(a: A, b: B) -> Self {
         Self {
             a,
             b,
@@ -176,7 +176,7 @@ where
     /// Enabling spans and events at the `INFO` level and above, and all spans
     /// and events with a particular target:
     ///
-    /// ```
+    /// ```ignore
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator::Or},
     ///     prelude::*,
@@ -215,7 +215,7 @@ where
     /// Enabling a higher level for a particular target by using `Or` in
     /// conjunction with the [`And`] combinator:
     ///
-    /// ```
+    /// ```ignore
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator},
     ///     prelude::*,
@@ -242,7 +242,7 @@ where
     /// ```
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub fn new(a: A, b: B) -> Self {
+    pub(crate) fn new(a: A, b: B) -> Self {
         Self {
             a,
             b,
@@ -330,7 +330,7 @@ where
     /// it would disable a span or event, that span or event will be enabled.
     ///
     /// [`Filter`]: crate::layer::Filter
-    pub fn new(a: A) -> Self {
+    pub(crate) fn new(a: A) -> Self {
         Self { a, _s: PhantomData }
     }
 }
