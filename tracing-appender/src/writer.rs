@@ -8,6 +8,8 @@ use crate::sync::RwLock;
 use crate::rolling::create_writer_file;
 #[cfg(feature = "compression")]
 use flate2::write::GzEncoder;
+#[cfg(feature = "compression")]
+use crate::compression::CompressionConfig;
 
 #[derive(Debug)]
 pub enum WriterChannel {
@@ -51,22 +53,40 @@ impl WriterChannel {
         let writer = BufWriter::new(gzfile);
         Ok(WriterChannel::CompressedFileGzip(writer))
     }
-
-    pub fn get_writer(&mut self) -> &mut dyn Write {
-        match self {
-            WriterChannel::File(x) => x,
-            #[cfg(feature = "compression")]
-            WriterChannel::CompressedFileGzip(x) => x,
-        }
-    }
 }
 
 impl io::Write for WriterChannel {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.borrow_mut().write(buf)
+        match self {
+            WriterChannel::File(f) => f.write(buf),
+            #[cfg(feature = "compression")]
+            WriterChannel::CompressedFileGzip(buf) => f.write(buf)
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.borrow_mut().flush()
+        match self {
+            WriterChannel::File(f) => f.flush(),
+            #[cfg(feature = "compression")]
+            WriterChannel::CompressedFileGzip(buf) => buf.flush()
+        }
+    }
+}
+
+impl io::Write for &WriterChannel {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            WriterChannel::File(f) => (&*f).write(buf),
+            #[cfg(feature = "compression")]
+            WriterChannel::CompressedFileGzip(buf) => f.write(buf)
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            WriterChannel::File(f) => (&*f).flush(),
+            #[cfg(feature = "compression")]
+            WriterChannel::CompressedFileGzip(buf) => buf.flush()
+        }
     }
 }

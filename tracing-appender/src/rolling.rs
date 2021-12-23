@@ -34,9 +34,10 @@ use std::{
     path::Path,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use std::borrow::BorrowMut;
 use time::{format_description, Duration, OffsetDateTime, Time};
 use crate::builder::RollingFileAppenderBuilder;
+#[cfg(feature = "compression")]
+use crate::compression::CompressionConfig;
 use crate::writer::WriterChannel;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
@@ -156,11 +157,11 @@ impl io::Write for RollingFileAppender {
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
             self.state.refresh_writer(now, writer);
         }
-        writer.get_writer().write(buf)
+        writer.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.writer.get_mut().get_writer().flush()
+        self.writer.get_mut().flush()
     }
 }
 
@@ -458,11 +459,11 @@ impl Rotation {
 
 impl io::Write for RollingWriter<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&*self.0).get_writer().write(buf)
+        (&*self.0).write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&*self.0).get_writer().flush()
+        (&*self.0).flush()
     }
 }
 
@@ -506,11 +507,11 @@ impl Inner {
 
     fn refresh_writer_channel(file: &mut WriterChannel, writer: io::Result<WriterChannel>) {
         match writer {
-            Ok(new_file) => {
-                if let Err(err) = file.get_writer().flush() {
+            Ok(new_writer) => {
+                if let Err(err) = file.flush() {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
-                *file = new_file;
+                *file = new_writer;
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }

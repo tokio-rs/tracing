@@ -1,5 +1,3 @@
-use std::io;
-use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use time::OffsetDateTime;
 use crate::rolling::{create_writer_file, Inner, RollingFileAppender, Rotation};
@@ -25,7 +23,9 @@ impl RollingFileAppenderBuilder {
             log_directory: None,
             log_filename_prefix: None,
             rotation: None,
-            next_date: None
+            next_date: None,
+            #[cfg(feature = "compression")]
+            compression: None
         }
     }
 
@@ -78,7 +78,9 @@ impl RollingFileAppenderBuilder {
                 log_directory,
                 log_filename_prefix,
                 next_date,
-                rotation
+                rotation,
+                #[cfg(feature = "compression")]
+                compression: self.compression
             },
             writer,
         }
