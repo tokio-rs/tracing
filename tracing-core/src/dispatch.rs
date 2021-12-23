@@ -372,6 +372,7 @@ impl error::Error for SetGlobalDefaultError {}
 ///
 /// [dispatcher]: super::dispatch::Dispatch
 #[cfg(feature = "std")]
+#[inline(always)]
 pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
@@ -382,6 +383,15 @@ where
         return f(get_global());
     }
 
+    get_default_slow(f)
+}
+
+#[cfg(feature = "std")]
+#[inline(never)]
+fn get_default_slow<T, F>(mut f: F) -> T
+where
+    F: FnMut(&Dispatch) -> T,
+{
     // While this guard is active, additional calls to collector functions on
     // the default dispatcher will not be able to access the dispatch context.
     // Dropping the guard will allow the dispatch context to be re-entered.
