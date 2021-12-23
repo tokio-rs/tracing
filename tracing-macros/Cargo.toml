@@ -15,13 +15,13 @@ categories = [
 ]
 keywords = ["logging", "tracing"]
 license = "MIT"
+rust-version = "1.42.0"
 
 [dependencies]
-tracing = "0.1.18"
+tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-tracing-log = "0.1"
-env_logger = "0.7"
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
 
 [badges]
 maintenance = { status = "experimental" }

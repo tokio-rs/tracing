@@ -1,6 +1,4 @@
-use opentelemetry::api::Provider;
-use opentelemetry::sdk;
-use std::{thread, time::Duration};
+use std::{error::Error, thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
 use tracing_subscriber::prelude::*;
@@ -16,33 +14,17 @@ fn expensive_work() -> &'static str {
     "success"
 }
 
-fn init_tracer() -> Result<(), Box<dyn std::error::Error>> {
-    let exporter = opentelemetry_jaeger::Exporter::builder()
-        .with_agent_endpoint("127.0.0.1:6831".parse().unwrap())
-        .with_process(opentelemetry_jaeger::Process {
-            service_name: "report_example".to_string(),
-            tags: Vec::new(),
-        })
-        .init()?;
-    let provider = sdk::Provider::builder()
-        .with_simple_exporter(exporter)
-        .with_config(sdk::Config {
-            default_sampler: Box::new(sdk::Sampler::AlwaysOn),
-            ..Default::default()
-        })
-        .build();
-    let tracer = provider.get_tracer("tracing");
-
-    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    // Install an otel pipeline with a simple span processor that exports data one at a time when
+    // spans end. See the `install_batch` option on each exporter's pipeline builder to see how to
+    // export in batches.
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("report_example")
+        .install_simple()?;
+    let opentelemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
     tracing_subscriber::registry()
         .with(opentelemetry)
         .try_init()?;
-
-    Ok(())
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init_tracer()?;
 
     let root = span!(tracing::Level::INFO, "app_start", work_units = 2);
     let _enter = root.enter();

@@ -34,18 +34,23 @@ mod parking_lot_impl {
         }
 
         #[inline]
-        pub(crate) fn read<'a>(&'a self) -> LockResult<RwLockReadGuard<'a, T>> {
+        pub(crate) fn get_mut(&mut self) -> LockResult<&mut T> {
+            Ok(self.inner.get_mut())
+        }
+
+        #[inline]
+        pub(crate) fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
             Ok(self.inner.read())
         }
 
         #[inline]
         #[allow(dead_code)] // may be used later;
-        pub(crate) fn try_read<'a>(&'a self) -> TryLockResult<RwLockReadGuard<'a, T>> {
+        pub(crate) fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
             self.inner.try_read().ok_or(TryLockError::WouldBlock)
         }
 
         #[inline]
-        pub(crate) fn write<'a>(&'a self) -> LockResult<RwLockWriteGuard<'a, T>> {
+        pub(crate) fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
             Ok(self.inner.write())
         }
     }

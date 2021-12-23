@@ -36,6 +36,10 @@ allows events and spans to be recorded in a non-blocking manner through a
 dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] 
 that can be used with _or_ without the non-blocking writer.
 
+*Compiler support: [requires `rustc` 1.51+][msrv]*
+
+[msrv]: #supported-rust-versions
+
 ## Usage
 
 Add the following to your `Cargo.toml`:
@@ -49,7 +53,7 @@ This crate can be used in a few ways to record spans/events:
  - Using *any* type implementing [`std::io::Write`][write] in a 
  non-blocking fashion.
  - Using [`NonBlocking`][non_blocking] and [`RollingFileAppender`][file_appender] 
- together to write to write to log files in a non-blocking fashion.
+ together to write to log files in a non-blocking fashion.
 
 ## Rolling File Appender
 
@@ -133,11 +137,25 @@ fn main() {
 [tracing]: https://docs.rs/tracing/latest/tracing/
 [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 [write]: https://doc.rust-lang.org/std/io/trait.Write.html
-[non_blocking]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/indexx.html
+[non_blocking]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/index.html
 [rolling]: https://docs.rs/tracing-appender/latest/tracing_appender/rolling/index.html
 [guard]: https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/struct.WorkerGuard.html
 [file_appender]: https://docs.rs/tracing-appender/latest/tracing_appender/rolling/struct.RollingFileAppender.html
 [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
+
+## Supported Rust Versions
+
+`tracing-appender` is built against the latest stable release. The minimum supported
+version is 1.51. The current `tracing-appender` version is not guaranteed to build on
+Rust versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current
+stable compiler version is 1.45, the minimum supported version will not be
+increased past 1.42, three minor versions prior. Increasing the minimum
+supported compiler version is not considered a semver breaking change as
+long as doing so complies with this policy.
 
 ## License
 

@@ -16,9 +16,9 @@ Application-level tracing for Rust.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
-[crates-url]: https://crates.io/crates/tracing/0.1.19
+[crates-url]: https://crates.io/crates/tracing/0.1.21
 [docs-badge]: https://docs.rs/tracing/badge.svg
-[docs-url]: https://docs.rs/tracing/0.1.19
+[docs-url]: https://docs.rs/tracing/0.1.21
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -27,7 +27,6 @@ Application-level tracing for Rust.
 [actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discord.gg/EeF3cQw
-
 
 ## Overview
 
@@ -48,7 +47,9 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: requires `rustc` 1.39+*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
+
+[msrv]: #supported-rust-versions
 
 ## Usage
 
@@ -107,7 +108,7 @@ In addition, you can locally override the default subscriber. For example:
 
 ```rust
 use tracing::{info, Level};
-use tracing_subscruber::FmtSubscriber;
+use tracing_subscriber::FmtSubscriber;
 
 fn main() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -143,7 +144,7 @@ use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
-// every time the instrumented function is called. The span is named after the
+// every time the instrumented function is called. The span is named after
 // the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -227,10 +228,10 @@ it is polled, leading to very confusing and incorrect output.
 For more details, see [the documentation on closing spans](https://tracing.rs/tracing/span/index.html#closing-spans).
 
 There are two ways to instrument asynchronous code. The first is through the
-[`Future::instrument`](https://docs.rs/tracing-futures/0.2.0/tracing_futures/trait.Instrument.html#method.instrument) combinator:
+[`Future::instrument`](https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument) combinator:
 
 ```rust
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 let my_future = async {
     // ...
@@ -245,7 +246,7 @@ my_future
 is as long as the future's.
 
 The second, and preferred, option is through the
-[`#[instrument]`](https://docs.rs/tracing/0.1.19/tracing/attr.instrument.html)
+[`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html)
 attribute:
 
 ```rust
@@ -261,7 +262,7 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the `#[instrument]` macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 ### Concepts
@@ -292,7 +293,7 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
-The [`#[instrument]`](https://docs.rs/tracing/0.1.19/tracing/attr.instrument.html) attribute macro
+The [`#[instrument]`](https://docs.rs/tracing/0.1.21/tracing/attr.instrument.html) attribute macro
 can reduce some of this boilerplate:
 
 ```rust
@@ -323,9 +324,9 @@ be invoked with the same syntax as the similarly-named macros from the `log`
 crate. Often, the process of converting a project to use `tracing` can begin
 with a simple drop-in replacement.
 
-### Ecosystem
+## Ecosystem
 
-## Related Crates
+### Related Crates
 
 In addition to `tracing` and `tracing-core`, the [`tokio-rs/tracing`] repository
 contains several additional crates designed to be used with the `tracing` ecosystem.
@@ -347,6 +348,9 @@ In particular, the following crates are likely to be of interest:
   dependencies which use `log`. Note that if you're using
   `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
   `tracing-log` directly.
+- [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
+  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
+  tracing systems for processing and visualization.
 
 Additionally, there are also several third-party crates which are not
 maintained by the `tokio` project. These include:
@@ -354,8 +358,6 @@ maintained by the `tokio` project. These include:
 - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
   It provides a subscriber that records the time elapsed between pairs of
   `tracing` events and generates histograms.
-- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
-  [OpenTelemetry]-compatible distributed tracing systems.
 - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
@@ -364,6 +366,16 @@ maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
+- [`test-log`] takes care of initializing `tracing` for tests, based on
+  environment variables with an `env_logger` compatible syntax.
+- [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
+- [`diesel-tracing`] provides integration with [`diesel`] database connections.
+- [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
+  applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`tracing-fluent-assertions`] provides a fluent assertions-style testing
+  framework for validating the behavior of `tracing` spans.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -378,11 +390,21 @@ please let us know! We'd love to add your project to the list!
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
+[`test-log`]: https://crates.io/crates/test-log
+[`tracing-unwrap`]: https://docs.rs/tracing-unwrap
+[`diesel`]: https://crates.io/crates/diesel
+[`diesel-tracing`]: https://crates.io/crates/diesel-tracing
+[`tracing-tracy`]: https://crates.io/crates/tracing-tracy
+[Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
 `tracing-core`.
-
 
 [`log`]: https://docs.rs/log/0.4.6/log/
 [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
@@ -392,6 +414,20 @@ undergoing active development. They may be less stable than `tracing` and
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
 [`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## License
 

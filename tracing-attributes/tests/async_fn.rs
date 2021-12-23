@@ -4,7 +4,8 @@
 mod support;
 use support::*;
 
-use tracing::subscriber::with_default;
+use std::{future::Future, pin::Pin, sync::Arc};
+use tracing::collect::with_default;
 use tracing_attributes::instrument;
 
 #[instrument]
@@ -14,9 +15,49 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
     future.await
 }
 
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument]
+async fn test_ret_impl_trait(n: i32) -> Result<impl Iterator<Item = i32>, ()> {
+    let n = n;
+    Ok((0..10).filter(move |x| *x < n))
+}
+
+// Reproduces a compile error when returning an `impl Trait` from an
+// instrumented async fn (see https://github.com/tokio-rs/tracing/issues/1615)
+#[instrument(err)]
+async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'static str> {
+    Ok((0..10).filter(move |x| *x < n))
+}
+
+#[instrument]
+async fn test_async_fn_empty() {}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+#[instrument]
+// LOAD-BEARING `#[rustfmt::skip]`! This is necessary to reproduce the bug;
+// with the rustfmt-generated formatting, the lint will not be triggered!
+#[rustfmt::skip]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613(var: bool) {
+    println!(
+        "{}",
+        if var { "true" } else { "false" }
+    );
+}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1613
+// and https://github.com/rust-lang/rust-clippy/issues/7760
+#[instrument]
+#[deny(clippy::suspicious_else_formatting)]
+async fn repro_1613_2() {
+    // hello world
+    // else
+}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span::mock().named("test_async_fn"))
         .enter(span::mock().named("test_async_fn"))
         .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
@@ -26,7 +67,7 @@ fn async_fn_only_enters_for_polls() {
         .drop_span(span::mock().named("test_async_fn"))
         .done()
         .run_with_handle();
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { test_async_fn(2).await }).unwrap();
     });
     handle.assert_finished();
@@ -46,7 +87,7 @@ fn async_fn_nested() {
 
     let span = span::mock().named("test_async_fns_nested");
     let span2 = span::mock().named("test_async_fns_nested_other");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .new_span(span2.clone())
@@ -59,7 +100,7 @@ fn async_fn_nested() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { test_async_fns_nested().await });
     });
 
@@ -121,7 +162,7 @@ fn async_fn_with_async_trait() {
     let span = span::mock().named("foo");
     let span2 = span::mock().named("bar");
     let span3 = span::mock().named("baz");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
                 .with_field(field::mock("self"))
@@ -143,7 +184,7 @@ fn async_fn_with_async_trait() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         let mut test = TestImpl(2);
         block_on_future(async { test.foo(5).await });
     });
@@ -172,18 +213,19 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), test=%v+5))]
-        async fn call(&mut self, v: usize) {}
+        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
+        async fn call(&mut self, _v: usize) {}
     }
 
     let span = span::mock().named("call");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("v")
-                    .with_value(&tracing::field::debug(5))
+                field::mock("_v")
+                    .with_value(&5usize)
                     .and(field::mock("test").with_value(&tracing::field::debug(10)))
-                    .and(field::mock("val").with_value(&42u64)),
+                    .and(field::mock("val").with_value(&42u64))
+                    .and(field::mock("val2").with_value(&42u64)),
             ),
         )
         .enter(span.clone())
@@ -192,7 +234,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async { TestImpl.call(5).await });
     });
 
@@ -213,6 +255,18 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
     #[derive(Clone, Debug)]
     struct TestImpl;
 
+    // we also test sync functions that return futures, as they should be handled just like
+    // async-trait (>= 0.1.44) functions
+    impl TestImpl {
+        #[instrument(fields(Self=std::any::type_name::<Self>()))]
+        fn sync_fun(&self) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+            let val = self.clone();
+            Box::pin(async move {
+                let _ = val;
+            })
+        }
+    }
+
     #[async_trait]
     impl Test for TestImpl {
         // instrumenting this is currently not possible, see https://github.com/tokio-rs/tracing/issues/864#issuecomment-667508801
@@ -220,16 +274,19 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         async fn call() {}
 
         #[instrument(fields(Self=std::any::type_name::<Self>()))]
-        async fn call_with_self(&self) {}
+        async fn call_with_self(&self) {
+            self.sync_fun().await;
+        }
 
         #[instrument(fields(Self=std::any::type_name::<Self>()))]
-        async fn call_with_mut_self(self: &mut Self) {}
+        async fn call_with_mut_self(&mut self) {}
     }
 
     //let span = span::mock().named("call");
     let span2 = span::mock().named("call_with_self");
     let span3 = span::mock().named("call_with_mut_self");
-    let (subscriber, handle) = subscriber::mock()
+    let span4 = span::mock().named("sync_fun");
+    let (collector, handle) = collector::mock()
         /*.new_span(span.clone()
             .with_field(
                 field::mock("Self").with_value(&"TestImpler")))
@@ -242,6 +299,13 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
                 .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
         .enter(span2.clone())
+        .new_span(
+            span4
+                .clone()
+                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+        )
+        .enter(span4.clone())
+        .exit(span4)
         .exit(span2.clone())
         .drop_span(span2)
         .new_span(
@@ -255,11 +319,53 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         block_on_future(async {
             TestImpl::call().await;
             TestImpl.call_with_self().await;
             TestImpl.call_with_mut_self().await
+        });
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn out_of_scope_fields() {
+    // Reproduces tokio-rs/tracing#1296
+
+    struct Thing {
+        metrics: Arc<()>,
+    }
+
+    impl Thing {
+        #[instrument(skip(self, _req), fields(app_id))]
+        fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
+            // ...
+            let metrics = self.metrics.clone();
+            // ...
+            Box::pin(async move {
+                // ...
+                metrics // cannot find value `metrics` in this scope
+            })
+        }
+    }
+
+    let span = span::mock().named("call");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            let mut my_thing = Thing {
+                metrics: Arc::new(()),
+            };
+            my_thing.call(()).await;
         });
     });
 

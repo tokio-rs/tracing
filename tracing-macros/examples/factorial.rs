@@ -12,9 +12,9 @@ fn factorial(n: u32) -> u32 {
 }
 
 fn main() {
-    env_logger::Builder::new().parse_filters("trace").init();
-    #[allow(deprecated)]
-    let subscriber = tracing_log::TraceLogger::new();
+    let collector = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .finish();
 
-    tracing::subscriber::with_default(subscriber, || dbg!(factorial(4)));
+    tracing::collect::with_default(collector, || dbg!(factorial(4)));
 }

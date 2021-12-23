@@ -44,11 +44,13 @@ The crate provides the following:
 
 * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 
-* [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
+* [`ErrorSubscriber`], a [subscriber layer] which enables capturing `SpanTrace`s
 
 **Note**: This crate is currently experimental.
 
-*Compiler support: requires `rustc` 1.39+*
+*Compiler support: [requires `rustc` 1.42+][msrv]*
+
+[msrv]: #supported-rust-versions
 
 ## Usage
 
@@ -154,18 +156,18 @@ fn print_naive_spantraces(error: &(dyn Error + 'static)) {
 ```
 
 Applications that wish to use `tracing-error`-enabled errors should
-construct an [`ErrorLayer`] and add it to their [`Subscriber`] in order to
+construct an [`ErrorSubscriber`] and add it to their [`Subscriber`] in order to
 enable capturing [`SpanTrace`]s. For example:
 
 ```rust
-use tracing_error::ErrorLayer;
+use tracing_error::ErrorSubscriber;
 use tracing_subscriber::prelude::*;
 
 fn main() {
     let subscriber = tracing_subscriber::Registry::default()
         // any number of other subscriber layers may be added before or
-        // after the `ErrorLayer`...
-        .with(ErrorLayer::default());
+        // after the `ErrorSubscriber`...
+        .with(ErrorSubscriber::default());
 
     // set the subscriber as the default for the application
     tracing::subscriber::set_global_default(subscriber);
@@ -180,6 +182,20 @@ fn main() {
     [`SpanTrace`].
     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
     behind `dyn Error` trait objects.
+
+## Supported Rust Versions
+
+Tracing is built against the latest stable release. The minimum supported
+version is 1.42. The current Tracing version is not guaranteed to build on Rust
+versions earlier than the minimum supported version.
+
+Tracing follows the same compiler support policies as the rest of the Tokio
+project. The current stable Rust compiler and the three most recent minor
+versions before it will always be supported. For example, if the current stable
+compiler version is 1.45, the minimum supported version will not be increased
+past 1.42, three minor versions prior. Increasing the minimum supported compiler
+version is not considered a semver breaking change as long as doing so complies
+with this policy.
 
 ## Related Crates
 
@@ -206,7 +222,7 @@ for inclusion in Tracing by you, shall be licensed as MIT, without any additiona
 terms or conditions.
 
 [`SpanTrace`]: https://docs.rs/tracing-error/*/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/*/tracing_error/struct.ErrorLayer.html
+[`ErrorSubscriber`]: https://docs.rs/tracing-error/*/tracing_error/struct.ErrorSubscriber.html
 [`TracedError`]: https://docs.rs/tracing-error/*/tracing_error/struct.TracedError.html
 [`InstrumentResult`]: https://docs.rs/tracing-error/*/tracing_error/trait.InstrumentResult.html
 [`InstrumentError`]: https://docs.rs/tracing-error/*/tracing_error/trait.InstrumentError.html
@@ -219,4 +235,4 @@ terms or conditions.
 [`tracing`]: https://docs.rs/tracing
 [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 [`SpanTrace`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorLayer.html
+[`ErrorSubscriber`]: https://docs.rs/tracing-error/0.1.2/tracing_error/struct.ErrorSubscriber.html

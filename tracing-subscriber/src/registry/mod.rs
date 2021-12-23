@@ -1,131 +1,128 @@
-//! Storage for span data shared by multiple [`Layer`]s.
+//! Storage for span data shared by multiple [`Subscribe`]s.
 //!
 //! ## Using the Span Registry
 //!
-//! This module provides the [`Registry`] type, a [`Subscriber`] implementation
-//! which tracks per-span data and exposes it to [`Layer`]s. When a `Registry`
-//! is used as the base `Subscriber` of a `Layer` stack, the
-//! [`layer::Context`][ctx] type will provide methods allowing `Layer`s to
+//! This module provides the [`Registry`] type, a [`Collect`] implementation
+//! which tracks per-span data and exposes it to subscribers. When a `Registry`
+//! is used as the base `Collect` of a `Subscribe` stack, the
+//! [`subscribe::Context`][ctx] type will provide methods allowing subscribers to
 //! [look up span data][lookup] stored in the registry. While [`Registry`] is a
 //! reasonable default for storing spans and events, other stores that implement
-//! [`LookupSpan`] and [`Subscriber`] themselves (with [`SpanData`] implemented
+//! [`LookupSpan`] and [`Collect`] themselves (with [`SpanData`] implemented
 //! by the per-span data they store) can be used as a drop-in replacement.
 //!
-//! For example, we might create a `Registry` and add multiple `Layer`s like so:
+//! For example, we might create a `Registry` and add multiple `Subscriber`s like so:
 //! ```rust
-//! use tracing_subscriber::{registry::Registry, Layer, prelude::*};
-//! # use tracing_core::Subscriber;
-//! # pub struct FooLayer {}
-//! # pub struct BarLayer {}
-//! # impl<S: Subscriber> Layer<S> for FooLayer {}
-//! # impl<S: Subscriber> Layer<S> for BarLayer {}
-//! # impl FooLayer {
+//! use tracing_subscriber::{registry::Registry, Subscribe, prelude::*};
+//! # use tracing_core::Collect;
+//! # pub struct FooSubscriber {}
+//! # pub struct BarSubscriber {}
+//! # impl<C: Collect> Subscribe<C> for FooSubscriber {}
+//! # impl<C: Collect> Subscribe<C> for BarSubscriber {}
+//! # impl FooSubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
-//! # impl BarLayer {
+//! # impl BarSubscriber {
 //! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = Registry::default()
-//!     .with(FooLayer::new())
-//!     .with(BarLayer::new());
+//!     .with(FooSubscriber::new())
+//!     .with(BarSubscriber::new());
 //! ```
 //!
-//! If a type implementing `Layer` depends on the functionality of a `Registry`
-//! implementation, it should bound its `Subscriber` type parameter with the
+//! If a type implementing `Subscribe` depends on the functionality of a `Registry`
+//! implementation, it should bound its `Collect` type parameter with the
 //! [`LookupSpan`] trait, like so:
 //!
 //! ```rust
-//! use tracing_subscriber::{registry, Layer};
-//! use tracing_core::Subscriber;
+//! use tracing_subscriber::{registry, Subscribe};
+//! use tracing_core::Collect;
 //!
-//! pub struct MyLayer {
+//! pub struct MySubscriber {
 //!     // ...
 //! }
 //!
-//! impl<S> Layer<S> for MyLayer
+//! impl<C> Subscribe<C> for MySubscriber
 //! where
-//!     S: Subscriber + for<'a> registry::LookupSpan<'a>,
+//!     C: Collect + for<'a> registry::LookupSpan<'a>,
 //! {
 //!     // ...
 //! }
 //! ```
-//! When this bound is added, the `Layer` implementation will be guaranteed
+//! When this bound is added, the subscriber implementation will be guaranteed
 //! access to the [`Context`][ctx] methods, such as [`Context::span`][lookup], that
-//! require the root subscriber to be a registry.
+//! require the root collector to be a registry.
 //!
-//! [`Layer`]: ../layer/trait.Layer.html
-//! [`Subscriber`]:
-//!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [`Registry`]: struct.Registry.html
-//! [ctx]: ../layer/struct.Context.html
-//! [lookup]: ../layer/struct.Context.html#method.span
-//! [`LookupSpan`]: trait.LookupSpan.html
-//! [`SpanData`]: trait.SpanData.html
+//! [`Subscribe`]: crate::subscribe::Subscribe
+//! [`Collect`]: tracing_core::collect::Collect
+//! [ctx]: crate::subscribe::Context
+//! [lookup]: crate::subscribe::Context::span()
+use core::fmt::Debug;
+
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
-/// A module containing a type map of span extensions.
-mod extensions;
-#[cfg(feature = "registry")]
-mod sharded;
-#[cfg(feature = "registry")]
-mod stack;
+feature! {
+    #![feature = "std"]
+    /// A module containing a type map of span extensions.
+    mod extensions;
+    pub use extensions::{Extensions, ExtensionsMut};
 
-pub use extensions::{Extensions, ExtensionsMut};
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Data;
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use sharded::Registry;
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+
+    mod sharded;
+    mod stack;
+
+    pub use sharded::Data;
+    pub use sharded::Registry;
+}
 
 /// Provides access to stored span data.
 ///
 /// Subscribers which store span data and associate it with span IDs should
-/// implement this trait; if they do, any [`Layer`]s wrapping them can look up
+/// implement this trait; if they do, any [`Subscriber`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`Context`]: ../layer/struct.Context.html
-/// [`span()`]: ../layer/struct.Context.html#method.span
+/// [`Subscriber`]: crate::Subscribe
+/// [`Context`]: crate::subscribe::Context
+/// [`span()`]: crate::subscribe::Context::span()
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
 
-    /// Returns the [`SpanData`] for a given `Id`, if it exists.
+    /// Returns the [`SpanData`] for a given [`Id`], if it exists.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: users of the <code>LookupSpan</code> trait should
-    /// typically call the <a href="#method.span"><code>span</code></a> method rather
-    /// than this method. The <code>span</code> method is implemented by
-    /// <em>calling</em> <code>span_data</code>, but returns a reference which is
-    /// capable of performing more sophisiticated queries.
+    ///
+    /// **Note**: users of the `LookupSpan` trait should
+    /// typically call the [`span`][Self::span] method rather
+    /// than this method. The `span` method is implemented by
+    /// *calling* `span_data`, but returns a reference which is
+    /// capable of performing more sophisticated queries.
+    ///
     /// </pre></div>
     ///
-    /// [`SpanData`]: trait.SpanData.html
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
     ///
     /// A `SpanRef` is similar to [`SpanData`], but it allows performing
-    /// additional lookups against the registryr that stores the wrapped data.
+    /// additional lookups against the registry that stores the wrapped data.
     ///
     /// In general, _users_ of the `LookupSpan` trait should use this method
     /// rather than the [`span_data`] method; while _implementors_ of this trait
     /// should only implement `span_data`.
     ///
-    /// [`SpanRef`]: struct.SpanRef.html
-    /// [`SpanData`]: trait.SpanData.html
-    /// [`span_data`]: #method.span_data
+    /// [`span_data`]: LookupSpan::span_data()
     fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
         Self: Sized,
     {
-        let data = self.span_data(&id)?;
+        let data = self.span_data(id)?;
         Some(SpanRef {
             registry: self,
             data,
@@ -146,14 +143,18 @@ pub trait SpanData<'a> {
 
     /// Returns a reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions(&self) -> Extensions<'_>;
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
 }
 
@@ -163,40 +164,107 @@ pub trait SpanData<'a> {
 /// provides additional methods for querying the registry based on values from
 /// the span.
 ///
-/// [span data]: trait.SpanData.html
-/// [registry]: trait.LookupSpan.html
+/// [span data]: SpanData
+/// [registry]: LookupSpan
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
     data: R::Data,
 }
 
-/// An iterator over the parents of a span.
+/// An iterator over the parents of a span, ordered from leaf to root.
 ///
-/// This is returned by the [`SpanRef::parents`] method.
-///
-/// [`SpanRef::parents`]: struct.SpanRef.html#method.parents
+/// This is returned by the [`SpanRef::scope`] method.
 #[derive(Debug)]
-pub struct Parents<'a, R> {
+pub struct Scope<'a, R> {
     registry: &'a R,
     next: Option<Id>,
 }
 
-/// An iterator over a span's parents, starting with the root of the trace
-/// tree.
-///
-/// For additonal details, see [`SpanRef::from_root`].
-///
-/// [`Span::from_root`]: struct.SpanRef.html#method.from_root
-pub struct FromRoot<'a, R: LookupSpan<'a>> {
+feature! {
+    #![feature = "std"]
+
+    /// An iterator over the parents of a span, ordered from root to leaf.
+    ///
+    /// This is returned by the [`Scope::from_root`] method.
+    pub struct ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        #[cfg(feature = "smallvec")]
+        spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
+        #[cfg(not(feature = "smallvec"))]
+        spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
+    }
+
     #[cfg(feature = "smallvec")]
-    inner: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
-    #[cfg(not(feature = "smallvec"))]
-    inner: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
+    type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
+    impl<'a, R> Scope<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        /// Flips the order of the iterator, so that it is ordered from root to leaf.
+        ///
+        /// The iterator will first return the root span, then that span's immediate child,
+        /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
+        ///
+        /// If any items were consumed from the [`Scope`] before calling this method then they
+        /// will *not* be returned from the [`ScopeFromRoot`].
+        ///
+        /// **Note**: this will allocate if there are many spans remaining, or if the
+        /// "smallvec" feature flag is not enabled.
+        #[allow(clippy::wrong_self_convention)]
+        pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+            #[cfg(feature = "smallvec")]
+            type Buf<T> = smallvec::SmallVec<T>;
+            #[cfg(not(feature = "smallvec"))]
+            type Buf<T> = Vec<T>;
+            ScopeFromRoot {
+                spans: self.collect::<Buf<_>>().into_iter().rev(),
+            }
+        }
+    }
+
+    impl<'a, R> Iterator for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        type Item = SpanRef<'a, R>;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.spans.next()
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.spans.size_hint()
+        }
+    }
+
+    impl<'a, R> Debug for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.pad("ScopeFromRoot { .. }")
+        }
+    }
 }
 
-#[cfg(feature = "smallvec")]
-type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+impl<'a, R> Iterator for Scope<'a, R>
+where
+    R: LookupSpan<'a>,
+{
+    type Item = SpanRef<'a, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.registry.span(self.next.as_ref()?)?;
+        self.next = curr.parent_id().cloned();
+        Some(curr)
+    }
+}
 
 impl<'a, R> SpanRef<'a, R>
 where
@@ -219,7 +287,7 @@ where
 
     /// Returns a list of [fields] defined by the span.
     ///
-    /// [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
+    /// [fields]: tracing_core::field
     pub fn fields(&self) -> &FieldSet {
         self.data.metadata().fields()
     }
@@ -241,96 +309,182 @@ where
         })
     }
 
-    /// Returns an iterator over all parents of this span, starting with the
-    /// immediate parent.
+    /// Returns an iterator over all parents of this span, starting with this span,
+    /// ordered from leaf to root.
     ///
-    /// The iterator will first return the span's immediate parent, followed by
-    /// that span's parent, followed by _that_ span's parent, and so on, until a
-    /// it reaches a root span.
-    pub fn parents(&self) -> Parents<'a, R> {
-        Parents {
+    /// The iterator will first return the span, then the span's immediate parent,
+    /// followed by that span's parent, and so on, until it reaches a root span.
+    ///
+    /// ```rust
+    /// use tracing::{span, Collect};
+    /// use tracing_subscriber::{
+    ///     subscribe::{Context, Subscribe},
+    ///     prelude::*,
+    ///     registry::LookupSpan,
+    /// };
+    ///
+    /// struct PrintingSubscriber;
+    /// impl<C> Subscribe<C> for PrintingSubscriber
+    /// where
+    ///     C: Collect + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_enter(&self, id: &span::Id, ctx: Context<C>) {
+    ///         let span = ctx.span(id).unwrap();
+    ///         let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+    ///         println!("Entering span: {:?}", scope);
+    ///     }
+    /// }
+    ///
+    /// tracing::collect::with_default(tracing_subscriber::registry().with(PrintingSubscriber), || {
+    ///     let _root = tracing::info_span!("root").entered();
+    ///     // Prints: Entering span: ["root"]
+    ///     let _child = tracing::info_span!("child").entered();
+    ///     // Prints: Entering span: ["child", "root"]
+    ///     let _leaf = tracing::info_span!("leaf").entered();
+    ///     // Prints: Entering span: ["leaf", "child", "root"]
+    /// });
+    /// ```
+    ///
+    /// If the opposite order (from the root to this span) is desired, calling [`Scope::from_root`] on
+    /// the returned iterator reverses the order.
+    ///
+    /// ```rust
+    /// # use tracing::{span, Collect};
+    /// # use tracing_subscriber::{
+    /// #     subscribe::{Context, Subscribe},
+    /// #     prelude::*,
+    /// #     registry::LookupSpan,
+    /// # };
+    /// # struct PrintingSubscriber;
+    /// impl<C> Subscribe<C> for PrintingSubscriber
+    /// where
+    ///     C: Collect + for<'lookup> LookupSpan<'lookup>,
+    /// {
+    ///     fn on_enter(&self, id: &span::Id, ctx: Context<C>) {
+    ///         let span = ctx.span(id).unwrap();
+    ///         let scope = span.scope().from_root().map(|span| span.name()).collect::<Vec<_>>();
+    ///         println!("Entering span: {:?}", scope);
+    ///     }
+    /// }
+    ///
+    /// tracing::collect::with_default(tracing_subscriber::registry().with(PrintingSubscriber), || {
+    ///     let _root = tracing::info_span!("root").entered();
+    ///     // Prints: Entering span: ["root"]
+    ///     let _child = tracing::info_span!("child").entered();
+    ///     // Prints: Entering span: ["root", "child"]
+    ///     let _leaf = tracing::info_span!("leaf").entered();
+    ///     // Prints: Entering span: ["root", "child", "leaf"]
+    /// });
+    /// ```
+    pub fn scope(&self) -> Scope<'a, R> {
+        Scope {
             registry: self.registry,
-            next: self.parent().map(|parent| parent.id()),
+            next: Some(self.id()),
         }
-    }
-
-    /// Returns an iterator over all parents of this span, starting with the
-    /// root of the trace tree.
-    ///
-    /// The iterator will return the root of the trace tree, followed by the
-    /// next span, and then the next, until this span's immediate parent is
-    /// returned.
-    ///
-    /// **Note**: if the "smallvec" feature flag is not enabled, this may
-    /// allocate.
-    pub fn from_root(&self) -> FromRoot<'a, R> {
-        #[cfg(feature = "smallvec")]
-        type SpanRefVec<'span, L> = smallvec::SmallVec<SpanRefVecArray<'span, L>>;
-        #[cfg(not(feature = "smallvec"))]
-        type SpanRefVec<'span, L> = Vec<SpanRef<'span, L>>;
-
-        // an alternative way to handle this would be to the recursive approach that
-        // `fmt` uses that _does not_ entail any allocation in this fmt'ing
-        // spans path.
-        let parents = self.parents().collect::<SpanRefVec<'a, _>>();
-        let inner = parents.into_iter().rev();
-        FromRoot { inner }
     }
 
     /// Returns a reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions(&self) -> Extensions<'_> {
         self.data.extensions()
     }
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
-    /// The extensions may be used by `Layer`s to store additional data
+    /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
     }
 }
 
-impl<'a, R> Iterator for Parents<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let id = self.next.take()?;
-        let span = self.registry.span(&id)?;
-        self.next = span.parent().map(|parent| parent.id());
-        Some(span)
+#[cfg(all(test, feature = "registry", feature = "std"))]
+mod tests {
+    use crate::{
+        prelude::*,
+        registry::LookupSpan,
+        subscribe::{Context, Subscribe},
+    };
+    use std::sync::{Arc, Mutex};
+    use tracing::{span, Collect};
+
+    #[test]
+    fn spanref_scope_iteration_order() {
+        let last_entered_scope = Arc::new(Mutex::new(Vec::new()));
+
+        #[derive(Default)]
+        struct RecordingSubscriber {
+            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+        }
+
+        impl<S> Subscribe<S> for RecordingSubscriber
+        where
+            S: Collect + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+                let span = ctx.span(id).unwrap();
+                let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+                *self.last_entered_scope.lock().unwrap() = scope;
+            }
+        }
+
+        let _guard = tracing::collect::set_default(crate::registry().with(RecordingSubscriber {
+            last_entered_scope: last_entered_scope.clone(),
+        }));
+
+        let _root = tracing::info_span!("root").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
+        let _child = tracing::info_span!("child").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["child", "root"]);
+        let _leaf = tracing::info_span!("leaf").entered();
+        assert_eq!(
+            &*last_entered_scope.lock().unwrap(),
+            &["leaf", "child", "root"]
+        );
     }
-}
 
-// === impl FromRoot ===
+    #[test]
+    fn spanref_scope_fromroot_iteration_order() {
+        let last_entered_scope = Arc::new(Mutex::new(Vec::new()));
 
-impl<'span, R> Iterator for FromRoot<'span, R>
-where
-    R: LookupSpan<'span>,
-{
-    type Item = SpanRef<'span, R>;
+        #[derive(Default)]
+        struct RecordingSubscriber {
+            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+        }
 
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
+        impl<S> Subscribe<S> for RecordingSubscriber
+        where
+            S: Collect + for<'lookup> LookupSpan<'lookup>,
+        {
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+                let span = ctx.span(id).unwrap();
+                let scope = span
+                    .scope()
+                    .from_root()
+                    .map(|span| span.name())
+                    .collect::<Vec<_>>();
+                *self.last_entered_scope.lock().unwrap() = scope;
+            }
+        }
 
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
+        let _guard = tracing::collect::set_default(crate::registry().with(RecordingSubscriber {
+            last_entered_scope: last_entered_scope.clone(),
+        }));
 
-impl<'span, R> std::fmt::Debug for FromRoot<'span, R>
-where
-    R: LookupSpan<'span>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("FromRoot { .. }")
+        let _root = tracing::info_span!("root").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["root"]);
+        let _child = tracing::info_span!("child").entered();
+        assert_eq!(&*last_entered_scope.lock().unwrap(), &["root", "child",]);
+        let _leaf = tracing::info_span!("leaf").entered();
+        assert_eq!(
+            &*last_entered_scope.lock().unwrap(),
+            &["root", "child", "leaf"]
+        );
     }
 }

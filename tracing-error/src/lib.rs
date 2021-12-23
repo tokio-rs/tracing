@@ -14,11 +14,13 @@
 //!
 //! * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 //!
-//! * [`ErrorLayer`], a [subscriber layer] which enables capturing `SpanTrace`s
+//! * [`ErrorSubscriber`], a [subscriber] which enables capturing `SpanTrace`s
 //!
 //! **Note**: This crate is currently experimental.
 //!
-//! *Compiler support: requires `rustc` 1.39+*
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
 //!
 //! ## Feature Flags
 //!
@@ -137,41 +139,49 @@
 //! ```
 //!
 //! Applications that wish to use `tracing-error`-enabled errors should
-//! construct an [`ErrorLayer`] and add it to their [`Subscriber`] in order to
+//! construct an [`ErrorSubscriber`] and add it to their [collector] in order to
 //! enable capturing [`SpanTrace`]s. For example:
 //!
 //! ```rust
-//! use tracing_error::ErrorLayer;
+//! use tracing_error::ErrorSubscriber;
 //! use tracing_subscriber::prelude::*;
 //!
 //! fn main() {
 //!     let subscriber = tracing_subscriber::Registry::default()
-//!         // any number of other subscriber layers may be added before or
-//!         // after the `ErrorLayer`...
-//!         .with(ErrorLayer::default());
+//!         // any number of other collector subscribers may be added before or
+//!         // after the `ErrorSubscriber`...
+//!         .with(ErrorSubscriber::default());
 //!
 //!     // set the subscriber as the default for the application
-//!     tracing::subscriber::set_global_default(subscriber);
+//!     tracing::collect::set_global_default(subscriber);
 //! }
 //! ```
 //!
-//! [`SpanTrace`]: struct.SpanTrace.html
-//! [`ErrorLayer`]: struct.ErrorLayer.html
-//! [`TracedError`]: struct.TracedError.html
-//! [`InstrumentResult`]: trait.InstrumentResult.html
-//! [`InstrumentError`]: trait.InstrumentError.html
-//! [`ExtractSpanTrace`]: trait.ExtractSpanTrace.html
-//! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-//! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
-//! [`tracing`]: https://docs.rs/tracing
-//! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+//! [`in_current_span()`]: InstrumentResult::in_current_span
+//! [span]: mod@tracing::span
+//! [events]: tracing::Event
+//! [collector]: tracing::Collect
+//! [subscriber]: tracing_subscriber::subscribe::Subscribe
+//!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
+//!
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing-error/0.1.2")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![warn(
@@ -199,12 +209,12 @@
 mod backtrace;
 #[cfg(feature = "traced-error")]
 mod error;
-mod layer;
+mod subscriber;
 
 pub use self::backtrace::{SpanTrace, SpanTraceStatus};
 #[cfg(feature = "traced-error")]
 pub use self::error::{ExtractSpanTrace, InstrumentError, InstrumentResult, TracedError};
-pub use self::layer::ErrorLayer;
+pub use self::subscriber::ErrorSubscriber;
 
 #[cfg(feature = "traced-error")]
 #[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]

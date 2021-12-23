@@ -1,30 +1,33 @@
-use std::fs::File;
-use std::io::{BufReader, BufWriter};
-use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
-use tempdir::TempDir;
+use std::{
+    env,
+    fs::File,
+    io::{BufReader, BufWriter},
+    path::{Path, PathBuf},
+    thread::sleep,
+    time::Duration,
+};
 use tracing::{span, Level};
-use tracing_flame::FlameLayer;
+use tracing_flame::FlameSubscriber;
 use tracing_subscriber::{prelude::*, registry::Registry};
 
 static PATH: &str = "flame.folded";
 
-fn setup_global_subscriber(dir: &Path) -> impl Drop {
-    let (flame_layer, _guard) = FlameLayer::with_file(dir.join(PATH)).unwrap();
+fn setup_global_collector(dir: &Path) -> impl Drop {
+    let (flame_layer, _guard) = FlameSubscriber::with_file(dir.join(PATH)).unwrap();
 
-    let subscriber = Registry::default().with(flame_layer);
+    let collector = Registry::default().with(flame_layer);
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::collect::set_global_default(collector).unwrap();
 
     _guard
 }
 
-fn make_flamegraph(dir: &Path) {
-    let inf = File::open(dir.join(PATH)).unwrap();
+fn make_flamegraph(tmpdir: &Path, out: &Path) {
+    println!("outputting flamegraph to {}", out.display());
+    let inf = File::open(tmpdir.join(PATH)).unwrap();
     let reader = BufReader::new(inf);
 
-    let out = File::create(dir.join("inferno.svg")).unwrap();
+    let out = File::create(out).unwrap();
     let writer = BufWriter::new(out);
 
     let mut opts = inferno::flamegraph::Options::default();
@@ -32,9 +35,20 @@ fn make_flamegraph(dir: &Path) {
 }
 
 fn main() {
+    let out = if let Some(arg) = env::args().nth(1) {
+        PathBuf::from(arg)
+    } else {
+        let mut path = env::current_dir().expect("failed to read current directory");
+        path.push("tracing-flame-inferno.svg");
+        path
+    };
+
     // setup the flame layer
-    let tmp_dir = TempDir::new("flamegraphs").unwrap();
-    let guard = setup_global_subscriber(tmp_dir.path());
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("flamegraphs")
+        .tempdir()
+        .expect("failed to create temporary directory");
+    let guard = setup_global_collector(tmp_dir.path());
 
     // do a bunch of span entering and exiting to simulate a program running
     span!(Level::ERROR, "outer").in_scope(|| {
@@ -52,5 +66,5 @@ fn main() {
     // drop the guard to make sure the layer flushes its output then read the
     // output to create the flamegraph
     drop(guard);
-    make_flamegraph(tmp_dir.path());
+    make_flamegraph(tmp_dir.path(), out.as_ref());
 }

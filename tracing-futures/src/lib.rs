@@ -12,8 +12,12 @@
 //! * [`Instrument`] allows a `tracing` [span] to be attached to a future, sink,
 //!   stream, or executor.
 //!
-//! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
+//! * [`WithCollector`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
+//!
+//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//!
+//! [msrv]: #supported-rust-versions
 //!
 //! # Feature flags
 //!
@@ -21,11 +25,11 @@
 //! features with other crates in the asynchronous ecosystem:
 //!
 //! - `tokio`: Enables compatibility with the `tokio` crate, including
-//!    [`Instrument`] and [`WithSubscriber`] implementations for
+//!    [`Instrument`] and [`WithCollector`] implementations for
 //!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
 //!    `tokio::runtime::current_thread`. Enabled by default.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
-//!    crate, including [`Instrument`] and [`WithSubscriber`]
+//!    crate, including [`Instrument`] and [`WithCollector`]
 //!    implementations for types implementing `tokio_executor::Executor`.
 //!    This is intended primarily for use in crates which depend on
 //!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
@@ -49,14 +53,28 @@
 //! The `tokio`, `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/index.html
-//! [`Instrument`]: trait.Instrument.html
-//! [`WithSubscriber`]: trait.WithSubscriber.html
+//! [span]: mod@tracing::span
+//! [collector]: tracing::collect
 //! [`futures`]: https://crates.io/crates/futures
+//!
+//! ## Supported Rust Versions
+//!
+//! Tracing is built against the latest stable release. The minimum supported
+//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! Rust versions earlier than the minimum supported version.
+//!
+//! Tracing follows the same compiler support policies as the rest of the Tokio
+//! project. The current stable Rust compiler and the three most recent minor
+//! versions before it will always be supported. For example, if the current
+//! stable compiler version is 1.45, the minimum supported version will not be
+//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! supported compiler version is not considered a semver breaking change as
+//! long as doing so complies with this policy.
+//!
 #![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.4")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo.svg",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![warn(
@@ -84,15 +102,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
-use pin_project::pin_project;
-
-pub(crate) mod stdlib;
+use pin_project_lite::pin_project;
 
 #[cfg(feature = "std-future")]
-use crate::stdlib::{pin::Pin, task::Context};
+use core::{pin::Pin, task::Context};
 
-use tracing::dispatcher;
-use tracing::{Dispatch, Span};
+#[cfg(feature = "std")]
+use tracing::{dispatch, Dispatch};
+
+use tracing::Span;
 
 /// Implementations for `Instrument`ed future executors.
 pub mod executor;
@@ -100,7 +118,7 @@ pub mod executor;
 /// Extension trait allowing futures, streams, sinks, and executors to be
 /// instrumented with a `tracing` [span].
 ///
-/// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [span]: mod@tracing::span
 pub trait Instrument: Sized {
     /// Instruments this type with the provided `Span`, returning an
     /// `Instrumented` wrapper.
@@ -129,7 +147,7 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [entered]: tracing::span::Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
         Instrumented { inner: self, span }
     }
@@ -164,8 +182,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.current
-    /// [entered]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter
+    /// [current]: tracing::span::Span::current()
+    /// [entered]: tracing::span::Span::enter()
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -173,13 +191,13 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures, streams, and sinks to be instrumented with
-/// a `tracing` [`Subscriber`].
+/// a `tracing` [collector].
 ///
-/// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
+/// [collector]: tracing::collect::Collect
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub trait WithSubscriber: Sized {
-    /// Attaches the provided [`Subscriber`] to this type, returning a
+pub trait WithCollector: Sized {
+    /// Attaches the provided [collector] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -187,19 +205,19 @@ pub trait WithSubscriber: Sized {
     /// When the wrapped type is an executor, the subscriber will be set as the
     /// default for any futures spawned on that executor.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
-    fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
+    /// [collector]: tracing::collect::Collect
+    /// [default]: tracing::dispatch#setting-the-default-collector
+    fn with_collector<C>(self, collector: C) -> WithDispatch<Self>
     where
-        S: Into<Dispatch>,
+        C: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
-            dispatch: subscriber.into(),
+            dispatch: collector.into(),
         }
     }
 
-    /// Attaches the current [default] [`Subscriber`] to this type, returning a
+    /// Attaches the current [default] [collector] to this type, returning a
     /// `WithDispatch` wrapper.
     ///
     /// When the wrapped type is a future, stream, or sink, the attached
@@ -210,41 +228,55 @@ pub trait WithSubscriber: Sized {
     /// This can be used to propagate the current dispatcher context when
     /// spawning a new future.
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing/latest/tracing/subscriber/trait.Subscriber.html
-    /// [default]: https://docs.rs/tracing/latest/tracing/dispatcher/index.html#setting-the-default-subscriber
+    /// [collector]: tracing::collect::Collect
+    /// [default]: tracing::dispatch#setting-the-default-collector
     #[inline]
-    fn with_current_subscriber(self) -> WithDispatch<Self> {
+    fn with_current_collector(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
-            dispatch: dispatcher::get_default(|default| default.clone()),
+            dispatch: dispatch::get_default(|default| default.clone()),
         }
     }
 }
 
+#[cfg(feature = "std-future")]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
+    #[derive(Debug, Clone)]
+    pub struct Instrumented<T> {
+        #[pin]
+        inner: T,
+        span: Span,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
-#[cfg_attr(feature = "std-future", pin_project)]
+#[cfg(not(feature = "std-future"))]
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     span: Span,
 }
 
+#[cfg(all(feature = "std", feature = "std-future"))]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a
+    /// `tracing` subscriber.
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[derive(Clone, Debug)]
+    pub struct WithDispatch<T> {
+        #[pin]
+        inner: T,
+        dispatch: Dispatch,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "std-future")))]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
-    // cfg_attr doesn't work inside structs, apparently...
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     dispatch: Dispatch,
 }
@@ -253,10 +285,10 @@ impl<T: Sized> Instrument for T {}
 
 #[cfg(feature = "std-future")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
-impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for Instrumented<T> {
+impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
         this.inner.poll(cx)
@@ -408,7 +440,7 @@ impl<T> Instrumented<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Sized> WithSubscriber for T {}
+impl<T: Sized> WithCollector for T {}
 
 #[cfg(all(feature = "futures-01", feature = "std"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "futures-01", feature = "std"))))]
@@ -418,20 +450,20 @@ impl<T: futures_01::Future> futures_01::Future for WithDispatch<T> {
 
     fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let inner = &mut self.inner;
-        dispatcher::with_default(&self.dispatch, || inner.poll())
+        dispatch::with_default(&self.dispatch, || inner.poll())
     }
 }
 
 #[cfg(all(feature = "std-future", feature = "std"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "std-future", feature = "std"))))]
-impl<T: crate::stdlib::future::Future> crate::stdlib::future::Future for WithDispatch<T> {
+impl<T: core::future::Future> core::future::Future for WithDispatch<T> {
     type Output = T::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> crate::stdlib::task::Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let this = self.project();
         let dispatch = this.dispatch;
         let future = this.inner;
-        dispatcher::with_default(dispatch, || future.poll(cx))
+        dispatch::with_default(dispatch, || future.poll(cx))
     }
 }
 
@@ -495,7 +527,7 @@ mod tests {
     #[cfg(feature = "futures-01")]
     mod futures_01_tests {
         use futures_01::{future, stream, task, Async, Future, Stream};
-        use tracing::subscriber::with_default;
+        use tracing::collect::with_default;
 
         use super::*;
 
@@ -542,7 +574,7 @@ mod tests {
 
         #[test]
         fn future_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -550,7 +582,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .done()
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 PollN::new_ok(2)
                     .instrument(tracing::trace_span!("foo"))
                     .wait()
@@ -561,7 +593,7 @@ mod tests {
 
         #[test]
         fn future_error_ends_span() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -569,7 +601,7 @@ mod tests {
                 .drop_span(span::mock().named("foo"))
                 .done()
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 PollN::new_err(2)
                     .instrument(tracing::trace_span!("foo"))
                     .wait()
@@ -581,7 +613,7 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -592,7 +624,7 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
                     .instrument(tracing::trace_span!("foo"))
                     .for_each(|_| future::ok(()))
@@ -604,7 +636,7 @@ mod tests {
 
         #[test]
         fn span_follows_future_onto_threadpool() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("a"))
                 .enter(span::mock().named("b"))
                 .exit(span::mock().named("b"))
@@ -616,7 +648,7 @@ mod tests {
                 .done()
                 .run_with_handle();
             let mut runtime = tokio::runtime::Runtime::new().unwrap();
-            with_default(subscriber, || {
+            with_default(collector, || {
                 tracing::trace_span!("a").in_scope(|| {
                     let future = PollN::new_ok(2)
                         .instrument(tracing::trace_span!("b"))
@@ -636,13 +668,13 @@ mod tests {
     #[cfg(all(feature = "futures-03", feature = "std-future"))]
     mod futures_03_tests {
         use futures::{future, sink, stream, FutureExt, SinkExt, StreamExt};
-        use tracing::subscriber::with_default;
+        use tracing::collect::with_default;
 
         use super::*;
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -653,9 +685,8 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
-                stream::iter(&[1, 2, 3])
-                    .instrument(tracing::trace_span!("foo"))
+            with_default(collector, || {
+                Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
                     .for_each(|_| future::ready(()))
                     .now_or_never()
                     .unwrap();
@@ -665,7 +696,7 @@ mod tests {
 
         #[test]
         fn sink_enter_exit_is_reasonable() {
-            let (subscriber, handle) = subscriber::mock()
+            let (collector, handle) = collector::mock()
                 .enter(span::mock().named("foo"))
                 .exit(span::mock().named("foo"))
                 .enter(span::mock().named("foo"))
@@ -674,9 +705,8 @@ mod tests {
                 .exit(span::mock().named("foo"))
                 .drop_span(span::mock().named("foo"))
                 .run_with_handle();
-            with_default(subscriber, || {
-                sink::drain()
-                    .instrument(tracing::trace_span!("foo"))
+            with_default(collector, || {
+                Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))
                     .send(1u8)
                     .now_or_never()
                     .unwrap()

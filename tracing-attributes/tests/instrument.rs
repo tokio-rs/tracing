@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use tracing::subscriber::with_default;
+use tracing::collect::with_default;
 use tracing::Level;
 use tracing_attributes::instrument;
 
@@ -21,7 +21,7 @@ fn override_everything() {
         .named("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .exit(span.clone())
@@ -33,7 +33,7 @@ fn override_everything() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         my_fn();
         my_other_fn();
     });
@@ -55,12 +55,12 @@ fn fields() {
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("2"))
-                    .and(field::mock("arg2").with_value(&format_args!("false")))
+                    .with_value(&2usize)
+                    .and(field::mock("arg2").with_value(&false))
                     .only(),
             ),
         )
@@ -70,8 +70,8 @@ fn fields() {
         .new_span(
             span2.clone().with_field(
                 field::mock("arg1")
-                    .with_value(&format_args!("3"))
-                    .and(field::mock("arg2").with_value(&format_args!("true")))
+                    .with_value(&3usize)
+                    .and(field::mock("arg2").with_value(&true))
                     .only(),
             ),
         )
@@ -81,7 +81,7 @@ fn fields() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         my_fn(2, false);
         my_fn(3, true);
     });
@@ -105,10 +105,10 @@ fn skip() {
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("2")).only()),
+                .with_field(field::mock("arg1").with_value(&2usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -116,7 +116,7 @@ fn skip() {
         .new_span(
             span2
                 .clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("3")).only()),
+                .with_field(field::mock("arg1").with_value(&3usize).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -124,7 +124,7 @@ fn skip() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         my_fn(2, UnDebug(0), UnDebug(1));
         my_fn(3, UnDebug(0), UnDebug(1));
     });
@@ -146,7 +146,7 @@ fn generics() {
 
     let span = span::mock().named("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
                 field::mock("arg1")
@@ -160,7 +160,7 @@ fn generics() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         my_fn(Foo, false);
     });
 
@@ -179,12 +179,12 @@ fn methods() {
 
     let span = span::mock().named("my_fn");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
                 field::mock("self")
                     .with_value(&format_args!("Foo"))
-                    .and(field::mock("arg1").with_value(&format_args!("42"))),
+                    .and(field::mock("arg1").with_value(&42usize)),
             ),
         )
         .enter(span.clone())
@@ -193,9 +193,38 @@ fn methods() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         let foo = Foo;
         foo.my_fn(42);
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn impl_trait_return_type() {
+    #[instrument]
+    fn returns_impl_trait(x: usize) -> impl Iterator<Item = usize> {
+        0..x
+    }
+
+    let span = span::mock().named("returns_impl_trait");
+
+    let (collector, handle) = collector::mock()
+        .new_span(
+            span.clone()
+                .with_field(field::mock("x").with_value(&10usize).only()),
+        )
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        for _ in returns_impl_trait(10) {
+            // nop
+        }
     });
 
     handle.assert_finished();

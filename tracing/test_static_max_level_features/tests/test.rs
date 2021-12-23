@@ -1,17 +1,15 @@
-#[macro_use]
-extern crate tracing;
-
 use std::sync::{Arc, Mutex};
 use tracing::span::{Attributes, Record};
-use tracing::{span, Event, Id, Level, Metadata, Subscriber};
+use tracing::{debug, error, info, span, trace, warn, Collect, Event, Id, Level, Metadata};
+use tracing_core::span::Current;
 
 struct State {
     last_level: Mutex<Option<Level>>,
 }
 
-struct TestSubscriber(Arc<State>);
+struct TestCollector(Arc<State>);
 
-impl Subscriber for TestSubscriber {
+impl Collect for TestCollector {
     fn enabled(&self, _: &Metadata) -> bool {
         true
     }
@@ -31,15 +29,20 @@ impl Subscriber for TestSubscriber {
     fn enter(&self, _span: &Id) {}
 
     fn exit(&self, _span: &Id) {}
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
+    }
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn test_static_max_level_features() {
     let me = Arc::new(State {
         last_level: Mutex::new(None),
     });
     let a = me.clone();
-    tracing::subscriber::with_default(TestSubscriber(me), || {
+    tracing::collect::with_default(TestCollector(me), || {
         error!("");
         last(&a, Some(Level::ERROR));
         warn!("");

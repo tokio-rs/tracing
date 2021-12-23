@@ -31,8 +31,7 @@ use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 
-use tracing::{debug, info, info_span, trace_span, warn};
-use tracing_futures::Instrument;
+use tracing::{debug, info, info_span, trace_span, warn, Instrument as _};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
@@ -53,7 +52,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
-    let mut listener = TcpListener::bind(&addr).await?;
+    let listener = TcpListener::bind(&addr).await?;
     // Use `fmt::Debug` impl for `addr` using the `%` symbol
     info!(message = "Listening on", %addr);
 
@@ -71,7 +70,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         // Essentially here we're executing a new task to run concurrently,
         // which will allow all of our clients to be processed concurrently.
 
-        tokio::spawn(async move {
+        let fut = async move {
             let mut buf = [0; 1024];
 
             // In a loop, read data from the socket and write the data back.
@@ -116,7 +115,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 
                 info!(message = "echo'd data", %peer_addr, size = n);
             }
-        })
+        }
         .instrument(info_span!("echo", %peer_addr));
+        tokio::spawn(fut);
     }
 }

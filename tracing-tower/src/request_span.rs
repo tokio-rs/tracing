@@ -4,7 +4,7 @@ use futures::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 #[derive(Debug)]
 pub struct Service<S, R, G = fn(&R) -> tracing::Span>
@@ -45,7 +45,7 @@ mod layer {
         }
     }
 
-    // === impl Layer ===
+    // === impl Subscriber ===
     impl<S, R, G> tower_layer::Layer<S> for Layer<R, G>
     where
         S: tower_service::Service<R>,
@@ -79,7 +79,7 @@ pub use self::make::MakeService;
 #[cfg_attr(docsrs, doc(cfg(feature = "tower-make")))]
 pub mod make {
     use super::*;
-    use pin_project::pin_project;
+    use pin_project_lite::pin_project;
 
     #[derive(Debug)]
     pub struct MakeService<S, R, G = fn(&R) -> tracing::Span> {
@@ -99,13 +99,14 @@ pub mod make {
         _p: PhantomData<fn(T, R)>,
     }
 
-    #[pin_project]
-    #[derive(Debug)]
-    pub struct MakeFuture<F, R, G = fn(&R) -> tracing::Span> {
-        get_span: Option<G>,
-        #[pin]
-        inner: F,
-        _p: PhantomData<fn(R)>,
+    pin_project! {
+        #[derive(Debug)]
+        pub struct MakeFuture<F, R, G = fn(&R) -> tracing::Span> {
+            get_span: Option<G>,
+            #[pin]
+            inner: F,
+            _p: PhantomData<fn(R)>,
+        }
     }
 
     #[cfg(feature = "tower-layer")]
@@ -236,7 +237,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = tracing_futures::Instrumented<S::Future>;
+    type Future = tracing::instrument::Instrumented<S::Future>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)

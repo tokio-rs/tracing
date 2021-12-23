@@ -1,20 +1,22 @@
 use std::thread::sleep;
 use std::time::Duration;
-use tempdir::TempDir;
 use tracing::{span, Level};
-use tracing_flame::FlameLayer;
+use tracing_flame::FlameSubscriber;
 use tracing_subscriber::{prelude::*, registry::Registry};
 
 #[test]
 fn capture_supported() {
     {
-        let tmp_dir = TempDir::new("flamegraphs").unwrap();
+        let tmp_dir = tempfile::Builder::new()
+            .prefix("tracing-flamegraph-test-")
+            .tempdir()
+            .expect("failed to create tempdir");
         let (flame_layer, _guard) =
-            FlameLayer::with_file(tmp_dir.path().join("tracing.folded")).unwrap();
+            FlameSubscriber::with_file(tmp_dir.path().join("tracing.folded")).unwrap();
 
         let subscriber = Registry::default().with(flame_layer);
 
-        tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+        tracing::collect::set_global_default(subscriber).expect("Could not set global default");
 
         {
             let span = span!(Level::ERROR, "outer");
@@ -37,5 +39,7 @@ fn capture_supported() {
         }
 
         sleep(Duration::from_millis(500));
+
+        tmp_dir.close().expect("failed to delete tempdir");
     }
 }

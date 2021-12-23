@@ -1,3 +1,12 @@
+# 0.1.11 (August 18, 2020)
+
+### Fixed
+
+- Corrected wrong minimum supported Rust version note in docs (#941)
+- Removed unused `syn` features (#928)
+
+Thanks to new contributor @jhpratt for contributing to this release!`
+
 # 0.1.10 (August 10, 2020)
 
 ### Added

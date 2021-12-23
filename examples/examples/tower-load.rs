@@ -26,7 +26,6 @@
 use bytes::Bytes;
 use futures::{
     future::{self, Ready},
-    stream::StreamExt,
     Future,
 };
 use http::{header, Method, Request, Response, StatusCode};
@@ -42,8 +41,9 @@ use std::{
 };
 use tokio::{time, try_join};
 use tower::{Service, ServiceBuilder, ServiceExt};
-use tracing::{self, debug, error, info, span, trace, warn, Level, Span};
-use tracing_futures::Instrument;
+use tracing::{
+    self, debug, error, info, info_span, span, trace, warn, Instrument as _, Level, Span,
+};
 use tracing_subscriber::{filter::EnvFilter, reload::Handle};
 use tracing_tower::{request_span, request_span::make};
 
@@ -186,11 +186,11 @@ impl<T> Service<T> for MakeSvc {
     }
 }
 
-struct AdminSvc<S> {
-    handle: Handle<EnvFilter, S>,
+struct AdminSvc {
+    handle: Handle<EnvFilter>,
 }
 
-impl<S> Clone for AdminSvc<S> {
+impl Clone for AdminSvc {
     fn clone(&self) -> Self {
         Self {
             handle: self.handle.clone(),
@@ -198,11 +198,8 @@ impl<S> Clone for AdminSvc<S> {
     }
 }
 
-impl<'a, S> Service<&'a AddrStream> for AdminSvc<S>
-where
-    S: tracing::Subscriber,
-{
-    type Response = AdminSvc<S>;
+impl<'a> Service<&'a AddrStream> for AdminSvc {
+    type Response = AdminSvc;
     type Error = hyper::Error;
     type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -215,10 +212,7 @@ where
     }
 }
 
-impl<S> Service<Request<Body>> for AdminSvc<S>
-where
-    S: tracing::Subscriber + 'static,
-{
+impl Service<Request<Body>> for AdminSvc {
     type Response = Response<Body>;
     type Error = Err;
     type Future = Pin<Box<dyn Future<Output = Result<Response<Body>, Err>> + std::marker::Send>>;
@@ -253,13 +247,10 @@ where
     }
 }
 
-impl<S> AdminSvc<S>
-where
-    S: tracing::Subscriber + 'static,
-{
+impl AdminSvc {
     fn set_from(&self, bytes: Bytes) -> Result<(), String> {
         use std::str;
-        let body = str::from_utf8(&bytes.as_ref()).map_err(|e| format!("{}", e))?;
+        let body = str::from_utf8(bytes.as_ref()).map_err(|e| format!("{}", e))?;
         trace!(request.body = ?body);
         let new_filter = body
             .parse::<tracing_subscriber::filter::EnvFilter>()
@@ -318,14 +309,16 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         .layer(request_span::layer(req_span))
         .timeout(Duration::from_millis(200))
         .service(Client::new());
-    let mut interval = time::interval(Duration::from_millis(50));
-    while interval.next().await.is_some() {
+    let mut interval = tokio::time::interval(Duration::from_millis(50));
+
+    loop {
+        interval.tick().await;
         let authority = format!("{}", addr);
         let mut svc = svc.clone().ready_oneshot().await?;
 
         let f = async move {
             let sleep = rand::thread_rng().gen_range(0, 25);
-            time::delay_for(Duration::from_millis(sleep)).await;
+            time::sleep(Duration::from_millis(sleep)).await;
 
             let (len, uri) = gen_uri(&authority);
             let req = Request::get(&uri[..])
@@ -368,11 +361,9 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
             .instrument(span)
             .await
         }
-        .instrument(span!(target: "gen", Level::INFO, "generated_request", remote.addr=%addr));
+        .instrument(info_span!(target: "gen", "generated_request", remote.addr=%addr).or_current());
         tokio::spawn(f);
     }
-
-    Ok(())
 }
 
 fn req_span<A>(req: &Request<A>) -> Span {

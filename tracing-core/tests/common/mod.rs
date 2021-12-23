@@ -1,7 +1,7 @@
-use tracing_core::{metadata::Metadata, span, subscriber::Subscriber, Event};
+use tracing_core::{collect::Collect, metadata::Metadata, span, Event};
 
-pub struct TestSubscriberA;
-impl Subscriber for TestSubscriberA {
+pub struct TestCollectorA;
+impl Collect for TestCollectorA {
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }
@@ -13,9 +13,12 @@ impl Subscriber for TestSubscriberA {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }
-pub struct TestSubscriberB;
-impl Subscriber for TestSubscriberB {
+pub struct TestCollectorB;
+impl Collect for TestCollectorB {
     fn enabled(&self, _: &Metadata<'_>) -> bool {
         true
     }
@@ -27,4 +30,7 @@ impl Subscriber for TestSubscriberB {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+    fn current_span(&self) -> span::Current {
+        span::Current::unknown()
+    }
 }

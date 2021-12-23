@@ -15,22 +15,23 @@ categories = [
 ]
 keywords = ["logging", "tracing"]
 license = "MIT"
+rust-version = "1.42.0"
 
 [features]
-default = ["tower-layer", "tower-make", "http"]
+default = ["tower-layer", "tower-make"]
 tower-make = [
     "tower_make",
-    "pin-project",
+    "pin-project-lite",
 ]
 
 [dependencies]
-tracing = { path = "../tracing", version = "0.1"}
-tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["std-future"] }
+tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
+tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["std-future"] }
 futures = "0.3"
 tower-service = "0.3"
 tower-layer = { version = "0.3", optional = true }
 tower_make = { package = "tower-make", version = "0.3", optional = true }
-pin-project = { version = "0.4", optional = true }
+pin-project-lite = { version = "0.2.4", optional = true }
 http = { version = "0.2", optional = true }
 
 [badges]

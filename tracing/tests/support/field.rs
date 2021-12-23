@@ -19,14 +19,40 @@ pub struct MockField {
     value: MockValue,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum MockValue {
+    F64(f64),
     I64(i64),
     U64(u64),
     Bool(bool),
     Str(String),
     Debug(String),
     Any,
+}
+
+impl Eq for MockValue {}
+
+impl PartialEq for MockValue {
+    fn eq(&self, other: &Self) -> bool {
+        use MockValue::*;
+
+        match (self, other) {
+            (F64(a), F64(b)) => {
+                debug_assert!(!a.is_nan());
+                debug_assert!(!b.is_nan());
+
+                a.eq(b)
+            }
+            (I64(a), I64(b)) => a.eq(b),
+            (U64(a), U64(b)) => a.eq(b),
+            (Bool(a), Bool(b)) => a.eq(b),
+            (Str(a), Str(b)) => a.eq(b),
+            (Debug(a), Debug(b)) => a.eq(b),
+            (Any, _) => true,
+            (_, Any) => true,
+            _ => false,
+        }
+    }
 }
 
 pub fn mock<K>(name: K) -> MockField
@@ -66,13 +92,13 @@ impl MockField {
     }
 }
 
-impl Into<Expect> for MockField {
-    fn into(self) -> Expect {
+impl From<MockField> for Expect {
+    fn from(field: MockField) -> Self {
         Expect {
             fields: HashMap::new(),
             only: false,
         }
-        .and(self)
+        .and(field)
     }
 }
 
@@ -120,6 +146,7 @@ impl Expect {
 impl fmt::Display for MockValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            MockValue::F64(v) => write!(f, "f64 = {:?}", v),
             MockValue::I64(v) => write!(f, "i64 = {:?}", v),
             MockValue::U64(v) => write!(f, "u64 = {:?}", v),
             MockValue::Bool(v) => write!(f, "bool = {:?}", v),
@@ -136,6 +163,11 @@ pub struct CheckVisitor<'a> {
 }
 
 impl<'a> Visit for CheckVisitor<'a> {
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.expect
+            .compare_or_panic(field.name(), &value, &self.ctx[..])
+    }
+
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.expect
             .compare_or_panic(field.name(), &value, &self.ctx[..])
@@ -180,6 +212,10 @@ impl<'a> From<&'a dyn Value> for MockValue {
         }
 
         impl Visit for MockValueBuilder {
+            fn record_f64(&mut self, _: &Field, value: f64) {
+                self.value = Some(MockValue::F64(value));
+            }
+
             fn record_i64(&mut self, _: &Field, value: i64) {
                 self.value = Some(MockValue::I64(value));
             }

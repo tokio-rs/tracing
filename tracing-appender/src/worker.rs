@@ -7,6 +7,7 @@ use std::{io, thread};
 pub(crate) struct Worker<T: Write + Send + Sync + 'static> {
     writer: T,
     receiver: Receiver<Msg>,
+    shutdown: Receiver<()>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -18,14 +19,18 @@ pub(crate) enum WorkerState {
 }
 
 impl<T: Write + Send + Sync + 'static> Worker<T> {
-    pub(crate) fn new(receiver: Receiver<Msg>, writer: T) -> Worker<T> {
-        Self { writer, receiver }
+    pub(crate) fn new(receiver: Receiver<Msg>, writer: T, shutdown: Receiver<()>) -> Worker<T> {
+        Self {
+            writer,
+            receiver,
+            shutdown,
+        }
     }
 
     fn handle_recv(&mut self, result: &Result<Msg, RecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(Msg::Line(msg)) => {
-                self.writer.write_all(&msg)?;
+                self.writer.write_all(msg)?;
                 Ok(WorkerState::Continue)
             }
             Ok(Msg::Shutdown) => Ok(WorkerState::Shutdown),
@@ -36,7 +41,7 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     fn handle_try_recv(&mut self, result: &Result<Msg, TryRecvError>) -> io::Result<WorkerState> {
         match result {
             Ok(Msg::Line(msg)) => {
-                self.writer.write_all(&msg)?;
+                self.writer.write_all(msg)?;
                 Ok(WorkerState::Continue)
             }
             Ok(Msg::Shutdown) => Ok(WorkerState::Shutdown),
@@ -67,14 +72,15 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
             loop {
                 match self.work() {
                     Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
-                    Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => break,
+                    Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
+                        drop(self.writer); // drop now in case it blocks
+                        let _ = self.shutdown.recv();
+                        return;
+                    }
                     Err(_) => {
                         // TODO: Expose a metric for IO Errors, or print to stderr
                     }
                 }
-            }
-            if let Err(e) = self.writer.flush() {
-                eprintln!("Failed to flush. Error: {}", e);
             }
         })
     }

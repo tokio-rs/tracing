@@ -1,8 +1,8 @@
 //! Utilities for working with [fields] and [field visitors].
 //!
-//! [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
-//! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
-use std::{fmt, io};
+//! [fields]: tracing_core::field
+//! [field visitors]: tracing_core::field::Visit
+use core::{fmt, marker::PhantomData};
 pub use tracing_core::field::Visit;
 use tracing_core::{
     span::{Attributes, Record},
@@ -22,7 +22,7 @@ pub mod display;
 /// data to, configuration variables that determine the visitor's behavior, or
 /// `()` when no input is required to produce a visitor.
 ///
-/// [visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
+/// [visitors]: tracing_core::field::Visit
 pub trait MakeVisitor<T> {
     /// The visitor type produced by this `MakeVisitor`.
     type Visitor: Visit;
@@ -33,7 +33,7 @@ pub trait MakeVisitor<T> {
 
 /// A [visitor] that produces output once it has visited a set of fields.
 ///
-/// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
+/// [visitor]: tracing_core::field::Visit
 pub trait VisitOutput<Out>: Visit {
     /// Completes the visitor, returning any output.
     ///
@@ -82,10 +82,10 @@ pub trait VisitOutput<Out>: Visit {
 ///     r.record(&mut visitor);
 /// }
 /// ```
-/// [visitor]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
-/// [attr]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Attributes.html
-/// [rec]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Record.html
-/// [event]: https://docs.rs/tracing-core/latest/tracing_core/event/struct.Event.html
+/// [visitor]: tracing_core::field::Visit
+/// [attr]: tracing_core::span::Attributes
+/// [rec]: tracing_core::span::Record
+/// [event]: tracing_core::event::Event
 pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     /// Record all the fields in `self` with the provided `visitor`.
     fn record(&self, visitor: &mut dyn Visit);
@@ -108,11 +108,16 @@ where
     }
 }
 
-/// Extension trait implemented by visitors to indicate that they write to an
-/// `io::Write` instance, and allow access to that writer.
-pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
-    /// Returns the writer that this visitor writes to.
-    fn writer(&mut self) -> &mut dyn io::Write;
+feature! {
+    #![feature = "std"]
+    use std::io;
+
+    /// Extension trait implemented by visitors to indicate that they write to an
+    /// `io::Write` instance, and allow access to that writer.
+    pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
+        /// Returns the writer that this visitor writes to.
+        fn writer(&mut self) -> &mut dyn io::Write;
+    }
 }
 
 /// Extension trait implemented by visitors to indicate that they write to a
@@ -156,21 +161,21 @@ where
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
 impl<'a> RecordFields for Event<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Event::record(&self, visitor)
+        Event::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
 impl<'a> RecordFields for Attributes<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Attributes::record(&self, visitor)
+        Attributes::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
 impl<'a> RecordFields for Record<'a> {
     fn record(&self, visitor: &mut dyn Visit) {
-        Record::record(&self, visitor)
+        Record::record(self, visitor)
     }
 }
 
@@ -223,7 +228,7 @@ where
 #[derive(Debug)]
 #[doc(hidden)]
 pub struct MakeExtMarker<T> {
-    _p: std::marker::PhantomData<T>,
+    _p: PhantomData<T>,
 }
 
 #[derive(Debug)]
@@ -232,10 +237,11 @@ pub struct RecordFieldsMarker {
     _p: (),
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 #[macro_use]
 pub(in crate::field) mod test_util {
     use super::*;
+    pub(in crate::field) use alloc::string::String;
     use tracing_core::{
         callsite::Callsite,
         field::{Field, Value},
@@ -309,7 +315,7 @@ pub(in crate::field) mod test_util {
     };
 
     impl Callsite for TestCallsite1 {
-        fn set_interest(&self, _: tracing_core::subscriber::Interest) {
+        fn set_interest(&self, _: tracing_core::collect::Interest) {
             unimplemented!()
         }
 
@@ -335,7 +341,7 @@ pub(in crate::field) mod test_util {
 
     impl<'a> Visit for DebugVisitor<'a> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-            write!(&mut self.writer, "{}={:?}", field, value).unwrap();
+            write!(self.writer, "{}={:?}", field, value).unwrap();
         }
     }
 

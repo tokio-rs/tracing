@@ -1,4 +1,4 @@
-//! A `Layer` that enables or disables spans and events based on a set of
+//! A `Subscriber` that enables or disables spans and events based on a set of
 //! filtering directives.
 
 // these are publicly re-exported, but the compiler doesn't realize
@@ -13,24 +13,23 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    layer::{Context, Layer},
+    subscribe::{Context, Subscribe},
     sync::RwLock,
 };
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use tracing_core::{
     callsite,
+    collect::{Collect, Interest},
     field::Field,
-    span,
-    subscriber::{Interest, Subscriber},
-    Metadata,
+    span, Metadata,
 };
 
-/// A [`Layer`] which filters spans and events based on a set of filter
+/// A [`Subscriber`] which filters spans and events based on a set of filter
 /// directives.
 ///
 /// # Directives
 ///
-/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// A filter consists of one or more comma-separated directives which match on [`Span`]s and [`Event`]s.
 /// Each directive may have a corresponding maximum verbosity [`level`] which
 /// enables (e.g., _selects for_) spans and events that match. Like `log`,
 /// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
@@ -68,12 +67,20 @@ use tracing_core::{
 /// - If only a level is provided, it will set the maximum level for all `Span`s and `Event`s
 ///   that are not enabled by other filters.
 /// - A directive without a level will enable anything that it matches. This is equivalent to `=trace`.
+/// - When a crate has a dash in its name, the default target for events will be the
+///   crate's module path as it appears in Rust. This means every dash will be replaced
+///   with an underscore.
+/// - A dash in a target will only appear when being specified explicitly:
+///   `tracing::info!(target: "target-name", ...);`
 ///
 /// ## Examples
 ///
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
 ///    - at the level `info` or above.
+/// - `warn,tokio::net=info` will enable all spans and events that:
+///    - are at the level `warn` or above, *or*
+///    - have the `tokio::net` target at the level `info` or above.
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
@@ -83,15 +90,14 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
@@ -114,6 +120,7 @@ type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
@@ -129,8 +136,6 @@ impl EnvFilter {
     /// `RUST_LOG` is the default environment variable used by
     /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`EnvFilter::from_default_env`]: #method.from_default_env
-    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
@@ -197,8 +202,7 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: ../filter/struct.LevelFilter.html
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///
@@ -242,6 +246,95 @@ impl EnvFilter {
     }
 
     fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
+        use tracing::level_filters::STATIC_MAX_LEVEL;
+        use tracing::Level;
+
+        let directives: Vec<_> = directives.into_iter().collect();
+
+        let disabled: Vec<_> = directives
+            .iter()
+            .filter(|directive| directive.level > STATIC_MAX_LEVEL)
+            .collect();
+
+        if !disabled.is_empty() {
+            #[cfg(feature = "ansi_term")]
+            use ansi_term::{Color, Style};
+            // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
+            // has no knowledge of any underlying subscriber or collector, which
+            // may or may not use a `MakeWriter`.
+            let warn = |msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("warning: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let bold = Style::new().bold();
+                    let mut warning = Color::Yellow.paint("warning");
+                    warning.style_ref_mut().is_bold = true;
+                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
+                };
+                eprintln!("{}", msg);
+            };
+            let ctx_prefixed = |prefix: &str, msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("note: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let mut equal = Color::Fixed(21).paint("="); // dark blue
+                    equal.style_ref_mut().is_bold = true;
+                    format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
+                };
+                eprintln!("{}", msg);
+            };
+            let ctx_help = |msg| ctx_prefixed("help:", msg);
+            let ctx_note = |msg| ctx_prefixed("note:", msg);
+            let ctx = |msg: &str| {
+                #[cfg(not(feature = "ansi_term"))]
+                let msg = format!("note: {}", msg);
+                #[cfg(feature = "ansi_term")]
+                let msg = {
+                    let mut pipe = Color::Fixed(21).paint("|");
+                    pipe.style_ref_mut().is_bold = true;
+                    format!(" {} {}", pipe, msg)
+                };
+                eprintln!("{}", msg);
+            };
+            warn("some trace filter directives would enable traces that are disabled statically");
+            for directive in disabled {
+                let target = if let Some(target) = &directive.target {
+                    format!("the `{}` target", target)
+                } else {
+                    "all targets".into()
+                };
+                let level = directive
+                    .level
+                    .into_level()
+                    .expect("=off would not have enabled any filters");
+                ctx(&format!(
+                    "`{}` would enable the {} level for {}",
+                    directive, level, target
+                ));
+            }
+            ctx_note(&format!("the static max level is `{}`", STATIC_MAX_LEVEL));
+            let help_msg = || {
+                let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
+                    Some(Level::TRACE) => unreachable!(
+                        "if the max level is trace, no static filtering features are enabled"
+                    ),
+                    Some(Level::DEBUG) => ("max_level_debug", Level::TRACE),
+                    Some(Level::INFO) => ("max_level_info", Level::DEBUG),
+                    Some(Level::WARN) => ("max_level_warn", Level::INFO),
+                    Some(Level::ERROR) => ("max_level_error", Level::WARN),
+                    None => return ("max_level_off", String::new()),
+                };
+                (feature, format!("{} ", filter))
+            };
+            let (feature, earlier_level) = help_msg();
+            ctx_help(&format!(
+                "to enable {}logging, remove the `{}` feature",
+                earlier_level, feature
+            ));
+        }
+
         let (dynamics, mut statics) = Directive::make_tables(directives);
         let has_dynamics = !dynamics.is_empty();
 
@@ -272,7 +365,7 @@ impl EnvFilter {
     }
 }
 
-impl<S: Subscriber> Layer<S> for EnvFilter {
+impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -301,12 +394,12 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
             return Some(LevelFilter::TRACE);
         }
         std::cmp::max(
-            self.statics.max_level.clone().into(),
-            self.dynamics.max_level.clone().into(),
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
         )
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -349,7 +442,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -357,13 +450,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -372,13 +465,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
         if self.cares_about_span(id) {
             SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -481,11 +574,11 @@ mod tests {
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 
-    struct NoSubscriber;
-    impl Subscriber for NoSubscriber {
+    struct NoCollector;
+    impl Collect for NoCollector {
         #[inline]
-        fn register_callsite(&self, _: &'static Metadata<'static>) -> subscriber::Interest {
-            subscriber::Interest::always()
+        fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
+            collect::Interest::always()
         }
         fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
             span::Id::from_u64(0xDEAD)
@@ -500,6 +593,9 @@ mod tests {
         }
         fn enter(&self, _span: &span::Id) {}
         fn exit(&self, _span: &span::Id) {}
+        fn current_span(&self) -> span::Current {
+            span::Current::unknown()
+        }
     }
 
     struct Cs;
@@ -512,7 +608,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let filter = EnvFilter::new("app=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -530,7 +626,7 @@ mod tests {
 
     #[test]
     fn callsite_off() {
-        let filter = EnvFilter::new("app=off").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app=off").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -542,13 +638,13 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let filter = EnvFilter::new("app[mySpan]=debug").with_subscriber(NoSubscriber);
+        let filter = EnvFilter::new("app[mySpan]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -560,14 +656,14 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
     #[test]
     fn callsite_enabled_includes_span_directive_field() {
         let filter =
-            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_subscriber(NoSubscriber);
+            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -579,14 +675,14 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_always());
     }
 
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
-            .with_subscriber(NoSubscriber);
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -598,7 +694,7 @@ mod tests {
             Kind::SPAN,
         );
 
-        let interest = filter.register_callsite(&META);
+        let interest = filter.register_callsite(META);
         assert!(interest.is_never());
     }
 
