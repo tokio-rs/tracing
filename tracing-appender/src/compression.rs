@@ -60,3 +60,20 @@ pub struct GzipCompression {
 pub enum CompressionConfig {
     Gzip(GzipCompression)
 }
+
+mod compression_options {
+    use super::*;
+    pub const GZIP_NONE: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Literal(GzipCompressionLevelLiteral::None) });
+    pub const GZIP_FAST: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Literal(GzipCompressionLevelLiteral::Fast) });
+    pub const GZIP_BEST: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Literal(GzipCompressionLevelLiteral::Best) });
+    pub const GZIP_0: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level0) });
+    pub const GZIP_1: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level1) });
+    pub const GZIP_2: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level2) });
+    pub const GZIP_3: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level3) });
+    pub const GZIP_4: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level4) });
+    pub const GZIP_5: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level5) });
+    pub const GZIP_6: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level6) });
+    pub const GZIP_7: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level7) });
+    pub const GZIP_8: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level8) });
+    pub const GZIP_9: CompressionConfig = CompressionConfig::Gzip(GzipCompression { level: GzipCompressionLevel::Numerical(GzipCompressionLevelNumerical::Level9) });
+}
