@@ -26,31 +26,89 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::inner::InnerAppender;
-use std::io;
-use std::path::Path;
+use crate::sync::{RwLock, RwLockReadGuard};
+use std::{
+    fmt::Debug,
+    fs::{self, File, OpenOptions},
+    io::{self, Write},
+    path::Path,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+use std::borrow::BorrowMut;
 use time::{format_description, Duration, OffsetDateTime, Time};
+use crate::builder::RollingFileAppenderBuilder;
+use crate::writer::WriterChannel;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// `RollingFileAppender` implements [`std:io::Write` trait][write] and will block on write operations.
-/// It may be used with [`NonBlocking`][non-blocking] to perform writes without
-/// blocking the current thread.
+/// `RollingFileAppender` implements the [`std:io::Write` trait][write] and will
+/// block on write operations. It may be used with [`NonBlocking`] to perform
+/// writes without blocking the current thread.
+///
+/// Additionally, `RollingFileAppender` also implements the [`MakeWriter`
+/// trait][make_writer] from `tracing-appender`, so it may also be used
+/// directly, without [`NonBlocking`].
 ///
 /// [write]: std::io::Write
-/// [non-blocking]: super::non_blocking::NonBlocking
+/// [`NonBlocking`]: super::non_blocking::NonBlocking
 ///
 /// # Examples
 ///
+/// Rolling a log file once every hour:
+///
 /// ```rust
 /// # fn docs() {
-/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix");
 /// # }
 /// ```
+///
+/// Combining a `RollingFileAppender` with another [`MakeWriter`] implementation:
+///
+/// ```rust
+/// # fn docs() {
+/// use tracing_subscriber::fmt::writer::MakeWriterExt;
+///
+/// // Log all events to a rolling log file.
+/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
+
+/// // Log `INFO` and above to stdout.
+/// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
+///
+/// tracing_subscriber::fmt()
+///     // Combine the stdout and log file `MakeWriter`s into one
+///     // `MakeWriter` that writes to both
+///     .with_writer(stdout.and(logfile))
+///     .init();
+/// # }
+/// ```
+///
+/// [make_writer] tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
 pub struct RollingFileAppender {
-    inner: InnerAppender,
+    pub(crate) state: Inner,
+    pub(crate) writer: RwLock<WriterChannel>,
 }
+
+/// A [writer] that writes to a rolling log file.
+///
+/// This is returned by the [`MakeWriter`] implementation for [`RollingFileAppender`].
+///
+/// [writer]: std::io::Write
+/// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
+#[derive(Debug)]
+pub struct RollingWriter<'a>(RwLockReadGuard<'a, WriterChannel>);
+
+#[derive(Debug)]
+pub(crate) struct Inner {
+    pub(crate) log_directory: String,
+    pub(crate) log_filename_prefix: String,
+    pub(crate) rotation: Rotation,
+    pub(crate) next_date: AtomicUsize,
+    #[cfg(feature = "compression")]
+    pub(crate) compression: Option<CompressionConfig>
+}
+
+// === impl RollingFileAppender ===
 
 impl RollingFileAppender {
     /// Creates a new `RollingFileAppender`.
@@ -81,25 +139,45 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
-        RollingFileAppender {
-            inner: InnerAppender::new(
-                directory.as_ref(),
-                file_name_prefix.as_ref(),
-                rotation,
-                OffsetDateTime::now_utc(),
-            )
-            .expect("Failed to create appender"),
-        }
+        RollingFileAppenderBuilder::new()
+            .rotation(rotation)
+            .log_directory(directory.as_ref().to_str().unwrap().to_string())
+            .log_filename_prefix(file_name_prefix.as_ref().to_str().unwrap().to_string())
+            .build()
     }
 }
 
 impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        let now = OffsetDateTime::now_utc();
+        let writer = self.writer.get_mut();
+        if self.state.should_rollover(now) {
+            let _did_cas = self.state.advance_date(now);
+            debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
+            self.state.refresh_writer(now, writer);
+        }
+        writer.get_writer().write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
+        self.writer.get_mut().get_writer().flush()
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
+    type Writer = RollingWriter<'a>;
+    fn make_writer(&'a self) -> Self::Writer {
+        let now = OffsetDateTime::now_utc();
+
+        // Should we try to roll over the log file?
+        if self.state.should_rollover(now) {
+            // Did we get the right to lock the file? If not, another thread
+            // did it and we can just make a writer.
+            if self.state.advance_date(now) {
+                self.state.refresh_writer(now, &mut *self.writer.write());
+            }
+        }
+        RollingWriter(self.writer.read())
     }
 }
 
@@ -374,6 +452,110 @@ impl Rotation {
             format!("{}.{}", filename, date)
         }
     }
+}
+
+// === impl RollingWriter ===
+
+impl io::Write for RollingWriter<'_> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&*self.0).get_writer().write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        (&*self.0).get_writer().flush()
+    }
+}
+
+// === impl Inner ===
+
+impl Inner {
+
+    #[cfg(feature = "compression")]
+    fn refresh_writer(&self,
+                      now: OffsetDateTime,
+                      file: &mut WriterChannel,
+                      compression: CompressionConfig) {
+        debug_assert!(self.should_rollover(now));
+
+        let filename = self.rotation.join_date(&self.log_filename_prefix, &now, false);
+
+        let writer = WriterChannel::new_with_compression(
+            &self.log_directory,
+            &filename,
+            compression
+        );
+
+        Self::refresh_writer_channel(file, writer);
+    }
+
+    #[cfg(not(feature = "compression"))]
+    fn refresh_writer(&self,
+                      now: OffsetDateTime,
+                      file: &mut WriterChannel) {
+        debug_assert!(self.should_rollover(now));
+
+        let filename = self.rotation.join_date(&self.log_filename_prefix, &now, false);
+
+        let writer = WriterChannel::new_without_compression(
+            &self.log_directory,
+            &filename,
+        );
+
+        Self::refresh_writer_channel(file, writer)
+    }
+
+    fn refresh_writer_channel(file: &mut WriterChannel, writer: io::Result<WriterChannel>) {
+        match writer {
+            Ok(new_file) => {
+                if let Err(err) = file.get_writer().flush() {
+                    eprintln!("Couldn't flush previous writer: {}", err);
+                }
+                *file = new_file;
+            }
+            Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
+        }
+    }
+
+    fn should_rollover(&self, date: OffsetDateTime) -> bool {
+        // the `None` case means that the `InnerAppender` *never* rotates log files.
+        let next_date = self.next_date.load(Ordering::Acquire);
+        if next_date == 0 {
+            return false;
+        }
+        date.unix_timestamp() as usize >= next_date
+    }
+
+    fn advance_date(&self, now: OffsetDateTime) -> bool {
+        let next_date = self
+            .rotation
+            .next_date(&now)
+            .map(|date| date.unix_timestamp() as usize)
+            .unwrap_or(0);
+        self.next_date
+            .compare_exchange(
+                now.unix_timestamp() as usize,
+                next_date,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+}
+
+pub fn create_writer_file(directory: &str, filename: &str) -> io::Result<File> {
+    let path = Path::new(directory).join(filename);
+    let mut open_options = OpenOptions::new();
+    open_options.append(true).create(true);
+
+    let new_file = open_options.open(path.as_path());
+    if new_file.is_err() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+            return open_options.open(path);
+        }
+    }
+
+    new_file
 }
 
 #[cfg(test)]

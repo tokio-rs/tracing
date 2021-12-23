@@ -153,15 +153,20 @@ use crate::non_blocking::{NonBlocking, WorkerGuard};
 
 use std::io::Write;
 
-mod inner;
-
 pub mod non_blocking;
 
 pub mod rolling;
 
 mod worker;
 
+pub(crate) mod sync;
+
 mod writer;
+
+#[cfg(feature = "compression")]
+mod compression;
+
+mod builder;
 
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
