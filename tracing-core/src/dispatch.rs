@@ -372,9 +372,9 @@ impl error::Error for SetGlobalDefaultError {}
 ///
 /// [dispatcher]: super::dispatch::Dispatch
 #[cfg(feature = "std")]
-pub fn get_default<T, F>(mut f: F) -> T
+pub fn get_default<T, F>(f: F) -> T
 where
-    F: FnMut(&Dispatch) -> T,
+    F: FnOnce(&Dispatch) -> T,
 {
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped dispatcher has been set; just use the global
@@ -393,23 +393,36 @@ where
         }
     }
 
+    // workaround to allow `f` to be `FnOnce. The `f` in this function will be executed
+    // only once thus it is safe to call `f.take().expect()`
+    let mut f = Some(f);
+
     CURRENT_STATE
         .try_with(|state| {
             if state.can_enter.replace(false) {
                 let _guard = Entered(&state.can_enter);
 
-                let mut default = state.default.borrow_mut();
-
-                if default.is::<NoCollector>() {
-                    // don't redo this call on the next check
-                    *default = get_global().clone();
+                if let Ok(mut default) = state.default.try_borrow_mut() {
+                    if default.is::<NoCollector>() {
+                        // don't redo this call on the next check
+                        *default = get_global().clone();
+                    }
+                    return match f.take() {
+                        Some(f) => f(&*default),
+                        None => unsafe { std::hint::unreachable_unchecked() },
+                    };
                 }
-                return f(&*default);
             }
 
-            f(&Dispatch::none())
+            match f.take() {
+                Some(f) => f(&Dispatch::none()),
+                None => unsafe { std::hint::unreachable_unchecked() },
+            }
         })
-        .unwrap_or_else(|_| f(&Dispatch::none()))
+        .unwrap_or_else(|_| match f.take() {
+            Some(f) => f(&Dispatch::none()),
+            None => unsafe { std::hint::unreachable_unchecked() },
+        })
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
