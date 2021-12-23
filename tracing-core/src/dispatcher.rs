@@ -167,6 +167,7 @@ thread_local! {
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
@@ -281,6 +282,7 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
+        SCOPED_COUNT.fetch_add(1, Ordering::Release);
         Ok(())
     } else {
         Err(SetGlobalDefaultError { _no_construct: () })
@@ -325,6 +327,14 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
+    if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
+        // fast path if no scoped dispatcher has been set; just use the global
+        // default.
+        if let Some(global) = get_global() {
+            return f(global);
+        }
+    }
+
     CURRENT_STATE
         .try_with(|state| {
             if let Some(entered) = state.enter() {
@@ -735,6 +745,7 @@ impl<'a> Drop for Entered<'a> {
 impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
+        SCOPED_COUNT.fetch_sub(1, Ordering::Release);
         if let Some(dispatch) = self.0.take() {
             // Replace the dispatcher and then drop the old one outside
             // of the thread-local context. Dropping the dispatch may
