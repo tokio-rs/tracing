@@ -26,7 +26,11 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
+use crate::builder::RollingFileAppenderBuilder;
+#[cfg(feature = "compression")]
+use crate::compression::CompressionConfig;
 use crate::sync::{RwLock, RwLockReadGuard};
+use crate::writer::WriterChannel;
 use std::{
     fmt::Debug,
     fs::{self, File, OpenOptions},
@@ -35,10 +39,6 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
-use crate::builder::RollingFileAppenderBuilder;
-#[cfg(feature = "compression")]
-use crate::compression::CompressionConfig;
-use crate::writer::WriterChannel;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -106,7 +106,7 @@ pub(crate) struct Inner {
     pub(crate) rotation: Rotation,
     pub(crate) next_date: AtomicUsize,
     #[cfg(feature = "compression")]
-    pub(crate) compression: Option<CompressionConfig>
+    pub(crate) compression: Option<CompressionConfig>,
 }
 
 // === impl RollingFileAppender ===
@@ -410,7 +410,12 @@ impl Rotation {
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime, compress: bool) -> String {
+    pub(crate) fn join_date(
+        &self,
+        filename: &str,
+        date: &OffsetDateTime,
+        compress: bool,
+    ) -> String {
         match *self {
             Rotation::MINUTELY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
@@ -438,11 +443,13 @@ impl Rotation {
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
                 Rotation::format_params(filename, compress, date)
             }
-            Rotation::NEVER => if compress {
-                format!("{}.gz", filename.to_string())
-            } else {
-                filename.to_string()
-            },
+            Rotation::NEVER => {
+                if compress {
+                    format!("{}.gz", filename.to_string())
+                } else {
+                    filename.to_string()
+                }
+            }
         }
     }
 
@@ -470,37 +477,34 @@ impl io::Write for RollingWriter<'_> {
 // === impl Inner ===
 
 impl Inner {
-
     #[cfg(feature = "compression")]
-    fn refresh_writer(&self,
-                      now: OffsetDateTime,
-                      file: &mut WriterChannel,
-                      compression: CompressionConfig) {
+    fn refresh_writer(
+        &self,
+        now: OffsetDateTime,
+        file: &mut WriterChannel,
+        compression: CompressionConfig,
+    ) {
         debug_assert!(self.should_rollover(now));
 
-        let filename = self.rotation.join_date(&self.log_filename_prefix, &now, false);
+        let filename = self
+            .rotation
+            .join_date(&self.log_filename_prefix, &now, false);
 
-        let writer = WriterChannel::new_with_compression(
-            &self.log_directory,
-            &filename,
-            compression
-        );
+        let writer =
+            WriterChannel::new_with_compression(&self.log_directory, &filename, compression);
 
         Self::refresh_writer_channel(file, writer);
     }
 
     #[cfg(not(feature = "compression"))]
-    fn refresh_writer(&self,
-                      now: OffsetDateTime,
-                      file: &mut WriterChannel) {
+    fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
-        let filename = self.rotation.join_date(&self.log_filename_prefix, &now, false);
+        let filename = self
+            .rotation
+            .join_date(&self.log_filename_prefix, &now, false);
 
-        let writer = WriterChannel::new_without_compression(
-            &self.log_directory,
-            &filename,
-        );
+        let writer = WriterChannel::new_without_compression(&self.log_directory, &filename);
 
         Self::refresh_writer_channel(file, writer)
     }
@@ -606,13 +610,19 @@ mod test {
     }
 
     #[test]
-    fn write_hourly_log() { test_appender(Rotation::HOURLY, "hourly.log", false); }
+    fn write_hourly_log() {
+        test_appender(Rotation::HOURLY, "hourly.log", false);
+    }
 
     #[test]
-    fn write_daily_log() { test_appender(Rotation::DAILY, "daily.log", false); }
+    fn write_daily_log() {
+        test_appender(Rotation::DAILY, "daily.log", false);
+    }
 
     #[test]
-    fn write_never_log() { test_appender(Rotation::NEVER, "never.log", false); }
+    fn write_never_log() {
+        test_appender(Rotation::NEVER, "never.log", false);
+    }
 
     #[test]
     fn test_rotations() {
