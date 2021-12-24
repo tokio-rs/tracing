@@ -1,15 +1,16 @@
 use crate::rolling::create_writer_file;
 use std::fs::File;
 use std::io;
-use std::io::BufWriter;
-use std::sync::{Arc, RwLock};
 
 #[cfg(feature = "compression")]
-use flate2::write::GzEncoder;
+use {
+    crate::compression::CompressionConfig,
+    flate2::write::GzEncoder,
+    std::io::BufWriter,
+    std::sync::{Arc, RwLock},
+};
 
 #[cfg(feature = "compression")]
-use crate::compression::CompressionConfig;
-
 #[derive(Debug)]
 pub(crate) struct CompressedGzip {
     compression: CompressionConfig,

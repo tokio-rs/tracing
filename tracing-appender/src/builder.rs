@@ -6,6 +6,8 @@ use time::OffsetDateTime;
 
 #[cfg(feature = "compression")]
 use crate::compression::CompressionConfig;
+
+#[cfg(feature = "compression")]
 use crate::compression::CompressionOption;
 
 use crate::writer::WriterChannel;
