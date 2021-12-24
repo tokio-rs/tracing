@@ -1,11 +1,7 @@
 use crate::rolling::create_writer_file;
-use crate::sync::RwLock;
-use std::borrow::{Borrow, BorrowMut};
-use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Write};
-use std::ops::{Deref, DerefMut};
-use std::path::Path;
-use std::{fs, io};
+use std::fs::File;
+use std::io;
+use std::io::BufWriter;
 
 #[cfg(feature = "compression")]
 use flate2::write::GzEncoder;

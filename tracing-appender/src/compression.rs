@@ -66,7 +66,7 @@ impl CompressionConfig {
     pub(crate) fn gz_compress_level(&self) -> Compression {
         match self {
             CompressionConfig::Gzip(gz) => {
-                let level = gz.level.into();
+                let level = gz.level.clone().into();
                 level
             }
         }

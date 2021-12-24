@@ -1,6 +1,6 @@
-use std::path::Path;
 use crate::rolling::{create_writer_file, Inner, RollingFileAppender, Rotation};
 use crate::sync::RwLock;
+use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use time::OffsetDateTime;
 
@@ -8,7 +8,6 @@ use time::OffsetDateTime;
 use crate::compression::CompressionConfig;
 
 use crate::writer::WriterChannel;
-
 
 #[derive(Debug)]
 pub struct RollingFileAppenderBuilder {
@@ -21,10 +20,17 @@ pub struct RollingFileAppenderBuilder {
 
 impl RollingFileAppenderBuilder {
     /// Creates an instance of RollingFileAppnderBuilder
-    pub fn new(log_directory: impl AsRef<Path>,
-               log_filename_prefix: impl AsRef<Path>) -> Self {
-        let log_directory = log_directory.as_ref().to_str().expect("Cannot convert log_directory Path to str").to_string();
-        let log_filename_prefix = log_filename_prefix.as_ref().to_str().expect("Cannot convert log_filename_prefix Path to str").to_string();
+    pub fn new(log_directory: impl AsRef<Path>, log_filename_prefix: impl AsRef<Path>) -> Self {
+        let log_directory = log_directory
+            .as_ref()
+            .to_str()
+            .expect("Cannot convert log_directory Path to str")
+            .to_string();
+        let log_filename_prefix = log_filename_prefix
+            .as_ref()
+            .to_str()
+            .expect("Cannot convert log_filename_prefix Path to str")
+            .to_string();
         RollingFileAppenderBuilder {
             log_directory,
             log_filename_prefix,

@@ -39,7 +39,6 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
-use tracing_subscriber::fmt::format::Writer;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
