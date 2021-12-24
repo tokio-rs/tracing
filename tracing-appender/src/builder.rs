@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 
 #[cfg(feature = "compression")]
 use crate::compression::CompressionConfig;
+use crate::compression::CompressionOption;
 
 use crate::writer::WriterChannel;
 
@@ -49,8 +50,8 @@ impl RollingFileAppenderBuilder {
 
     #[cfg(feature = "compression")]
     #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
-    pub fn compression(mut self, compression: CompressionConfig) -> Self {
-        self.compression = Some(compression);
+    pub fn compression(mut self, compression: CompressionOption) -> Self {
+        self.compression = Some(compression.into());
         self
     }
 
