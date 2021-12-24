@@ -16,7 +16,7 @@ struct CompressedGzip {
 }
 
 #[derive(Debug)]
-pub enum WriterChannel {
+pub(crate) enum WriterChannel {
     File(File),
     #[cfg(feature = "compression")]
     CompressedFileGzip(CompressedGzip),
@@ -24,7 +24,7 @@ pub enum WriterChannel {
 
 impl WriterChannel {
     #[cfg(feature = "compression")]
-    pub fn new(
+    pub(crate) fn new(
         directory: &str,
         filename: &str,
         #[cfg(feature = "compression")] compression: Option<CompressionConfig>,
@@ -37,17 +37,17 @@ impl WriterChannel {
     }
 
     #[cfg(not(feature = "compression"))]
-    pub fn new(directory: &str, filename: &str) -> io::Result<Self> {
+    pub(crate) fn new(directory: &str, filename: &str) -> io::Result<Self> {
         Self::new_without_compression(directory, filename)
     }
 
-    pub fn new_without_compression(directory: &str, filename: &str) -> io::Result<Self> {
+    pub(crate) fn new_without_compression(directory: &str, filename: &str) -> io::Result<Self> {
         let file = create_writer_file(directory, filename)?;
         Ok(WriterChannel::File(file))
     }
 
     #[cfg(feature = "compression")]
-    pub fn new_with_compression(
+    pub(crate) fn new_with_compression(
         directory: &str,
         filename: &str,
         compression: CompressionConfig,
