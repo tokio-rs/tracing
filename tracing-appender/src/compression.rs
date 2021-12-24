@@ -1,11 +1,13 @@
 use flate2::Compression;
 
+#[derive(Debug, Clone)]
 pub enum GzipCompressionLevelLiteral {
     None,
     Fast,
     Best,
 }
 
+#[derive(Debug, Clone)]
 pub enum GzipCompressionLevelNumerical {
     Level0,
     Level1,
@@ -19,6 +21,7 @@ pub enum GzipCompressionLevelNumerical {
     Level9,
 }
 
+#[derive(Debug, Clone)]
 pub enum GzipCompressionLevel {
     Literal(GzipCompressionLevelLiteral),
     Numerical(GzipCompressionLevelNumerical),
@@ -26,35 +29,48 @@ pub enum GzipCompressionLevel {
 
 impl Into<Compression> for GzipCompressionLevel {
     fn into(self) -> Compression {
-        match GzipCompressionLevel {
+        match self {
             GzipCompressionLevel::Literal(lit) => match lit {
                 GzipCompressionLevelLiteral::None => Compression::none(),
                 GzipCompressionLevelLiteral::Fast => Compression::fast(),
                 GzipCompressionLevelLiteral::Best => Compression::best(),
             },
             GzipCompressionLevel::Numerical(num) => match num {
-                GzipCompressionLevelNumerical::Level0 => Compression(0),
-                GzipCompressionLevelNumerical::Level1 => Compression(1),
-                GzipCompressionLevelNumerical::Level2 => Compression(2),
-                GzipCompressionLevelNumerical::Level3 => Compression(3),
-                GzipCompressionLevelNumerical::Level4 => Compression(4),
-                GzipCompressionLevelNumerical::Level5 => Compression(5),
-                GzipCompressionLevelNumerical::Level6 => Compression(6),
-                GzipCompressionLevelNumerical::Level7 => Compression(7),
-                GzipCompressionLevelNumerical::Level8 => Compression(8),
-                GzipCompressionLevelNumerical::Level9 => Compression(9),
+                GzipCompressionLevelNumerical::Level0 => Compression::new(0),
+                GzipCompressionLevelNumerical::Level1 => Compression::new(1),
+                GzipCompressionLevelNumerical::Level2 => Compression::new(2),
+                GzipCompressionLevelNumerical::Level3 => Compression::new(3),
+                GzipCompressionLevelNumerical::Level4 => Compression::new(4),
+                GzipCompressionLevelNumerical::Level5 => Compression::new(5),
+                GzipCompressionLevelNumerical::Level6 => Compression::new(6),
+                GzipCompressionLevelNumerical::Level7 => Compression::new(7),
+                GzipCompressionLevelNumerical::Level8 => Compression::new(8),
+                GzipCompressionLevelNumerical::Level9 => Compression::new(9),
             },
         }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct GzipCompression {
     pub level: GzipCompressionLevel,
 }
 
 /// Data structure to pass compression parameters
+#[derive(Debug, Clone)]
 pub enum CompressionConfig {
     Gzip(GzipCompression),
+}
+
+impl CompressionConfig {
+    pub(crate) fn gz_compress_level(&self) -> Compression {
+        match self {
+            CompressionConfig::Gzip(gz) => {
+                let level = gz.level.into();
+                level
+            }
+        }
+    }
 }
 
 mod compression_options {

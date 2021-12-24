@@ -1,21 +1,29 @@
-#[cfg(feature = "compression")]
-use crate::compression::CompressionConfig;
 use crate::rolling::create_writer_file;
 use crate::sync::RwLock;
-#[cfg(feature = "compression")]
-use flate2::write::GzEncoder;
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::{fs, io};
 
+#[cfg(feature = "compression")]
+use flate2::write::GzEncoder;
+
+#[cfg(feature = "compression")]
+use crate::compression::CompressionConfig;
+
+#[derive(Debug)]
+struct CompressedGzip {
+    compression: CompressionConfig,
+    buffer: BufWriter<GzEncoder<BufWriter<File>>>,
+}
+
 #[derive(Debug)]
 pub enum WriterChannel {
     File(File),
     #[cfg(feature = "compression")]
-    CompressedFileGzip(BufWriter<GzEncoder<BufWriter<File>>>),
+    CompressedFileGzip(CompressedGzip),
 }
 
 impl WriterChannel {
@@ -23,7 +31,7 @@ impl WriterChannel {
     pub fn new(
         directory: &str,
         filename: &str,
-        #[cfg(feature = "compression")] compression: CompressionConfig,
+        #[cfg(feature = "compression")] compression: Option<CompressionConfig>,
     ) -> io::Result<Self> {
         if let Some(compression) = compression {
             Self::new_with_compression(directory, filename, compression)
@@ -50,9 +58,13 @@ impl WriterChannel {
     ) -> io::Result<Self> {
         let file = create_writer_file(directory, filename)?;
         let buf = BufWriter::new(file);
-        let gzfile = GzEncoder::new(buf, compression.into());
+        let gzfile = GzEncoder::new(buf, compression.gz_compress_level());
         let writer = BufWriter::new(gzfile);
-        Ok(WriterChannel::CompressedFileGzip(writer))
+        let compressed_gz = CompressedGzip {
+            compression: compression.clone(),
+            buffer: writer,
+        };
+        Ok(WriterChannel::CompressedFileGzip(compressed_gz))
     }
 }
 
@@ -61,7 +73,7 @@ impl io::Write for WriterChannel {
         match self {
             WriterChannel::File(f) => f.write(buf),
             #[cfg(feature = "compression")]
-            WriterChannel::CompressedFileGzip(buf) => f.write(buf),
+            WriterChannel::CompressedFileGzip(gz) => gz.buffer.write(buf),
         }
     }
 
@@ -69,7 +81,7 @@ impl io::Write for WriterChannel {
         match self {
             WriterChannel::File(f) => f.flush(),
             #[cfg(feature = "compression")]
-            WriterChannel::CompressedFileGzip(buf) => buf.flush(),
+            WriterChannel::CompressedFileGzip(gz) => gz.buffer.flush(),
         }
     }
 }
@@ -79,7 +91,7 @@ impl io::Write for &WriterChannel {
         match self {
             WriterChannel::File(f) => (&*f).write(buf),
             #[cfg(feature = "compression")]
-            WriterChannel::CompressedFileGzip(buf) => f.write(buf),
+            WriterChannel::CompressedFileGzip(gz) => gz.buffer.write(buf),
         }
     }
 
@@ -87,7 +99,7 @@ impl io::Write for &WriterChannel {
         match self {
             WriterChannel::File(f) => (&*f).flush(),
             #[cfg(feature = "compression")]
-            WriterChannel::CompressedFileGzip(buf) => buf.flush(),
+            WriterChannel::CompressedFileGzip(gz) => gz.buffer.flush(),
         }
     }
 }

@@ -39,6 +39,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
+use tracing_subscriber::fmt::format::Writer;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -88,6 +89,8 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 pub struct RollingFileAppender {
     pub(crate) state: Inner,
     pub(crate) writer: RwLock<WriterChannel>,
+    #[cfg(features = "compression")]
+    pub(crate) compression: Option<CompressionConfig>,
 }
 
 /// A [writer] that writes to a rolling log file.
@@ -140,10 +143,8 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
-        RollingFileAppenderBuilder::new()
+        RollingFileAppenderBuilder::new(directory, file_name_prefix)
             .rotation(rotation)
-            .log_directory(directory.as_ref().to_str().unwrap().to_string())
-            .log_filename_prefix(file_name_prefix.as_ref().to_str().unwrap().to_string())
             .build()
     }
 }
@@ -478,20 +479,18 @@ impl io::Write for RollingWriter<'_> {
 
 impl Inner {
     #[cfg(feature = "compression")]
-    fn refresh_writer(
-        &self,
-        now: OffsetDateTime,
-        file: &mut WriterChannel,
-        compression: CompressionConfig,
-    ) {
+    fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
         let filename = self
             .rotation
             .join_date(&self.log_filename_prefix, &now, false);
 
-        let writer =
-            WriterChannel::new_with_compression(&self.log_directory, &filename, compression);
+        let writer = if let Some(compression) = self.compression.clone() {
+            WriterChannel::new_with_compression(&self.log_directory, &filename, compression)
+        } else {
+            WriterChannel::new_without_compression(&self.log_directory, &filename)
+        };
 
         Self::refresh_writer_channel(file, writer);
     }
@@ -547,7 +546,7 @@ impl Inner {
     }
 }
 
-pub fn create_writer_file(directory: &str, filename: &str) -> io::Result<File> {
+pub(crate) fn create_writer_file(directory: &str, filename: &str) -> io::Result<File> {
     let path = Path::new(directory).join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);

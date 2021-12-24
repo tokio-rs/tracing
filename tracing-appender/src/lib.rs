@@ -166,7 +166,7 @@ mod writer;
 #[cfg(feature = "compression")]
 mod compression;
 
-mod builder;
+pub mod builder;
 
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
