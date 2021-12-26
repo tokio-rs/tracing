@@ -299,9 +299,9 @@ where
     }
 
     /// Sets whether or not line number is displayed.
-    pub fn with_line_numbers(self, display_line_number: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    pub fn with_line_numbers(self, display_line_numbers: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
-            fmt_event: self.fmt_event.with_line_number(display_line_number),
+            fmt_event: self.fmt_event.with_line_number(display_line_numbers),
             ..self
         }
     }

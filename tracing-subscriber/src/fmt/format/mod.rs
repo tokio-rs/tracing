@@ -1597,6 +1597,20 @@ pub(super) mod test {
     }
 
     #[test]
+    fn with_line_numbers() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_ansi(false)
+            .with_line_numbers(true)
+            .with_timer(MockTime);
+        let expected =
+            "fake time  INFO tracing_subscriber::fmt::format::test:NUMERIC: hello\n";
+
+        assert_info_hello_ignore_numeric(subscriber, make_writer, expected);
+    }
+
+    #[test]
     fn pretty_default() {
         let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
