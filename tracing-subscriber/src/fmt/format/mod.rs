@@ -1542,6 +1542,8 @@ pub(super) mod test {
     use super::*;
     use std::fmt;
 
+    use regex::Regex;
+
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
         fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
@@ -1562,7 +1564,7 @@ pub(super) mod test {
             .with_thread_names(false);
         #[cfg(feature = "ansi")]
         let subscriber = subscriber.with_ansi(false);
-        run_test(subscriber, make_writer, "hello\n")
+        assert_info_hello(subscriber, make_writer, "hello\n")
     }
 
     fn test_ansi<T>(
@@ -1608,6 +1610,31 @@ pub(super) mod test {
             .with_ansi(false)
             .with_timer(MockTime);
         run_test(subscriber, make_writer, expected);
+    }
+
+    fn assert_info_hello(subscriber: impl Into<Dispatch>, buf: MockMakeWriter, expected: &str) {
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        let result = buf.get_string();
+
+        assert_eq!(expected, result)
+    }
+
+    // When numeric characters are used they often form a non-deterministic value as they usually represent things like a thread id or line number.
+    // This assert method should be used when non-deterministic numeric characters are present.
+    fn assert_info_hello_ignore_numeric(
+        subscriber: impl Into<Dispatch>,
+        buf: MockMakeWriter,
+        expected: &str,
+    ) {
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+
+        let regex = Regex::new("[0-9]+").unwrap();
+        let result = buf.get_string();
+        let result_cleaned = regex.replace_all(&result, "NUMERIC");
+
+        assert_eq!(expected, result_cleaned)
     }
 
     fn test_overridden_parents<T>(
@@ -1671,6 +1698,21 @@ pub(super) mod test {
 
     mod default {
         use super::*;
+
+        #[test]
+        fn with_thread_ids() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .with_writer(make_writer.clone())
+                .with_thread_ids(true)
+                .with_ansi(false)
+                .with_timer(MockTime);
+            let expected =
+                "fake time  INFO ThreadId(NUMERIC) tracing_subscriber::fmt::format::test: hello\n";
+
+            assert_info_hello_ignore_numeric(subscriber, make_writer, expected);
+        }
+
         #[cfg(feature = "ansi")]
         #[test]
         fn with_ansi_true() {
@@ -1757,6 +1799,26 @@ pub(super) mod test {
                 "fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n",
                 crate::fmt::Subscriber::builder().compact(),
             )
+        }
+    }
+
+    mod pretty {
+        use super::*;
+
+        #[test]
+        fn pretty_default() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .pretty()
+                .with_writer(make_writer.clone())
+                .with_ansi(false)
+                .with_timer(MockTime);
+            let expected = format!(
+                "  fake time  INFO tracing_subscriber::fmt::format::test: hello\n    at {}:NUMERIC\n\n",
+                file!()
+            );
+
+            assert_info_hello_ignore_numeric(subscriber, make_writer, &expected)
         }
     }
 

@@ -1,3 +1,25 @@
+# 0.3.4 (Dec 23, 2021)
+
+This release contains bugfixes for the `fmt` module, as well as documentation
+improvements.
+
+### Fixed
+
+- **fmt**: Fixed `fmt` not emitting log lines when timestamp formatting fails
+  ([#1689])
+- **fmt**: Fixed double space before thread IDs with `Pretty` formatter
+  ([#1778])
+- Several documentation improvements ([#1608], [#1699], [#1701])
+
+[#1689]: https://github.com/tokio-rs/tracing/pull/1689
+[#1778]: https://github.com/tokio-rs/tracing/pull/1778
+[#1608]: https://github.com/tokio-rs/tracing/pull/1608
+[#1699]: https://github.com/tokio-rs/tracing/pull/1699
+[#1701]: https://github.com/tokio-rs/tracing/pull/1701
+
+Thanks to new contributors @Swatinem and @rukai for contributing to this
+release!
+
 # 0.3.3 (Nov 29, 2021)
 
 This release fixes a pair of regressions in `tracing-subscriber`'s `fmt` module.
