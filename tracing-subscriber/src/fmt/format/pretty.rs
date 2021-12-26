@@ -133,13 +133,27 @@ where
             } else {
                 style
             };
-            write!(
-                writer,
-                "{}{}{}: ",
-                target_style.prefix(),
-                meta.target(),
-                target_style.infix(style)
-            )?;
+            match meta.line() {
+                Some(line) if self.display_line_number => {
+                    write!(
+                        writer,
+                        "{}{}:{}{}: ",
+                        target_style.prefix(),
+                        meta.target(),
+                        line,
+                        target_style.infix(style)
+                    )?;
+                }
+                _ => {
+                    write!(
+                        writer,
+                        "{}{}{}: ",
+                        target_style.prefix(),
+                        meta.target(),
+                        target_style.infix(style)
+                    )?;
+                }
+            }
         }
         let mut v = PrettyVisitor::new(writer.by_ref(), true).with_style(style);
         event.record(&mut v);

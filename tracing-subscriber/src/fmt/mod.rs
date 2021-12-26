@@ -765,6 +765,17 @@ where
         }
     }
 
+    /// Sets whether or not an event's level is displayed.
+    pub fn with_line_numbers(
+        self,
+        display_line_numbers: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_line_numbers(display_line_numbers),
+            ..self
+        }
+    }
+
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///

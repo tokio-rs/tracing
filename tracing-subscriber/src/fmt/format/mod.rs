@@ -328,6 +328,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
     pub(crate) display_thread_name: bool,
+    pub(crate) display_line_number: bool,
 }
 
 // === impl Writer ===
@@ -504,6 +505,7 @@ impl Default for Format<Full, SystemTime> {
             display_level: true,
             display_thread_id: false,
             display_thread_name: false,
+            display_line_number: false,
         }
     }
 }
@@ -522,6 +524,7 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -559,6 +562,7 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -589,6 +593,7 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_line_number: self.display_line_number
         }
     }
 
@@ -616,6 +621,7 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_line_number: self.display_line_number
         }
     }
 
@@ -630,6 +636,7 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_line_number: self.display_line_number
         }
     }
 
@@ -645,6 +652,14 @@ impl<F, T> Format<F, T> {
     pub fn with_target(self, display_target: bool) -> Format<F, T> {
         Format {
             display_target,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's level is displayed.
+    pub fn with_line_number(self, display_line_number: bool) -> Format<F, T> {
+        Format {
+            display_line_number,
             ..self
         }
     }
@@ -854,12 +869,25 @@ where
         }
 
         if self.display_target {
-            write!(
-                writer,
-                "{}{} ",
-                dimmed.paint(meta.target()),
-                dimmed.paint(":")
-            )?;
+            match meta.line() {
+                Some(line) if self.display_line_number => {
+                    write!(
+                        writer,
+                        "{}:{}{} ",
+                        dimmed.paint(meta.target()),
+                        line,
+                        dimmed.paint(":"),
+                    )?;
+                },
+                _ => {
+                    write!(
+                        writer,
+                        "{}{} ",
+                        dimmed.paint(meta.target()),
+                        dimmed.paint(":")
+                    )?;
+                }
+            }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -908,12 +936,25 @@ where
         }
 
         if self.display_target {
-            write!(
-                writer,
-                "{}{}",
-                writer.bold().paint(meta.target()),
-                writer.dimmed().paint(":")
-            )?;
+            match meta.line() {
+                Some(line) if self.display_line_number => {
+                    write!(
+                        writer,
+                        "{}:{}{} ",
+                        writer.bold().paint(meta.target()),
+                        line,
+                        writer.dimmed().paint(":")
+                    )?;
+                },
+                _ => {
+                    write!(
+                        writer,
+                        "{}{} ",
+                        writer.bold().paint(meta.target()),
+                        writer.dimmed().paint(":")
+                    )?;
+                }
+            }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
