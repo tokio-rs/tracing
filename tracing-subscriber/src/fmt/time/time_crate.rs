@@ -327,8 +327,34 @@ impl OffsetTime<well_known::Rfc3339> {
     /// use tracing_subscriber::fmt::{self, time};
     ///
     /// let collector = tracing_subscriber::fmt()
-    ///     .with_timer(time::OffsetTime::local_rfc_3339().expect("should get local offset!"));
+    ///     .with_timer(time::OffsetTime::local_rfc_3339().expect("could not get local offset!"));
     /// # drop(collector);
+    /// ```
+    ///
+    /// Using `OffsetTime` with Tokio:
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::time::OffsetTime;
+    ///
+    /// #[tokio::main]
+    /// async fn run() {
+    ///     tracing::info!("runtime initialized");
+    ///
+    ///     // At this point the Tokio runtime is initialized, and we can use both Tokio and Tracing
+    ///     // normally.
+    /// }
+    ///
+    /// fn main() {
+    ///     // Because we need to get the local offset before Tokio spawns any threads, our `main`
+    ///     // function cannot use `tokio::main`.
+    ///     tracing_subscriber::fmt()
+    ///         .with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"))
+    ///         .init();
+    ///
+    ///     // Even though `run` is written as an `async fn`, because we used `tokio::main` on it
+    ///     // we can call it as a synchronous function.
+    ///     run();
+    /// }
     /// ```
     ///
     /// [local time offset]: https://docs.rs/time/0.3/time/struct.UtcOffset.html#method.current_local_offset
