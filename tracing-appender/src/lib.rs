@@ -163,7 +163,7 @@ pub(crate) mod sync;
 
 mod writer;
 
-#[cfg(feature = "compression")]
+#[cfg(feature = "compression_gzip")]
 mod compression;
 
 pub mod builder;

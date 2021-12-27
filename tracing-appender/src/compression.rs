@@ -1,13 +1,13 @@
 use flate2::Compression;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum GzipCompressionLevelLiteral {
     None,
     Fast,
     Best,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum GzipCompressionLevelNumerical {
     Level0,
     Level1,
@@ -21,7 +21,7 @@ pub(crate) enum GzipCompressionLevelNumerical {
     Level9,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum GzipCompressionLevel {
     Literal(GzipCompressionLevelLiteral),
     Numerical(GzipCompressionLevelNumerical),
@@ -52,13 +52,13 @@ impl Into<Compression> for GzipCompressionLevel {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct GzipCompression {
     pub(crate) level: GzipCompressionLevel,
 }
 
 /// Data structure to pass compression parameters
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub(crate) enum CompressionConfig {
     Gzip(GzipCompression),

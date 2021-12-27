@@ -1,23 +1,31 @@
+//! Builder struct for `RollingFileAppender`
+//!
+//! Gives access to setting additional options which are not avaible using standard interface.
+//! Currently it is the only way to enable compression of logs.
 use crate::rolling::{create_writer_file, Inner, RollingFileAppender, Rotation};
 use crate::sync::RwLock;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use time::OffsetDateTime;
 
-#[cfg(feature = "compression")]
+#[cfg(feature = "compression_gzip")]
 use crate::compression::CompressionConfig;
 
-#[cfg(feature = "compression")]
+#[cfg(feature = "compression_gzip")]
 use crate::compression::CompressionOption;
 
 use crate::writer::WriterChannel;
 
-#[derive(Debug)]
+/// Struct for keeping temporary values of `RollingFileAppender`.
+///
+/// Note that `log_directory` and `log_filename_prefix` are obligatory parameters and should
+/// be passed into the constructor of `RollingFileAppenderBuilder`.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RollingFileAppenderBuilder {
     log_directory: String,
     log_filename_prefix: String,
     rotation: Option<Rotation>,
-    #[cfg(feature = "compression")]
+    #[cfg(feature = "compression_gzip")]
     compression: Option<CompressionConfig>,
 }
 
@@ -27,7 +35,8 @@ impl RollingFileAppenderBuilder {
     /// It was introduced to open up the possibility to use `compression` without
     /// breaking the current interface.
     ///
-    /// Note that `compression` module is enabled by using an optional feature flag `compression`
+    /// Note that `compression` module is enabled by using an optional feature flag
+    /// `compression_gzip` (for gzip algorithm)
     ///
     /// # Examples
     /// ```rust
@@ -53,8 +62,8 @@ impl RollingFileAppenderBuilder {
             log_directory,
             log_filename_prefix,
             rotation: None,
-            #[cfg(feature = "compression")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+            #[cfg(feature = "compression_gzip")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "compression_gzip")))]
             compression: None,
         }
     }
@@ -65,13 +74,14 @@ impl RollingFileAppenderBuilder {
         self
     }
 
-    #[cfg(feature = "compression")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+    #[cfg(feature = "compression_gzip")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "compression_gzip")))]
     pub fn compression(mut self, compression: CompressionOption) -> Self {
         self.compression = Some(compression.into());
         self
     }
 
+    /// Builds an instance of `RollingFileAppender` using previously defined attributes.
     pub fn build(self) -> RollingFileAppender {
         let now = OffsetDateTime::now_utc();
         let rotation = self.rotation.unwrap_or(Rotation::NEVER);
@@ -95,7 +105,7 @@ impl RollingFileAppenderBuilder {
                 log_filename_prefix: self.log_filename_prefix,
                 next_date,
                 rotation: rotation,
-                #[cfg(feature = "compression")]
+                #[cfg(feature = "compression_gzip")]
                 compression: self.compression,
             },
             writer,

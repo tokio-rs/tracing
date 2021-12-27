@@ -27,7 +27,7 @@
 //! # }
 //! ```
 use crate::builder::RollingFileAppenderBuilder;
-#[cfg(feature = "compression")]
+#[cfg(feature = "compression_gzip")]
 use crate::compression::CompressionConfig;
 use crate::sync::{RwLock, RwLockReadGuard};
 use crate::writer::WriterChannel;
@@ -107,7 +107,7 @@ pub(crate) struct Inner {
     pub(crate) log_filename_prefix: String,
     pub(crate) rotation: Rotation,
     pub(crate) next_date: AtomicUsize,
-    #[cfg(feature = "compression")]
+    #[cfg(feature = "compression_gzip")]
     pub(crate) compression: Option<CompressionConfig>,
 }
 
@@ -477,7 +477,7 @@ impl io::Write for RollingWriter<'_> {
 // === impl Inner ===
 
 impl Inner {
-    #[cfg(feature = "compression")]
+    #[cfg(feature = "compression_gzip")]
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
@@ -494,7 +494,7 @@ impl Inner {
         Self::refresh_writer_channel(file, writer);
     }
 
-    #[cfg(not(feature = "compression"))]
+    #[cfg(not(feature = "compression_gzip"))]
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
