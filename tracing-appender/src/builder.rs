@@ -22,7 +22,22 @@ pub struct RollingFileAppenderBuilder {
 }
 
 impl RollingFileAppenderBuilder {
-    /// Creates an instance of RollingFileAppnderBuilder
+    /// Creates a new `RollingFileAppnderBuilder`
+    ///
+    /// It was introduced to open up the possibility to use `compression` without
+    /// breaking the current interface.
+    ///
+    /// Note that `compression` module is enabled by using an optional feature flag `compression`
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tracing_appender::builder::RollingFileAppenderBuilder;
+    /// use tracing_appender::compression::CompressionOption;
+    /// use tracing_appender::rolling::Rotation;
+    /// let builder = RollingFileAppenderBuilder::new("/var/tmp", "my-app")
+    ///     .rotation(Rotation::DAILY)
+    ///     .compression(CompressionOption::GzipFast);
+    /// ```
     pub fn new(log_directory: impl AsRef<Path>, log_filename_prefix: impl AsRef<Path>) -> Self {
         let log_directory = log_directory
             .as_ref()

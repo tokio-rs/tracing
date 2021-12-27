@@ -27,6 +27,7 @@ pub(crate) enum GzipCompressionLevel {
     Numerical(GzipCompressionLevelNumerical),
 }
 
+/// Defines a conversion between `CompressionOption` and `flate2::Compression`
 impl Into<Compression> for GzipCompressionLevel {
     fn into(self) -> Compression {
         match self {
@@ -74,7 +75,22 @@ impl CompressionConfig {
     }
 }
 
-#[derive(Debug)]
+/// Defines a compression level for gzip algorithm.
+///
+/// Compression levels are defined as they are in `flate2` crate where
+/// - compression level 0 (`CompressionOption::GzipNone` or `CompressionOption::GzipLevel0`)
+/// - compression level 1 (`CompressionOption::GzipFast` or `CompressionOption::GzipLevel1`)
+/// - compression level n (where n is between 2 and 9)
+/// - compression level 9 (`CompressionOption::GzipBest` or `CompressionOption::GzipLevel9`)
+///
+/// ```rust
+/// # fn docs() {
+/// use tracing_appender::compression::CompressionOption;
+/// let compression_level = CompressionOption::GzipBest;
+/// # }
+/// ```
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum CompressionOption {
     GzipNone,
     GzipFast,
