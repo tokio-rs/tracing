@@ -4,17 +4,15 @@ use std::io;
 
 #[cfg(feature = "compression_gzip")]
 use {
-    crate::compression::CompressionConfig,
-    flate2::write::GzEncoder,
-    std::io::BufWriter,
-    std::sync::{Arc, RwLock},
+    crate::rolling::compression::CompressionConfig, flate2::write::GzEncoder, std::io::BufWriter,
+    std::sync::Mutex,
 };
 
 #[cfg(feature = "compression_gzip")]
 #[derive(Debug)]
 pub(crate) struct CompressedGzip {
     compression: CompressionConfig,
-    buffer: Arc<RwLock<BufWriter<GzEncoder<BufWriter<File>>>>>,
+    buffer: Mutex<BufWriter<GzEncoder<BufWriter<File>>>>,
 }
 
 #[derive(Debug)]
@@ -29,7 +27,7 @@ impl WriterChannel {
     pub(crate) fn new(
         directory: &str,
         filename: &str,
-        #[cfg(feature = "compression_gzip")] compression: Option<CompressionConfig>,
+        compression: Option<CompressionConfig>,
     ) -> io::Result<Self> {
         if let Some(compression) = compression {
             Self::new_with_compression(directory, filename, compression)
@@ -60,7 +58,7 @@ impl WriterChannel {
         let writer = BufWriter::new(gzfile);
         let compressed_gz = CompressedGzip {
             compression: compression.clone(),
-            buffer: Arc::new(RwLock::new(writer)),
+            buffer: Mutex::new(writer),
         };
         Ok(WriterChannel::CompressedFileGzip(compressed_gz))
     }
@@ -72,7 +70,7 @@ impl io::Write for WriterChannel {
             WriterChannel::File(f) => f.write(buf),
             #[cfg(feature = "compression_gzip")]
             WriterChannel::CompressedFileGzip(gz) => {
-                let mut buffer = gz.buffer.write().unwrap();
+                let mut buffer = gz.buffer.lock().unwrap();
                 buffer.write(buf)
             }
         }
@@ -83,7 +81,7 @@ impl io::Write for WriterChannel {
             WriterChannel::File(f) => f.flush(),
             #[cfg(feature = "compression_gzip")]
             WriterChannel::CompressedFileGzip(gz) => {
-                let mut buffer = gz.buffer.write().unwrap();
+                let mut buffer = gz.buffer.lock().unwrap();
                 buffer.flush()
             }
         }
@@ -96,7 +94,7 @@ impl io::Write for &WriterChannel {
             WriterChannel::File(f) => (&*f).write(buf),
             #[cfg(feature = "compression_gzip")]
             WriterChannel::CompressedFileGzip(gz) => {
-                let mut buffer = gz.buffer.write().unwrap();
+                let mut buffer = gz.buffer.lock().unwrap();
                 buffer.write(buf)
             }
         }
@@ -107,7 +105,7 @@ impl io::Write for &WriterChannel {
             WriterChannel::File(f) => (&*f).flush(),
             #[cfg(feature = "compression_gzip")]
             WriterChannel::CompressedFileGzip(gz) => {
-                let mut buffer = gz.buffer.write().unwrap();
+                let mut buffer = gz.buffer.lock().unwrap();
                 buffer.flush()
             }
         }

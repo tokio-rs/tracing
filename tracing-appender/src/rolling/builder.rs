@@ -9,10 +9,9 @@ use std::sync::atomic::AtomicUsize;
 use time::OffsetDateTime;
 
 #[cfg(feature = "compression_gzip")]
-use crate::compression::CompressionConfig;
-
-#[cfg(feature = "compression_gzip")]
-use crate::compression::CompressionOption;
+use {
+    crate::rolling::compression::CompressionConfig, crate::rolling::compression::CompressionOption,
+};
 
 use crate::writer::WriterChannel;
 
@@ -74,6 +73,7 @@ impl RollingFileAppenderBuilder {
         self
     }
 
+    /// Sets compression level
     #[cfg(feature = "compression_gzip")]
     #[cfg_attr(docsrs, doc(cfg(feature = "compression_gzip")))]
     pub fn compression(mut self, compression: CompressionOption) -> Self {

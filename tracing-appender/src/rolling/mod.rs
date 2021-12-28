@@ -26,9 +26,10 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::builder::RollingFileAppenderBuilder;
+mod builder;
+pub use crate::rolling::builder::RollingFileAppenderBuilder;
 #[cfg(feature = "compression_gzip")]
-use crate::compression::CompressionConfig;
+use crate::rolling::compression::CompressionConfig;
 use crate::sync::{RwLock, RwLockReadGuard};
 use crate::writer::WriterChannel;
 use std::{
@@ -39,6 +40,9 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
+
+#[cfg(feature = "compression_gzip")]
+pub mod compression;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -103,12 +107,12 @@ pub struct RollingWriter<'a>(RwLockReadGuard<'a, WriterChannel>);
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-    pub(crate) log_directory: String,
-    pub(crate) log_filename_prefix: String,
-    pub(crate) rotation: Rotation,
-    pub(crate) next_date: AtomicUsize,
+    log_directory: String,
+    log_filename_prefix: String,
+    rotation: Rotation,
+    next_date: AtomicUsize,
     #[cfg(feature = "compression_gzip")]
-    pub(crate) compression: Option<CompressionConfig>,
+    compression: Option<CompressionConfig>,
 }
 
 // === impl RollingFileAppender ===
@@ -477,7 +481,6 @@ impl io::Write for RollingWriter<'_> {
 // === impl Inner ===
 
 impl Inner {
-    #[cfg(feature = "compression_gzip")]
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
@@ -485,26 +488,13 @@ impl Inner {
             .rotation
             .join_date(&self.log_filename_prefix, &now, false);
 
-        let writer = if let Some(compression) = self.compression.clone() {
-            WriterChannel::new_with_compression(&self.log_directory, &filename, compression)
-        } else {
-            WriterChannel::new_without_compression(&self.log_directory, &filename)
-        };
+        #[cfg(feature = "compression_gzip")]
+        let writer = WriterChannel::new(&self.log_directory, &filename, self.compression.clone());
+
+        #[cfg(not(feature = "compression_gzip"))]
+        let writer = WriterChannel::new(&self.log_directory, &filename);
 
         Self::refresh_writer_channel(file, writer);
-    }
-
-    #[cfg(not(feature = "compression_gzip"))]
-    fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
-        debug_assert!(self.should_rollover(now));
-
-        let filename = self
-            .rotation
-            .join_date(&self.log_filename_prefix, &now, false);
-
-        let writer = WriterChannel::new_without_compression(&self.log_directory, &filename);
-
-        Self::refresh_writer_channel(file, writer)
     }
 
     fn refresh_writer_channel(file: &mut WriterChannel, writer: io::Result<WriterChannel>) {

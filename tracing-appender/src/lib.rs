@@ -163,11 +163,6 @@ pub(crate) mod sync;
 
 mod writer;
 
-#[cfg(feature = "compression_gzip")]
-mod compression;
-
-pub mod builder;
-
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
 /// See the [`non_blocking` module's docs][mod@non_blocking]'s for more details.
