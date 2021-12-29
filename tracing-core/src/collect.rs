@@ -403,12 +403,8 @@ pub trait Collect: 'static {
     /// if the thread from which this method is called is inside a span,
     /// or [`Current::none`] if the thread is not inside a span.
     ///
-    /// If the collector does not implement a current span, it should
-    /// return [`Current:unknown`].
-    ///
     /// [`Current::new`]: super::span::Current::new
     /// [`Current::none`]: super::span::Current::none
-    /// [`Current::unknown`]: super::span::Current::unknown
     fn current_span(&self) -> span::Current;
 
     // === Downcasting methods ================================================
