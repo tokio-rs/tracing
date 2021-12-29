@@ -1132,6 +1132,14 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     #[cfg(feature = "env-filter")]
     let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
 
+    // If `env-filter` is disabled, remove the default max level filter from the
+    // subscriber; it will be added to the `Targets` filter instead if no filter
+    // is set in `RUST_LOG`.
+    // Replacing the default `LevelFilter` with an `EnvFilter` would imply this,
+    // but we can't replace the builder's filter with a `Targets` filter yet.
+    #[cfg(not(feature = "env-filter"))]
+    let builder = builder.with_max_level(LevelFilter::TRACE);
+
     let subscriber = builder.finish();
     #[cfg(not(feature = "env-filter"))]
     let subscriber = {
