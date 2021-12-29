@@ -297,8 +297,6 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`fmt::format`]: mod@crate::fmt::format
-#[cfg(not(feature = "env-filter"))]
-use core::str::FromStr;
 use std::{any::TypeId, error::Error, io};
 use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
@@ -313,12 +311,12 @@ pub mod writer;
 pub use fmt_layer::{FmtContext, FormattedFields, Layer};
 
 use crate::layer::Layer as _;
+use crate::util::SubscriberInitExt;
 use crate::{
     filter::LevelFilter,
     layer,
     registry::{LookupSpan, Registry},
 };
-use crate::util::SubscriberInitExt;
 
 #[doc(inline)]
 pub use self::{
@@ -1137,15 +1135,21 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let subscriber = builder.finish();
     #[cfg(not(feature = "env-filter"))]
     let subscriber = {
+        use crate::{filter::Targets, layer::SubscriberExt};
         use std::{env, str::FromStr};
-        use crate::{filter::Targets, fmt::Subscriber::DEFAULT_MAX_LEVEL};
         let targets = match env::var("RUST_LOG") {
-            Ok(var) => Targets::from_str(&var).map_err(|e|{eprintln!("Ignoring `RUST_LOG={:?}`: {}", var, e);}).unwrap_or_default(),
-            Err(env::VarError::NotPresent) => Targets::new().with_default(DEFAULT_MAX_LEVEL),
+            Ok(var) => Targets::from_str(&var)
+                .map_err(|e| {
+                    eprintln!("Ignoring `RUST_LOG={:?}`: {}", var, e);
+                })
+                .unwrap_or_default(),
+            Err(env::VarError::NotPresent) => {
+                Targets::new().with_default(Subscriber::DEFAULT_MAX_LEVEL)
+            }
             Err(e) => {
                 eprintln!("Ignoring `RUST_LOG`: {}", e);
-                crate::filter::Targets::new().with_default(DEFAULT_MAX_LEVEL)
-            },
+                Targets::new().with_default(Subscriber::DEFAULT_MAX_LEVEL)
+            }
         };
         subscriber.with(targets)
     };
