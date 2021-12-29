@@ -591,7 +591,7 @@ macro_rules! event {
         );
 
         if $crate::level_enabled!($lvl) {
-            use $crate::__macro_support::*;
+            use $crate::__macro_support::Callsite as _;
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
                 name: concat!(
                     "event ",
@@ -638,7 +638,7 @@ macro_rules! event {
             $($fields)*
         );
         if $crate::level_enabled!($lvl) {
-            use $crate::__macro_support::*;
+            use $crate::__macro_support::Callsite as _;
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
                 name: concat!(
                     "event ",
