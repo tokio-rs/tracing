@@ -297,6 +297,8 @@
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`fmt::format`]: mod@crate::fmt::format
+#[cfg(not(feature = "env-filter"))]
+use core::str::FromStr;
 use std::{any::TypeId, error::Error, io};
 use tracing_core::{span, subscriber::Interest, Event, Metadata};
 
@@ -316,6 +318,7 @@ use crate::{
     layer,
     registry::{LookupSpan, Registry},
 };
+use crate::util::SubscriberInitExt;
 
 #[doc(inline)]
 pub use self::{
@@ -1131,7 +1134,22 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     #[cfg(feature = "env-filter")]
     let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
 
-    builder.try_init()
+    let subscriber = builder.finish();
+    #[cfg(not(feature = "env-filter"))]
+        let targets = match std::env::var("RUST_LOG") {
+        Ok(var) => {
+            crate::filter::Targets::from_str(&var).map_err(|e|{eprintln!("Ignoring `RUST_LOG`: {:?}", e);}).unwrap_or_default()
+        }
+        Err(std::env::VarError::NotPresent) => {crate::filter::Targets::new()}
+        Err(e) => {
+            eprintln!("Ignoring `RUST_LOG`: {:?}", e);
+            crate::filter::Targets::new()
+        }
+    }.with_default(crate::fmt::Subscriber::DEFAULT_MAX_LEVEL);
+    #[cfg(not(feature = "env-filter"))]
+    let subscriber = subscriber.with(targets);
+
+    subscriber.try_init().map_err(Into::into)
 }
 
 /// Install a global tracing subscriber that listens for events and
