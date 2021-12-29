@@ -250,9 +250,7 @@ impl EnvFilter {
         use tracing::level_filters::STATIC_MAX_LEVEL;
         use tracing::Level;
 
-        let fallback_level = Directive::from(crate::fmt::Subscriber::DEFAULT_MAX_LEVEL);
-
-        let directives: Vec<_> = std::iter::once(fallback_level).chain(directives.into_iter()).collect();
+        let directives: Vec<_> = directives.into_iter().collect();
 
         let disabled: Vec<_> = directives
             .iter()
