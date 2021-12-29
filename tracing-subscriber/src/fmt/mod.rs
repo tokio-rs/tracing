@@ -1136,18 +1136,19 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 
     let subscriber = builder.finish();
     #[cfg(not(feature = "env-filter"))]
-        let targets = match std::env::var("RUST_LOG") {
-        Ok(var) => {
-            crate::filter::Targets::from_str(&var).map_err(|e|{eprintln!("Ignoring `RUST_LOG`: {:?}", e);}).unwrap_or_default()
-        }
-        Err(std::env::VarError::NotPresent) => {crate::filter::Targets::new()}
-        Err(e) => {
-            eprintln!("Ignoring `RUST_LOG`: {:?}", e);
-            crate::filter::Targets::new()
-        }
-    }.with_default(crate::fmt::Subscriber::DEFAULT_MAX_LEVEL);
-    #[cfg(not(feature = "env-filter"))]
-    let subscriber = subscriber.with(targets);
+    let subscriber = {
+        use std::{env, str::FromStr};
+        use crate::{filter::Targets, fmt::Subscriber::DEFAULT_MAX_LEVEL};
+        let targets = match env::var("RUST_LOG") {
+            Ok(var) => Targets::from_str(&var).map_err(|e|{eprintln!("Ignoring `RUST_LOG={:?}`: {}", var, e);}).unwrap_or_default(),
+            Err(env::VarError::NotPresent) => Targets::new().with_default(DEFAULT_MAX_LEVEL),
+            Err(e) => {
+                eprintln!("Ignoring `RUST_LOG`: {}", e);
+                crate::filter::Targets::new().with_default(DEFAULT_MAX_LEVEL)
+            },
+        };
+        subscriber.with(targets)
+    };
 
     subscriber.try_init().map_err(Into::into)
 }
