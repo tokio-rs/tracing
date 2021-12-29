@@ -108,7 +108,7 @@ where
     /// ```
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
-    /// [`Writer`]: crate::format::Writer
+    /// [`Writer`]: format::Writer
     pub fn event_format<E2>(self, e: E2) -> Layer<S, N, E2, W>
     where
         E2: FormatEvent<S, N> + 'static,
