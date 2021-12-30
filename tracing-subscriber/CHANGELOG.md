@@ -1,4 +1,26 @@
-# 0.3.4 (Dec 23, 2021)
+# 0.3.5 (Dec 29, 2021)
+
+This release re-enables `RUST_LOG` filtering in `tracing_subscriber::fmt`'s
+default initialization methods, and adds an `OffsetLocalTime` formatter for
+using local timestamps with the `time` crate.
+
+### Added
+
+- **fmt**: Added `OffsetLocalTime` formatter to `fmt::time` for formatting local
+  timestamps with a fixed offset ([#1772])
+
+### Fixed
+
+- **fmt**: Added a `Targets` filter to `fmt::init()` and `fmt::try_init()` when
+  the "env-filter" feature is disabled, so that `RUST_LOG` is still honored
+  ([#1781])
+
+Thanks to @marienz and @ishitatsuyuki for contributing to this release!
+
+[#1772]: https://github.com/tokio-rs/tracing/pull/1772
+[#1781]: https://github.com/tokio-rs/tracing/pull/1781
+
+# 0.3.4 (Dec 23, 2021) 
 
 This release contains bugfixes for the `fmt` module, as well as documentation
 improvements.
