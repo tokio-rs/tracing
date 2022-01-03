@@ -65,6 +65,12 @@ impl CompressionConfig {
             }
         }
     }
+
+    pub(crate) fn extension(&self) -> Option<&str> {
+        match self {
+            CompressionConfig::Gzip(_) => Some("gz"),
+        }
+    }
 }
 
 /// Defines a compression level for gzip algorithm.
@@ -156,4 +162,11 @@ impl Into<CompressionConfig> for CompressionOption {
             }),
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_compression() {}
 }

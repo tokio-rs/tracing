@@ -62,6 +62,14 @@ impl WriterChannel {
         };
         Ok(WriterChannel::CompressedFileGzip(compressed_gz))
     }
+
+    pub(crate) fn extension(self) -> Option<String> {
+        match self {
+            WriterChannel::File(_) => None,
+            #[cfg(feature = "compression_gzip")]
+            WriterChannel::CompressedFileGzip(_) => Some("gz".to_string()),
+        }
+    }
 }
 
 impl io::Write for WriterChannel {

@@ -81,17 +81,42 @@ impl RollingFileAppenderBuilder {
         self
     }
 
+    pub(crate) fn get_extension(&self) -> Option<String> {
+        #[cfg(feature = "compression_gzip")]
+        if let Some(compression) = self.compression.clone() {
+            compression.extension().map(|v| v.to_string())
+        } else {
+            None
+        }
+
+        #[cfg(not(feature = "compression_gzip"))]
+        None
+    }
+
     /// Builds an instance of `RollingFileAppender` using previously defined attributes.
     pub fn build(self) -> RollingFileAppender {
         let now = OffsetDateTime::now_utc();
-        let rotation = self.rotation.unwrap_or(Rotation::NEVER);
-        let filename = rotation.join_date(self.log_filename_prefix.as_str(), &now, false);
+        let rotation = self.rotation.clone().unwrap_or(Rotation::NEVER).clone();
+        let extension = self.get_extension();
+        let filename = rotation.join_date(self.log_filename_prefix.as_str(), &now, extension);
         let next_date = rotation.next_date(&now);
 
-        let writer = RwLock::new(WriterChannel::File(
-            create_writer_file(self.log_directory.as_str(), &filename)
-                .expect("failed to create appender"),
-        ));
+        #[cfg(not(feature = "compression_gzip"))]
+        let writer = self.create_file_writer(filename.as_str());
+
+        #[cfg(feature = "compression_gzip")]
+        let writer = if let Some(compression) = self.compression.clone() {
+            RwLock::new(
+                WriterChannel::new_with_compression(
+                    self.log_directory.as_str(),
+                    &filename,
+                    compression,
+                )
+                .unwrap(),
+            )
+        } else {
+            self.create_file_writer(filename.as_str())
+        };
 
         let next_date = AtomicUsize::new(
             next_date
@@ -104,11 +129,19 @@ impl RollingFileAppenderBuilder {
                 log_directory: self.log_directory,
                 log_filename_prefix: self.log_filename_prefix,
                 next_date,
-                rotation: rotation,
+                rotation: rotation.clone(),
                 #[cfg(feature = "compression_gzip")]
                 compression: self.compression,
             },
             writer,
         }
+    }
+
+    fn create_file_writer(&self, filename: &str) -> RwLock<WriterChannel> {
+        let a = RwLock::new(WriterChannel::File(
+            create_writer_file(self.log_directory.as_str(), &filename)
+                .expect("failed to create appender"),
+        ));
+        a
     }
 }
