@@ -29,27 +29,28 @@ impl InstrumentArgs {
             }
         }
 
+        let tracing = self.tracing();
         match &self.level {
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
-                quote!(tracing::Level::TRACE)
+                quote!(#tracing::Level::TRACE)
             }
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("debug") => {
-                quote!(tracing::Level::DEBUG)
+                quote!(#tracing::Level::DEBUG)
             }
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("info") => {
-                quote!(tracing::Level::INFO)
+                quote!(#tracing::Level::INFO)
             }
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("warn") => {
-                quote!(tracing::Level::WARN)
+                quote!(#tracing::Level::WARN)
             }
             Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
-                quote!(tracing::Level::ERROR)
+                quote!(#tracing::Level::ERROR)
             }
-            Some(Level::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
-            Some(Level::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
-            Some(Level::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
-            Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
-            Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
+            Some(Level::Int(ref lit)) if is_level(lit, 1) => quote!(#tracing::Level::TRACE),
+            Some(Level::Int(ref lit)) if is_level(lit, 2) => quote!(#tracing::Level::DEBUG),
+            Some(Level::Int(ref lit)) if is_level(lit, 3) => quote!(#tracing::Level::INFO),
+            Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(#tracing::Level::WARN),
+            Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(#tracing::Level::ERROR),
             Some(Level::Path(ref pat)) => quote!(#pat),
             Some(_) => quote! {
                 compile_error!(
@@ -57,7 +58,7 @@ impl InstrumentArgs {
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
                 )
             },
-            None => quote!(tracing::Level::INFO),
+            None => quote!(#tracing::Level::INFO),
         }
     }
 
@@ -333,7 +334,8 @@ impl ToTokens for Field {
             // `instrument` produce empty field values, so changing it now
             // is a breaking change. agh.
             let name = &self.name;
-            tokens.extend(quote!(#name = tracing::field::Empty))
+            let tracing = todo!();
+            tokens.extend(quote!(#name = #tracing::field::Empty))
         } else {
             self.kind.to_tokens(tokens);
             self.name.to_tokens(tokens);

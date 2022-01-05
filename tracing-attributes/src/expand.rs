@@ -87,6 +87,7 @@ fn gen_block<B: ToTokens>(
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
     let level = args.level();
+    let tracing = args.tracing();
 
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
@@ -156,7 +157,7 @@ fn gen_block<B: ToTokens>(
             })
             .map(|(user_name, (real_name, record_type))| match record_type {
                 RecordType::Value => quote!(#user_name = #real_name),
-                RecordType::Debug => quote!(#user_name = tracing::field::debug(&#real_name)),
+                RecordType::Debug => quote!(#user_name = #tracing::field::debug(&#real_name)),
             })
             .collect();
 
@@ -180,7 +181,7 @@ fn gen_block<B: ToTokens>(
 
         let custom_fields = &args.fields;
 
-        quote!(tracing::span!(
+        quote!(#tracing::span!(
             target: #target,
             #level,
             #span_name,
@@ -192,16 +193,16 @@ fn gen_block<B: ToTokens>(
 
     let err_event = match args.err_mode {
         Some(FormatMode::Default) | Some(FormatMode::Display) => {
-            Some(quote!(tracing::error!(error = %e)))
+            Some(quote!(#tracing::error!(error = %e)))
         }
-        Some(FormatMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        Some(FormatMode::Debug) => Some(quote!(#tracing::error!(error = ?e))),
         _ => None,
     };
 
     let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::event!(#level, return = %x))),
+        Some(FormatMode::Display) => Some(quote!(#tracing::event!(#level, return = %x))),
         Some(FormatMode::Default) | Some(FormatMode::Debug) => {
-            Some(quote!(tracing::event!(#level, return = ?x)))
+            Some(quote!(#tracing::event!(#level, return = ?x)))
         }
         _ => None,
     };
@@ -258,7 +259,7 @@ fn gen_block<B: ToTokens>(
             let __tracing_attr_span = #span;
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
-                tracing::Instrument::instrument(
+                #tracing::Instrument::instrument(
                     __tracing_instrument_future,
                     __tracing_attr_span
                 )
@@ -282,7 +283,7 @@ fn gen_block<B: ToTokens>(
         // regression in case the level is enabled.
         let __tracing_attr_span;
         let __tracing_attr_guard;
-        if tracing::level_enabled!(#level) {
+        if #tracing::level_enabled!(#level) {
             __tracing_attr_span = #span;
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
