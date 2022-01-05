@@ -15,6 +15,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) fields: Option<Fields>,
     pub(crate) err_mode: Option<FormatMode>,
     pub(crate) ret_mode: Option<FormatMode>,
+    tracing: Option<Expr>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -65,6 +66,17 @@ impl InstrumentArgs {
             quote!(#target)
         } else {
             quote!(module_path!())
+        }
+    }
+
+    /// The location of the `tracing` crate.
+    ///
+    /// For backwards-compatibility, this must default to the plain `tracing` identifier with call site resolution.
+    pub(crate) fn tracing(&self) -> impl ToTokens {
+        if let Some(ref tracing) = self.tracing {
+            quote!(#tracing)
+        } else {
+            quote!(tracing)
         }
     }
 
@@ -146,6 +158,14 @@ impl Parse for InstrumentArgs {
                 let _ = input.parse::<kw::ret>()?;
                 let mode = FormatMode::parse(input)?;
                 args.ret_mode = Some(mode);
+            } else if lookahead.peek(kw::tracing) {
+                if args.tracing.is_some() {
+                    return Err(input.error("expected only a single `fields` argument"));
+                }
+                let _ = input.parse::<kw::tracing>()?;
+                let _ = input.parse::<Token![=]>()?;
+                let tracing = Expr::parse(input)?;
+                args.tracing = Some(tracing);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -363,4 +383,5 @@ mod kw {
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
+    syn::custom_keyword!(tracing);
 }
