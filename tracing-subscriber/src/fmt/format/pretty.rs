@@ -5,7 +5,7 @@ use crate::{
     registry::LookupSpan,
 };
 
-use std::fmt::{self, Write};
+use std::fmt;
 use tracing_core::{
     field::{self, Field},
     Event, Level, Subscriber,
@@ -24,13 +24,12 @@ pub struct Pretty {
 
 /// The [visitor] produced by [`Pretty`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`DefaultFields`]: struct.DefaultFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: field::Visit
+/// [`MakeVisitor`]: crate::field::MakeVisitor
+#[derive(Debug)]
 pub struct PrettyVisitor<'a> {
-    writer: &'a mut dyn Write,
+    writer: Writer<'a>,
     is_empty: bool,
-    ansi: bool,
     style: Style,
     result: fmt::Result,
 }
@@ -40,7 +39,17 @@ pub struct PrettyVisitor<'a> {
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 #[derive(Debug)]
 pub struct PrettyFields {
-    ansi: bool,
+    /// A value to override the provided `Writer`'s ANSI formatting
+    /// configuration.
+    ///
+    /// If this is `Some`, we override the `Writer`'s ANSI setting. This is
+    /// necessary in order to continue supporting the deprecated
+    /// `PrettyFields::with_ansi` method. If it is `None`, we don't override the
+    /// ANSI formatting configuration (because the deprecated method was not
+    /// called).
+    // TODO: when `PrettyFields::with_ansi` is removed, we can get rid
+    // of this entirely.
+    ansi: Option<bool>,
 }
 
 // === impl Pretty ===
@@ -95,7 +104,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, C, N>,
-        writer: &mut dyn fmt::Write,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         #[cfg(feature = "tracing-log")]
@@ -104,22 +113,38 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-        write!(writer, "  ")?;
+        write!(&mut writer, "  ")?;
 
-        self.format_timestamp(writer)?;
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
 
-        let style = if self.display_level && self.ansi {
+        self.format_timestamp(&mut writer)?;
+
+        let style = if self.display_level && writer.has_ansi_escapes() {
             Pretty::style_for(meta.level())
         } else {
             Style::new()
         };
 
         if self.display_level {
-            write!(writer, "{} ", super::FmtLevel::new(meta.level(), self.ansi))?;
+            write!(
+                writer,
+                "{} ",
+                super::FmtLevel::new(meta.level(), writer.has_ansi_escapes())
+            )?;
         }
 
         if self.display_target {
-            let target_style = if self.ansi { style.bold() } else { style };
+            let target_style = if writer.has_ansi_escapes() {
+                style.bold()
+            } else {
+                style
+            };
             write!(
                 writer,
                 "{}{}{}: ",
@@ -128,14 +153,12 @@ where
                 target_style.infix(style)
             )?;
         }
-        let mut v = PrettyVisitor::new(writer, true)
-            .with_style(style)
-            .with_ansi(self.ansi);
+        let mut v = PrettyVisitor::new(writer.by_ref(), true).with_style(style);
         event.record(&mut v);
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = if self.ansi {
+        let dimmed = if writer.has_ansi_escapes() {
             Style::new().dimmed().italic()
         } else {
             Style::new()
@@ -163,22 +186,17 @@ where
                 if let Some(name) = thread.name() {
                     write!(writer, "{}", name)?;
                     if self.display_thread_id {
-                        write!(writer, " ({:?})", thread.id())?;
+                        writer.write_char(' ')?;
                     }
-                } else if !self.display_thread_id {
-                    write!(writer, " {:?}", thread.id())?;
                 }
-            } else if self.display_thread_id {
-                write!(writer, " {:?}", thread.id())?;
+            }
+            if self.display_thread_id {
+                write!(writer, "{:?}", thread.id())?;
             }
             writer.write_char('\n')?;
         }
 
-        let bold = if self.ansi {
-            Style::new().bold()
-        } else {
-            Style::new()
-        };
+        let bold = writer.bold();
         let span = event
             .parent()
             .and_then(|id| ctx.span(id))
@@ -220,19 +238,20 @@ where
 }
 
 impl<'writer> FormatFields<'writer> for Pretty {
-    fn format_fields<R: RecordFields>(
-        &self,
-        writer: &'writer mut dyn fmt::Write,
-        fields: R,
-    ) -> fmt::Result {
-        let mut v = PrettyVisitor::new(writer, true);
+    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
+        let mut v = PrettyVisitor::new(writer, false);
         fields.record(&mut v);
         v.finish()
     }
 
-    fn add_fields(&self, current: &'writer mut String, fields: &span::Record<'_>) -> fmt::Result {
+    fn add_fields(
+        &self,
+        current: &'writer mut FormattedFields<Self>,
+        fields: &span::Record<'_>,
+    ) -> fmt::Result {
         let empty = current.is_empty();
-        let mut v = PrettyVisitor::new(current, empty);
+        let writer = current.as_writer();
+        let mut v = PrettyVisitor::new(writer, empty);
         fields.record(&mut v);
         v.finish()
     }
@@ -249,21 +268,34 @@ impl Default for PrettyFields {
 impl PrettyFields {
     /// Returns a new default [`PrettyFields`] implementation.
     pub fn new() -> Self {
-        Self { ansi: true }
+        // By default, don't override the `Writer`'s ANSI colors
+        // configuration. We'll only do this if the user calls the
+        // deprecated `PrettyFields::with_ansi` method.
+        Self { ansi: None }
     }
 
     /// Enable ANSI encoding for formatted fields.
+    #[deprecated(
+        since = "0.3.3",
+        note = "Use `fmt::Subscriber::with_ansi` or `fmt::Layer::with_ansi` instead."
+    )]
     pub fn with_ansi(self, ansi: bool) -> Self {
-        Self { ansi, ..self }
+        Self {
+            ansi: Some(ansi),
+            ..self
+        }
     }
 }
 
-impl<'a> MakeVisitor<&'a mut dyn Write> for PrettyFields {
+impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
     type Visitor = PrettyVisitor<'a>;
 
     #[inline]
-    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
-        PrettyVisitor::new(target, true).with_ansi(self.ansi)
+    fn make_visitor(&self, mut target: Writer<'a>) -> Self::Visitor {
+        if let Some(ansi) = self.ansi {
+            target = target.with_ansi(ansi);
+        }
+        PrettyVisitor::new(target, true)
     }
 }
 
@@ -276,11 +308,10 @@ impl<'a> PrettyVisitor<'a> {
     /// - `writer`: the writer to format to.
     /// - `is_empty`: whether or not any fields have been previously written to
     ///   that writer.
-    pub fn new(writer: &'a mut dyn Write, is_empty: bool) -> Self {
+    pub fn new(writer: Writer<'a>, is_empty: bool) -> Self {
         Self {
             writer,
             is_empty,
-            ansi: true,
             style: Style::default(),
             result: Ok(()),
         }
@@ -288,10 +319,6 @@ impl<'a> PrettyVisitor<'a> {
 
     pub(crate) fn with_style(self, style: Style) -> Self {
         Self { style, ..self }
-    }
-
-    pub(crate) fn with_ansi(self, ansi: bool) -> Self {
-        Self { ansi, ..self }
     }
 
     fn write_padded(&mut self, value: &impl fmt::Debug) {
@@ -305,7 +332,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     fn bold(&self) -> Style {
-        if self.ansi {
+        if self.writer.has_ansi_escapes() {
             self.style.bold()
         } else {
             Style::new()
@@ -374,26 +401,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 }
 
 impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
-    fn finish(self) -> fmt::Result {
-        write!(self.writer, "{}", self.style.suffix())?;
+    fn finish(mut self) -> fmt::Result {
+        write!(&mut self.writer, "{}", self.style.suffix())?;
         self.result
     }
 }
 
 impl<'a> VisitFmt for PrettyVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
-        self.writer
-    }
-}
-
-impl<'a> fmt::Debug for PrettyVisitor<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PrettyVisitor")
-            .field("writer", &format_args!("<dyn fmt::Write>"))
-            .field("is_empty", &self.is_empty)
-            .field("result", &self.result)
-            .field("style", &self.style)
-            .field("ansi", &self.ansi)
-            .finish()
+        &mut self.writer
     }
 }

@@ -51,13 +51,14 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
-//!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
-//!     <code>Span::enter</code> may produce incorrect traces if the returned drop
-//!     guard is held across an await point. See
-//!     <a href="span/struct.Span.html#in-asynchronous-code">the method documentation</a>
-//!     for details.
-//! </pre>
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//!
+//!  **Warning**: In asynchronous code that uses async/await syntax,
+//!  `Span::enter` may produce incorrect traces if the returned drop
+//!  guard is held across an await point. See
+//!  [the method documentation][Span#in-asynchronous-code] for details.
+//!
+//! </pre></div>
 //!
 //! ## Events
 //!
@@ -729,7 +730,7 @@
 //!  - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
-//!  - [`test-env-log`] takes care of initializing `tracing` for tests, based on
+//!  - [`test-log`] takes care of initializing `tracing` for tests, based on
 //!    environment variables with an `env_logger` compatible syntax.
 //!  - [`tracing-unwrap`] provides convenience methods to report failed unwraps
 //!    on `Result` or `Option` types to a `Subscriber`.
@@ -737,6 +738,9 @@
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
 //!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+//!  - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+//!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
+//!    framework for validating the behavior of `tracing` spans.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -757,7 +761,7 @@
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
-//! [`test-env-log`]: https://crates.io/crates/test-env-log
+//! [`test-log`]: https://crates.io/crates/test-log
 //! [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 //! [`diesel`]: https://crates.io/crates/diesel
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
@@ -765,6 +769,9 @@
 //! [Tracy]: https://github.com/wolfpld/tracy
 //! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 //! [Elastic APM]: https://www.elastic.co/apm
+//! [`tracing-etw`]: https://github.com/microsoft/tracing-etw
+//! [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+//! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!     <strong>Note</strong>: Some of these ecosystem crates are currently
@@ -877,9 +884,6 @@
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
-
-#[macro_use]
-extern crate cfg_if;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]

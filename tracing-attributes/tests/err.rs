@@ -153,3 +153,53 @@ fn impl_trait_return_type() {
 
     handle.assert_finished();
 }
+
+#[instrument(err(Debug))]
+fn err_dbg() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_dbg() {
+    let span = span::mock().named("err_dbg");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock().at_level(Level::ERROR).with_fields(
+                field::mock("error")
+                    // use the actual error value that will be emitted, so
+                    // that this test doesn't break if the standard library
+                    // changes the `fmt::Debug` output from the error type
+                    // in the future.
+                    .with_value(&tracing::field::debug(u8::try_from(1234).unwrap_err())),
+            ),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(subscriber, || err_dbg().ok());
+    handle.assert_finished();
+}
+
+#[test]
+fn test_err_display_default() {
+    let span = span::mock().named("err");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            event::mock().at_level(Level::ERROR).with_fields(
+                field::mock("error")
+                    // by default, errors will be emitted with their display values
+                    .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())),
+            ),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(subscriber, || err().ok());
+    handle.assert_finished();
+}

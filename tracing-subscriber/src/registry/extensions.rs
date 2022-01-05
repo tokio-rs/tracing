@@ -35,6 +35,7 @@ impl Hasher for IdHasher {
 
 /// An immutable, read-only reference to a Span's extensions.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct Extensions<'a> {
     inner: RwLockReadGuard<'a, ExtensionsInner>,
 }
@@ -53,6 +54,7 @@ impl<'a> Extensions<'a> {
 
 /// An mutable reference to a Span's extensions.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct ExtensionsMut<'a> {
     inner: RwLockWriteGuard<'a, ExtensionsInner>,
 }
@@ -118,6 +120,7 @@ pub(crate) struct ExtensionsInner {
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
+    #[cfg(any(test, feature = "registry"))]
     #[inline]
     #[cfg(any(test, feature = "registry"))]
     pub(crate) fn new() -> ExtensionsInner {

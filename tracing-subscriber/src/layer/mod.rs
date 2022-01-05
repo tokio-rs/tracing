@@ -493,17 +493,21 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{
-    any::TypeId,
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+
 use tracing_core::{
     metadata::Metadata,
     span,
     subscriber::{Interest, Subscriber},
     Event, LevelFilter,
 };
+
+use core::any::TypeId;
+
+feature! {
+    #![feature = "alloc"]
+    use alloc::boxed::Box;
+    use core::ops::{Deref, DerefMut};
+}
 
 mod context;
 mod layered;
@@ -646,7 +650,7 @@ where
 
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let _ = (attrs, id, ctx);
     }
 
@@ -854,8 +858,8 @@ where
     ///
     /// [`Filtered`]: crate::filter::Filtered
     /// [plf]: #per-layer-filtering
-    #[cfg(feature = "registry")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    #[cfg(all(feature = "registry", feature = "std"))]
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
     where
         Self: Sized,
@@ -874,181 +878,182 @@ where
     }
 }
 
-/// A per-[`Layer`] filter that determines whether a span or event is enabled
-/// for an individual layer.
-///
-/// See [the module-level documentation][plf] for details on using [`Filter`]s.
-///
-/// [plf]: crate::layer#per-layer-filtering
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-#[cfg_attr(docsrs, doc(notable_trait))]
-pub trait Filter<S> {
-    /// Returns `true` if this layer is interested in a span or event with the
-    /// given [`Metadata`] in the current [`Context`], similarly to
-    /// [`Subscriber::enabled`].
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    /// A per-[`Layer`] filter that determines whether a span or event is enabled
+    /// for an individual layer.
     ///
-    /// If this returns `false`, the span or event will be disabled _for the
-    /// wrapped [`Layer`]_. Unlike [`Layer::enabled`], the span or event will
-    /// still be recorded if any _other_ layers choose to enable it. However,
-    /// the layer [filtered] by this filter will skip recording that span or
-    /// event.
+    /// See [the module-level documentation][plf] for details on using [`Filter`]s.
     ///
-    /// If all layers indicate that they do not wish to see this span or event,
-    /// it will be disabled.
-    ///
-    /// [`metadata`]: tracing_core::Metadata
-    /// [`Subscriber::enabled`]: tracing_core::Subscriber::enabled
-    /// [filtered]: crate::filter::Filtered
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
+    /// [plf]: crate::layer#per-layer-filtering
+    #[cfg_attr(docsrs, doc(notable_trait))]
+    pub trait Filter<S> {
+        /// Returns `true` if this layer is interested in a span or event with the
+        /// given [`Metadata`] in the current [`Context`], similarly to
+        /// [`Subscriber::enabled`].
+        ///
+        /// If this returns `false`, the span or event will be disabled _for the
+        /// wrapped [`Layer`]_. Unlike [`Layer::enabled`], the span or event will
+        /// still be recorded if any _other_ layers choose to enable it. However,
+        /// the layer [filtered] by this filter will skip recording that span or
+        /// event.
+        ///
+        /// If all layers indicate that they do not wish to see this span or event,
+        /// it will be disabled.
+        ///
+        /// [`metadata`]: tracing_core::Metadata
+        /// [`Subscriber::enabled`]: tracing_core::Subscriber::enabled
+        /// [filtered]: crate::filter::Filtered
+        fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool;
 
-    /// Returns an [`Interest`] indicating whether this layer will [always],
-    /// [sometimes], or [never] be interested in the given [`Metadata`].
-    ///
-    /// When a given callsite will [always] or [never] be enabled, the results
-    /// of evaluating the filter may be cached for improved performance.
-    /// Therefore, if a filter is capable of determining that it will always or
-    /// never enable a particular callsite, providing an implementation of this
-    /// function is recommended.
-    ///
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: If a <code>Filter</code> will perform
-    /// <em>dynamic filtering</em> that depends on the current context in which
-    /// a span or event was observered (e.g. only enabling an event when it
-    /// occurs within a particular span), it <strong>must</strong> return
-    /// <code>Interest::sometimes()</code> from this method. If it returns
-    /// <code>Interest::always()</code> or <code>Interest::never()</code>, the
-    /// <code>enabled</code> method may not be called when a particular instance
-    /// of that span or event is recorded.
-    /// </pre>
-    ///
-    /// This method is broadly similar to [`Subscriber::register_callsite`];
-    /// however, since the returned value represents only the interest of
-    /// *this* layer, the resulting behavior is somewhat different.
-    ///
-    /// If a [`Subscriber`] returns [`Interest::always()`][always] or
-    /// [`Interest::never()`][never] for a given [`Metadata`], its [`enabled`]
-    /// method is then *guaranteed* to never be called for that callsite. On the
-    /// other hand, when a `Filter` returns [`Interest::always()`][always] or
-    /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`]s may have
-    /// differing interests in that callsite. If this is the case, the callsite
-    /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
-    /// method will still be called for that callsite when it records a span or
-    /// event.
-    ///
-    /// Returning [`Interest::always()`][always] or [`Interest::never()`][never] from
-    /// `Filter::callsite_enabled` will permanently enable or disable a
-    /// callsite (without requiring subsequent calls to [`enabled`]) if and only
-    /// if the following is true:
-    ///
-    /// - all [`Layer`]s that comprise the subscriber include `Filter`s
-    ///   (this includes a tree of [`Layered`] layers that share the same
-    ///   `Filter`)
-    /// - all those `Filter`s return the same [`Interest`].
-    ///
-    /// For example, if a [`Subscriber`] consists of two [`Filtered`] layers,
-    /// and both of those layers return [`Interest::never()`][never], that
-    /// callsite *will* never be enabled, and the [`enabled`] methods of those
-    /// [`Filter`]s will not be called.
-    ///
-    /// ## Default Implementation
-    ///
-    /// The default implementation of this method assumes that the
-    /// `Filter`'s [`enabled`] method _may_ perform dynamic filtering, and
-    /// returns [`Interest::sometimes()`][sometimes], to ensure that [`enabled`]
-    /// is called to determine whether a particular _instance_ of the callsite
-    /// is enabled in the current context. If this is *not* the case, and the
-    /// `Filter`'s [`enabled`] method will always return the same result
-    /// for a particular [`Metadata`], this method can be overridden as
-    /// follows:
-    ///
-    /// ```
-    /// use tracing_subscriber::layer;
-    /// use tracing_core::{Metadata, subscriber::Interest};
-    ///
-    /// struct MyFilter {
-    ///     // ...
-    /// }
-    ///
-    /// impl MyFilter {
-    ///     // The actual logic for determining whether a `Metadata` is enabled
-    ///     // must be factored out from the `enabled` method, so that it can be
-    ///     // called without a `Context` (which is not provided to the
-    ///     // `callsite_enabled` method).
-    ///     fn is_enabled(&self, metadata: &Metadata<'_>) -> bool {
-    ///         // ...
-    ///         # drop(metadata); true
-    ///     }
-    /// }
-    ///
-    /// impl<S> layer::Filter<S> for MyFilter {
-    ///     fn enabled(&self, metadata: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
-    ///         // Even though we are implementing `callsite_enabled`, we must still provide a
-    ///         // working implementation of `enabled`, as returning `Interest::always()` or
-    ///         // `Interest::never()` will *allow* caching, but will not *guarantee* it.
-    ///         // Other filters may still return `Interest::sometimes()`, so we may be
-    ///         // asked again in `enabled`.
-    ///         self.is_enabled(metadata)
-    ///     }
-    ///
-    ///     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
-    ///         // The result of `self.enabled(metadata, ...)` will always be
-    ///         // the same for any given `Metadata`, so we can convert it into
-    ///         // an `Interest`:
-    ///         if self.is_enabled(metadata) {
-    ///             Interest::always()
-    ///         } else {
-    ///             Interest::never()
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// [`Metadata`]: tracing_core::Metadata
-    /// [`Interest`]: tracing_core::Interest
-    /// [always]: tracing_core::Interest::always
-    /// [sometimes]: tracing_core::Interest::sometimes
-    /// [never]: tracing_core::Interest::never
-    /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite
-    /// [`Subscriber`]: tracing_core::Subscriber
-    /// [`enabled`]: Filter::enabled
-    /// [`Filtered`]: crate::filter::Filtered
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        let _ = meta;
-        Interest::sometimes()
-    }
+        /// Returns an [`Interest`] indicating whether this layer will [always],
+        /// [sometimes], or [never] be interested in the given [`Metadata`].
+        ///
+        /// When a given callsite will [always] or [never] be enabled, the results
+        /// of evaluating the filter may be cached for improved performance.
+        /// Therefore, if a filter is capable of determining that it will always or
+        /// never enable a particular callsite, providing an implementation of this
+        /// function is recommended.
+        ///
+        /// <pre class="ignore" style="white-space:normal;font:inherit;">
+        /// <strong>Note</strong>: If a <code>Filter</code> will perform
+        /// <em>dynamic filtering</em> that depends on the current context in which
+        /// a span or event was observered (e.g. only enabling an event when it
+        /// occurs within a particular span), it <strong>must</strong> return
+        /// <code>Interest::sometimes()</code> from this method. If it returns
+        /// <code>Interest::always()</code> or <code>Interest::never()</code>, the
+        /// <code>enabled</code> method may not be called when a particular instance
+        /// of that span or event is recorded.
+        /// </pre>
+        ///
+        /// This method is broadly similar to [`Subscriber::register_callsite`];
+        /// however, since the returned value represents only the interest of
+        /// *this* layer, the resulting behavior is somewhat different.
+        ///
+        /// If a [`Subscriber`] returns [`Interest::always()`][always] or
+        /// [`Interest::never()`][never] for a given [`Metadata`], its [`enabled`]
+        /// method is then *guaranteed* to never be called for that callsite. On the
+        /// other hand, when a `Filter` returns [`Interest::always()`][always] or
+        /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`]s may have
+        /// differing interests in that callsite. If this is the case, the callsite
+        /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
+        /// method will still be called for that callsite when it records a span or
+        /// event.
+        ///
+        /// Returning [`Interest::always()`][always] or [`Interest::never()`][never] from
+        /// `Filter::callsite_enabled` will permanently enable or disable a
+        /// callsite (without requiring subsequent calls to [`enabled`]) if and only
+        /// if the following is true:
+        ///
+        /// - all [`Layer`]s that comprise the subscriber include `Filter`s
+        ///   (this includes a tree of [`Layered`] layers that share the same
+        ///   `Filter`)
+        /// - all those `Filter`s return the same [`Interest`].
+        ///
+        /// For example, if a [`Subscriber`] consists of two [`Filtered`] layers,
+        /// and both of those layers return [`Interest::never()`][never], that
+        /// callsite *will* never be enabled, and the [`enabled`] methods of those
+        /// [`Filter`]s will not be called.
+        ///
+        /// ## Default Implementation
+        ///
+        /// The default implementation of this method assumes that the
+        /// `Filter`'s [`enabled`] method _may_ perform dynamic filtering, and
+        /// returns [`Interest::sometimes()`][sometimes], to ensure that [`enabled`]
+        /// is called to determine whether a particular _instance_ of the callsite
+        /// is enabled in the current context. If this is *not* the case, and the
+        /// `Filter`'s [`enabled`] method will always return the same result
+        /// for a particular [`Metadata`], this method can be overridden as
+        /// follows:
+        ///
+        /// ```
+        /// use tracing_subscriber::layer;
+        /// use tracing_core::{Metadata, subscriber::Interest};
+        ///
+        /// struct MyFilter {
+        ///     // ...
+        /// }
+        ///
+        /// impl MyFilter {
+        ///     // The actual logic for determining whether a `Metadata` is enabled
+        ///     // must be factored out from the `enabled` method, so that it can be
+        ///     // called without a `Context` (which is not provided to the
+        ///     // `callsite_enabled` method).
+        ///     fn is_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        ///         // ...
+        ///         # drop(metadata); true
+        ///     }
+        /// }
+        ///
+        /// impl<S> layer::Filter<S> for MyFilter {
+        ///     fn enabled(&self, metadata: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
+        ///         // Even though we are implementing `callsite_enabled`, we must still provide a
+        ///         // working implementation of `enabled`, as returning `Interest::always()` or
+        ///         // `Interest::never()` will *allow* caching, but will not *guarantee* it.
+        ///         // Other filters may still return `Interest::sometimes()`, so we may be
+        ///         // asked again in `enabled`.
+        ///         self.is_enabled(metadata)
+        ///     }
+        ///
+        ///     fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+        ///         // The result of `self.enabled(metadata, ...)` will always be
+        ///         // the same for any given `Metadata`, so we can convert it into
+        ///         // an `Interest`:
+        ///         if self.is_enabled(metadata) {
+        ///             Interest::always()
+        ///         } else {
+        ///             Interest::never()
+        ///         }
+        ///     }
+        /// }
+        /// ```
+        ///
+        /// [`Metadata`]: tracing_core::Metadata
+        /// [`Interest`]: tracing_core::Interest
+        /// [always]: tracing_core::Interest::always
+        /// [sometimes]: tracing_core::Interest::sometimes
+        /// [never]: tracing_core::Interest::never
+        /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite
+        /// [`Subscriber`]: tracing_core::Subscriber
+        /// [`enabled`]: Filter::enabled
+        /// [`Filtered`]: crate::filter::Filtered
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            let _ = meta;
+            Interest::sometimes()
+        }
 
-    /// Returns an optional hint of the highest [verbosity level][level] that
-    /// this `Filter` will enable.
-    ///
-    /// If this method returns a [`LevelFilter`], it will be used as a hint to
-    /// determine the most verbose level that will be enabled. This will allow
-    /// spans and events which are more verbose than that level to be skipped
-    /// more efficiently. An implementation of this method is optional, but
-    /// strongly encouraged.
-    ///
-    /// If the maximum level the `Filter` will enable can change over the
-    /// course of its lifetime, it is free to return a different value from
-    /// multiple invocations of this method. However, note that changes in the
-    /// maximum level will **only** be reflected after the callsite [`Interest`]
-    /// cache is rebuilt, by calling the
-    /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
-    /// Therefore, if the `Filter will change the value returned by this
-    /// method, it is responsible for ensuring that
-    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
-    /// level changes.
-    ///
-    /// ## Default Implementation
-    ///
-    /// By default, this method returns `None`, indicating that the maximum
-    /// level is unknown.
-    ///
-    /// [level]: tracing_core::metadata::Level
-    /// [`LevelFilter`]: crate::filter::LevelFilter
-    /// [`Interest`]: tracing_core::subscriber::Interest
-    /// [rebuild]: tracing_core::callsite::rebuild_interest_cache
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        None
+        /// Returns an optional hint of the highest [verbosity level][level] that
+        /// this `Filter` will enable.
+        ///
+        /// If this method returns a [`LevelFilter`], it will be used as a hint to
+        /// determine the most verbose level that will be enabled. This will allow
+        /// spans and events which are more verbose than that level to be skipped
+        /// more efficiently. An implementation of this method is optional, but
+        /// strongly encouraged.
+        ///
+        /// If the maximum level the `Filter` will enable can change over the
+        /// course of its lifetime, it is free to return a different value from
+        /// multiple invocations of this method. However, note that changes in the
+        /// maximum level will **only** be reflected after the callsite [`Interest`]
+        /// cache is rebuilt, by calling the
+        /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+        /// Therefore, if the `Filter will change the value returned by this
+        /// method, it is responsible for ensuring that
+        /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+        /// level changes.
+        ///
+        /// ## Default Implementation
+        ///
+        /// By default, this method returns `None`, indicating that the maximum
+        /// level is unknown.
+        ///
+        /// [level]: tracing_core::metadata::Level
+        /// [`LevelFilter`]: crate::filter::LevelFilter
+        /// [`Interest`]: tracing_core::subscriber::Interest
+        /// [rebuild]: tracing_core::callsite::rebuild_interest_cache
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            None
+        }
     }
 }
 
@@ -1063,6 +1068,7 @@ pub trait SubscriberExt: Subscriber + crate::sealed::Sealed {
         layer.with_subscriber(self)
     }
 }
+
 /// A layer that does nothing.
 #[derive(Clone, Debug, Default)]
 pub struct Identity {
@@ -1083,9 +1089,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
-            inner.new_span(attrs, id, ctx)
+            inner.on_new_span(attrs, id, ctx)
         }
     }
 
@@ -1173,125 +1179,93 @@ where
     }
 }
 
-macro_rules! layer_impl_body {
-    () => {
-        #[inline]
-        fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-            self.deref().new_span(attrs, id, ctx)
-        }
+feature! {
+    #![any(feature = "std", feature = "alloc")]
 
-        #[inline]
-        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-            self.deref().register_callsite(metadata)
-        }
+    macro_rules! layer_impl_body {
+        () => {
+            #[inline]
+            fn on_layer(&mut self, subscriber: &mut S) {
+                self.deref_mut().on_layer(subscriber);
+            }
 
-        #[inline]
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-            self.deref().enabled(metadata, ctx)
-        }
+            #[inline]
+            fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_new_span(attrs, id, ctx)
+            }
 
-        #[inline]
-        fn max_level_hint(&self) -> Option<LevelFilter> {
-            self.deref().max_level_hint()
-        }
+            #[inline]
+            fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+                self.deref().register_callsite(metadata)
+            }
 
-        #[inline]
-        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-            self.deref().on_record(span, values, ctx)
-        }
+            #[inline]
+            fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+                self.deref().enabled(metadata, ctx)
+            }
 
-        #[inline]
-        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
-            self.deref().on_follows_from(span, follows, ctx)
-        }
+            #[inline]
+            fn max_level_hint(&self) -> Option<LevelFilter> {
+                self.deref().max_level_hint()
+            }
 
-        #[inline]
-        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-            self.deref().on_event(event, ctx)
-        }
+            #[inline]
+            fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+                self.deref().on_record(span, values, ctx)
+            }
 
-        #[inline]
-        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-            self.deref().on_enter(id, ctx)
-        }
+            #[inline]
+            fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_follows_from(span, follows, ctx)
+            }
 
-        #[inline]
-        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-            self.deref().on_exit(id, ctx)
-        }
+            #[inline]
+            fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+                self.deref().on_event(event, ctx)
+            }
 
-        #[inline]
-        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-            self.deref().on_close(id, ctx)
-        }
+            #[inline]
+            fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_enter(id, ctx)
+            }
 
-        #[inline]
-        fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
-            self.deref().on_id_change(old, new, ctx)
-        }
+            #[inline]
+            fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_exit(id, ctx)
+            }
 
-        #[doc(hidden)]
-        #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-            self.deref().downcast_raw(id)
-        }
-    };
-}
+            #[inline]
+            fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+                self.deref().on_close(id, ctx)
+            }
 
-impl<L, S> Layer<S> for Arc<L>
-where
-    L: Layer<S>,
-    S: Subscriber,
-{
-    fn on_layer(&mut self, subscriber: &mut S) {
-        if let Some(inner) = Arc::get_mut(self) {
-            // XXX(eliza): this may behave weird if another `Arc` clone of this
-            // layer is layered onto a _different_ subscriber...but there's no
-            // good solution for that...
-            inner.on_layer(subscriber);
-        }
+            #[inline]
+            fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
+                self.deref().on_id_change(old, new, ctx)
+            }
+
+            #[doc(hidden)]
+            #[inline]
+            unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+                self.deref().downcast_raw(id)
+            }
+        };
     }
 
-    layer_impl_body! {}
-}
-
-impl<S> Layer<S> for Arc<dyn Layer<S> + Send + Sync>
-where
-    S: Subscriber,
-{
-    fn on_layer(&mut self, subscriber: &mut S) {
-        if let Some(inner) = Arc::get_mut(self) {
-            // XXX(eliza): this may behave weird if another `Arc` clone of this
-            // layer is layered onto a _different_ subscriber...but there's no
-            // good solution for that...
-            inner.on_layer(subscriber);
-        }
+    impl<L, S> Layer<S> for Box<L>
+    where
+        L: Layer<S>,
+        S: Subscriber,
+    {
+        layer_impl_body! {}
     }
 
-    layer_impl_body! {}
-}
-
-impl<L, S> Layer<S> for Box<L>
-where
-    L: Layer<S>,
-    S: Subscriber,
-{
-    fn on_layer(&mut self, subscriber: &mut S) {
-        self.deref_mut().on_layer(subscriber);
+    impl<S> Layer<S> for Box<dyn Layer<S> + Send + Sync>
+    where
+        S: Subscriber,
+    {
+        layer_impl_body! {}
     }
-
-    layer_impl_body! {}
-}
-
-impl<S> Layer<S> for Box<dyn Layer<S> + Send + Sync>
-where
-    S: Subscriber,
-{
-    fn on_layer(&mut self, subscriber: &mut S) {
-        self.deref_mut().on_layer(subscriber);
-    }
-
-    layer_impl_body! {}
 }
 
 // === impl SubscriberExt ===

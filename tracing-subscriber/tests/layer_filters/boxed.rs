@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::Arc;
 use tracing_subscriber::{filter, prelude::*, Layer};
 
 fn layer() -> (ExpectLayer, subscriber::MockHandle) {
@@ -32,36 +31,6 @@ fn box_works() {
 fn dyn_box_works() {
     let (layer, handle) = layer();
     let layer: Box<dyn Layer<_> + Send + Sync + 'static> = Box::new(layer.with_filter(filter()));
-
-    let _guard = tracing_subscriber::registry().with(layer).set_default();
-
-    for i in 0..2 {
-        tracing::info!(i);
-    }
-
-    handle.assert_finished();
-}
-
-/// the same as `box_works` but with an `Arc`.
-#[test]
-fn arc_works() {
-    let (layer, handle) = layer();
-    let layer = Box::new(layer.with_filter(filter()));
-
-    let _guard = tracing_subscriber::registry().with(layer).set_default();
-
-    for i in 0..2 {
-        tracing::info!(i);
-    }
-
-    handle.assert_finished();
-}
-
-/// the same as `box_works` but with a type-erased `Arc`.
-#[test]
-fn dyn_arc_works() {
-    let (layer, handle) = layer();
-    let layer: Arc<dyn Layer<_> + Send + Sync + 'static> = Arc::new(layer.with_filter(filter()));
 
     let _guard = tracing_subscriber::registry().with(layer).set_default();
 

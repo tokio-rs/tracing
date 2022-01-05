@@ -1,6 +1,8 @@
 //! Extension traits and other utilities to make working with subscribers more
 //! ergonomic.
-use std::{error::Error, fmt};
+use core::fmt;
+#[cfg(feature = "std")]
+use std::error::Error;
 use tracing_core::dispatcher::{self, Dispatch};
 #[cfg(feature = "tracing-log")]
 use tracing_log::AsLog;
@@ -31,6 +33,8 @@ where
     ///
     /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn set_default(self) -> dispatcher::DefaultGuard {
         #[cfg(feature = "tracing-log")]
         let _ = tracing_log::LogTracer::init();
@@ -92,29 +96,56 @@ impl<T> SubscriberInitExt for T where T: Into<Dispatch> {}
 
 /// Error returned by [`try_init`](SubscriberInitExt::try_init) if a global default subscriber could not be initialized.
 pub struct TryInitError {
+    #[cfg(feature = "std")]
     inner: Box<dyn Error + Send + Sync + 'static>,
+
+    #[cfg(not(feature = "std"))]
+    _p: (),
 }
 
 // ==== impl TryInitError ====
 
 impl TryInitError {
+    #[cfg(feature = "std")]
     fn new(e: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
         Self { inner: e.into() }
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn new<T>(_: T) -> Self {
+        Self { _p: () }
     }
 }
 
 impl fmt::Debug for TryInitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, f)
+        #[cfg(feature = "std")]
+        {
+            fmt::Debug::fmt(&self.inner, f)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            f.write_str("TryInitError(())")
+        }
     }
 }
 
 impl fmt::Display for TryInitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
+        #[cfg(feature = "std")]
+        {
+            fmt::Display::fmt(&self.inner, f)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            f.write_str("failed to set global default subscriber")
+        }
     }
 }
 
+#[cfg(feature = "std")]
 impl Error for TryInitError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.inner.source()

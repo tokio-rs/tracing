@@ -48,7 +48,7 @@ To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 ```
 
 Then create and install a `Subscriber`, for example using [`init()`]:
@@ -394,13 +394,14 @@ are not maintained by the `tokio` project. These include:
   _inside_ of functions.
 - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -422,7 +423,7 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
@@ -431,6 +432,8 @@ please let us know!)
 [Tracy]: https://github.com/wolfpld/tracy
 [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 [Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -444,6 +447,8 @@ Tracing.
 #### Blog Posts
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+* [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
+* [Custom Logging in Rust using `tracing` and `tracing-subscriber`, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
@@ -458,6 +463,9 @@ Tracing.
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
 [rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
+[production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
+[custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
+[custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

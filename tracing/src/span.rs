@@ -75,7 +75,7 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: In asynchronous code that uses async/await syntax,
 //!     <code>Span::enter</code> may produce incorrect traces if the returned drop
 //!     guard is held across an await point. See
@@ -136,8 +136,7 @@
 //! as long as the longest-executing span in its subtree.
 //!
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! // this span is considered the "root" of a new trace tree:
 //! span!(Level::INFO, "root").in_scope(|| {
 //!     // since we are now inside "root", this span is considered a child
@@ -157,8 +156,7 @@
 //! the `span!` macro. For example:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! // Create, but do not enter, a span called "foo".
 //! let foo = span!(Level::INFO, "foo");
 //!
@@ -200,8 +198,6 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # extern crate tracing;
-//! # extern crate futures;
 //! # use futures::{Future, Poll, Async};
 //! struct MyFuture {
 //!    // data
@@ -241,8 +237,7 @@
 //! that handle "closes" the span, since the capacity to enter it no longer
 //! exists. For example:
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! {
 //!     span!(Level::TRACE, "my_span").in_scope(|| {
 //!         // perform some work in the context of `my_span`...
@@ -275,8 +270,7 @@
 //! construct one span and perform the entire loop inside of that span, like:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! # let n = 1;
 //! let span = span!(Level::TRACE, "my_loop");
 //! let _enter = span.enter();
@@ -287,8 +281,7 @@
 //! ```
 //! Or, should we create a new span for each iteration of the loop, as in:
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! # let n = 1u64;
 //! for i in 0..n {
 //!     let span = span!(Level::TRACE, "my_loop", iteration = i);
@@ -722,8 +715,7 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
-    /// # use tracing::Level;
+    /// # use tracing::{span, Level};
     /// let span = span!(Level::INFO, "my_span");
     /// let guard = span.enter();
     ///
@@ -738,7 +730,7 @@ impl Span {
     /// Guards need not be explicitly dropped:
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
+    /// # use tracing::trace_span;
     /// fn my_function() -> String {
     ///     // enter a span for the duration of this function.
     ///     let span = trace_span!("my_function");
@@ -760,7 +752,7 @@ impl Span {
     /// entered:
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
+    /// # use tracing::{info, info_span};
     /// let span = info_span!("my_great_span");
     ///
     /// {
@@ -1070,8 +1062,7 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// # #[macro_use] extern crate tracing;
-    /// # use tracing::Level;
+    /// # use tracing::{trace, span, Level};
     /// let my_span = span!(Level::TRACE, "my_span");
     ///
     /// my_span.in_scope(|| {

@@ -5,17 +5,16 @@
 // The alternative would be for each of these tests to be defined in a separate
 // file, which is :(
 #![cfg(feature = "std")]
-
-#[macro_use]
-extern crate tracing;
 mod support;
 
 use self::support::*;
 
 use tracing::{
+    debug, error,
     field::{debug, display},
+    info,
     subscriber::with_default,
-    Level,
+    trace, warn, Level,
 };
 
 macro_rules! event_without_message {
@@ -150,7 +149,7 @@ fn one_with_everything() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        event!(
+        tracing::event!(
             target: "whatever",
             Level::ERROR,
             { foo = 666, bar = false, like_a_butterfly = 42.0 },
@@ -176,7 +175,7 @@ fn moved_field() {
         .run_with_handle();
     with_default(subscriber, || {
         let from = "my event";
-        event!(Level::INFO, foo = display(format!("hello from {}", from)))
+        tracing::event!(Level::INFO, foo = display(format!("hello from {}", from)))
     });
 
     handle.assert_finished();
@@ -197,7 +196,7 @@ fn dotted_field_name() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        event!(Level::INFO, foo.bar = true, foo.baz = false);
+        tracing::event!(Level::INFO, foo.bar = true, foo.baz = false);
     });
 
     handle.assert_finished();
@@ -219,7 +218,7 @@ fn borrowed_field() {
     with_default(subscriber, || {
         let from = "my event";
         let mut message = format!("hello from {}", from);
-        event!(Level::INFO, foo = display(&message));
+        tracing::event!(Level::INFO, foo = display(&message));
         message.push_str(", which happened!");
     });
 
@@ -281,7 +280,7 @@ fn display_shorthand() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        event!(Level::TRACE, my_field = %"hello world");
+        tracing::event!(Level::TRACE, my_field = %"hello world");
     });
 
     handle.assert_finished();
@@ -301,7 +300,7 @@ fn debug_shorthand() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        event!(Level::TRACE, my_field = ?"hello world");
+        tracing::event!(Level::TRACE, my_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -322,7 +321,7 @@ fn both_shorthands() {
         .done()
         .run_with_handle();
     with_default(subscriber, || {
-        event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
+        tracing::event!(Level::TRACE, display_field = %"hello world", debug_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -338,8 +337,8 @@ fn explicit_child() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        let foo = span!(Level::TRACE, "foo");
-        event!(parent: foo.id(), Level::TRACE, "bar");
+        let foo = tracing::span!(Level::TRACE, "foo");
+        tracing::event!(parent: foo.id(), Level::TRACE, "bar");
     });
 
     handle.assert_finished();
@@ -359,7 +358,7 @@ fn explicit_child_at_levels() {
         .run_with_handle();
 
     with_default(subscriber, || {
-        let foo = span!(Level::TRACE, "foo");
+        let foo = tracing::span!(Level::TRACE, "foo");
         trace!(parent: foo.id(), "a");
         debug!(parent: foo.id(), "b");
         info!(parent: foo.id(), "c");

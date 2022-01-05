@@ -87,7 +87,7 @@ use tracing_core::{
 /// [fields]: https://docs.rs/tracing-core/latest/tracing-core/field/index.html
 /// [stored span data]: crate::registry::SpanData::extensions_mut
 #[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
 pub struct Registry {
     spans: Pool<DataInner>,
@@ -106,7 +106,7 @@ pub struct Registry {
 /// [`Layer`s]: ../layer/trait.Layer.html
 /// [extensions]: struct.Extensions.html
 #[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
 pub struct Data<'a> {
     /// Immutable reference to the pooled `DataInner` entry.
@@ -598,7 +598,7 @@ mod tests {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        fn new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        fn on_new_span(&self, _: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
             let span = ctx.span(id).expect("Missing span; this is a bug");
             let mut lock = self.inner.lock().unwrap();
             let is_removed = Arc::new(());

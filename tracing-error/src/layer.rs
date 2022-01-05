@@ -15,10 +15,10 @@ use tracing_subscriber::{
 /// when formatting the fields of each span in a trace. When no formatter is
 /// provided, the [default format] is used instead.
 ///
-/// [`Layer`]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/layer/trait.Layer.html
+/// [`Layer`]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/layer/trait.Layer.html
 /// [`SpanTrace`]: ../struct.SpanTrace.html
-/// [field formatter]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/trait.FormatFields.html
-/// [default format]: https://docs.rs/tracing-subscriber/0.2.10/tracing_subscriber/fmt/format/struct.DefaultFields.html
+/// [field formatter]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/fmt/trait.FormatFields.html
+/// [default format]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/fmt/format/struct.DefaultFields.html
 pub struct ErrorLayer<S, F = DefaultFields> {
     format: F,
 
@@ -40,15 +40,14 @@ where
 {
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
         let span = ctx.span(id).expect("span must already exist!");
         if span.extensions().get::<FormattedFields<F>>().is_some() {
             return;
         }
-        let mut fields = String::new();
-        if self.format.format_fields(&mut fields, attrs).is_ok() {
-            span.extensions_mut()
-                .insert(FormattedFields::<F>::new(fields));
+        let mut fields = FormattedFields::<F>::new(String::new());
+        if self.format.format_fields(fields.as_writer(), attrs).is_ok() {
+            span.extensions_mut().insert(fields);
         }
     }
 

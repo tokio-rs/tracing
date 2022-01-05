@@ -62,7 +62,7 @@ idiomatic `tracing`.)
 In order to record trace events, executables have to use a `Subscriber`
 implementation compatible with `tracing`. A `Subscriber` implements a way of
 collecting trace data, such as by logging it to standard output. [`tracing_subscriber`](https://docs.rs/tracing-subscriber/)'s
-[`fmt` module](https://docs.rs/tracing-subscriber/0.2.0-alpha.2/tracing_subscriber/fmt/index.html) provides reasonable defaults.
+[`fmt` module](https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/fmt/index.html) provides reasonable defaults.
 Additionally, `tracing-subscriber` is able to consume messages emitted by `log`-instrumented libraries and modules.
 
 The simplest way to use a subscriber is to call the `set_global_default` function.
@@ -384,12 +384,16 @@ maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`tracing-fluent-assertions`] provides a fluent assertions-style testing
+  framework for validating the behavior of `tracing` spans.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -404,12 +408,17 @@ please let us know! We'd love to add your project to the list!
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

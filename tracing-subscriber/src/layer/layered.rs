@@ -10,9 +10,9 @@ use crate::{
     layer::{Context, Layer},
     registry::LookupSpan,
 };
-#[cfg(feature = "registry")]
+#[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
-use std::{any::TypeId, fmt, marker::PhantomData};
+use core::{any::TypeId, cmp, fmt, marker::PhantomData};
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
 /// [`Layer`]s.
@@ -97,7 +97,7 @@ where
 
     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         let id = self.inner.new_span(span);
-        self.layer.new_span(span, &id, self.ctx());
+        self.layer.on_new_span(span, &id, self.ctx());
         id
     }
 
@@ -140,16 +140,16 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let subscriber = &self.inner as &dyn Subscriber;
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
             .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if let Some(g) = guard.as_mut() {
                     g.is_closing()
@@ -233,9 +233,9 @@ where
     }
 
     #[inline]
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.inner.new_span(attrs, id, ctx.clone());
-        self.layer.new_span(attrs, id, ctx);
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        self.inner.on_new_span(attrs, id, ctx.clone());
+        self.layer.on_new_span(attrs, id, ctx);
     }
 
     #[inline]
@@ -335,7 +335,7 @@ where
         self.inner.span_data(id)
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn register_filter(&mut self) -> FilterId {
         self.inner.register_filter()
     }
@@ -356,9 +356,10 @@ where
     S: Subscriber,
 {
     pub(super) fn new(layer: A, inner: B, inner_has_layer_filter: bool) -> Self {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let inner_is_registry = TypeId::of::<S>() == TypeId::of::<crate::registry::Registry>();
-        #[cfg(not(feature = "registry"))]
+
+        #[cfg(not(all(feature = "registry", feature = "std")))]
         let inner_is_registry = false;
 
         let inner_has_layer_filter = inner_has_layer_filter || inner_is_registry;
@@ -421,14 +422,12 @@ where
         outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
     ) -> Option<LevelFilter> {
-        use std::cmp::max;
-
         if self.inner_is_registry {
             return outer_hint;
         }
 
         if self.has_layer_filter && self.inner_has_layer_filter {
-            return Some(max(outer_hint?, inner_hint?));
+            return Some(cmp::max(outer_hint?, inner_hint?));
         }
 
         if self.has_layer_filter && inner_hint.is_none() {
@@ -439,7 +438,7 @@ where
             return None;
         }
 
-        max(outer_hint, inner_hint)
+        cmp::max(outer_hint, inner_hint)
     }
 }
 
@@ -449,13 +448,14 @@ where
     B: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let alt = f.alternate();
         let mut s = f.debug_struct("Layered");
         // These additional fields are more verbose and usually only necessary
         // for internal debugging purposes, so only print them if alternate mode
         // is enabled.
-        #[cfg(feature = "registry")]
+
+        #[cfg(all(feature = "registry", feature = "std"))]
         {
             if alt {
                 s.field("inner_is_registry", &self.inner_is_registry)

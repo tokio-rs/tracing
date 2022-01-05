@@ -1,8 +1,8 @@
 //! Utilities for working with [fields] and [field visitors].
 //!
-//! [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
-//! [field visitors]: https://docs.rs/tracing-core/latest/tracing_core/field/trait.Visit.html
-use std::{fmt, io};
+//! [fields]: tracing_core::field
+//! [field visitors]: tracing_core::field::Visit
+use core::{fmt, marker::PhantomData};
 pub use tracing_core::field::Visit;
 use tracing_core::{
     span::{Attributes, Record},
@@ -108,11 +108,16 @@ where
     }
 }
 
-/// Extension trait implemented by visitors to indicate that they write to an
-/// `io::Write` instance, and allow access to that writer.
-pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
-    /// Returns the writer that this visitor writes to.
-    fn writer(&mut self) -> &mut dyn io::Write;
+feature! {
+    #![feature = "std"]
+    use std::io;
+
+    /// Extension trait implemented by visitors to indicate that they write to an
+    /// `io::Write` instance, and allow access to that writer.
+    pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
+        /// Returns the writer that this visitor writes to.
+        fn writer(&mut self) -> &mut dyn io::Write;
+    }
 }
 
 /// Extension trait implemented by visitors to indicate that they write to a
@@ -223,7 +228,7 @@ where
 #[derive(Debug)]
 #[doc(hidden)]
 pub struct MakeExtMarker<T> {
-    _p: std::marker::PhantomData<T>,
+    _p: PhantomData<T>,
 }
 
 #[derive(Debug)]
@@ -232,10 +237,11 @@ pub struct RecordFieldsMarker {
     _p: (),
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 #[macro_use]
 pub(in crate::field) mod test_util {
     use super::*;
+    pub(in crate::field) use alloc::string::String;
     use tracing_core::{
         callsite::Callsite,
         field::{Field, Value},
@@ -335,7 +341,7 @@ pub(in crate::field) mod test_util {
 
     impl<'a> Visit for DebugVisitor<'a> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-            write!(&mut self.writer, "{}={:?}", field, value).unwrap();
+            write!(self.writer, "{}={:?}", field, value).unwrap();
         }
     }
 

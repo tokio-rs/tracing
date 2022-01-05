@@ -28,7 +28,7 @@ use tracing_core::{
 ///
 /// # Directives
 ///
-/// A filter consists of one or more directives which match on [`Span`]s and [`Event`]s.
+/// A filter consists of one or more comma-separated directives which match on [`Span`]s and [`Event`]s.
 /// Each directive may have a corresponding maximum verbosity [`level`] which
 /// enables (e.g., _selects for_) spans and events that match. Like `log`,
 /// `tracing` considers less exclusive levels (like `trace` or `info`) to be more
@@ -77,6 +77,9 @@ use tracing_core::{
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
 ///    - at the level `info` or above.
+/// - `warn,tokio::net=info` will enable all spans and events that:
+///    - are at the level `warn` or above, *or*
+///    - have the `tokio::net` target at the level `info` or above.
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
@@ -91,16 +94,13 @@ use tracing_core::{
 /// without filtering on field values. When these features are not required,
 /// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
-/// [`Span`]: https://docs.rs/tracing-core/latest/tracing_core/span/index.html
-/// [fields]: https://docs.rs/tracing-core/latest/tracing_core/struct.Field.html
-/// [`Event`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Event.html
-/// [`level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
-/// [`Metadata`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Metadata.html
+/// [`Span`]: tracing_core::span
+/// [fields]: tracing_core::Field
+/// [`Event`]: tracing_core::Event
+/// [`level`]: tracing_core::Level
+/// [`Metadata`]: tracing_core::Metadata
 /// [`Targets`]: crate::filter::Targets
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
@@ -118,7 +118,7 @@ type FieldMap<T> = HashMap<Field, T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct FromEnvError {
     kind: ErrorKind,
@@ -443,7 +443,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         false
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
