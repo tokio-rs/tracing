@@ -783,6 +783,242 @@ macro_rules! event {
     );
 }
 
+/// Check's whether an equivalent `event!` invocation would result in an enabled
+/// event.
+///
+/// If you are using this macro to guard a log line that requires expensive computation, it can
+/// result in false-negative's, if the default collector has filters based on line numbers or field
+/// names.
+///
+/// This macro operates similarly to [`event!`], with some extensions:
+/// - Allows passing just a level.
+/// - Allows passing just a level and a target.
+///
+/// See [the top-level documentation][lib] for details on the syntax accepted by
+/// this macro.
+///
+/// [lib]: crate#using-the-macros
+/// [`event!`]: event!
+///
+/// # Examples
+///
+/// ```rust
+/// use tracing::{enabled, Level};
+///
+/// # fn main() {
+/// #   if enabled!(Level::DEBUG, "Debug loggin") {
+/// #       // Do something expensive
+/// #   }
+/// # }
+/// ```
+///
+#[macro_export]
+macro_rules! enabled {
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> (
+        if $crate::level_enabled!($lvl) {
+            use $crate::__macro_support::Callsite as _;
+            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+                name: concat!(
+                    "enabled! ",
+                    file!(),
+                    ":",
+                    line!()
+                ),
+                kind: $crate::metadata::Kind::HINT,
+                target: $target,
+                level: $lvl,
+                fields: $($fields)*
+            };
+            let interest = CALLSITE.interest();
+            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+                let meta = CALLSITE.metadata();
+                // event with explicit parent
+                $crate::Event::child_of_enabled(
+                    $parent,
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*)
+                )
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    );
+
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        $crate::enabled!(
+            target: $target,
+            parent: $parent,
+            $lvl,
+            { message = format_args!($($arg)+), $($fields)* }
+        )
+    );
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
+        $crate::enabled!(target: $target, parent: $parent, $lvl, { $($k).+ = $($fields)* })
+    );
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, $($arg:tt)+) => (
+        $crate::enabled!(target: $target, parent: $parent, $lvl, { $($arg)+ })
+    );
+    (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
+        if $crate::level_enabled!($lvl) {
+            use $crate::__macro_support::Callsite as _;
+            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+                name: concat!(
+                    "enabled ",
+                    file!(),
+                    ":",
+                    line!()
+                ),
+                kind: $crate::metadata::Kind::EVENT,
+                target: $target,
+                level: $lvl,
+                fields: $($fields)*
+            };
+            let interest = CALLSITE.interest();
+            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+                let meta = CALLSITE.metadata();
+                // event with contextual parent
+                $crate::Event::enabled(
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*)
+                )
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    });
+    (target: $target:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        $crate::enabled!(
+            target: $target,
+            $lvl,
+            { message = format_args!($($arg)+), $($fields)* }
+        )
+    );
+    (target: $target:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
+        $crate::enabled!(target: $target, $lvl, { $($k).+ = $($fields)* })
+    );
+    (target: $target:expr, $lvl:expr, $($arg:tt)+ ) => (
+        $crate::enabled!(target: $target, $lvl, { $($arg)+ })
+    );
+    // This cases is added on top of how `event` works
+    (target: $target:expr, $lvl:expr ) => (
+        $crate::enabled!(target: $target, $lvl, { "hint_message" })
+    );
+    (parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { message = format_args!($($arg)+), $($fields)* }
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { $($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, ?$($k:ident).+ = $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { ?$($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, %$($k:ident).+ = $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { %$($k).+ = $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, $($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { $($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, %$($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { %$($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, ?$($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            parent: $parent,
+            $lvl,
+            { ?$($k).+, $($field)*}
+        )
+    );
+    (parent: $parent:expr, $lvl:expr, $($arg:tt)+ ) => (
+        $crate::enabled!(target: module_path!(), parent: $parent, $lvl, { $($arg)+ })
+    );
+    ( $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
+        $crate::enabled!(
+            target: module_path!(),
+            $lvl,
+            { message = format_args!($($arg)+), $($fields)* }
+        )
+    );
+    ($lvl:expr, $($k:ident).+ = $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            $lvl,
+            { $($k).+ = $($field)*}
+        )
+    );
+    ($lvl:expr, $($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            $lvl,
+            { $($k).+, $($field)*}
+        )
+    );
+    ($lvl:expr, ?$($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            $lvl,
+            { ?$($k).+, $($field)*}
+        )
+    );
+    ($lvl:expr, %$($k:ident).+, $($field:tt)*) => (
+        $crate::enabled!(
+            target: module_path!(),
+            $lvl,
+            { %$($k).+, $($field)*}
+        )
+    );
+    ($lvl:expr, ?$($k:ident).+) => (
+        $crate::enabled!($lvl, ?$($k).+,)
+    );
+    ($lvl:expr, %$($k:ident).+) => (
+        $crate::enabled!($lvl, %$($k).+,)
+    );
+    ($lvl:expr, $($k:ident).+) => (
+        $crate::enabled!($lvl, $($k).+,)
+    );
+    ( $lvl:expr, $($arg:tt)+ ) => (
+        $crate::enabled!(target: module_path!(), $lvl, { $($arg)+ })
+    );
+    // This cases is added on top of how `event` works
+    ( $lvl:expr ) => (
+        $crate::enabled!(target: module_path!(), $lvl, { "hint_message" })
+    );
+}
+
 /// Constructs an event at the trace level.
 ///
 /// This functions similarly to the [`event!`] macro. See [the top-level
