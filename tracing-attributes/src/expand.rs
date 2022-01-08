@@ -179,7 +179,7 @@ fn gen_block<B: ToTokens>(
             }
         }
 
-        let custom_fields = &args.fields;
+        let custom_fields = args.fields.as_ref().map(|fields| fields.with_args(&args));
 
         quote!(#tracing::span!(
             target: #target,

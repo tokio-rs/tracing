@@ -275,6 +275,11 @@ pub(crate) enum FieldKind {
     Value,
 }
 
+pub(crate) struct WithArgs<'a, T> {
+    value: &'a T,
+    args: &'a InstrumentArgs,
+}
+
 impl Parse for Fields {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let _ = input.parse::<kw::fields>();
@@ -285,9 +290,18 @@ impl Parse for Fields {
     }
 }
 
-impl ToTokens for Fields {
+impl Fields {
+    pub(crate) fn with_args<'a>(&'a self, args: &'a InstrumentArgs) -> WithArgs<'a, Self> {
+        WithArgs { value: self, args }
+    }
+}
+
+impl ToTokens for WithArgs<'_, Fields> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.0.to_tokens(tokens)
+        for pair in self.value.0.pairs() {
+            pair.value().with_args(self.args).to_tokens(tokens);
+            pair.punct().to_tokens(tokens);
+        }
     }
 }
 
@@ -319,26 +333,34 @@ impl Parse for Field {
     }
 }
 
-impl ToTokens for Field {
+impl Field {
+    fn with_args<'a>(&'a self, args: &'a InstrumentArgs) -> WithArgs<'a, Self> {
+        WithArgs { value: self, args }
+    }
+}
+
+impl ToTokens for WithArgs<'_, Field> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(ref value) = self.value {
-            let name = &self.name;
-            let kind = &self.kind;
+        let field = self.value;
+
+        if let Some(ref value) = field.value {
+            let name = &field.name;
+            let kind = &field.kind;
             tokens.extend(quote! {
                 #name = #kind#value
             })
-        } else if self.kind == FieldKind::Value {
+        } else if field.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce
             // empty fields rather than local variable shorthand...but,
             // we've released a version where field names without values in
             // `instrument` produce empty field values, so changing it now
             // is a breaking change. agh.
-            let name = &self.name;
-            let tracing = todo!();
+            let name = &field.name;
+            let tracing = self.args.tracing();
             tokens.extend(quote!(#name = #tracing::field::Empty))
         } else {
-            self.kind.to_tokens(tokens);
-            self.name.to_tokens(tokens);
+            field.kind.to_tokens(tokens);
+            field.name.to_tokens(tokens);
         }
     }
 }
