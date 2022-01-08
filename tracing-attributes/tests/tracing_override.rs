@@ -42,6 +42,10 @@ pub fn level_2() {}
 #[instrument(tracing = ::tracing, level = 1)]
 pub fn level_1() {}
 
+const A_LEVEL: ::tracing::Level = ::tracing::Level::INFO;
+#[instrument(tracing = ::tracing, level = A_LEVEL)]
+pub fn level_ident() {}
+
 #[::tracing::instrument(tracing = ::tracing, fields(empty))]
 pub fn empty() {}
 
