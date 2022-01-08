@@ -117,7 +117,7 @@ mod expand;
 /// Note that overlap between the names of fields and (non-skipped) arguments
 /// will result in a compile error.
 ///
-/// Also note that this macro will look for `tracing` locally with call site resolution by default.  
+/// Also note that this macro will look for [`tracing`] locally with call site resolution by default.  
 /// Specify `tracing = ::path::to::tracing` to override.
 ///
 /// # Examples
@@ -242,11 +242,11 @@ mod expand;
 /// }
 /// ```
 ///
-/// To resolve `tracing` at a specific path, assign it to `tracing`:
+/// To resolve [`tracing`] at a specific path, assign it to `tracing`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// /// Shadows `tracing`.
+/// /// Shadows [`tracing`](`::tracing`).
 /// mod tracing {}
 ///
 /// #[instrument(tracing = ::tracing)]
