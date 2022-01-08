@@ -15,7 +15,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) fields: Option<Fields>,
     pub(crate) err_mode: Option<FormatMode>,
     pub(crate) ret_mode: Option<FormatMode>,
-    tracing: Option<Expr>,
+    tracing: Option<Path>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -165,7 +165,7 @@ impl Parse for InstrumentArgs {
                 }
                 let _ = input.parse::<kw::tracing>()?;
                 let _ = input.parse::<Token![=]>()?;
-                let tracing = Expr::parse(input)?;
+                let tracing = Path::parse(input)?;
                 args.tracing = Some(tracing);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
