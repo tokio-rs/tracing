@@ -748,7 +748,7 @@ impl<'a> ValueSet<'a> {
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
     /// [visitor]: super::Visit
-    pub(crate) fn record(&self, visitor: &mut dyn Visit) {
+    pub fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
