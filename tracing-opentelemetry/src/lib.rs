@@ -109,3 +109,10 @@ mod tracer;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;
+
+/// Per-span OpenTelemetry data tracked by this crate.
+#[derive(Debug, Clone)]
+pub struct OtelData {
+    parent_cx: opentelemetry::Context,
+    builder: opentelemetry::trace::SpanBuilder,
+}
