@@ -1055,7 +1055,7 @@ where
     ///
     /// [register]: tracing_core::collect::Collect::register_callsite()
     /// [`enabled`]: tracing_core::collect::Collect::enabled()
-    /// [`Context::enabled`]: Layered::enabled()
+    /// [`Context::enabled`]: <Layered as Subscribe>::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         if let Some(collector) = self.collector {
