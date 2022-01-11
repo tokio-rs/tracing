@@ -828,6 +828,10 @@
 //! [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 //! [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 //! [Tracy]: https://github.com/wolfpld/tracy
+//! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+//! [Elastic APM]: https://www.elastic.co/apm
+//! [`tracing-etw`]: https://github.com/microsoft/tracing-etw
+//! [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 //! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 //!
 //! <div class="example-wrap" style="display:inline-block">
