@@ -150,7 +150,7 @@ impl Subscriber {
         self
     }
 
-    /// Get the syslog identifier in use.
+    /// Returns the syslog identifier in use.
     pub fn syslog_identifier(&self) -> &str {
         &self.syslog_identifier
     }
