@@ -79,24 +79,6 @@ impl<'a> Event<'a> {
         });
     }
 
-    /// Constructs a new `Event` with the specified metadata and set of values,
-    /// and returns whether such an event would be enabled by the current collector.
-    pub fn child_of_enabled(
-        parent: impl Into<Option<Id>>,
-        metadata: &'static Metadata<'static>,
-        fields: &'a field::ValueSet<'_>,
-    ) -> bool {
-        let event = Self::new_child_of(parent, metadata, fields);
-        crate::dispatch::get_default(|current| current.enabled(event.metadata()))
-    }
-
-    /// Constructs a new `Event` with the specified metadata and set of values,
-    /// and returns whether such an event would be enabled by the current collector.
-    pub fn enabled(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) -> bool {
-        let event = Event::new(metadata, fields);
-        crate::dispatch::get_default(|current| current.enabled(event.metadata()))
-    }
-
     /// Visits all the fields on this `Event` with the specified [visitor].
     ///
     /// [visitor]: super::field::Visit
