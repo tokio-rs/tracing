@@ -1122,8 +1122,8 @@ pub mod __macro_support {
     #[derive(Debug)]
     pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
 
-    impl<'a> std::fmt::Display for LogValueSet<'a> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    impl<'a> fmt::Display for LogValueSet<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut visit = LogVisitor {
                 f,
                 is_first: true,
@@ -1135,13 +1135,13 @@ pub mod __macro_support {
     }
 
     struct LogVisitor<'a, 'b> {
-        f: &'a mut std::fmt::Formatter<'b>,
+        f: &'a mut fmt::Formatter<'b>,
         is_first: bool,
-        result: std::fmt::Result,
+        result: fmt::Result,
     }
 
     impl Visit for LogVisitor<'_, '_> {
-        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
             let res = if self.is_first {
                 self.is_first = false;
                 if field.name() == "message" {
