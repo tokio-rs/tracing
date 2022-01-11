@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! This example shows how a value may be recorded using valuable and as an alternative recording
 //! it without valuable but just using the debug printout. Valuable is more flexible however, as
 //! a user can implement a custom `tracing_core::Visit` and implement
