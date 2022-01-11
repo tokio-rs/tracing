@@ -209,9 +209,6 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-The [`tracing-futures`] crate must be specified as a dependency to enable
-`async` support.
-
 Special handling is needed for the general case of code using
 [`std::future::Future`][std-future] or blocks with `async`/`await`, as the
 following example _will not_ work:
@@ -250,10 +247,9 @@ Under the hood, the [`#[instrument]`][instrument] macro performs same the explic
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
 [closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
-[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
