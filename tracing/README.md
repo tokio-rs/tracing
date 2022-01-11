@@ -210,9 +210,8 @@ conflicts when executables try to set the default later.
 
 If you are instrumenting code that make use of
 [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html)
-or async/await, be sure to use the
-[`tracing-futures`](https://docs.rs/tracing-futures) crate. This is needed
-because the following example _will not_ work:
+or async/await, avoid using the `Span::enter` method. The following example
+_will not_ work:
 
 ```rust
 async {
