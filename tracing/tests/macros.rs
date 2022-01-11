@@ -337,40 +337,14 @@ fn event() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn enabled() {
-    enabled!(Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
-    enabled!(Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
-    enabled!(Level::DEBUG, foo = 3, bar.baz = 3,);
-    enabled!(Level::DEBUG, "foo");
-    enabled!(Level::DEBUG, "foo: {}", 3);
-    enabled!(Level::INFO, foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
-    enabled!(
-        Level::INFO,
-        foo = 3,
-        bar.baz = 2,
-        quux = false,
-        "hello world {:?}",
-        42
-    );
-    enabled!(Level::INFO, foo = 3, bar.baz = 3, "hello world {:?}", 42,);
-    enabled!(Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
-    enabled!(Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    enabled!(Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    enabled!(Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
-    enabled!(target: "foo_events", Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
-    enabled!(target: "foo_events", Level::DEBUG, foo = 3, bar.baz = 3,);
-    enabled!(target: "foo_events", Level::DEBUG, "foo");
-    enabled!(target: "foo_events", Level::DEBUG, "foo: {}", 3);
-    enabled!(target: "foo_events", Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
-    enabled!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    enabled!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    enabled!(target: "foo_events", Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
-    let foo = 1;
-    enabled!(Level::DEBUG, ?foo);
-    enabled!(Level::DEBUG, %foo);
+    enabled!(Level::DEBUG, foo, bar.baz, quux,);
+    enabled!(Level::DEBUG, message);
+    enabled!(Level::INFO, foo, bar.baz, quux, messaged,);
     enabled!(Level::DEBUG, foo);
 
     enabled!(Level::DEBUG);
     enabled!(target: "rando", Level::DEBUG);
+    enabled!(target: "rando", Level::DEBUG, field);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
