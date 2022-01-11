@@ -32,22 +32,24 @@ macro_rules! span {
                 fields: $($fields)*
             };
             let mut interest = $crate::collect::Interest::never();
-            (|value_set| {
-                if $crate::level_enabled!($lvl)
-                    && { interest = CALLSITE.interest(); !interest.is_never() }
-                    && CALLSITE.is_enabled(interest)
-                {
-                    let meta = CALLSITE.metadata();
-                    // span with explicit parent
-                    $crate::Span::child_of($parent, meta, &value_set)
-                } else {
-                    let span = CALLSITE.disabled_span();
-                    $crate::if_log_enabled! { $lvl, {
-                        span.record_all(&value_set);
-                    }};
-                    span
-                }
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*))
+            if $crate::level_enabled!($lvl)
+                && { interest = CALLSITE.interest(); !interest.is_never() }
+                && CALLSITE.is_enabled(interest)
+            {
+                let meta = CALLSITE.metadata();
+                // span with explicit parent
+                $crate::Span::child_of(
+                    $parent,
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
+            } else {
+                let span = CALLSITE.disabled_span();
+                $crate::if_log_enabled! { $lvl, {
+                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+                }};
+                span
+            }
         }
     };
     (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
@@ -62,22 +64,23 @@ macro_rules! span {
             };
 
             let mut interest = $crate::collect::Interest::never();
-            (|value_set| {
-                if $crate::level_enabled!($lvl)
-                    && { interest = CALLSITE.interest(); !interest.is_never() }
-                    && CALLSITE.is_enabled(interest)
-                {
-                    let meta = CALLSITE.metadata();
-                    // span with contextual parent
-                    $crate::Span::new(meta, &value_set)
-                } else {
-                    let span = CALLSITE.disabled_span();
-                    $crate::if_log_enabled! { $lvl, {
-                        span.record_all(&value_set);
-                    }};
-                    span
-                }
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*))
+            if $crate::level_enabled!($lvl)
+                && { interest = CALLSITE.interest(); !interest.is_never() }
+                && CALLSITE.is_enabled(interest)
+            {
+                let meta = CALLSITE.metadata();
+                // span with contextual parent
+                $crate::Span::new(
+                    meta,
+                    &$crate::valueset!(meta.fields(), $($fields)*),
+                )
+            } else {
+                let span = CALLSITE.disabled_span();
+                $crate::if_log_enabled! { $lvl, {
+                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+                }};
+                span
+            }
         }
     };
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
