@@ -980,7 +980,8 @@ pub mod __macro_support {
     use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicUsize, Ordering};
-    use tracing_core::Once;
+    use tracing_core::field::{ValueSet, Visit};
+    use tracing_core::{Field, Once};
 
     /// Callsite implementation used by macro-generated code.
     ///
@@ -1107,6 +1108,53 @@ pub mod __macro_support {
                 .field("register", &self.register)
                 .field("registration", &self.registration)
                 .finish()
+        }
+    }
+
+    /// Utility to format [`ValueSet`] for logging, used by macro-generated code.
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// without warning.
+    #[derive(Debug)]
+    pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
+
+    impl<'a> std::fmt::Display for LogValueSet<'a> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut visit = LogVisitor {
+                f,
+                is_first: true,
+                result: Ok(()),
+            };
+            self.0.record(&mut visit);
+            visit.result
+        }
+    }
+
+    struct LogVisitor<'a, 'b> {
+        f: &'a mut std::fmt::Formatter<'b>,
+        is_first: bool,
+        result: std::fmt::Result,
+    }
+
+    impl Visit for LogVisitor<'_, '_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            let res = if self.is_first {
+                self.is_first = false;
+                if field.name() == "message" {
+                    write!(self.f, "{:?}", value)
+                } else {
+                    write!(self.f, "{}={:?}", field.name(), value)
+                }
+            } else {
+                write!(self.f, " {}={:?}", field.name(), value)
+            };
+            if let Err(err) = res {
+                self.result = self.result.and(Err(err));
+            }
         }
     }
 }

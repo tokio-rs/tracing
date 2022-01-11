@@ -2172,41 +2172,7 @@ macro_rules! __tracing_log {
 macro_rules! __tracing_log {
     (target: $target:expr, $level:expr, $value_set:ident ) => {
         $crate::if_log_enabled! { $level, {
-            use $crate::{log, field};
-            struct LogValueSet<'a>(&'a field::ValueSet<'a>);
-            impl<'a> std::fmt::Display for LogValueSet<'a> {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let mut visit = Visit {
-                        f,
-                        is_first: true,
-                        result: Ok(()),
-                    };
-                    self.0.record(&mut visit);
-                    visit.result
-                }
-            }
-            struct Visit<'a, 'b> {
-                f: &'a mut std::fmt::Formatter<'b>,
-                is_first: bool,
-                result: std::fmt::Result,
-            }
-            impl field::Visit for Visit<'_, '_> {
-                fn record_debug(&mut self, field: &field::Field, value: &dyn std::fmt::Debug) {
-                    let res = if self.is_first {
-                        self.is_first = false;
-                        if field.name() == "message" {
-                            write!(self.f, "{:?}", value)
-                        } else {
-                            write!(self.f, "{}={:?}", field.name(), value)
-                        }
-                    } else {
-                        write!(self.f, " {}={:?}", field.name(), value)
-                    };
-                    if let Err(err) = res {
-                        self.result = self.result.and(Err(err));
-                    }
-                }
-            }
+            use $crate::log;
             let level = $crate::level_to_log!($level);
             if level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
@@ -2220,7 +2186,7 @@ macro_rules! __tracing_log {
                         .module_path(Some(module_path!()))
                         .line(Some(line!()))
                         .metadata(log_meta)
-                        .args(format_args!("{}", LogValueSet(&$value_set)))
+                        .args(format_args!("{}", $crate::__macro_support::LogValueSet(&$value_set)))
                         .build());
                 }
             }
