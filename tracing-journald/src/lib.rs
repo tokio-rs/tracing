@@ -84,6 +84,7 @@ pub struct Subscriber {
     #[cfg(unix)]
     socket: UnixDatagram,
     field_prefix: Option<String>,
+    syslog_identifier: String,
 }
 
 #[cfg(unix)]
@@ -101,6 +102,13 @@ impl Subscriber {
             let sub = Self {
                 socket,
                 field_prefix: Some("F".into()),
+                syslog_identifier: std::env::current_exe()
+                    .ok()
+                    .as_ref()
+                    .and_then(|p| p.file_name())
+                    .map(|n| n.to_string_lossy().into_owned())
+                    // If we fail to get the name of the current executable fall back to an empty string.
+                    .unwrap_or_else(String::new),
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -119,6 +127,32 @@ impl Subscriber {
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
         self
+    }
+
+    /// Sets the syslog identifier for this logger.
+    ///
+    /// The syslog identifier comes from the classic syslog interface (`openlog()`
+    /// and `syslog()`) and tags log entries with a given identifier.
+    /// Systemd exposes it in the `SYSLOG_IDENTIFIER` journal field, and allows
+    /// filtering log messages by syslog identifier with `journalctl -t`.
+    /// Unlike the unit (`journalctl -u`) this field is not trusted, i.e. applications
+    /// can set it freely, and use it e.g. to further categorize log entries emitted under
+    /// the same systemd unit or in the same process.  It also allows to filter for log
+    /// entries of processes not started in their own unit.
+    ///
+    /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+    /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
+    /// for more information.
+    ///
+    /// Defaults to the file name of the executable of the current process, if any.
+    pub fn with_syslog_identifier(mut self, identifier: String) -> Self {
+        self.syslog_identifier = identifier;
+        self
+    }
+
+    /// Returns the syslog identifier in use.
+    pub fn syslog_identifier(&self) -> &str {
+        &self.syslog_identifier
     }
 
     #[cfg(not(unix))]
@@ -224,6 +258,10 @@ where
 
         // Record event fields
         put_metadata(&mut buf, event.metadata(), None);
+        put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
+            write!(buf, "{}", self.syslog_identifier).unwrap()
+        });
+
         event.record(&mut EventVisitor::new(
             &mut buf,
             self.field_prefix.as_ref().map(|x| &x[..]),
