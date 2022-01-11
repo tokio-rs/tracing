@@ -597,25 +597,33 @@ macro_rules! event {
             level: $lvl,
             fields: $($fields)*
         };
-        (|value_set: $crate::field::ValueSet| {
+
+        let enabled = $crate::level_enabled!($lvl) && {
+            let interest = CALLSITE.interest();
+            !interest.is_never() && CALLSITE.is_enabled(interest)
+        };
+        if enabled {
+            (|value_set: $crate::field::ValueSet| {
+                $crate::__tracing_log!(
+                    target: $target,
+                    $lvl,
+                    &value_set
+                );
+                let meta = CALLSITE.metadata();
+                // event with explicit parent
+                $crate::Event::child_of(
+                    $parent,
+                    meta,
+                    &value_set
+                );
+            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        } else {
             $crate::__tracing_log!(
                 target: $target,
                 $lvl,
-                value_set
+                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
-            if $crate::level_enabled!($lvl) {
-                let interest = CALLSITE.interest();
-                if !interest.is_never() && CALLSITE.is_enabled(interest)  {
-                    let meta = CALLSITE.metadata();
-                    // event with explicit parent
-                    $crate::Event::child_of(
-                        $parent,
-                        meta,
-                        &value_set
-                    );
-                }
-            }
-        })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        }
     });
 
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
@@ -646,25 +654,31 @@ macro_rules! event {
             level: $lvl,
             fields: $($fields)*
         };
-        (|value_set: $crate::field::ValueSet| {
+        let enabled = $crate::level_enabled!($lvl) && {
+            let interest = CALLSITE.interest();
+            !interest.is_never() && CALLSITE.is_enabled(interest)
+        };
+        if enabled {
+            (|value_set: $crate::field::ValueSet| {
+                let meta = CALLSITE.metadata();
+                // event with contextual parent
+                $crate::Event::dispatch(
+                    meta,
+                    &value_set
+                );
+                $crate::__tracing_log!(
+                    target: $target,
+                    $lvl,
+                    &value_set
+                );
+            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        } else {
             $crate::__tracing_log!(
                 target: $target,
                 $lvl,
-                value_set
+                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
-            if $crate::level_enabled!($lvl) {
-                let interest = CALLSITE.interest();
-                if !interest.is_never() && CALLSITE.is_enabled(interest)  {
-                    let meta = CALLSITE.metadata();
-                    //let value_set = $crate::valueset!(meta.fields(), $($fields)*);
-                    // event with contextual parent
-                    $crate::Event::dispatch(
-                        meta,
-                        &value_set
-                    );
-                }
-            }
-        })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        }
     });
     (target: $target:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
         $crate::event!(
@@ -2163,14 +2177,14 @@ macro_rules! __tracing_stringify {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $($field:tt)+ ) => {};
+    (target: $target:expr, $level:expr, $value_set:expr ) => {};
 }
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $value_set:ident ) => {
+    (target: $target:expr, $level:expr, $value_set:expr ) => {
         $crate::if_log_enabled! { $level, {
             use $crate::log;
             let level = $crate::level_to_log!($level);
@@ -2186,7 +2200,7 @@ macro_rules! __tracing_log {
                         .module_path(Some(module_path!()))
                         .line(Some(line!()))
                         .metadata(log_meta)
-                        .args(format_args!("{}", $crate::__macro_support::LogValueSet(&$value_set)))
+                        .args(format_args!("{}", $crate::__macro_support::LogValueSet($value_set)))
                         .build());
                 }
             }
