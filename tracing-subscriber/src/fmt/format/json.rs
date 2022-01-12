@@ -525,7 +525,11 @@ mod test {
 
     #[test]
     fn json_filename() {
-        let current_path = Path::new("tracing-subscriber").join("src").join("fmt").join("format").join("json.rs");
+        let current_path = Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("json.rs");
         let expected =
             &format!("{}{}{}",
                     "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"filename\":\"",
@@ -534,7 +538,7 @@ mod test {
         let collector = collector()
             .flatten_event(false)
             .with_current_span(true)
-            .with_filename(true)
+            .with_file(true)
             .with_span_list(true);
         test_json(expected, collector, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
@@ -805,13 +809,15 @@ mod test {
 
         let buf = make_writer.buf();
         let actual = std::str::from_utf8(&buf[..]).unwrap();
-        let mut expected = serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
-            .unwrap();
+        let mut expected =
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap();
         let expect_line_number = expected.remove("line_number").is_some();
-        let mut actual: std::collections::HashMap<&str, serde_json::Value> = serde_json::from_str(actual).unwrap();
+        let mut actual: std::collections::HashMap<&str, serde_json::Value> =
+            serde_json::from_str(actual).unwrap();
         let line_number = actual.remove("line_number");
         if expect_line_number {
-            assert_eq!(line_number.map(|x|x.is_number()), Some(true));
+            assert_eq!(line_number.map(|x| x.is_number()), Some(true));
         } else {
             assert!(line_number.is_none());
         }

@@ -693,17 +693,21 @@ impl<F, T> Format<F, T> {
         }
     }
 
-    /// Sets whether or not the [filename] of the tracing logs source code is displayed
-    /// when formatting events
-    pub fn with_filename(self, display_filename: bool) -> Format<F, T> {
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(self, display_filename: bool) -> Format<F, T> {
         Format {
             display_filename,
             ..self
         }
     }
 
-    /// Sets whether or not the [line_number] of the tracing logs is source codedisplayed
-    /// when formatting events
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
     pub fn with_line_number(self, display_line_number: bool) -> Format<F, T> {
         Format {
             display_line_number,
@@ -1630,7 +1634,7 @@ pub(super) mod test {
         let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer.clone())
-            .with_filename(true)
+            .with_file(true)
             .with_line_number(true)
             .with_level(false)
             .with_ansi(false)
@@ -1676,7 +1680,7 @@ pub(super) mod test {
         let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer.clone())
-            .with_filename(true)
+            .with_file(true)
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime);

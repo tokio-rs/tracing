@@ -297,18 +297,25 @@ where
             ..self
         }
     }
-
-    /// Sets whether or not an event's source code filename is displayed.
-    pub fn with_filename(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
-            fmt_event: self.fmt_event.with_filename(display_filename),
+            fmt_event: self.fmt_event.with_file(display_filename),
             ..self
         }
     }
 
-
-    /// Sets whether or not an event's source code line number is displayed.
-    pub fn with_line_number(self, display_line_number: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_line_number(display_line_number),
             ..self
