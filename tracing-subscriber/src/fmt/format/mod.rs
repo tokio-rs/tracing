@@ -716,8 +716,10 @@ impl<F, T> Format<F, T> {
     }
 
     /// Sets whether or not the source code location from which an event
-    /// originated is displayed. This is equivalent to calling [`with_file`] and
-    /// [`with_line_number`] with the same value.
+    /// originated is displayed.
+    ///
+    /// This is equivalent to calling [`Format::with_file`] and
+    /// [`Format::with_line_number`] with the same value.
     pub fn with_source_location(self, display_location: bool) -> Self {
         self.with_line_number(display_location)
             .with_file(display_location)
