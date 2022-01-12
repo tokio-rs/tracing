@@ -565,8 +565,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
-            display_filename: self.display_filename,
-            display_line_number: self.display_line_number,
+            display_filename: true,
+            display_line_number: true,
         }
     }
 
@@ -713,6 +713,14 @@ impl<F, T> Format<F, T> {
             display_line_number,
             ..self
         }
+    }
+
+    /// Sets whether or not the source code location from which an event
+    /// originated is displayed. This is equivalent to calling [`with_file`] and
+    /// [`with_line_number`] with the same value.
+    pub fn with_source_location(self, display_location: bool) -> Self {
+        self.with_line_number(display_location)
+            .with_file(display_location)
     }
 
     fn format_level(&self, level: Level, writer: &mut Writer<'_>) -> fmt::Result
