@@ -894,7 +894,11 @@ where
             )?;
         }
 
-        let line_number = if self.display_line_number { meta.line() } else { None };
+        let line_number = if self.display_line_number {
+            meta.line()
+        } else {
+            None
+        };
 
         if self.display_filename {
             if let Some(filename) = meta.file() {
@@ -1543,11 +1547,9 @@ pub(super) mod test {
     };
 
     use super::{FmtSpan, TimingDisplay, Writer};
+    use regex::Regex;
     use std::fmt;
     use std::path::Path;
-    use regex::Regex;
-
-    use regex::Regex;
 
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
@@ -1631,8 +1633,16 @@ pub(super) mod test {
             .with_ansi(false)
             .with_timer(MockTime);
 
-        let current_path = Path::new("tracing-subscriber").join("src").join("fmt").join("format").join("mod.rs");
-        let expected = Regex::new(&format!("^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$", current_path.to_str().unwrap())).unwrap();
+        let current_path = Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("mod.rs");
+        let expected = Regex::new(&format!(
+            "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
+            current_path.to_str().unwrap()
+        ))
+        .unwrap();
         let _default = set_default(&subscriber.into());
         tracing::info!("hello");
         let res = make_writer.get_string();
@@ -1649,7 +1659,9 @@ pub(super) mod test {
             .with_ansi(false)
             .with_timer(MockTime);
 
-        let expected = Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$").unwrap();
+        let expected =
+            Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$")
+                .unwrap();
         let _default = set_default(&subscriber.into());
         tracing::info!("hello");
         let res = make_writer.get_string();
@@ -1665,9 +1677,16 @@ pub(super) mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime);
-        let current_path = Path::new("tracing-subscriber").join("src").join("fmt").join("format").join("mod.rs");
-        let expected = &format!("fake time tracing_subscriber::fmt::format::test: {}: hello\n", current_path.to_str().unwrap());
-        run_test(subscriber, make_writer, expected);
+        let current_path = Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("mod.rs");
+        let expected = &format!(
+            "fake time tracing_subscriber::fmt::format::test: {}: hello\n",
+            current_path.to_str().unwrap()
+        );
+        assert_info_hello(subscriber, make_writer, expected);
     }
 
     #[test]
