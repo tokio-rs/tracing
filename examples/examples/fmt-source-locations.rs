@@ -1,3 +1,5 @@
+//! Demonstrates displaying events' source code locations with the `fmt`
+//! subscriber.
 #![deny(rust_2018_idioms)]
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
