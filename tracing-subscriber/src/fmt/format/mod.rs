@@ -915,9 +915,10 @@ where
         if let Some(line_number) = line_number {
             write!(
                 writer,
-                "{}{} ",
-                dimmed.paint(line_number.to_string()),
-                dimmed.paint(":")
+                "{}{}:{} ",
+                dimmed.prefix(),
+                line_number,
+                dimmed.suffix()
             )?;
         }
 
@@ -966,23 +967,15 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
+        let bold = writer.bold();
+        let dimmed = writer.dimmed();
         if self.display_target {
-            write!(
-                writer,
-                "{}{}",
-                writer.bold().paint(meta.target()),
-                writer.dimmed().paint(":")
-            )?;
+            write!(writer, "{}{}", bold.paint(meta.target()), dimmed.paint(":"))?;
         }
 
         if self.display_filename {
             if let Some(filename) = meta.file() {
-                write!(
-                    writer,
-                    "{}{}",
-                    writer.bold().paint(filename),
-                    writer.dimmed().paint(":")
-                )?;
+                write!(writer, "{}{}", bold.paint(filename), dimmed.paint(":"))?;
             }
         }
 
@@ -990,16 +983,17 @@ where
             if let Some(line_number) = meta.line() {
                 write!(
                     writer,
-                    "{}{}",
-                    writer.bold().paint(line_number.to_string()),
-                    writer.dimmed().paint(":")
+                    "{}{}{}{}",
+                    bold.prefix(),
+                    line_number,
+                    bold.suffix(),
+                    dimmed.paint(":")
                 )?;
             }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        let dimmed = writer.dimmed();
         for span in ctx
             .event_scope()
             .into_iter()
@@ -1196,8 +1190,17 @@ impl Style {
     fn new() -> Self {
         Style
     }
+
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
+    }
+
+    fn prefix(&self) -> impl fmt::Display {
+        ""
+    }
+
+    fn suffix(&self) -> impl fmt::Display {
+        ""
     }
 }
 
