@@ -26,6 +26,8 @@ This directory contains a collection of examples that demonstrate the use of the
     events.
   + `fmt-multiple-writers.rs`: demonstrates how `fmt::Subcriber` can write to multiple
     destinations (in this instance, stdout and a file) simultaneously.
+  + `fmt-source-locations.rs`: demonstrates displaying source code locations
+    with `fmt::Subscriber`.
   + `subscriber-filter`: Demonstrates the `tracing-subscriber::filter` module,
     which provides a subscriber which adds configurable filtering to a collector
     implementation.
