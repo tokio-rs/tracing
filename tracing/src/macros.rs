@@ -783,22 +783,20 @@ macro_rules! event {
     );
 }
 
-/// Check's whether an equivalent `event!` invocation would result in an enabled
-/// event.
+/// Checks whether a span or event is enabled depending on the provided metadata.
 ///
-/// If you are using this macro to guard a log line that requires expensive computation, it can
-/// result in false-negative's, if the default collector has filters based on line numbers or field
-/// names.
+/// This macro is a specialized tool: it is intended to be used prior
+/// to an expensive computation required *just* for that event, but
+/// *cannot* be done as part of an argument to that event, such as
+/// when multiple events are emitted (e.g., iterating over a collection
+/// and emitting an event for each item).
 ///
-/// This macro operates similarly to [`event!`], with some extensions:
-/// - Allows passing just a level.
-/// - Allows passing just a level and a target.
+/// While `enabled!` can be used as a migration aid from [`log::log_enabled`],
+/// it is recommended that it be used sparingly. In most cases, a centralized
+/// filtering approach such as [`Targets`] or [`filter_fn`] will provide
+/// similar performance and greater ease-of-use.
 ///
-/// See [the top-level documentation][lib] for details on the syntax accepted by
-/// this macro.
 ///
-/// [lib]: crate#using-the-macros
-/// [`event!`]: event!
 ///
 /// # Examples
 ///
@@ -810,8 +808,11 @@ macro_rules! event {
 /// #       // Do something expensive
 /// #   }
 /// # }
-/// ```
 ///
+/// [`log::log_enabled`]: https://docs.rs/log/0.4.14/log/macro.log_enabled.html
+/// [`Targets`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/targets/struct.Targets.html
+/// [`filter_fn`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/fn.filter_fn.html
+/// ```
 #[macro_export]
 macro_rules! enabled {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
