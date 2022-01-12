@@ -793,10 +793,10 @@ macro_rules! event {
 ///
 /// While `enabled!` can be used as a migration aid from [`log::log_enabled`],
 /// it is recommended that it be used sparingly. In most cases, a centralized
-/// filtering approach such as [`Targets`] or [`filter_fn`] will provide
-/// similar performance and greater ease-of-use.
-///
-///
+/// filtering approach such as [`Targets`], [`filter_fn`], or [`EnvFilter`] will provide
+/// similar performance and greater ease-of-use. Similarly, while `enabled!` supports
+/// spans-derived, idiomatic usage of spans means that using `enabled!` with spans
+/// is unnecessary.
 ///
 /// # Examples
 ///
@@ -804,15 +804,31 @@ macro_rules! event {
 /// use tracing::{enabled, Level};
 ///
 /// # fn main() {
-/// #   if enabled!(Level::DEBUG, "Debug loggin") {
-/// #       // Do something expensive
-/// #   }
+/// // If the underlying collector is interested in recording
+/// // DEBUG-level spans and events, this will evaluate to true.
+/// if enabled!(Level::DEBUG) {
+///     // some expensive work...
+/// }
+///
+/// // If the underlying collector is interested in recording spans and events
+/// // with the target "my_crate" at the level DEBUG, this will evaluate to true.
+/// if enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+///
+/// // If the underlying collector is interested in recording spans and events
+/// // with the target "my_crate", at the level DEBUG, and the field name "hello",
+/// // this will evaluate to true.
+/// if enabled!(target: "my_crate", Level::DEBUG, {"hello"}) {
+///     // some expensive work...
+/// }
 /// # }
+/// ```
 ///
 /// [`log::log_enabled`]: https://docs.rs/log/0.4.14/log/macro.log_enabled.html
-/// [`Targets`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/targets/struct.Targets.html
-/// [`filter_fn`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/fn.filter_fn.html
-/// ```
+/// [`Targets`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/targets/struct.Targets.html
+/// [`filter_fn`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/fn.filter_fn.html
+/// [`EnvFilter`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/struct.EnvFilter.html
 #[macro_export]
 macro_rules! enabled {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
