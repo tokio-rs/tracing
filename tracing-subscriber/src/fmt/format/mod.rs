@@ -1856,9 +1856,8 @@ pub(super) mod test {
         assert!(f.contains(FmtSpan::CLOSE));
     }
 
-    /// Returns the test's module path, pre-processed for use in a regular
-    /// expression by escaping `\` characters..
-    fn current_path() -> &str {
+    /// Returns the test's module path.
+    fn current_path() -> String {
         Path::new("tracing-subscriber")
             .join("src")
             .join("fmt")
@@ -1866,5 +1865,6 @@ pub(super) mod test {
             .join("mod.rs")
             .to_str()
             .expect("path must not contain invalid unicode")
+            .to_owned()
     }
 }

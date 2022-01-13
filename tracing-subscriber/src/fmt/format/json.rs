@@ -529,11 +529,15 @@ mod test {
             .join("src")
             .join("fmt")
             .join("format")
-            .join("json.rs");
+            .join("json.rs")
+            .to_str()
+            .expect("path must be valid unicode")
+            // escape windows backslashes
+            .replace('\\', "\\\\");
         let expected =
             &format!("{}{}{}",
                     "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"filename\":\"",
-                    &current_path.to_str().unwrap(),
+                    current_path,
                     "\",\"fields\":{\"message\":\"some json test\"}}\n");
         let collector = collector()
             .flatten_event(false)
