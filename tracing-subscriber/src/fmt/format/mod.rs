@@ -1650,14 +1650,9 @@ pub(super) mod test {
             .with_ansi(false)
             .with_timer(MockTime);
 
-        let current_path = Path::new("tracing-subscriber")
-            .join("src")
-            .join("fmt")
-            .join("format")
-            .join("mod.rs");
         let expected = Regex::new(&format!(
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
-            current_path.to_str().unwrap()
+            current_path()
         ))
         .unwrap();
         let _default = set_default(&subscriber.into());
@@ -1694,14 +1689,9 @@ pub(super) mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime);
-        let current_path = Path::new("tracing-subscriber")
-            .join("src")
-            .join("fmt")
-            .join("format")
-            .join("mod.rs");
         let expected = &format!(
             "fake time tracing_subscriber::fmt::format::test: {}: hello\n",
-            current_path.to_str().unwrap()
+            current_path(),
         );
         assert_info_hello(subscriber, make_writer, expected);
     }
@@ -1861,5 +1851,20 @@ pub(super) mod test {
         assert!(!f.contains(FmtSpan::ENTER));
         assert!(!f.contains(FmtSpan::EXIT));
         assert!(f.contains(FmtSpan::CLOSE));
+    }
+
+    /// Returns the test's module path, pre-processed for use in a regular
+    /// expression by escaping `\` characters..
+    fn current_path() -> String {
+        Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("mod.rs")
+            .to_str()
+            .expect("path must not contain invalid unicode")
+            // if we're on Windows, the path might contain backslashes, which
+            // have to be escpaed before compiling the regex.
+            .replace('\\', "\\\\")
     }
 }
