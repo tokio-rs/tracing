@@ -227,7 +227,7 @@ where
 
 impl<'writer> FormatFields<'writer> for Pretty {
     fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
-        let mut v = PrettyVisitor::new(writer, false);
+        let mut v = PrettyVisitor::new(writer, true);
         fields.record(&mut v);
         v.finish()
     }
