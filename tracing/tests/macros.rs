@@ -339,7 +339,8 @@ fn event() {
 fn enabled() {
     enabled!(Level::DEBUG, foo, bar.baz, quux,);
     enabled!(Level::DEBUG, message);
-    enabled!(Level::INFO, foo, bar.baz, quux, messaged,);
+    enabled!(Level::INFO, foo, bar.baz, quux, message,);
+    enabled!(Level::INFO, foo, bar., message,);
     enabled!(Level::DEBUG, foo);
 
     enabled!(Level::DEBUG);
