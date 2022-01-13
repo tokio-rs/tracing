@@ -1653,6 +1653,9 @@ pub(super) mod test {
         let expected = Regex::new(&format!(
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
             current_path()
+                // if we're on Windows, the path might contain backslashes, which
+                // have to be escpaed before compiling the regex.
+                .replace('\\', "\\\\")
         ))
         .unwrap();
         let _default = set_default(&subscriber.into());
@@ -1855,7 +1858,7 @@ pub(super) mod test {
 
     /// Returns the test's module path, pre-processed for use in a regular
     /// expression by escaping `\` characters..
-    fn current_path() -> String {
+    fn current_path() -> &str {
         Path::new("tracing-subscriber")
             .join("src")
             .join("fmt")
@@ -1863,8 +1866,5 @@ pub(super) mod test {
             .join("mod.rs")
             .to_str()
             .expect("path must not contain invalid unicode")
-            // if we're on Windows, the path might contain backslashes, which
-            // have to be escpaed before compiling the regex.
-            .replace('\\', "\\\\")
     }
 }
