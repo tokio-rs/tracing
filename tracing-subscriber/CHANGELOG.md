@@ -1,3 +1,29 @@
+# 0.3.6 (Jan 14, 2022)
+
+This release adds configuration options to `tracing_subscriber::fmt` to log
+source code locations for events.
+### Added
+
+- **fmt**: Added `with_file` and `with_line_number`
+  configuration methods to `fmt::Format`, `fmt::SubscriberBuilder`, and
+  `fmt::Layer` ([#1773])
+
+### Fixed
+
+- **fmt**: Removed incorrect leading comma from span fields with the `Pretty`
+  formatter ([#1833])
+
+### Deprecated
+
+- **fmt**: Deprecated `Pretty::with_source_location`, as it can now be replaced
+  by the more general `Format`, `SubscriberBuilder`, and `Layer` methods
+  ([#1773])
+
+Thanks to new contributor @renecouto for contributing to this release!
+
+[#1773]: https://github.com/tokio-rs/tracing/pull/1773
+[#1833]: https://github.com/tokio-rs/tracing/pull/1833
+
 # 0.3.5 (Dec 29, 2021)
 
 This release re-enables `RUST_LOG` filtering in `tracing_subscriber::fmt`'s
