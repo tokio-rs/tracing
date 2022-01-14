@@ -76,22 +76,15 @@ impl Pretty {
     /// Sets whether the event's source code location is displayed.
     ///
     /// This defaults to `true`.
+    #[deprecated(
+        since = "0.3.6",
+        note = "all formatters now support configurable source locations. Use `Format::with_source_location` instead."
+    )]
     pub fn with_source_location(self, display_location: bool) -> Self {
         Self {
             display_location,
             ..self
         }
-    }
-}
-
-impl<T> Format<Pretty, T> {
-    /// Sets whether or not the source code location from which an event
-    /// originated is displayed.
-    ///
-    /// This defaults to `true`.
-    pub fn with_source_location(mut self, display_location: bool) -> Self {
-        self.format = self.format.with_source_location(display_location);
-        self
     }
 }
 
@@ -135,12 +128,37 @@ where
             };
             write!(
                 writer,
-                "{}{}{}: ",
+                "{}{}{}:",
                 target_style.prefix(),
                 meta.target(),
                 target_style.infix(style)
             )?;
         }
+        let line_number = if self.display_line_number {
+            meta.line()
+        } else {
+            None
+        };
+
+        // If the file name is disabled, format the line number right after the
+        // target. Otherwise, if we also display the file, it'll go on a
+        // separate line.
+        if let (Some(line_number), false, true) = (
+            line_number,
+            self.display_filename,
+            self.format.display_location,
+        ) {
+            write!(
+                writer,
+                "{}{}{}:",
+                style.prefix(),
+                line_number,
+                style.infix(style)
+            )?;
+        }
+
+        writer.write_char(' ')?;
+
         let mut v = PrettyVisitor::new(writer.by_ref(), true).with_style(style);
         event.record(&mut v);
         v.finish()?;
@@ -152,20 +170,21 @@ where
             Style::new()
         };
         let thread = self.display_thread_name || self.display_thread_id;
-        if let (true, Some(file), Some(line)) =
-            (self.format.display_location, meta.file(), meta.line())
-        {
-            write!(
-                writer,
-                "    {} {}:{}{}",
-                dimmed.paint("at"),
-                file,
-                line,
-                dimmed.paint(if thread { " " } else { "\n" })
-            )?;
+
+        if let (Some(file), true, true) = (
+            meta.file(),
+            self.format.display_location,
+            self.display_filename,
+        ) {
+            write!(writer, "    {} {}", dimmed.paint("at"), file,)?;
+
+            if let Some(line) = line_number {
+                write!(writer, ":{}", line)?;
+            }
+            writer.write_char(if thread { ' ' } else { '\n' })?;
         } else if thread {
             write!(writer, "    ")?;
-        }
+        };
 
         if thread {
             write!(writer, "{} ", dimmed.paint("on"))?;
