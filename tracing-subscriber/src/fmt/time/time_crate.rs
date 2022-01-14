@@ -1,6 +1,6 @@
 use crate::fmt::{format::Writer, time::FormatTime, writer::WriteAdaptor};
 use std::fmt;
-use time::{format_description::well_known, formatting::Formattable, OffsetDateTime};
+use time::{format_description::well_known, formatting::Formattable, OffsetDateTime, UtcOffset};
 
 /// Formats the current [local time] using a [formatter] from the [`time` crate].
 ///
@@ -12,6 +12,8 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///     crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
 ///     local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
 ///     events will be logged without timestamps.
+///
+///    Alternatively, [`OffsetTime`] can log with a local offset if it is initialized early.
 ///
 ///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
 ///    documentation</a> for more details.
@@ -42,6 +44,23 @@ pub struct LocalTime<F> {
 #[cfg_attr(docsrs, doc(cfg(feature = "time")))]
 #[derive(Clone, Debug)]
 pub struct UtcTime<F> {
+    format: F,
+}
+
+/// Formats the current time using a fixed offset and a [formatter] from the [`time` crate].
+///
+/// This is typically used as an alternative to [`LocalTime`]. `LocalTime` determines the offset
+/// every time it formats a message, which may be unsound or fail. With `OffsetTime`, the offset is
+/// determined once. This makes it possible to do so while the program is still single-threaded and
+/// handle any errors. However, this also means the offset cannot change while the program is
+/// running (the offset will not change across DST changes).
+///
+/// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
+/// [`time` crate]: https://docs.rs/time/0.3/time/
+#[derive(Clone, Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+pub struct OffsetTime<F> {
+    offset: time::UtcOffset,
     format: F,
 }
 
@@ -288,6 +307,154 @@ where
 {
     fn default() -> Self {
         Self::new(F::default())
+    }
+}
+
+// === impl OffsetTime ===
+
+#[cfg(feature = "local-time")]
+impl OffsetTime<well_known::Rfc3339> {
+    /// Returns a formatter that formats the current time using the [local time offset] in the [RFC
+    /// 3339] format (a subset of the [ISO 8601] timestamp format).
+    ///
+    /// Returns an error if the local time offset cannot be determined. This typically occurs in
+    /// multithreaded programs. To avoid this problem, initialize `OffsetTime` before forking
+    /// threads. When using Tokio, this means initializing `OffsetTime` before the Tokio runtime.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::{self, time};
+    ///
+    /// let collector = tracing_subscriber::fmt()
+    ///     .with_timer(time::OffsetTime::local_rfc_3339().expect("could not get local offset!"));
+    /// # drop(collector);
+    /// ```
+    ///
+    /// Using `OffsetTime` with Tokio:
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::time::OffsetTime;
+    ///
+    /// #[tokio::main]
+    /// async fn run() {
+    ///     tracing::info!("runtime initialized");
+    ///
+    ///     // At this point the Tokio runtime is initialized, and we can use both Tokio and Tracing
+    ///     // normally.
+    /// }
+    ///
+    /// fn main() {
+    ///     // Because we need to get the local offset before Tokio spawns any threads, our `main`
+    ///     // function cannot use `tokio::main`.
+    ///     tracing_subscriber::fmt()
+    ///         .with_timer(OffsetTime::local_rfc_3339().expect("could not get local time offset"))
+    ///         .init();
+    ///
+    ///     // Even though `run` is written as an `async fn`, because we used `tokio::main` on it
+    ///     // we can call it as a synchronous function.
+    ///     run();
+    /// }
+    /// ```
+    ///
+    /// [local time offset]: https://docs.rs/time/0.3/time/struct.UtcOffset.html#method.current_local_offset
+    /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
+    /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
+    pub fn local_rfc_3339() -> Result<Self, time::error::IndeterminateOffset> {
+        Ok(Self::new(
+            UtcOffset::current_local_offset()?,
+            well_known::Rfc3339,
+        ))
+    }
+}
+
+impl<F: time::formatting::Formattable> OffsetTime<F> {
+    /// Returns a formatter that formats the current time using the [`time` crate] with the provided
+    /// provided format and [timezone offset]. The format may be any type that implements the
+    /// [`Formattable`] trait.
+    ///
+    ///
+    /// Typically, the offset will be the [local offset], and format will be a format description
+    /// string, or one of the `time` crate's [well-known formats].
+    ///
+    /// If the format description is statically known, then the
+    /// [`format_description!`] macro should be used. This is identical to the
+    /// [`time::format_description::parse`] method, but runs at compile-time,
+    /// throwing an error if the format description is invalid. If the desired format
+    /// is not known statically (e.g., a user is providing a format string), then the
+    /// [`time::format_description::parse`] method should be used. Note that this
+    /// method is fallible.
+    ///
+    /// See the [`time` book] for details on the format description syntax.
+    ///
+    /// # Examples
+    ///
+    /// Using the [`format_description!`] macro:
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::{self, time::OffsetTime};
+    /// use time::macros::format_description;
+    /// use time::UtcOffset;
+    ///
+    /// let offset = UtcOffset::current_local_offset().expect("should get local offset!");
+    /// let timer = OffsetTime::new(offset, format_description!("[hour]:[minute]:[second]"));
+    /// let collector = tracing_subscriber::fmt()
+    ///     .with_timer(timer);
+    /// # drop(collector);
+    /// ```
+    ///
+    /// Using [`time::format_description::parse`]:
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::{self, time::OffsetTime};
+    /// use time::UtcOffset;
+    ///
+    /// let offset = UtcOffset::current_local_offset().expect("should get local offset!");
+    /// let time_format = time::format_description::parse("[hour]:[minute]:[second]")
+    ///     .expect("format string should be valid!");
+    /// let timer = OffsetTime::new(offset, time_format);
+    /// let collector = tracing_subscriber::fmt()
+    ///     .with_timer(timer);
+    /// # drop(collector);
+    /// ```
+    ///
+    /// Using the [`format_description!`] macro requires enabling the `time`
+    /// crate's "macros" feature flag.
+    ///
+    /// Using a [well-known format][well-known formats] (this is equivalent to
+    /// [`OffsetTime::local_rfc_3339`]):
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt::{self, time::OffsetTime};
+    /// use time::UtcOffset;
+    ///
+    /// let offset = UtcOffset::current_local_offset().expect("should get local offset!");
+    /// let timer = OffsetTime::new(offset, time::format_description::well_known::Rfc3339);
+    /// let collector = tracing_subscriber::fmt()
+    ///     .with_timer(timer);
+    /// # drop(collector);
+    /// ```
+    ///
+    /// [`time` crate]: https://docs.rs/time/0.3/time/
+    /// [timezone offset]: https://docs.rs/time/latest/time/struct.UtcOffset.html
+    /// [`Formattable`]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
+    /// [local offset]: https://docs.rs/time/0.3.5/time/struct.UtcOffset.html#method.current_local_offset
+    /// [well-known formats]: https://docs.rs/time/0.3/time/format_description/well_known/index.html
+    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
+    /// [`time::format_description::parse`]: https://docs.rs/time/0.3/time/format_description/fn.parse.html
+    /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
+    pub fn new(offset: time::UtcOffset, format: F) -> Self {
+        Self { offset, format }
+    }
+}
+
+impl<F> FormatTime for OffsetTime<F>
+where
+    F: time::formatting::Formattable,
+{
+    fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
+        let now = OffsetDateTime::now_utc().to_offset(self.offset);
+        format_datetime(now, w, &self.format)
     }
 }
 

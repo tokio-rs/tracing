@@ -15,7 +15,7 @@
 //! will be created hourly
 //! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
 //! will be created daily
-//! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
+//! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
 //! [minutely]: fn.minutely.html
 //! [hourly]: fn.hourly.html
@@ -46,8 +46,8 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 /// block on write operations. It may be used with [`NonBlocking`] to perform
 /// writes without blocking the current thread.
 ///
-/// Additionally, `RollingFileAppender` also implements the [`MakeWriter`
-/// trait][make_writer] from `tracing-appender`, so it may also be used
+/// Additionally, `RollingFileAppender` also implements the [`MakeWriter`]
+/// trait from `tracing-appender`, so it may also be used
 /// directly, without [`NonBlocking`].
 ///
 /// [write]: std::io::Write
@@ -83,7 +83,7 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 /// # }
 /// ```
 ///
-/// [make_writer] tracing_subscriber::fmt::writer::MakeWriter
+/// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
 pub struct RollingFileAppender {
     state: Inner,
@@ -123,7 +123,7 @@ impl RollingFileAppender {
     /// - [`Rotation::minutely()`][minutely],
     /// - [`Rotation::hourly()`][hourly],
     /// - [`Rotation::daily()`][daily],
-    /// - [`Rotation::never()`][never]
+    /// - [`Rotation::never()`][never()]
     ///
     /// [minutely]: fn.minutely.html
     /// [hourly]: fn.hourly.html

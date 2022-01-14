@@ -311,6 +311,7 @@ pub mod writer;
 pub use fmt_layer::{FmtContext, FormattedFields, Layer};
 
 use crate::layer::Layer as _;
+use crate::util::SubscriberInitExt;
 use crate::{
     filter::LevelFilter,
     layer,
@@ -1131,7 +1132,37 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     #[cfg(feature = "env-filter")]
     let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
 
-    builder.try_init()
+    // If `env-filter` is disabled, remove the default max level filter from the
+    // subscriber; it will be added to the `Targets` filter instead if no filter
+    // is set in `RUST_LOG`.
+    // Replacing the default `LevelFilter` with an `EnvFilter` would imply this,
+    // but we can't replace the builder's filter with a `Targets` filter yet.
+    #[cfg(not(feature = "env-filter"))]
+    let builder = builder.with_max_level(LevelFilter::TRACE);
+
+    let subscriber = builder.finish();
+    #[cfg(not(feature = "env-filter"))]
+    let subscriber = {
+        use crate::{filter::Targets, layer::SubscriberExt};
+        use std::{env, str::FromStr};
+        let targets = match env::var("RUST_LOG") {
+            Ok(var) => Targets::from_str(&var)
+                .map_err(|e| {
+                    eprintln!("Ignoring `RUST_LOG={:?}`: {}", var, e);
+                })
+                .unwrap_or_default(),
+            Err(env::VarError::NotPresent) => {
+                Targets::new().with_default(Subscriber::DEFAULT_MAX_LEVEL)
+            }
+            Err(e) => {
+                eprintln!("Ignoring `RUST_LOG`: {}", e);
+                Targets::new().with_default(Subscriber::DEFAULT_MAX_LEVEL)
+            }
+        };
+        subscriber.with(targets)
+    };
+
+    subscriber.try_init().map_err(Into::into)
 }
 
 /// Install a global tracing subscriber that listens for events and
