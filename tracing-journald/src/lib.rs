@@ -10,7 +10,7 @@
 //! [`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
-//!  
+//!
 //! *Compiler support: [requires `rustc` 1.42+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions

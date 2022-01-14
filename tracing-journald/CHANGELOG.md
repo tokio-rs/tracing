@@ -1,3 +1,14 @@
+# 0.2.2 (January 14, 2022)
+### Added
+
+- Include a syslog identifier in log messages ([#1822])
+- Added `Layer::with_syslog_identifier` method to override the syslog identifier
+  ([#1822])
+
+Thanks to @lunaryorn for contributing to this release!
+
+[#1822]: https://github.com/tokio-rs/tracing/pull/1822
+
 # 0.2.1 (December 29, 2021)
 
 This release improves how `tracing-journald` communicates with `journald`,
