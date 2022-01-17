@@ -980,8 +980,7 @@ pub mod __macro_support {
     use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicUsize, Ordering};
-    use tracing_core::field::{ValueSet, Visit};
-    use tracing_core::{Field, Once};
+    use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.
     ///
@@ -1111,6 +1110,9 @@ pub mod __macro_support {
         }
     }
 
+    #[cfg(feature = "log")]
+    use tracing_core::field::{Field, ValueSet, Visit};
+
     /// Utility to format [`ValueSet`] for logging, used by macro-generated code.
     ///
     /// /!\ WARNING: This is *not* a stable API! /!\
@@ -1119,9 +1121,11 @@ pub mod __macro_support {
     /// by the `tracing` macros, but it is not part of the stable versioned API.
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
-    #[derive(Debug)]
+    #[cfg(feature = "log")]
+    #[allow(missing_debug_implementations)]
     pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
 
+    #[cfg(feature = "log")]
     impl<'a> fmt::Display for LogValueSet<'a> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut visit = LogVisitor {
@@ -1134,12 +1138,14 @@ pub mod __macro_support {
         }
     }
 
+    #[cfg(feature = "log")]
     struct LogVisitor<'a, 'b> {
         f: &'a mut fmt::Formatter<'b>,
         is_first: bool,
         result: fmt::Result,
     }
 
+    #[cfg(feature = "log")]
     impl Visit for LogVisitor<'_, '_> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
             let res = if self.is_first {
