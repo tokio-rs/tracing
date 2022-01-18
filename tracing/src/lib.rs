@@ -1162,6 +1162,14 @@ pub mod __macro_support {
                 self.result = self.result.and(Err(err));
             }
         }
+
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "message" {
+                self.record_debug(field, &format_args!("{}", value))
+            } else {
+                self.record_debug(field, &value)
+            }
+        }
     }
 }
 
