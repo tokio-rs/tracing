@@ -240,6 +240,18 @@ where
                 serializer.serialize_entry("target", meta.target())?;
             }
 
+            if self.display_filename {
+                if let Some(filename) = meta.file() {
+                    serializer.serialize_entry("filename", filename)?;
+                }
+            }
+
+            if self.display_line_number {
+                if let Some(line_number) = meta.line() {
+                    serializer.serialize_entry("line_number", &line_number)?;
+                }
+            }
+
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer
@@ -483,6 +495,7 @@ mod test {
     use tracing::{self, collect::with_default};
 
     use std::fmt;
+    use std::path::Path;
 
     struct MockTime;
     impl FormatTime for MockTime {
@@ -504,6 +517,50 @@ mod test {
             .with_current_span(true)
             .with_span_list(true);
         test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_filename() {
+        let current_path = Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("json.rs")
+            .to_str()
+            .expect("path must be valid unicode")
+            // escape windows backslashes
+            .replace('\\', "\\\\");
+        let expected =
+            &format!("{}{}{}",
+                    "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"filename\":\"",
+                    current_path,
+                    "\",\"fields\":{\"message\":\"some json test\"}}\n");
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_file(true)
+            .with_span_list(true);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_line_number() {
+        let expected =
+            "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"line_number\":42,\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_line_number(true)
+            .with_span_list(true);
+        test_json_with_line_number(expected, collector, || {
             let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
             let _guard = span.enter();
             tracing::info!("some json test");
@@ -739,5 +796,35 @@ mod test {
                 .unwrap(),
             serde_json::from_str(actual).unwrap()
         );
+    }
+
+    fn test_json_with_line_number<T>(
+        expected: &str,
+        builder: crate::fmt::CollectorBuilder<JsonFields, Format<Json>>,
+        producer: impl FnOnce() -> T,
+    ) {
+        let make_writer = MockMakeWriter::default();
+        let collector = builder
+            .with_writer(make_writer.clone())
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(collector, producer);
+
+        let buf = make_writer.buf();
+        let actual = std::str::from_utf8(&buf[..]).unwrap();
+        let mut expected =
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap();
+        let expect_line_number = expected.remove("line_number").is_some();
+        let mut actual: std::collections::HashMap<&str, serde_json::Value> =
+            serde_json::from_str(actual).unwrap();
+        let line_number = actual.remove("line_number");
+        if expect_line_number {
+            assert_eq!(line_number.map(|x| x.is_number()), Some(true));
+        } else {
+            assert!(line_number.is_none());
+        }
+        assert_eq!(actual, expected);
     }
 }

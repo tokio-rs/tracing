@@ -441,7 +441,7 @@ pub struct CollectorBuilder<
 /// ```
 ///
 /// [formatting collector]: Collector
-/// [`CollectorBuilder::default()`]: CollectorBuilder::default()
+/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
 /// [`init`]: CollectorBuilder::init()
 /// [`try_init`]: CollectorBuilder::try_init()
 /// [`finish`]: CollectorBuilder::finish()
@@ -453,10 +453,11 @@ pub fn fmt() -> CollectorBuilder {
 /// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
 /// construct a collector.
 ///
-/// This is a shorthand for the equivalent [`Subscriber::default`] function.
+/// This is a shorthand for the equivalent [`Subscriber::default()`] function.
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
+/// [`Subscriber::default()`]: struct.Subscriber.html#method.default
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
@@ -750,6 +751,34 @@ where
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_target(display_target),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(
+        self,
+        display_filename: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_file(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_line_number(display_line_number),
             ..self
         }
     }
