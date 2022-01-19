@@ -223,7 +223,7 @@
 //!    .with_thread_names(true) // include the name of the current thread
 //!    .compact(); // use the `Compact` formatting style.
 //!
-//! // Create a `fmt` collector that uses our custom event format, and set it
+//! // Create a `fmt` subscriber that uses our custom event format, and set it
 //! // as the default.
 //! tracing_subscriber::fmt()
 //!     .event_format(format)
@@ -420,7 +420,7 @@ pub struct SubscriberBuilder<
 /// ```
 ///
 /// [formatting subscriber]: Subscriber
-/// [`SubscriberBuilder::default()`]: SubscriberBuilder::default()
+/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
 /// [`init`]: SubscriberBuilder::init()
 /// [`try_init`]: SubscriberBuilder::try_init()
 /// [`finish`]: SubscriberBuilder::finish()
@@ -432,10 +432,11 @@ pub fn fmt() -> SubscriberBuilder {
 /// Returns a new [formatting layer] that can be [composed] with other layers to
 /// construct a [`Subscriber`].
 ///
-/// This is a shorthand for the equivalent [`Layer::default`] function.
+/// This is a shorthand for the equivalent [`Layer::default()`] function.
 ///
 /// [formatting layer]: Layer
 /// [composed]: crate::layer
+/// [`Layer::default()`]: struct.Layer.html#method.default
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn layer<S>() -> Layer<S> {
     Layer::default()
@@ -729,6 +730,34 @@ where
     ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         SubscriberBuilder {
             inner: self.inner.with_target(display_target),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(
+        self,
+        display_filename: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_file(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_line_number(display_line_number),
             ..self
         }
     }
