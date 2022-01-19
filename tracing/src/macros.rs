@@ -592,7 +592,7 @@ macro_rules! event {
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::*;
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
+                name: $crate::__macro_support::concat!(
                     "event ",
                     file!(),
                     ":",
@@ -639,7 +639,7 @@ macro_rules! event {
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::*;
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
+                name: $crate::__macro_support::concat!(
                     "event ",
                     file!(),
                     ":",
@@ -2171,7 +2171,7 @@ macro_rules! __tracing_log {
 macro_rules! __mk_format_string {
     // === base case ===
     (@ { $(,)* $($out:expr),* $(,)* } $(,)*) => {
-        concat!( $($out),*)
+        $crate::__macro_support::concat!( $($out),*)
     };
 
     // === recursive case (more tts), ===
