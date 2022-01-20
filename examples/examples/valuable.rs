@@ -1,9 +1,17 @@
 #![allow(dead_code)]
-//! This example shows how a value may be recorded using valuable and as an alternative recording
-//! it without valuable but just using the debug printout. Valuable is more flexible however, as
-//! a user can implement a custom `tracing_core::Visit` and implement
-//! `tracing_core::Visit::record_value` to handle the valuable and extract the fields, whereas with
-//! the debug printout you'd need to parse the string to extract the values.
+//! This example shows how a field value may be recorded using the `valuable` 
+//! crate (https://crates.io/crates/valuable). 
+//!
+//! `valuable` provides a lightweight but flexible way to record structured data, allowing
+//! visitors to extract individual fields or elements of structs, maps, arrays, and other 
+//! nested structures. 
+//!
+//! `tracing`'s support for `valuable` is currently feature flagged. Additionally, `valuable`
+//! support is considered an *unstable feature*: in order to use `valuable` with `tracing`,
+//! the project must be built with `RUSTFLAGS="--cfg tracing_unstable`.
+//!
+//! Therefore, when `valuable` support is not enabled, this example falls back to using
+//! `fmt::Debug` to record fields that implement `valuable::Valuable`.
 #[cfg(tracing_unstable)]
 use tracing::field::valuable;
 use tracing::{info, info_span};
