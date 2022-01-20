@@ -10,7 +10,7 @@ mod app {
         headers: HashMap<&'a str, &'a str>,
     }
 
-    // Current there's no way to automatically apply valuable to a type so we need to make use of
+    // Current there's no way to automatically apply valuable to a type, so we need to make use of
     // the fields argument for instrument
     #[instrument(fields(headers=valuable(&headers)))]
     fn process(headers: Headers) {
