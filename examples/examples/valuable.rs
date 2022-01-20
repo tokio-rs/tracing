@@ -7,11 +7,9 @@
 #[cfg(tracing_unstable)]
 use tracing::field::valuable;
 use tracing::{info, info_span};
-#[cfg(tracing_unstable)]
 use valuable::Valuable;
 
-#[cfg_attr(tracing_unstable, derive(Valuable))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Valuable)]
 struct User {
     name: String,
     age: u32,
