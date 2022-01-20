@@ -46,6 +46,10 @@ fn main() {
         },
     };
 
+    // The two spans below ensure that with the valuable feature disabled this example doesn't
+    // trigger any warnings. It also offers a comparison between using Valuable or using the Debug
+    // implementation for a type.
+
     #[cfg(tracing_unstable)]
     let span = info_span!("Processing", user = valuable(&user));
 
