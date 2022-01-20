@@ -258,7 +258,9 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
-/// A `Value` which serializes using `valuable::Valuable`.
+/// A `Value` which serializes using [`Valuable`].
+///
+/// [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
 #[derive(Clone)]
 #[cfg(all(tracing_unstable, feature = "valuable"))]
 #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
@@ -282,8 +284,10 @@ where
     DebugValue(t)
 }
 
-/// Wraps a type implementing `valuable::Valuable` as a `Value` that
+/// Wraps a type implementing [`Valuable`] as a `Value` that
 /// can be recorded using its `Valuable` implementation.
+///
+/// [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
 #[cfg(all(tracing_unstable, feature = "valuable"))]
 #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
 pub fn valuable<T>(t: T) -> ValuableValue<T>
