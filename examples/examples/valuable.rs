@@ -16,8 +16,7 @@ struct User {
     address: Address,
 }
 
-#[cfg_attr(tracing_unstable, derive(Valuable))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Valuable)]
 struct Address {
     country: String,
     city: String,
