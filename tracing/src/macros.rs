@@ -791,12 +791,11 @@ macro_rules! event {
 /// when multiple events are emitted (e.g., iterating over a collection
 /// and emitting an event for each item).
 ///
-/// While `enabled!` can be used as a migration aid from [`log::log_enabled`],
-/// it is recommended that it be used sparingly. In most cases, a centralized
-/// filtering approach such as [`Targets`], [`filter_fn`], or [`EnvFilter`] will provide
-/// similar performance and greater ease-of-use. Similarly, while `enabled!` supports
-/// spans-derived, idiomatic usage of spans means that using `enabled!` with spans
-/// is unnecessary.
+/// `enabled!()` requires a level argument, an optional `target:`
+/// argument, and an optional set of fields. If the fields are not provided,
+/// they are considered to be unknown. `enabled!` attempts to match the
+/// syntax of `event!()` as closely as possible, which can be seen in the
+/// examples below.
 ///
 /// # Examples
 ///
@@ -819,7 +818,7 @@ macro_rules! event {
 /// // If the underlying collector is interested in recording spans and events
 /// // with the target "my_crate", at the level DEBUG, and the field name "hello",
 /// // this will evaluate to true.
-/// if enabled!(target: "my_crate", Level::DEBUG, {"hello"}) {
+/// if enabled!(target: "my_crate", Level::DEBUG, hello) {
 ///     // some expensive work...
 /// }
 /// # }
