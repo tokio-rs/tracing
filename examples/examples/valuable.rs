@@ -50,7 +50,7 @@ fn main() {
     // `valuable::Valuable` implementation:
     #[cfg(tracing_unstable)]
     let span = info_span!("Processing", user = valuable(&user));
-    
+
     // Otherwise, record `user` using its `fmt::Debug` implementation:
     #[cfg(not(tracing_unstable))]
     let span = info_span!("Processing", user = ?user);
