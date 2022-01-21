@@ -46,13 +46,12 @@ fn main() {
         },
     };
 
-    // The two spans below ensure that with the valuable feature disabled this example doesn't
-    // trigger any warnings. It also offers a comparison between using Valuable or using the Debug
-    // implementation for a type.
-
+    // If the `valuable` feature is enabled, record `user` using its'
+    // `valuable::Valuable` implementation:
     #[cfg(tracing_unstable)]
     let span = info_span!("Processing", user = valuable(&user));
-
+    
+    // Otherwise, record `user` using its `fmt::Debug` implementation:
     #[cfg(not(tracing_unstable))]
     let span = info_span!("Processing", user = ?user);
 
