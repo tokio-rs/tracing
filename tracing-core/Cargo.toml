@@ -27,7 +27,7 @@ edition = "2018"
 rust-version = "1.42.0"
 
 [features]
-default = ["std"]
+default = ["std", "valuable/std"]
 std = ["lazy_static"]
 
 [badges]
@@ -35,6 +35,9 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 lazy_static = { version = "1", optional = true }
+
+[target.'cfg(tracing_unstable)'.dependencies]
+valuable = { version = "0.1.0", optional = true, default_features = false }
 
 [package.metadata.docs.rs]
 all-features = true

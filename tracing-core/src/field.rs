@@ -184,6 +184,15 @@ pub struct Iter {
 /// [`Event`]: ../event/struct.Event.html
 /// [`ValueSet`]: struct.ValueSet.html
 pub trait Visit {
+    /// Visits an arbitrary type implementing the [`valuable`] crate's `Valuable` trait.
+    ///
+    /// [`valuable`]: https://docs.rs/valuable
+    #[cfg(all(tracing_unstable, feature = "valuable"))]
+    #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+    fn record_value(&mut self, field: &Field, value: &dyn valuable::Valuable) {
+        self.record_debug(field, &value)
+    }
+
     /// Visit a double-precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.record_debug(field, &value)
@@ -249,6 +258,14 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
+/// A `Value` which serializes using [`Valuable`].
+///
+/// [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
+#[derive(Clone)]
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+pub struct ValuableValue<T: valuable::Valuable>(T);
+
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
 /// recorded using its `Display` implementation.
 pub fn display<T>(t: T) -> DisplayValue<T>
@@ -265,6 +282,19 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+/// Wraps a type implementing [`Valuable`] as a `Value` that
+/// can be recorded using its `Valuable` implementation.
+///
+/// [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+pub fn valuable<T>(t: T) -> ValuableValue<T>
+where
+    T: valuable::Valuable,
+{
+    ValuableValue(t)
 }
 
 // ===== impl Visit =====
@@ -536,6 +566,27 @@ where
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+
+// ===== impl ValuableValue =====
+
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+impl<T: valuable::Valuable> crate::sealed::Sealed for ValuableValue<T> {}
+
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+impl<T: valuable::Valuable> Value for ValuableValue<T> {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_value(key, &self.0)
+    }
+}
+
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+impl<T: valuable::Valuable> fmt::Debug for ValuableValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", &self.0 as &dyn valuable::Valuable)
     }
 }
 
