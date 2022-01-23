@@ -17,5 +17,6 @@ fn test_move_arg() {
 
 #[derive(Debug)]
 struct Foo;
+
 #[derive(Debug)]
 struct Bar(Foo);
