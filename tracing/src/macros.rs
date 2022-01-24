@@ -791,13 +791,30 @@ macro_rules! event {
 /// when multiple events are emitted (e.g., iterating over a collection
 /// and emitting an event for each item).
 ///
-/// `enabled!()` requires a level argument, an optional `target:`
+/// ## Usage
+///
+/// It is possible for `enabled!` to return a false positive or negative. This might
+/// occur when a subscriber is using a _more specific_ filter than what was (or could be)
+/// provided to `enabled!`. Below are
+///
+/// - If a subscriber is using a filter which may enable a span or event based
+/// on field names, but `enabled!` is invoked without listing field names,
+/// `enabled!` may return a false negative if a specific field name would
+/// cause the subscriber to enable something that would otherwise be disabled.
+/// - If a subscriber is using a filter which enables or disables specific events by
+/// file path and line number,  a particular event may be enabled/disabled
+/// even if an `enabled!` invocation with the same level, target, and fields
+/// indicated otherwise.
+/// - The subscriber can choose to enable _only_ spans or _only_ events, which `enabled`
+/// will not reflect.
+///
+/// ## Examples
+///
+/// /// `enabled!()` requires a level argument, an optional `target:`
 /// argument, and an optional set of fields. If the fields are not provided,
 /// they are considered to be unknown. `enabled!` attempts to match the
 /// syntax of `event!()` as closely as possible, which can be seen in the
 /// examples below.
-///
-/// # Examples
 ///
 /// ```rust
 /// use tracing::{enabled, Level};
