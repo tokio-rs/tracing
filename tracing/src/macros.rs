@@ -793,9 +793,9 @@ macro_rules! event {
 ///
 /// ## Usage
 ///
-/// It is possible for `enabled!` to return a false positive or negative. This might
+/// It is possible for `enabled!` to return a false positive or false negative. This might
 /// occur when a subscriber is using a _more specific_ filter than what was (or could be)
-/// provided to `enabled!`. Below are
+/// provided to `enabled!`. Below are several examples where this might occur:
 ///
 /// - If a subscriber is using a filter which may enable a span or event based
 /// on field names, but `enabled!` is invoked without listing field names,
