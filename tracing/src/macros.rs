@@ -879,26 +879,19 @@ macro_rules! enabled {
     );
 
     // These two cases handle fields with no values
-    (target: $target:expr, $lvl:expr, $($k:ident).+) => (
-        $crate::enabled!(target: $target, $lvl, $($k).+,)
-    );
-    (target: $target:expr, $lvl:expr, $($k:ident).+, $($field:tt)*) => (
+    (target: $target:expr, $lvl:expr, $($field:tt)*) => (
         $crate::enabled!(
             target: $target,
             $lvl,
-            { $($k).+, $($field)*}
+            { $($field)*}
         )
     );
-
-    ($lvl:expr, $($k:ident).+, $($field:tt)*) => (
+    ($lvl:expr, $($field:tt)*) => (
         $crate::enabled!(
             target: module_path!(),
             $lvl,
-            { $($k).+, $($field)*}
+            { $($field)*}
         )
-    );
-    ($lvl:expr, $($k:ident).+) => (
-        $crate::enabled!($lvl, $($k).+,)
     );
 
     // Simplest `enabled!` case
