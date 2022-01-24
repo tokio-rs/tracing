@@ -37,6 +37,7 @@ use std::{
     cell::{Cell, RefCell},
     fmt,
     marker::PhantomData,
+    ops::Deref,
     sync::Arc,
     thread_local,
 };
@@ -45,6 +46,7 @@ use tracing_core::{
     subscriber::{Interest, Subscriber},
     Event, Metadata,
 };
+pub mod combinator;
 
 /// A [`Layer`] that wraps an inner [`Layer`] and adds a [`Filter`] which
 /// controls what spans and events are enabled for that layer.
@@ -158,7 +160,231 @@ thread_local! {
     pub(crate) static FILTERING: FilterState = FilterState::new();
 }
 
+/// Extension trait adding [combinators] for combining [`Filter`].
+///
+/// [combinators]: crate::filter::combinator
+/// [`Filter`]: crate::layer::Filter
+pub trait FilterExt<S>: layer::Filter<S> {
+    /// Combines this [`Filter`] with another [`Filter`] s so that spans and
+    /// events are enabled if and only if *both* filters return `true`.
+    ///
+    /// # Examples
+    ///
+    /// Enabling spans or events if they have both a particular target *and* are
+    /// above a certain level:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
+    ///     prelude::*,
+    /// };
+    ///
+    /// // Enables spans and events with targets starting with `interesting_target`:
+    /// let target_filter = filter_fn(|meta| {
+    ///     meta.target().starts_with("interesting_target")
+    /// });
+    ///
+    /// // Enables spans and events with levels `INFO` and below:
+    /// let level_filter = LevelFilter::INFO;
+    ///
+    /// // Combine the two filters together, returning a filter that only enables
+    /// // spans and events that *both* filters will enable:
+    /// let filter = target_filter.and(level_filter);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::info!("an event with an uninteresting target");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!(target: "interesting_target", "a very interesting event");
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::debug!(target: "interesting_target", "interesting debug event...");
+    /// ```
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    fn and<B>(self, other: B) -> combinator::And<Self, B, S>
+    where
+        Self: Sized,
+        B: layer::Filter<S>,
+    {
+        combinator::And::new(self, other)
+    }
+
+    /// Combines two [`Filter`]s so that spans and events are enabled if *either* filter
+    /// returns `true`.
+    ///
+    /// # Examples
+    ///
+    /// Enabling spans and events at the `INFO` level and above, and all spans
+    /// and events with a particular target:
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
+    ///     prelude::*,
+    /// };
+    ///
+    /// // Enables spans and events with targets starting with `interesting_target`:
+    /// let target_filter = filter_fn(|meta| {
+    ///     meta.target().starts_with("interesting_target")
+    /// });
+    ///
+    /// // Enables spans and events with levels `INFO` and below:
+    /// let level_filter = LevelFilter::INFO;
+    ///
+    /// // Combine the two filters together so that a span or event is enabled
+    /// // if it is at INFO or lower, or if it has a target starting with
+    /// // `interesting_target`.
+    /// let filter = level_filter.or(target_filter);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    ///
+    /// // This event will *not* be enabled:
+    /// tracing::debug!("an uninteresting event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!("an uninteresting INFO event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::info!(target: "interesting_target", "a very interesting event");
+    ///
+    /// // This event *will* be enabled:
+    /// tracing::debug!(target: "interesting_target", "interesting debug event...");
+    /// ```
+    ///
+    /// Enabling a higher level for a particular target by using `or` in
+    /// conjunction with the [`and`] combinator:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
+    ///     prelude::*,
+    /// };
+    ///
+    /// // This filter will enable spans and events with targets beginning with
+    /// // `my_crate`:
+    /// let my_crate = filter_fn(|meta| {
+    ///     meta.target().starts_with("my_crate")
+    /// });
+    ///
+    /// let filter = my_crate
+    ///     // Combine the `my_crate` filter with a `LevelFilter` to produce a
+    ///     // filter that will enable the `INFO` level and lower for spans and
+    ///     // events with `my_crate` targets:
+    ///     .and(LevelFilter::INFO)
+    ///     // If a span or event *doesn't* have a target beginning with
+    ///     // `my_crate`, enable it if it has the `WARN` level or lower:
+    ///     .or(LevelFilter::WARN);
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    /// ```
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [`and`]: FilterExt::and
+    fn or<B>(self, other: B) -> combinator::Or<Self, B, S>
+    where
+        Self: Sized,
+        B: layer::Filter<S>,
+    {
+        combinator::Or::new(self, other)
+    }
+
+    /// Inverts `self`, returning a filter that enables spans and events only if
+    /// `self` would *not* enable them.
+    fn not(self) -> combinator::Not<Self, S>
+    where
+        Self: Sized,
+    {
+        combinator::Not::new(self)
+    }
+
+    /// [Boxes] `self`, erasing its concrete type.
+    ///
+    /// This is equivalent to calling [`Box::new`], but in method form, so that
+    /// it can be used when chaining combinator methods.
+    ///
+    /// # Examples
+    ///
+    /// When different combinations of filters are used conditionally, they may
+    /// have different types. For example, the following code won't compile,
+    /// since the `if` and `else` clause produce filters of different types:
+    ///
+    /// ```compile_fail
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
+    ///     prelude::*,
+    /// };
+    ///
+    /// let enable_bar_target: bool = // ...
+    /// # false;
+    ///
+    /// let filter = if enable_bar_target {
+    ///     filter_fn(|meta| meta.target().starts_with("foo"))
+    ///         // If `enable_bar_target` is true, add a `filter_fn` enabling
+    ///         // spans and events with the target `bar`:
+    ///         .or(filter_fn(|meta| meta.target().starts_with("bar")))
+    ///         .and(LevelFilter::INFO)
+    /// } else {
+    ///     filter_fn(|meta| meta.target().starts_with("foo"))
+    ///         .and(LevelFilter::INFO)
+    /// };
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    /// ```
+    ///
+    /// By using `boxed`, the types of the two different branches can be erased,
+    /// so the assignment to the `filter` variable is valid (as both branches
+    /// have the type `Box<dyn Filter<S> + Send + Sync + 'static>`). The
+    /// following code *does* compile:
+    ///
+    /// ```
+    /// use tracing_subscriber::{
+    ///     filter::{filter_fn, LevelFilter, FilterExt},
+    ///     prelude::*,
+    /// };
+    ///
+    /// let enable_bar_target: bool = // ...
+    /// # false;
+    ///
+    /// let filter = if enable_bar_target {
+    ///     filter_fn(|meta| meta.target().starts_with("foo"))
+    ///         .or(filter_fn(|meta| meta.target().starts_with("bar")))
+    ///         .and(LevelFilter::INFO)
+    ///         // Boxing the filter erases its type, so both branches now
+    ///         // have the same type.
+    ///         .boxed()
+    /// } else {
+    ///     filter_fn(|meta| meta.target().starts_with("foo"))
+    ///         .and(LevelFilter::INFO)
+    ///         .boxed()
+    /// };
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(tracing_subscriber::fmt::layer().with_filter(filter))
+    ///     .init();
+    /// ```
+    ///
+    /// [Boxes]: std::boxed
+    /// [`Box::new`]: std::boxed::Box::new
+    fn boxed(self) -> Box<dyn layer::Filter<S> + Send + Sync + 'static>
+    where
+        Self: Sized + Send + Sync + 'static,
+    {
+        Box::new(self)
+    }
+}
+
 // === impl Filter ===
+
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<S> layer::Filter<S> for LevelFilter {
@@ -179,38 +405,35 @@ impl<S> layer::Filter<S> for LevelFilter {
     }
 }
 
-impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        (**self).enabled(meta, cx)
-    }
+macro_rules! filter_impl_body {
+    () => {
+        #[inline]
+        fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+            self.deref().enabled(meta, cx)
+        }
 
-    #[inline]
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        (**self).callsite_enabled(meta)
-    }
+        #[inline]
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            self.deref().callsite_enabled(meta)
+        }
 
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        (**self).max_level_hint()
-    }
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.deref().max_level_hint()
+        }
+    };
 }
 
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+impl<S> layer::Filter<S> for Arc<dyn layer::Filter<S> + Send + Sync + 'static> {
+    filter_impl_body!();
+}
+
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
 impl<S> layer::Filter<S> for Box<dyn layer::Filter<S> + Send + Sync + 'static> {
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
-        (**self).enabled(meta, cx)
-    }
-
-    #[inline]
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        (**self).callsite_enabled(meta)
-    }
-
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        (**self).max_level_hint()
-    }
+    filter_impl_body!();
 }
 
 // === impl Filtered ===
@@ -543,6 +766,10 @@ impl fmt::Binary for FilterId {
             .finish()
     }
 }
+
+// === impl FilterExt ===
+
+impl<F, S> FilterExt<S> for F where F: layer::Filter<S> {}
 
 // === impl FilterMap ===
 
