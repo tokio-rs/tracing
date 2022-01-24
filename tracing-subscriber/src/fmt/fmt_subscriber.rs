@@ -297,6 +297,30 @@ where
             ..self
         }
     }
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_file(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_line_number(display_line_number),
+            ..self
+        }
+    }
 
     /// Sets whether or not an event's level is displayed.
     pub fn with_level(self, display_level: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
