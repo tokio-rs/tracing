@@ -810,7 +810,7 @@ macro_rules! event {
 ///
 /// ## Examples
 ///
-/// /// `enabled!()` requires a level argument, an optional `target:`
+/// `enabled!()` requires a level argument, an optional `target:`
 /// argument, and an optional set of fields. If the fields are not provided,
 /// they are considered to be unknown. `enabled!` attempts to match the
 /// syntax of `event!()` as closely as possible, which can be seen in the
