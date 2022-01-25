@@ -783,35 +783,68 @@ macro_rules! event {
     );
 }
 
-/// Check's whether an equivalent `event!` invocation would result in an enabled
-/// event.
+/// Checks whether a span or event is enabled depending on the provided metadata.
 ///
-/// If you are using this macro to guard a log line that requires expensive computation, it can
-/// result in false-negative's, if the default collector has filters based on line numbers or field
-/// names.
+/// This macro is a specialized tool: it is intended to be used prior
+/// to an expensive computation required *just* for that event, but
+/// *cannot* be done as part of an argument to that event, such as
+/// when multiple events are emitted (e.g., iterating over a collection
+/// and emitting an event for each item).
 ///
-/// This macro operates similarly to [`event!`], with some extensions:
-/// - Allows passing just a level.
-/// - Allows passing just a level and a target.
+/// ## Usage
 ///
-/// See [the top-level documentation][lib] for details on the syntax accepted by
-/// this macro.
+/// It is possible for `enabled!` to return a false positive or false negative. This might
+/// occur when a subscriber is using a _more specific_ filter than what was (or could be)
+/// provided to `enabled!`. Below are several examples where this might occur:
 ///
-/// [lib]: crate#using-the-macros
-/// [`event!`]: event!
+/// - If a subscriber is using a filter which may enable a span or event based
+/// on field names, but `enabled!` is invoked without listing field names,
+/// `enabled!` may return a false negative if a specific field name would
+/// cause the subscriber to enable something that would otherwise be disabled.
+/// - If a subscriber is using a filter which enables or disables specific events by
+/// file path and line number,  a particular event may be enabled/disabled
+/// even if an `enabled!` invocation with the same level, target, and fields
+/// indicated otherwise.
+/// - The subscriber can choose to enable _only_ spans or _only_ events, which `enabled`
+/// will not reflect.
 ///
-/// # Examples
+/// ## Examples
+///
+/// `enabled!()` requires a level argument, an optional `target:`
+/// argument, and an optional set of fields. If the fields are not provided,
+/// they are considered to be unknown. `enabled!` attempts to match the
+/// syntax of `event!()` as closely as possible, which can be seen in the
+/// examples below.
 ///
 /// ```rust
 /// use tracing::{enabled, Level};
 ///
 /// # fn main() {
-/// #   if enabled!(Level::DEBUG, "Debug loggin") {
-/// #       // Do something expensive
-/// #   }
+/// // If the underlying collector is interested in recording
+/// // DEBUG-level spans and events, this will evaluate to true.
+/// if enabled!(Level::DEBUG) {
+///     // some expensive work...
+/// }
+///
+/// // If the underlying collector is interested in recording spans and events
+/// // with the target "my_crate" at the level DEBUG, this will evaluate to true.
+/// if enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+///
+/// // If the underlying collector is interested in recording spans and events
+/// // with the target "my_crate", at the level DEBUG, and the field name "hello",
+/// // this will evaluate to true.
+/// if enabled!(target: "my_crate", Level::DEBUG, hello) {
+///     // some expensive work...
+/// }
 /// # }
 /// ```
 ///
+/// [`log::log_enabled`]: https://docs.rs/log/0.4.14/log/macro.log_enabled.html
+/// [`Targets`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/targets/struct.Targets.html
+/// [`filter_fn`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/fn.filter_fn.html
+/// [`EnvFilter`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/struct.EnvFilter.html
 #[macro_export]
 macro_rules! enabled {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
