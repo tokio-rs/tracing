@@ -126,7 +126,7 @@
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`time` crate]: https://crates.io/crates/time
 //! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.3.6")]
+#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.3.7")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"

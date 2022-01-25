@@ -1,3 +1,27 @@
+# 0.3.7 (Jan 25, 2022)
+
+This release adds combinators for combining filters.
+
+Additionally, this release also updates the `thread-local` crate to v1.1.4,
+fixing warnings for the security advisory [RUSTSEC-2022-0006]. Note that
+previous versions of `tracing-subscriber` did not use any of the `thread-local`
+crate's APIs effected by the vulnerability. However, updating the version fixes
+warnings emitted by `cargo audit` and similar tools.
+
+### Added
+
+- **filter**: Added combinators for combining filters ([#1578])
+
+### Fixed
+
+- **registry**: Updated `thread-local` to v1.1.4 ([#1858])
+
+Thanks to new contributor @matze for contributing to this release!
+
+[RUSTSEC-2022-0006]: https://rustsec.org/advisories/RUSTSEC-2022-0006
+[#1578]: https://github.com/tokio-rs/tracing/pull/1578
+[#1858]: https://github.com/tokio-rs/tracing/pull/1858
+
 # 0.3.6 (Jan 14, 2022)
 
 This release adds configuration options to `tracing_subscriber::fmt` to log
