@@ -18,12 +18,19 @@ categories = [
 keywords = ["logging", "tracing", "serialization"]
 rust-version = "1.42.0"
 
+[features]
+valuable = ["valuable_crate", "valuable-serde", "tracing-core/valuable"]
+
 [dependencies]
 serde = "1"
 tracing-core = { path = "../tracing-core", version = "0.1.2"}
 
 [dev-dependencies]
 serde_json = "1"
+
+[target.'cfg(tracing_unstable)'.dependencies]
+valuable_crate = { package = "valuable", version = "0.1.0", optional = true, default_features = false }
+valuable-serde = { git = "https://github.com/tokio-rs/valuable", version = "0.1.0", optional = true, default_features = false }
 
 [badges]
 maintenance = { status = "experimental" }

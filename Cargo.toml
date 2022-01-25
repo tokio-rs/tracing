@@ -17,3 +17,7 @@ members = [
     "tracing-journald",
     "examples"
 ]
+
+# TODO(eliza): remove when `valuable-serde` is published
+[patch.crates-io]
+valuable = { git = "https://github.com/tokio-rs/valuable" }

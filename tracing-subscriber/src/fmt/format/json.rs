@@ -447,6 +447,27 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
 }
 
 impl<'a> field::Visit for JsonVisitor<'a> {
+    #[cfg(all(tracing_unstable, feature = "valuable"))]
+    fn record_value(&mut self, field: &Field, value: &dyn valuable_crate::Valuable) {
+        let value = match serde_json::to_value(valuable_serde::Serializable::new(value.as_value()))
+        {
+            Ok(value) => value,
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                unreachable!(
+                    "`valuable::Valuable` implementations should always serialize \
+                    successfully, but an error occurred: {}",
+                    _e,
+                );
+
+                #[cfg(not(debug_assertions))]
+                return;
+            }
+        };
+
+        self.values.insert(field.name(), value);
+    }
+
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values
