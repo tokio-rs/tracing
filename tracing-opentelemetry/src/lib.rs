@@ -109,3 +109,13 @@ mod tracer;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;
+
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
+#[cfg(feature = "fmt")]
+pub mod fmt;
+
+#[cfg_attr(docsrs, doc(cfg(feature = "fmt")))]
+#[cfg(feature = "fmt")]
+pub fn fmt() -> fmt::OtelEvent {
+    fmt::OtelEvent::new()
+}
