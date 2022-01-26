@@ -375,6 +375,7 @@ maintained by the `tokio` project. These include:
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
   framework for validating the behavior of `tracing` spans.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -400,6 +401,8 @@ please let us know! We'd love to add your project to the list!
 [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
