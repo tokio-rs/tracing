@@ -923,7 +923,7 @@ where
 }
 
 impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
+    /// Sets the field formatter that the subscriber being built will use to record
     /// fields.
     ///
     /// For example:
@@ -1057,8 +1057,26 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the function that the subscriber being built should use to format
-    /// events that occur.
+    /// Sets the [event formatter][`FormatEvent`] that the subscriber being built
+    /// will use to format events that occur.
+    ///
+    /// The event formatter may be any type implementing the [`FormatEvent`]
+    /// trait, which is implemented for all functions taking a [`FmtContext`], a
+    /// [`Writer`], and an [`Event`].
+    ///
+    /// # Examples
+    ///
+    /// Setting a type implementing [`FormatEvent`] as the formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format;
+    ///
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .event_format(format().compact())
+    ///     .finish();
+    /// ```
+    ///
+    /// [`Writer`]: struct@self::format::Writer
     pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
@@ -1085,8 +1103,6 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .with_writer(io::stderr)
     ///     .init();
     /// ```
-    ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> SubscriberBuilder<N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,

@@ -87,8 +87,8 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    /// Sets the [event formatter][`FormatEvent`] that the layer will use to
-    /// format events.
+    /// Sets the [event formatter][`FormatEvent`] that the layer being built will
+    /// use to format events.
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]
     /// trait, which is implemented for all functions taking a [`FmtContext`], a
@@ -126,7 +126,7 @@ where
 
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W> {
-    /// Sets the [`MakeWriter`] that the [`Layer`] being built will use to write events.
+    /// Sets the [`MakeWriter`] that the layer being built will use to write events.
     ///
     /// # Examples
     ///
@@ -142,9 +142,6 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// # use tracing_subscriber::Layer as _;
     /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
     /// ```
-    ///
-    /// [`MakeWriter`]: ../fmt/trait.MakeWriter.html
-    /// [`Layer`]: ../layer/trait.Layer.html
     pub fn with_writer<W2>(self, make_writer: W2) -> Layer<S, N, E, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
