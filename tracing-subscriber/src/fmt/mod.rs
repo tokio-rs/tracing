@@ -1021,7 +1021,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// subscriber.
     ///
     /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
+    /// [`with_env_filter`], this replaces that configuration with the new
     /// maximum level.
     ///
     /// # Examples
@@ -1044,8 +1044,8 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .finish();
     /// ```
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_filter`]: #method.with_filter
+    /// [`EnvFilter`]: struct@crate::filter::EnvFilter
+    /// [`with_env_filter`]: fn@Self::with_env_filter
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
