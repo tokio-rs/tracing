@@ -122,6 +122,35 @@ where
             _inner: self._inner,
         }
     }
+
+    /// Updates the event formatter by applying a function to the existing event formatter.
+    ///
+    /// This sets the event formatter that the layer being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating an event formatter:
+    ///
+    /// ```rust
+    /// let layer = tracing_subscriber::fmt::layer()
+    ///     .map_event_format(|e| e.compact());
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    pub fn map_event_format<E2>(self, f: impl FnOnce(E) -> E2) -> Layer<S, N, E2, W>
+    where
+        E2: FormatEvent<S, N> + 'static,
+    {
+        Layer {
+            fmt_fields: self.fmt_fields,
+            fmt_event: f(self.fmt_event),
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            _inner: self._inner,
+        }
+    }
 }
 
 // This needs to be a seperate impl block because they place different bounds on the type parameters.
@@ -472,6 +501,36 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         Layer {
             fmt_event: self.fmt_event,
             fmt_fields,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            _inner: self._inner,
+        }
+    }
+
+    /// Updates the field formatter by applying a function to the existing field formatter.
+    ///
+    /// This sets the field formatter that the layer being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating a field formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::field::MakeExt;
+    /// let layer = tracing_subscriber::fmt::layer()
+    ///     .map_fmt_fields(|f| f.debug_alt());
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> Layer<S, N2, E, W>
+    where
+        N2: for<'writer> FormatFields<'writer> + 'static,
+    {
+        Layer {
+            fmt_event: self.fmt_event,
+            fmt_fields: f(self.fmt_fields),
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
