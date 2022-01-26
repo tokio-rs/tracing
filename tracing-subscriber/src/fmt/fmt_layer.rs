@@ -227,6 +227,39 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             ..self
         }
     }
+
+    /// Updates the [`MakeWriter`] by applying a function to the existing [`MakeWriter`].
+    ///
+    /// This sets the [`MakeWriter`] that the layer being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Redirect output to stderr if level is <= WARN:
+    ///
+    /// ```rust
+    /// use tracing::Level;
+    /// use tracing_subscriber::fmt::{self, writer::MakeWriterExt};
+    ///
+    /// let stderr = std::io::stderr.with_max_level(Level::WARN);
+    /// let layer = fmt::layer()
+    ///     .map_writer(move |w| stderr.or_else(w));
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Layer as _;
+    /// # let _ = layer.with_subscriber(tracing_subscriber::registry::Registry::default());
+    /// ```
+    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> Layer<S, N, E, W2>
+    where
+        W2: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        Layer {
+            fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
+            fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
+            make_writer: f(self.make_writer),
+            _inner: self._inner,
+        }
+    }
 }
 
 impl<S, N, L, T, W> Layer<S, N, format::Format<L, T>, W>

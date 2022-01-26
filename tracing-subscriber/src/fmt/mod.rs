@@ -1192,6 +1192,33 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
             inner: self.inner.map_fmt_fields(f),
         }
     }
+
+    /// Updates the [`MakeWriter`] by applying a function to the existing [`MakeWriter`].
+    ///
+    /// This sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Redirect output to stderr if level is <= WARN:
+    ///
+    /// ```rust
+    /// use tracing::Level;
+    /// use tracing_subscriber::fmt::{self, writer::MakeWriterExt};
+    ///
+    /// let stderr = std::io::stderr.with_max_level(Level::WARN);
+    /// let layer = tracing_subscriber::fmt()
+    ///     .map_writer(move |w| stderr.or_else(w))
+    ///     .finish();
+    /// ```
+    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> SubscriberBuilder<N, E, F, W2>
+    where
+        W2: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.map_writer(f),
+        }
+    }
 }
 
 /// Install a global tracing subscriber that listens for events and
