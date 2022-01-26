@@ -1122,21 +1122,43 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
     }
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        if let Some(source) = value.source() {
-            let italic = self.writer.italic();
-            self.record_debug(
-                field,
-                &format_args!(
-                    "{} {}{}{}{}",
-                    value,
-                    italic.paint(field.name()),
-                    italic.paint(".sources"),
-                    self.writer.dimmed().paint("="),
-                    ErrorSourceList(source)
-                ),
-            )
-        } else {
-            self.record_debug(field, &format_args!("{}", value))
+        let source = value.source();
+        let spantrace = value.chain().find_map(|value| value.request_ref::<tracing::Span>());
+        match (source, spantrace) {
+            (Some(source), None) => {
+                let italic = self.writer.italic();
+                self.record_debug(
+                    field,
+                    &format_args!(
+                        "{} {}{}{}{}",
+                        value,
+                        italic.paint(field.name()),
+                        italic.paint(".sources"),
+                        self.writer.dimmed().paint("="),
+                        ErrorSourceList(source)
+                    ),
+                )
+            },
+            (None, None) => self.record_debug(field, &format_args!("{}", value)),
+            (Some(source), Some(spantrace)) => {
+                let italic = self.writer.italic();
+                self.record_debug(
+                    field,
+                    &format_args!(
+                        "{} {}{}{}{} {}{}{}{:?}",
+                        value,
+                        italic.paint(field.name()),
+                        italic.paint(".sources"),
+                        self.writer.dimmed().paint("="),
+                        ErrorSourceList(source),
+                        italic.paint(field.name()),
+                        italic.paint(".span_context"),
+                        self.writer.dimmed().paint("="),
+                        spantrace
+                    ),
+                )
+            },
+            (None, Some(spantrace)) => unimplemented!(),
         }
     }
 

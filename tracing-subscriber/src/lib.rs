@@ -138,6 +138,8 @@
 // "needless".
 #![allow(clippy::needless_update)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(error_in_core)]
+#![feature(error_iter)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

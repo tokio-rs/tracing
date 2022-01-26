@@ -147,6 +147,12 @@ impl SpanTrace {
     }
 }
 
+impl AsRef<Span> for SpanTrace {
+    fn as_ref(&self) -> &Span {
+        &self.span
+    }
+}
+
 /// The current status of a SpanTrace, indicating whether it was captured or
 /// whether it is empty for some other reason.
 #[derive(Debug, PartialEq, Eq)]
