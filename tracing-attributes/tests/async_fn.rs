@@ -374,6 +374,7 @@ fn out_of_scope_fields() {
 
 #[test]
 fn manual_impl_future() {
+    #[allow(clippy::manual_async_fn)]
     #[instrument]
     fn manual_impl_future() -> impl Future<Output = ()> {
         async move {
