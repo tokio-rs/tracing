@@ -440,8 +440,12 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
 enum AsyncTraitKind<'a> {
     // old construction. Contains the function
     Function(&'a ItemFn),
-    // new construction. Contains a reference to the async block
-    Async(&'a ExprAsync),
+    // new construction. Contains a reference to the async block, and a bool
+    // indicating if the return value is a `Box::pin`
+    Async {
+        async_expr: &'a ExprAsync,
+        pinned_box: bool,
+    },
 }
 
 pub(crate) struct AsyncTraitInfo<'block> {
@@ -503,6 +507,22 @@ impl<'block> AsyncTraitInfo<'block> {
             }
         })?;
 
+        // is the last expression an async block?
+        if let Expr::Async(async_expr) = last_expr {
+            // check that the move 'keyword' is present
+            async_expr.capture?;
+
+            return Some(AsyncTraitInfo {
+                source_stmt: last_expr_stmt,
+                kind: AsyncTraitKind::Async {
+                    async_expr,
+                    pinned_box: false,
+                },
+                self_type: None,
+                input,
+            });
+        }
+
         // is the last expression a function call?
         let (outside_func, outside_args) = match last_expr {
             Expr::Call(ExprCall { func, args, .. }) => (func, args),
@@ -533,7 +553,10 @@ impl<'block> AsyncTraitInfo<'block> {
 
             return Some(AsyncTraitInfo {
                 source_stmt: last_expr_stmt,
-                kind: AsyncTraitKind::Async(async_expr),
+                kind: AsyncTraitKind::Async {
+                    async_expr,
+                    pinned_box: true,
+                },
                 self_type: None,
                 input,
             });
@@ -619,7 +642,10 @@ impl<'block> AsyncTraitInfo<'block> {
                     self.self_type.as_ref(),
                 ),
                 // async-trait >= 0.1.44
-                AsyncTraitKind::Async(async_expr) => {
+                AsyncTraitKind::Async {
+                    async_expr,
+                    pinned_box,
+                } => {
                     let instrumented_block = gen_block(
                         &async_expr.block,
                         &self.input.sig.inputs,
@@ -629,8 +655,14 @@ impl<'block> AsyncTraitInfo<'block> {
                         None,
                     );
                     let async_attrs = &async_expr.attrs;
-                    quote! {
-                        Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                    if pinned_box {
+                        quote! {
+                            Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                        }
+                    } else {
+                        quote! {
+                            #(#async_attrs) * async move { #instrumented_block }
+                        }
                     }
                 }
             };

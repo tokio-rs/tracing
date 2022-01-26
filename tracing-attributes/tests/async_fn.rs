@@ -371,3 +371,48 @@ fn out_of_scope_fields() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn manual_impl_future() {
+    #[instrument]
+    fn manual_impl_future() -> impl Future<Output = ()> {
+        async move {
+            tracing::trace!(poll = true);
+        }
+    }
+    #[instrument]
+    fn manual_box_pin() -> Pin<Box<dyn Future<Output = ()>>> {
+        Box::pin(async move {
+            tracing::trace!(poll = true);
+        })
+    }
+
+    let span = span::mock().named("manual_impl_future");
+    let boxed_span = span::mock().named("manual_box_pin");
+    let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
+
+    let (collector, handle) = collector::mock()
+        // await manual_impl_future
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(poll_event())
+        .exit(span.clone())
+        .drop_span(span)
+        // await manual_box_pin
+        .new_span(boxed_span.clone())
+        .enter(boxed_span.clone())
+        .event(poll_event())
+        .exit(boxed_span.clone())
+        .drop_span(boxed_span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            manual_impl_future().await;
+            manual_box_pin().await;
+        });
+    });
+
+    handle.assert_finished();
+}
