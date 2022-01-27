@@ -103,9 +103,9 @@ $ firefox http://localhost:16686/
 
 ## Supported Rust Versions
 
-Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
-versions earlier than the minimum supported version.
+Tracing Opentelemetry is built against the latest stable release. The minimum
+supported version is 1.46. The current Tracing version is not guaranteed to
+build on Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
