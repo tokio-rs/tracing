@@ -43,7 +43,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --exclude=tracing-appender,tracing-opentelemetry
+        args: --all --exclude=tracing-appender --exclude=tracing-opentelemetry
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
