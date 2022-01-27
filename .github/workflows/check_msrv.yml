@@ -63,7 +63,7 @@ jobs:
         args: --lib=tracing-appender
 
   # TODO: remove this once tracing's MSRV is bumped.
-  check-msrv-appender:
+  check-msrv-opentelemetry:
     # Run `cargo check` on our minimum supported Rust version (1.46.0).
     runs-on: ubuntu-latest
     steps:
