@@ -115,6 +115,9 @@ pub use tracer::PreSampledTracer;
 /// Useful for implementing [PreSampledTracer] in alternate otel SDKs.
 #[derive(Debug, Clone)]
 pub struct OtelData {
-    parent_cx: opentelemetry::Context,
-    builder: opentelemetry::trace::SpanBuilder,
+    /// The parent otel `Context` for the current tracing span.
+    pub parent_cx: opentelemetry::Context,
+
+    /// The otel span data recorded during the current tracing span.
+    pub builder: opentelemetry::trace::SpanBuilder,
 }
