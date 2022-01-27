@@ -121,9 +121,9 @@ impl OpenTelemetrySpanExt for tracing::Span {
         let mut cx = Some(cx);
         self.with_subscriber(move |(id, subscriber)| {
             if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                get_context.with_context(subscriber, id, move |builder, _tracer| {
+                get_context.with_context(subscriber, id, move |data, _tracer| {
                     if let Some(cx) = cx.take() {
-                        builder.parent_context = cx;
+                        data.parent_cx = cx;
                     }
                 });
             }
@@ -140,11 +140,11 @@ impl OpenTelemetrySpanExt for tracing::Span {
             let mut att = Some(attributes);
             self.with_subscriber(move |(id, subscriber)| {
                 if let Some(get_context) = subscriber.downcast_ref::<WithContext>() {
-                    get_context.with_context(subscriber, id, move |builder, _tracer| {
+                    get_context.with_context(subscriber, id, move |data, _tracer| {
                         if let Some(cx) = cx.take() {
                             let attr = att.take().unwrap_or_default();
                             let follows_link = opentelemetry::trace::Link::new(cx, attr);
-                            builder
+                            data.builder
                                 .links
                                 .get_or_insert_with(|| Vec::with_capacity(1))
                                 .push(follows_link);
