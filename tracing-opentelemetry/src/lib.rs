@@ -111,6 +111,8 @@ pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;
 
 /// Per-span OpenTelemetry data tracked by this crate.
+///
+/// Useful for implementing [PreSampledTracer] in alternate otel SDKs.
 #[derive(Debug, Clone)]
 pub struct OtelData {
     parent_cx: opentelemetry::Context,

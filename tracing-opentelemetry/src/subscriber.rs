@@ -501,13 +501,13 @@ where
             .span(follows)
             .expect("Span to follow not found, this is a bug");
         let mut follows_extensions = follows_span.extensions_mut();
-        let mut follows_data = follows_extensions
+        let follows_data = follows_extensions
             .get_mut::<OtelData>()
             .expect("Missing otel data span extensions");
 
         let follows_context = self
             .tracer
-            .sampled_context(&mut follows_data)
+            .sampled_context(follows_data)
             .span()
             .span_context()
             .clone();
