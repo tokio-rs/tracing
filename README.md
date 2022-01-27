@@ -400,6 +400,7 @@ are not maintained by the `tokio` project. These include:
   applications.
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -432,6 +433,8 @@ please let us know!)
 [Elastic APM]: https://www.elastic.co/apm
 [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
