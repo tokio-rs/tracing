@@ -13,11 +13,11 @@ fn many_children(c: &mut Criterion) {
 
     group.bench_function("spec_baseline", |b| {
         let provider = TracerProvider::default();
-        let tracer = provider.tracer("bench", None);
+        let tracer = provider.tracer("bench");
         b.iter(|| {
             fn dummy(tracer: &Tracer, cx: &Context) {
                 for _ in 0..99 {
-                    tracer.start_with_context("child", cx.clone());
+                    tracer.start_with_context("child", cx);
                 }
             }
 
@@ -41,7 +41,7 @@ fn many_children(c: &mut Criterion) {
 
     {
         let provider = TracerProvider::default();
-        let tracer = provider.tracer("bench", None);
+        let tracer = provider.tracer("bench");
         let otel_layer = tracing_opentelemetry::layer()
             .with_tracer(tracer)
             .with_tracked_inactivity(false);
@@ -96,8 +96,7 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         extensions.insert(
-            SpanBuilder::from_name(attrs.metadata().name().to_string())
-                .with_start_time(SystemTime::now()),
+            SpanBuilder::from_name(attrs.metadata().name()).with_start_time(SystemTime::now()),
         );
     }
 
