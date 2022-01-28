@@ -858,7 +858,6 @@ macro_rules! event {
 /// if enabled!(target: "my_crate", Level::DEBUG, hello) {
 ///     // some expensive work...
 /// }
-/// # }
 /// ```
 ///
 #[macro_export]
