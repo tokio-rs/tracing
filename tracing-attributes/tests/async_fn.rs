@@ -377,17 +377,28 @@ fn manual_impl_future() {
     #[allow(clippy::manual_async_fn)]
     #[instrument]
     fn manual_impl_future() -> impl Future<Output = ()> {
+        tracing::trace!(call = true);
         async {
             tracing::trace!(poll = true);
         }
     }
 
     let span = span::mock().named("manual_impl_future");
+    let call_event = || event::mock().with_fields(field::mock("call").with_value(&true));
     let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
 
     let (collector, handle) = collector::mock()
-        // await manual_impl_future
+        // call/drop manual_impl_future
         .new_span(span.clone())
+        .enter(span.clone())
+        .event(call_event())
+        .exit(span.clone())
+        .drop_span(span.clone())
+        // call/await manual_impl_future
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(call_event())
+        .exit(span.clone())
         .enter(span.clone())
         .event(poll_event())
         .exit(span.clone())
@@ -396,6 +407,10 @@ fn manual_impl_future() {
         .run_with_handle();
 
     with_default(collector, || {
+        // call only, no poll
+        drop(manual_impl_future());
+
+        // call and poll
         block_on_future(async {
             manual_impl_future().await;
         });
@@ -408,17 +423,29 @@ fn manual_impl_future() {
 fn manual_box_pin() {
     #[instrument]
     fn manual_box_pin() -> Pin<Box<dyn Future<Output = ()>>> {
+        tracing::trace!(call = true);
         Box::pin(async {
             tracing::trace!(poll = true);
         })
     }
 
     let span = span::mock().named("manual_box_pin");
+
+    let call_event = || event::mock().with_fields(field::mock("call").with_value(&true));
     let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
 
     let (collector, handle) = collector::mock()
-        // await manual_box_pin
+        // call/drop manual_box_pin
         .new_span(span.clone())
+        .enter(span.clone())
+        .event(call_event())
+        .exit(span.clone())
+        .drop_span(span.clone())
+        // call/await manual_box_pin
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(call_event())
+        .exit(span.clone())
         .enter(span.clone())
         .event(poll_event())
         .exit(span.clone())
@@ -427,6 +454,10 @@ fn manual_box_pin() {
         .run_with_handle();
 
     with_default(collector, || {
+        // call only, no poll
+        drop(manual_box_pin());
+
+        // call and poll
         block_on_future(async {
             manual_box_pin().await;
         });
