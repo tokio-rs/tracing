@@ -783,7 +783,10 @@ macro_rules! event {
     );
 }
 
-/// Checks whether a span or event is enabled depending on the provided metadata.
+/// Checks whether a span or event is [enabled] based on the provided [metadata].
+///
+/// [enabled]: crate::Collect::enabled
+/// [metadata]: crate::Metadata
 ///
 /// This macro is a specialized tool: it is intended to be used prior
 /// to an expensive computation required *just* for that event, but
@@ -791,60 +794,73 @@ macro_rules! event {
 /// when multiple events are emitted (e.g., iterating over a collection
 /// and emitting an event for each item).
 ///
-/// ## Usage
+/// # Usage
 ///
-/// It is possible for `enabled!` to return a false positive or false negative. This might
-/// occur when a subscriber is using a _more specific_ filter than what was (or could be)
-/// provided to `enabled!`. Below are several examples where this might occur:
+/// [Collectors] can make filtering decisions based all the data included in a
+/// span or event's [`Metadata`]. This means that it is possible for `enabled!`
+/// to return a _false positive_ (indicating that something would be enabled
+/// when it actually would not be) or a _false negative_ (indicating that
+/// something would be disabled when it would actually be enabled).
 ///
-/// - If a subscriber is using a filter which may enable a span or event based
+/// [Collectors]: crate::collect::Collect
+/// [`Metadata`]: crate::metadata::Metadata
+///
+/// This occurs when a subscriber is using a _more specific_ filter than the
+/// metadata provided to the `enabled!` macro. Some situations that can result
+/// in false positives or false negatives include:
+///
+/// - If a collector is using a filter which may enable a span or event based
 /// on field names, but `enabled!` is invoked without listing field names,
 /// `enabled!` may return a false negative if a specific field name would
-/// cause the subscriber to enable something that would otherwise be disabled.
-/// - If a subscriber is using a filter which enables or disables specific events by
+/// cause the collector to enable something that would otherwise be disabled.
+/// - If a collector is using a filter which enables or disables specific events by
 /// file path and line number,  a particular event may be enabled/disabled
 /// even if an `enabled!` invocation with the same level, target, and fields
 /// indicated otherwise.
-/// - The subscriber can choose to enable _only_ spans or _only_ events, which `enabled`
+/// - The collector can choose to enable _only_ spans or _only_ events, which `enabled`
 /// will not reflect.
 ///
-/// ## Examples
-///
-/// `enabled!()` requires a level argument, an optional `target:`
-/// argument, and an optional set of fields. If the fields are not provided,
+/// `enabled!()` requires a [level](crate::Level) argument, an optional `target:`
+/// argument, and an optional set of field names. If the fields are not provided,
 /// they are considered to be unknown. `enabled!` attempts to match the
 /// syntax of `event!()` as closely as possible, which can be seen in the
 /// examples below.
 ///
+/// # Examples
+///
+/// If the current collector is interested in recording `DEBUG`-level spans and
+/// events in the current file and module path, this will evaluate to true:
 /// ```rust
 /// use tracing::{enabled, Level};
 ///
-/// # fn main() {
-/// // If the underlying collector is interested in recording
-/// // DEBUG-level spans and events, this will evaluate to true.
 /// if enabled!(Level::DEBUG) {
 ///     // some expensive work...
 /// }
+/// ```
 ///
-/// // If the underlying collector is interested in recording spans and events
-/// // with the target "my_crate" at the level DEBUG, this will evaluate to true.
+/// If the current collector is interested in recording spans and events
+/// in the current file and module path, with the target "my_crate", and at the
+/// level  `DEBUG`, this will evaluate to true:
+/// ```rust
+/// # use tracing::{enabled, Level};
 /// if enabled!(target: "my_crate", Level::DEBUG) {
 ///     // some expensive work...
 /// }
+/// ```
 ///
-/// // If the underlying collector is interested in recording spans and events
-/// // with the target "my_crate", at the level DEBUG, and the field name "hello",
-/// // this will evaluate to true.
+/// If the current collector is interested in recording spans and events
+/// in the current file and module path, with the target "my_crate", at 
+/// the level `DEBUG`, and with a field named "hello", this will evaluate 
+/// to true: 
+///
+/// ```rust
+/// # use tracing::{enabled, Level};
 /// if enabled!(target: "my_crate", Level::DEBUG, hello) {
 ///     // some expensive work...
 /// }
 /// # }
 /// ```
 ///
-/// [`log::log_enabled`]: https://docs.rs/log/0.4.14/log/macro.log_enabled.html
-/// [`Targets`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/targets/struct.Targets.html
-/// [`filter_fn`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/filter/fn.filter_fn.html
-/// [`EnvFilter`]: https://docs.rs/tracing-subscriber/0.3.5/tracing_subscriber/struct.EnvFilter.html
 #[macro_export]
 macro_rules! enabled {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
