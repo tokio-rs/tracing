@@ -849,9 +849,9 @@ macro_rules! event {
 /// ```
 ///
 /// If the current collector is interested in recording spans and events
-/// in the current file and module path, with the target "my_crate", at 
-/// the level `DEBUG`, and with a field named "hello", this will evaluate 
-/// to true: 
+/// in the current file and module path, with the target "my_crate", at
+/// the level `DEBUG`, and with a field named "hello", this will evaluate
+/// to true:
 ///
 /// ```rust
 /// # use tracing::{enabled, Level};
