@@ -936,6 +936,7 @@ pub mod __macro_support {
         sync::atomic::{AtomicUsize, Ordering},
     };
     use crate::{subscriber::Interest, Metadata};
+    pub use core::concat;
     use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.
