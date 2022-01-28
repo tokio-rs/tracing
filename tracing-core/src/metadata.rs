@@ -373,6 +373,7 @@ impl<'a> fmt::Debug for Metadata<'a> {
 enum KindInner {
     Event,
     Span,
+    Hint,
 }
 
 impl Kind {
@@ -382,6 +383,11 @@ impl Kind {
     /// `Span` callsite
     pub const SPAN: Kind = Kind(KindInner::Span);
 
+    /// `enabled!` callsite. [`Collect`][`crate::collect::Collect`]s can assume
+    /// this `Kind` means they will never recieve a
+    /// full event with this [`Metadata`].
+    pub const HINT: Kind = Kind(KindInner::Hint);
+
     /// Return true if the callsite kind is `Span`
     pub fn is_span(&self) -> bool {
         matches!(self, Kind(KindInner::Span))
@@ -390,6 +396,11 @@ impl Kind {
     /// Return true if the callsite kind is `Event`
     pub fn is_event(&self) -> bool {
         matches!(self, Kind(KindInner::Event))
+    }
+
+    /// Return true if the callsite kind is `Hint`
+    pub fn is_hint(&self) -> bool {
+        matches!(self, Kind(KindInner::Hint))
     }
 }
 
