@@ -873,7 +873,7 @@ macro_rules! enabled {
                     ":",
                     line!()
                 ),
-                kind: $crate::metadata::Kind::EVENT,
+                kind: $crate::metadata::Kind::HINT,
                 target: $target,
                 level: $lvl,
                 fields: $($fields)*
