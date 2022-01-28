@@ -923,7 +923,7 @@ where
 }
 
 impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
-    /// Sets the Visitor that the subscriber being built will use to record
+    /// Sets the field formatter that the subscriber being built will use to record
     /// fields.
     ///
     /// For example:
@@ -1021,7 +1021,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// subscriber.
     ///
     /// If the max level has already been set, or a [`EnvFilter`] was added by
-    /// [`with_filter`], this replaces that configuration with the new
+    /// [`with_env_filter`], this replaces that configuration with the new
     /// maximum level.
     ///
     /// # Examples
@@ -1044,8 +1044,8 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .finish();
     /// ```
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
-    /// [`with_filter`]: #method.with_filter
+    /// [`EnvFilter`]: struct@crate::filter::EnvFilter
+    /// [`with_env_filter`]: fn@Self::with_env_filter
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
@@ -1057,8 +1057,26 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the function that the subscriber being built should use to format
-    /// events that occur.
+    /// Sets the [event formatter][`FormatEvent`] that the subscriber being built
+    /// will use to format events that occur.
+    ///
+    /// The event formatter may be any type implementing the [`FormatEvent`]
+    /// trait, which is implemented for all functions taking a [`FmtContext`], a
+    /// [`Writer`], and an [`Event`].
+    ///
+    /// # Examples
+    ///
+    /// Setting a type implementing [`FormatEvent`] as the formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format;
+    ///
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .event_format(format().compact())
+    ///     .finish();
+    /// ```
+    ///
+    /// [`Writer`]: struct@self::format::Writer
     pub fn event_format<E2>(self, fmt_event: E2) -> SubscriberBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
@@ -1085,8 +1103,6 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .with_writer(io::stderr)
     ///     .init();
     /// ```
-    ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
     pub fn with_writer<W2>(self, make_writer: W2) -> SubscriberBuilder<N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
@@ -1125,6 +1141,82 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
+        }
+    }
+
+    /// Updates the event formatter by applying a function to the existing event formatter.
+    ///
+    /// This sets the event formatter that the subscriber being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating an event formatter:
+    ///
+    /// ```rust
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .map_event_format(|e| e.compact())
+    ///     .finish();
+    /// ```
+    pub fn map_event_format<E2>(self, f: impl FnOnce(E) -> E2) -> SubscriberBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.map_event_format(f),
+        }
+    }
+
+    /// Updates the field formatter by applying a function to the existing field formatter.
+    ///
+    /// This sets the field formatter that the subscriber being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating a field formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::field::MakeExt;
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .map_fmt_fields(|f| f.debug_alt())
+    ///     .finish();
+    /// ```
+    pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> SubscriberBuilder<N2, E, F, W>
+    where
+        N2: for<'writer> FormatFields<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.map_fmt_fields(f),
+        }
+    }
+
+    /// Updates the [`MakeWriter`] by applying a function to the existing [`MakeWriter`].
+    ///
+    /// This sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Redirect output to stderr if level is <= WARN:
+    ///
+    /// ```rust
+    /// use tracing::Level;
+    /// use tracing_subscriber::fmt::{self, writer::MakeWriterExt};
+    ///
+    /// let stderr = std::io::stderr.with_max_level(Level::WARN);
+    /// let layer = tracing_subscriber::fmt()
+    ///     .map_writer(move |w| stderr.or_else(w))
+    ///     .finish();
+    /// ```
+    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> SubscriberBuilder<N, E, F, W2>
+    where
+        W2: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.map_writer(f),
         }
     }
 }

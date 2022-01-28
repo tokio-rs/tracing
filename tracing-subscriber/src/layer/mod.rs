@@ -857,7 +857,7 @@ where
     /// per-layer filtering.
     ///
     /// [`Filtered`]: crate::filter::Filtered
-    /// [plf]: #per-layer-filtering
+    /// [plf]: crate::layer#per-layer-filtering
     #[cfg(all(feature = "registry", feature = "std"))]
     #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
     fn with_filter<F>(self, filter: F) -> filter::Filtered<Self, F, S>
