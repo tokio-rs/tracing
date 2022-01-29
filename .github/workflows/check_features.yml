@@ -127,6 +127,9 @@ jobs:
     - name: "Test static max level"
       run: cargo test
       working-directory: "tracing/test_static_max_level_features"
+    - name: "Test static max level (release)"
+      run: cargo test --release
+      working-directory: "tracing/test_static_max_level_features"
     - name: "Test tracing-core no-std support"
       run: cargo test --no-default-features
       working-directory: tracing

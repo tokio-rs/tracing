@@ -16,3 +16,6 @@ tracing-core = { path = "../../tracing-core" }
 [dependencies.tracing]
 path = ".."
 features = ["max_level_debug", "release_max_level_info"]
+
+[dev-dependencies]
+tokio-test = "0.2.0"
