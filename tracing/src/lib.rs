@@ -1112,6 +1112,68 @@ pub mod __macro_support {
                 .finish()
         }
     }
+
+    #[cfg(feature = "log")]
+    use tracing_core::field::{Field, ValueSet, Visit};
+
+    /// Utility to format [`ValueSet`] for logging, used by macro-generated code.
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// without warning.
+    #[cfg(feature = "log")]
+    #[allow(missing_debug_implementations)]
+    pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
+
+    #[cfg(feature = "log")]
+    impl<'a> fmt::Display for LogValueSet<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut visit = LogVisitor {
+                f,
+                is_first: true,
+                result: Ok(()),
+            };
+            self.0.record(&mut visit);
+            visit.result
+        }
+    }
+
+    #[cfg(feature = "log")]
+    struct LogVisitor<'a, 'b> {
+        f: &'a mut fmt::Formatter<'b>,
+        is_first: bool,
+        result: fmt::Result,
+    }
+
+    #[cfg(feature = "log")]
+    impl Visit for LogVisitor<'_, '_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+            let res = if self.is_first {
+                self.is_first = false;
+                if field.name() == "message" {
+                    write!(self.f, "{:?}", value)
+                } else {
+                    write!(self.f, "{}={:?}", field.name(), value)
+                }
+            } else {
+                write!(self.f, " {}={:?}", field.name(), value)
+            };
+            if let Err(err) = res {
+                self.result = self.result.and(Err(err));
+            }
+        }
+
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "message" {
+                self.record_debug(field, &format_args!("{}", value))
+            } else {
+                self.record_debug(field, &value)
+            }
+        }
+    }
 }
 
 mod sealed {
