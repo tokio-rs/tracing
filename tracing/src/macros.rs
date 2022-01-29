@@ -583,39 +583,48 @@ macro_rules! error_span {
 // /// ```
 #[macro_export]
 macro_rules! event {
-    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> (
-        $crate::__tracing_log!(
+    (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
+        use $crate::__macro_support::Callsite as _;
+        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+            name: concat!(
+                "event ",
+                file!(),
+                ":",
+                line!()
+            ),
+            kind: $crate::metadata::Kind::EVENT,
             target: $target,
-            $lvl,
-            $($fields)*
-        );
+            level: $lvl,
+            fields: $($fields)*
+        };
 
-        if $crate::level_enabled!($lvl) {
-            use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
-                    "event ",
-                    file!(),
-                    ":",
-                    line!()
-                ),
-                kind: $crate::metadata::Kind::EVENT,
-                target: $target,
-                level: $lvl,
-                fields: $($fields)*
-            };
+        let enabled = $crate::level_enabled!($lvl) && {
             let interest = CALLSITE.interest();
-            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+            !interest.is_never() && CALLSITE.is_enabled(interest)
+        };
+        if enabled {
+            (|value_set: $crate::field::ValueSet| {
+                $crate::__tracing_log!(
+                    target: $target,
+                    $lvl,
+                    &value_set
+                );
                 let meta = CALLSITE.metadata();
                 // event with explicit parent
                 $crate::Event::child_of(
                     $parent,
                     meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*)
+                    &value_set
                 );
-            }
+            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        } else {
+            $crate::__tracing_log!(
+                target: $target,
+                $lvl,
+                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+            );
         }
-    );
+    });
 
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
         $crate::event!(
@@ -632,34 +641,43 @@ macro_rules! event {
         $crate::event!(target: $target, parent: $parent, $lvl, { $($arg)+ })
     );
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
-        $crate::__tracing_log!(
+        use $crate::__macro_support::Callsite as _;
+        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+            name: concat!(
+                "event ",
+                file!(),
+                ":",
+                line!()
+            ),
+            kind: $crate::metadata::Kind::EVENT,
             target: $target,
-            $lvl,
-            $($fields)*
-        );
-        if $crate::level_enabled!($lvl) {
-            use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
-                    "event ",
-                    file!(),
-                    ":",
-                    line!()
-                ),
-                kind: $crate::metadata::Kind::EVENT,
-                target: $target,
-                level: $lvl,
-                fields: $($fields)*
-            };
+            level: $lvl,
+            fields: $($fields)*
+        };
+        let enabled = $crate::level_enabled!($lvl) && {
             let interest = CALLSITE.interest();
-            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+            !interest.is_never() && CALLSITE.is_enabled(interest)
+        };
+        if enabled {
+            (|value_set: $crate::field::ValueSet| {
                 let meta = CALLSITE.metadata();
                 // event with contextual parent
                 $crate::Event::dispatch(
                     meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*)
+                    &value_set
                 );
-            }
+                $crate::__tracing_log!(
+                    target: $target,
+                    $lvl,
+                    &value_set
+                );
+            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+        } else {
+            $crate::__tracing_log!(
+                target: $target,
+                $lvl,
+                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+            );
         }
     });
     (target: $target:expr, $lvl:expr, { $($fields:tt)* }, $($arg:tt)+ ) => (
@@ -2291,129 +2309,14 @@ macro_rules! __tracing_stringify {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $($field:tt)+ ) => {};
-}
-
-#[cfg(feature = "log")]
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __mk_format_string {
-    // === base case ===
-    (@ { $(,)* $($out:expr),* $(,)* } $(,)*) => {
-        concat!( $($out),*)
-    };
-
-    // === recursive case (more tts), ===
-    // ====== shorthand field syntax ===
-    (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    // ====== kv field syntax ===
-    (@ { $(,)* $($out:expr),* }, message = $val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, "{} " }, $($rest)*)
-    };
-    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={} " }, $($rest)*)
-    };
-    (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::__mk_format_string!(@ { $($out),*, $crate::__tracing_stringify!($($k).+), "={:?} " }, $($rest)*)
-    };
-
-    // === rest is unparseable --- must be fmt args ===
-    (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        $crate::__mk_format_string!(@ { "{} ", $($out),* }, )
-    };
-
-    // === entry ===
-    ($($kvs:tt)+) => {
-        $crate::__mk_format_string!(@ { }, $($kvs)+,)
-    };
-    () => {
-        ""
-    }
-}
-
-#[cfg(feature = "log")]
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __mk_format_args {
-    // === finished --- called into by base cases ===
-    (@ { $(,)* $($out:expr),* $(,)* }, $fmt:expr, fields: $(,)*) => {
-        format_args!($fmt, $($out),*)
-    };
-
-    // === base case (no more tts) ===
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = %$val:expr $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = $val:expr $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: )
-    };
-    // ====== shorthand field syntax ===
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: ?$($k:ident).+ $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields:)
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: %$($k:ident).+ $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: )
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ $(,)*) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: )
-    };
-
-    // === recursive case (more tts) ===
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = ?$val:expr, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = %$val:expr, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+ = $val:expr, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, $val }, $fmt, fields: $($rest)+)
-    };
-    // ====== shorthand field syntax ===
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: ?$($k:ident).+, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: %$($k:ident).+, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
-    };
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($k:ident).+, $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { $($out),*, &$($k).+ }, $fmt, fields: $($rest)+)
-    };
-
-    // === rest is unparseable --- must be fmt args ===
-    (@ { $(,)* $($out:expr),* }, $fmt:expr, fields: $($rest:tt)+) => {
-        $crate::__mk_format_args!(@ { format_args!($($rest)+), $($out),* }, $fmt, fields: )
-    };
-
-    // === entry ===
-    ($($kv:tt)*) => {
-        {
-            #[allow(unused_imports)]
-            use $crate::field::{debug, display};
-            // use $crate::__mk_format_string;
-            $crate::__mk_format_args!(@ { }, $crate::__mk_format_string!($($kv)*), fields: $($kv)*)
-        }
-    };
+    (target: $target:expr, $level:expr, $value_set:expr ) => {};
 }
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $($field:tt)+ ) => {
+    (target: $target:expr, $level:expr, $value_set:expr ) => {
         $crate::if_log_enabled! { $level, {
             use $crate::log;
             let level = $crate::level_to_log!($level);
@@ -2429,7 +2332,7 @@ macro_rules! __tracing_log {
                         .module_path(Some(module_path!()))
                         .line(Some(line!()))
                         .metadata(log_meta)
-                        .args($crate::__mk_format_args!($($field)+))
+                        .args(format_args!("{}", $crate::__macro_support::LogValueSet($value_set)))
                         .build());
                 }
             }
