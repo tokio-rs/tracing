@@ -19,6 +19,9 @@ license = "MIT"
 edition = "2018"
 rust-version = "1.46.0"
 
+[features]
+default = ["tracing-log"]
+
 [dependencies]
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
