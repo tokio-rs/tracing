@@ -886,7 +886,7 @@ macro_rules! enabled {
             let interest = CALLSITE.interest();
             if !interest.is_never() && CALLSITE.is_enabled(interest)  {
                 let meta = CALLSITE.metadata();
-                $crate::dispatch::get_default(|current| current.enabled(meta))
+                $crate::dispatcher::get_default(|current| current.enabled(meta))
             } else {
                 false
             }
