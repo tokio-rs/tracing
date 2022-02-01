@@ -1,4 +1,4 @@
-use crate::PreSampledTracer;
+use crate::{OtelData, PreSampledTracer};
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
     Context as OtelContext, Key, KeyValue,
@@ -69,11 +69,7 @@ where
 //
 // See https://github.com/tokio-rs/tracing/blob/4dad420ee1d4607bad79270c1520673fa6266a3d/tracing-error/src/layer.rs
 pub(crate) struct WithContext(
-    fn(
-        &tracing::Dispatch,
-        &span::Id,
-        f: &mut dyn FnMut(&mut otel::SpanBuilder, &dyn PreSampledTracer),
-    ),
+    fn(&tracing::Dispatch, &span::Id, f: &mut dyn FnMut(&mut OtelData, &dyn PreSampledTracer)),
 );
 
 impl WithContext {
@@ -83,7 +79,7 @@ impl WithContext {
         &self,
         dispatch: &'a tracing::Dispatch,
         id: &span::Id,
-        mut f: impl FnMut(&mut otel::SpanBuilder, &dyn PreSampledTracer),
+        mut f: impl FnMut(&mut OtelData, &dyn PreSampledTracer),
     ) {
         (self.0)(dispatch, id, &mut f)
     }
@@ -360,7 +356,7 @@ where
             let span = ctx.span(parent).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             extensions
-                .get_mut::<otel::SpanBuilder>()
+                .get_mut::<OtelData>()
                 .map(|builder| self.tracer.sampled_context(builder))
                 .unwrap_or_default()
         // Else if the span is inferred from context, look up any available current span.
@@ -369,7 +365,7 @@ where
                 .and_then(|span| {
                     let mut extensions = span.extensions_mut();
                     extensions
-                        .get_mut::<otel::SpanBuilder>()
+                        .get_mut::<OtelData>()
                         .map(|builder| self.tracer.sampled_context(builder))
                 })
                 .unwrap_or_else(OtelContext::current)
@@ -382,7 +378,7 @@ where
     fn get_context(
         dispatch: &tracing::Dispatch,
         id: &span::Id,
-        f: &mut dyn FnMut(&mut otel::SpanBuilder, &dyn PreSampledTracer),
+        f: &mut dyn FnMut(&mut OtelData, &dyn PreSampledTracer),
     ) {
         let subscriber = dispatch
             .downcast_ref::<C>()
@@ -395,7 +391,7 @@ where
             .expect("subscriber should downcast to expected type; this is a bug!");
 
         let mut extensions = span.extensions_mut();
-        if let Some(builder) = extensions.get_mut::<otel::SpanBuilder>() {
+        if let Some(builder) = extensions.get_mut::<OtelData>() {
             f(builder, &subscriber.tracer);
         }
     }
@@ -418,16 +414,16 @@ where
             extensions.insert(Timings::new());
         }
 
+        let parent_cx = self.parent_context(attrs, &ctx);
         let mut builder = self
             .tracer
             .span_builder(attrs.metadata().name())
             .with_start_time(SystemTime::now())
-            .with_parent_context(self.parent_context(attrs, &ctx))
             // Eagerly assign span id so children have stable parent id
             .with_span_id(self.tracer.new_span_id());
 
         // Record new trace id if there is no active parent span
-        if !builder.parent_context.has_active_span() {
+        if !parent_cx.has_active_span() {
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
@@ -450,7 +446,7 @@ where
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
-        extensions.insert(builder);
+        extensions.insert(OtelData { builder, parent_cx });
     }
 
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
@@ -489,37 +485,37 @@ where
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-        if let Some(builder) = extensions.get_mut::<otel::SpanBuilder>() {
-            values.record(&mut SpanAttributeVisitor(builder));
+        if let Some(data) = extensions.get_mut::<OtelData>() {
+            values.record(&mut SpanAttributeVisitor(&mut data.builder));
         }
     }
 
     fn on_follows_from(&self, id: &Id, follows: &Id, ctx: Context<C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-        let builder = extensions
-            .get_mut::<otel::SpanBuilder>()
-            .expect("Missing SpanBuilder span extensions");
+        let data = extensions
+            .get_mut::<OtelData>()
+            .expect("Missing otel data span extensions");
 
         let follows_span = ctx
             .span(follows)
             .expect("Span to follow not found, this is a bug");
         let mut follows_extensions = follows_span.extensions_mut();
-        let follows_builder = follows_extensions
-            .get_mut::<otel::SpanBuilder>()
-            .expect("Missing SpanBuilder span extensions");
+        let follows_data = follows_extensions
+            .get_mut::<OtelData>()
+            .expect("Missing otel data span extensions");
 
         let follows_context = self
             .tracer
-            .sampled_context(follows_builder)
+            .sampled_context(follows_data)
             .span()
             .span_context()
             .clone();
         let follows_link = otel::Link::new(follows_context, Vec::new());
-        if let Some(ref mut links) = builder.links {
+        if let Some(ref mut links) = data.builder.links {
             links.push(follows_link);
         } else {
-            builder.links = Some(vec![follows_link]);
+            data.builder.links = Some(vec![follows_link]);
         }
     }
 
@@ -554,7 +550,7 @@ where
             event.record(&mut SpanEventVisitor(&mut otel_event));
 
             let mut extensions = span.extensions_mut();
-            if let Some(builder) = extensions.get_mut::<otel::SpanBuilder>() {
+            if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(otel::StatusCode::Error);
                 }
@@ -575,7 +571,11 @@ where
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if let Some(mut builder) = extensions.remove::<otel::SpanBuilder>() {
+        if let Some(OtelData {
+            mut builder,
+            parent_cx,
+        }) = extensions.remove::<OtelData>()
+        {
             if self.tracked_inactivity {
                 // Append busy/idle timings when enabled.
                 if let Some(timings) = extensions.get_mut::<Timings>() {
@@ -592,7 +592,9 @@ where
             }
 
             // Assign end time, build and start span, drop span to export
-            builder.with_end_time(SystemTime::now()).start(&self.tracer);
+            builder
+                .with_end_time(SystemTime::now())
+                .start_with_context(&self.tracer, &parent_cx);
         }
     }
 
@@ -628,6 +630,7 @@ impl Timings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::OtelData;
     use opentelemetry::trace::{noop, SpanKind, TraceFlags};
     use std::borrow::Cow;
     use std::sync::{Arc, Mutex};
@@ -635,17 +638,14 @@ mod tests {
     use tracing_subscriber::prelude::*;
 
     #[derive(Debug, Clone)]
-    struct TestTracer(Arc<Mutex<Option<otel::SpanBuilder>>>);
+    struct TestTracer(Arc<Mutex<Option<OtelData>>>);
     impl otel::Tracer for TestTracer {
         type Span = noop::NoopSpan;
-        fn invalid(&self) -> Self::Span {
-            noop::NoopSpan::new()
-        }
-        fn start_with_context<T>(&self, _name: T, _context: OtelContext) -> Self::Span
+        fn start_with_context<T>(&self, _name: T, _context: &OtelContext) -> Self::Span
         where
             T: Into<Cow<'static, str>>,
         {
-            self.invalid()
+            noop::NoopSpan::new()
         }
         fn span_builder<T>(&self, name: T) -> otel::SpanBuilder
         where
@@ -653,28 +653,41 @@ mod tests {
         {
             otel::SpanBuilder::from_name(name)
         }
-        fn build(&self, builder: otel::SpanBuilder) -> Self::Span {
-            *self.0.lock().unwrap() = Some(builder);
-            self.invalid()
+        fn build_with_context(
+            &self,
+            builder: otel::SpanBuilder,
+            parent_cx: &OtelContext,
+        ) -> Self::Span {
+            *self.0.lock().unwrap() = Some(OtelData {
+                builder,
+                parent_cx: parent_cx.clone(),
+            });
+            noop::NoopSpan::new()
         }
     }
 
     impl PreSampledTracer for TestTracer {
-        fn sampled_context(&self, _builder: &mut otel::SpanBuilder) -> OtelContext {
+        fn sampled_context(&self, _builder: &mut crate::OtelData) -> OtelContext {
             OtelContext::new()
         }
         fn new_trace_id(&self) -> otel::TraceId {
-            otel::TraceId::invalid()
+            otel::TraceId::INVALID
         }
         fn new_span_id(&self) -> otel::SpanId {
-            otel::SpanId::invalid()
+            otel::SpanId::INVALID
         }
     }
 
     #[derive(Debug, Clone)]
     struct TestSpan(otel::SpanContext);
     impl otel::Span for TestSpan {
-        fn add_event_with_timestamp(&mut self, _: String, _: SystemTime, _: Vec<KeyValue>) {}
+        fn add_event_with_timestamp<T: Into<Cow<'static, str>>>(
+            &mut self,
+            _: T,
+            _: SystemTime,
+            _: Vec<KeyValue>,
+        ) {
+        }
         fn span_context(&self) -> &otel::SpanContext {
             &self.0
         }
@@ -683,7 +696,7 @@ mod tests {
         }
         fn set_attribute(&mut self, _attribute: KeyValue) {}
         fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
-        fn update_name(&mut self, _new_name: String) {}
+        fn update_name<T: Into<Cow<'static, str>>>(&mut self, _new_name: T) {}
         fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
     }
 
@@ -698,7 +711,12 @@ mod tests {
             tracing::debug_span!("static_name", otel.name = dynamic_name.as_str());
         });
 
-        let recorded_name = tracer.0.lock().unwrap().as_ref().map(|b| b.name.clone());
+        let recorded_name = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|b| b.builder.name.clone());
         assert_eq!(recorded_name, Some(dynamic_name.into()))
     }
 
@@ -712,7 +730,15 @@ mod tests {
             tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
-        let recorded_kind = tracer.0.lock().unwrap().as_ref().unwrap().span_kind.clone();
+        let recorded_kind = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .span_kind
+            .clone();
         assert_eq!(recorded_kind, Some(otel::SpanKind::Server))
     }
 
@@ -725,7 +751,14 @@ mod tests {
         tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
         });
-        let recorded_status_code = tracer.0.lock().unwrap().as_ref().unwrap().status_code;
+        let recorded_status_code = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .status_code;
         assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
     }
 
@@ -747,6 +780,7 @@ mod tests {
             .unwrap()
             .as_ref()
             .unwrap()
+            .builder
             .status_message
             .clone();
 
@@ -758,10 +792,10 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber =
             tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
-        let trace_id = otel::TraceId::from_u128(42);
+        let trace_id = otel::TraceId::from(42u128.to_be_bytes());
         let existing_cx = OtelContext::current_with_span(TestSpan(otel::SpanContext::new(
             trace_id,
-            otel::SpanId::from_u64(1),
+            otel::SpanId::from(1u64.to_be_bytes()),
             TraceFlags::default(),
             false,
             Default::default(),
@@ -778,7 +812,7 @@ mod tests {
             .unwrap()
             .as_ref()
             .unwrap()
-            .parent_context
+            .parent_cx
             .span()
             .span_context()
             .trace_id();
@@ -804,6 +838,7 @@ mod tests {
             .unwrap()
             .as_ref()
             .unwrap()
+            .builder
             .attributes
             .as_ref()
             .unwrap()

@@ -43,7 +43,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --exclude=tracing-appender
+        args: --all --exclude=tracing-appender --exclude=tracing-opentelemetry
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
@@ -61,3 +61,20 @@ jobs:
       with:
         command: check
         args: --lib=tracing-appender
+
+  # TODO: remove this once tracing's MSRV is bumped.
+  check-msrv-opentelemetry:
+    # Run `cargo check` on our minimum supported Rust version (1.46.0).
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.46.0
+        profile: minimal
+        override: true
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --package=tracing-opentelemetry
