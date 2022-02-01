@@ -12,8 +12,6 @@
 //!
 //! Therefore, when `valuable` support is not enabled, this example falls back to using
 //! `fmt::Debug` to record fields that implement `valuable::Valuable`.
-#[cfg(tracing_unstable)]
-use tracing::field::valuable;
 use tracing::{info, info_span};
 use valuable::Valuable;
 
@@ -49,7 +47,7 @@ fn main() {
     // If the `valuable` feature is enabled, record `user` using its'
     // `valuable::Valuable` implementation:
     #[cfg(tracing_unstable)]
-    let span = info_span!("Processing", user = valuable(&user));
+    let span = info_span!("Processing", user = user.as_value());
 
     // Otherwise, record `user` using its `fmt::Debug` implementation:
     #[cfg(not(tracing_unstable))]
