@@ -381,7 +381,7 @@ impl Kind {
     /// `Span` callsite
     pub const SPAN: Kind = Kind(KindInner::Span);
 
-    /// `enabled!` callsite. [`Collect`][`crate::collect::Collect`]s can assume
+    /// `enabled!` callsite. [`Subscriber`][`crate::subscriber::Subscriber`]s can assume
     /// this `Kind` means they will never recieve a
     /// full event with this [`Metadata`].
     pub const HINT: Kind = Kind(KindInner::Hint);
