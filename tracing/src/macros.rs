@@ -868,32 +868,9 @@ macro_rules! event {
 ///
 #[macro_export]
 macro_rules! enabled {
-    (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
-        if $crate::level_enabled!($lvl) {
-            use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
-                    "enabled ",
-                    file!(),
-                    ":",
-                    line!()
-                ),
-                kind: $crate::metadata::Kind::HINT,
-                target: $target,
-                level: $lvl,
-                fields: $($fields)*
-            };
-            let interest = CALLSITE.interest();
-            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
-                let meta = CALLSITE.metadata();
-                $crate::dispatcher::get_default(|current| current.enabled(meta))
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    });
+    (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> (
+        $crate::_enabled!(enabled, target: $target, $lvl, { $($fields:tt)* } )
+    );
     // Just target and level
     (target: $target:expr, $lvl:expr ) => (
         $crate::enabled!(target: $target, $lvl, { })
@@ -919,6 +896,71 @@ macro_rules! enabled {
     ( $lvl:expr ) => (
         $crate::enabled!(target: module_path!(), $lvl, { })
     );
+}
+
+/// TODO
+#[macro_export]
+macro_rules! fully_enabled {
+    (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> (
+        $crate::_enabled!(fully_enabled, target: $target, $lvl, { $($fields:tt)* } )
+    );
+    // Just target and level
+    (target: $target:expr, $lvl:expr ) => (
+        $crate::fully_enabled!(target: $target, $lvl, { })
+    );
+
+    // These two cases handle fields with no values
+    (target: $target:expr, $lvl:expr, $($field:tt)*) => (
+        $crate::fully_enabled!(
+            target: $target,
+            $lvl,
+            { $($field)*}
+        )
+    );
+    ($lvl:expr, $($field:tt)*) => (
+        $crate::fully_enabled!(
+            target: module_path!(),
+            $lvl,
+            { $($field)*}
+        )
+    );
+
+    // Simplest `enabled!` case
+    ( $lvl:expr ) => (
+        $crate::fully_enabled!(target: module_path!(), $lvl, { })
+    );
+}
+
+/// TODO
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _enabled {
+    ($style:tt, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
+        if $crate::level_enabled!($lvl) {
+            use $crate::__macro_support::Callsite as _;
+            static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+                name: concat!(
+                    "enabled ",
+                    file!(),
+                    ":",
+                    line!()
+                ),
+                kind: $crate::metadata::Kind::HINT,
+                target: $target,
+                level: $lvl,
+                fields: $($fields)*
+            };
+            let interest = CALLSITE.interest();
+            if !interest.is_never() && CALLSITE.is_enabled(interest)  {
+                let meta = CALLSITE.metadata();
+                $crate::dispatcher::get_default(|current| current.$style(meta))
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    });
 }
 
 /// Constructs an event at the trace level.

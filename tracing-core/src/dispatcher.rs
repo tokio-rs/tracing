@@ -504,6 +504,12 @@ impl Dispatch {
         self.subscriber.enabled(metadata)
     }
 
+    #[inline]
+    #[doc(hidden)]
+    pub fn fully_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.subscriber.fully_enabled(metadata)
+    }
+
     /// Records that an [`Event`] has occurred.
     ///
     /// This calls the [`event`] function on the [`Subscriber`] that this

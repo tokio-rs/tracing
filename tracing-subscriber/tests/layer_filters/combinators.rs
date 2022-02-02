@@ -1,6 +1,6 @@
 use super::*;
 use tracing_subscriber::{
-    filter::{filter_fn, FilterExt, LevelFilter},
+    filter::{FilterExt, LevelFilter},
     prelude::*,
 };
 

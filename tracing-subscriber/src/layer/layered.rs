@@ -91,6 +91,25 @@ where
         }
     }
 
+    #[doc(hidden)]
+    fn fully_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        println!("Layered::Subscriber::fully_enabled");
+        if self.layer.fully_enabled(metadata, self.ctx()) {
+            // if the outer layer enables the callsite metadata, ask the subscriber.
+            self.inner.fully_enabled(metadata)
+        } else {
+            // otherwise, the callsite is disabled by the layer
+
+            // If per-layer filters are in use, and we are short-circuiting
+            // (rather than calling into the inner type), clear the current
+            // per-layer filter `enabled` state.
+            #[cfg(feature = "registry")]
+            filter::FilterState::clear_enabled();
+
+            false
+        }
+    }
+
     fn max_level_hint(&self) -> Option<LevelFilter> {
         self.pick_level_hint(self.layer.max_level_hint(), self.inner.max_level_hint())
     }
@@ -222,6 +241,18 @@ where
         if self.layer.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner layer.
             self.inner.enabled(metadata, ctx)
+        } else {
+            // otherwise, the callsite is disabled by this layer
+            false
+        }
+    }
+
+    #[doc(hidden)]
+    fn fully_enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        println!("Layered::Layer::fully_enabled");
+        if self.layer.fully_enabled(metadata, ctx.clone()) {
+            // if the outer subscriber enables the callsite metadata, ask the inner layer.
+            self.inner.fully_enabled(metadata, ctx)
         } else {
             // otherwise, the callsite is disabled by this layer
             false

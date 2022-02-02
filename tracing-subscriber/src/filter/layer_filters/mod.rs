@@ -543,6 +543,22 @@ where
         }
     }
 
+    fn fully_enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
+        let cx = cx.with_filter(self.id());
+        let enabled = self.filter.enabled(metadata, &cx);
+        FILTERING.with(|filtering| filtering.set(self.id(), enabled));
+
+        println!("GUS: {}", enabled);
+        if enabled {
+            // If the filter enabled this metadata, ask the wrapped layer if
+            // _it_ wants it --- it might have a global filter.
+            self.layer.fully_enabled(metadata, cx)
+        } else {
+            // ORDERED
+            false
+        }
+    }
+
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
         self.did_enable(|| {
             self.layer.on_new_span(attrs, id, cx.with_filter(self.id()));

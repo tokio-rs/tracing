@@ -171,6 +171,11 @@ pub trait Subscriber: 'static {
     /// [`register_callsite`]: #method.register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
+    #[doc(hidden)]
+    fn fully_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.enabled(metadata)
+    }
+
     /// Returns the highest [verbosity level][level] that this `Subscriber` will
     /// enable, or `None`, if the subscriber does not implement level-based
     /// filtering or chooses not to implement this method.
@@ -607,6 +612,11 @@ impl Subscriber for Box<dyn Subscriber + Send + Sync + 'static> {
     }
 
     #[inline]
+    fn fully_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().fully_enabled(metadata)
+    }
+
+    #[inline]
     fn max_level_hint(&self) -> Option<LevelFilter> {
         self.as_ref().max_level_hint()
     }
@@ -681,6 +691,11 @@ impl Subscriber for Arc<dyn Subscriber + Send + Sync + 'static> {
     #[inline]
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn fully_enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().fully_enabled(metadata)
     }
 
     #[inline]

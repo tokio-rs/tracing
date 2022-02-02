@@ -3,8 +3,10 @@
 mod support;
 use self::support::*;
 mod boxed;
+mod combinators;
 mod downcast_raw;
 mod filter_scopes;
+mod fully_enabled;
 mod targets;
 mod trees;
 

@@ -648,6 +648,11 @@ where
         true
     }
 
+    #[doc(hidden)]
+    fn fully_enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        self.enabled(metadata, ctx)
+    }
+
     /// Notifies this layer that a new span was constructed with the given
     /// `Attributes` and `Id`.
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
