@@ -1,6 +1,6 @@
 #![deny(warnings)]
 use tracing::{
-    callsite, debug, debug_span, error, error_span, event, info, info_span, span, trace,
+    callsite, debug, debug_span, enabled, error, error_span, event, info, info_span, span, trace,
     trace_span, warn, warn_span, Level,
 };
 
@@ -332,6 +332,20 @@ fn event() {
     event!(Level::DEBUG, ?foo);
     event!(Level::DEBUG, %foo);
     event!(Level::DEBUG, foo);
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn enabled() {
+    enabled!(Level::DEBUG, foo, bar.baz, quux,);
+    enabled!(Level::DEBUG, message);
+    enabled!(Level::INFO, foo, bar.baz, quux, message,);
+    enabled!(Level::INFO, foo, bar., message,);
+    enabled!(Level::DEBUG, foo);
+
+    enabled!(Level::DEBUG);
+    enabled!(target: "rando", Level::DEBUG);
+    enabled!(target: "rando", Level::DEBUG, field);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
