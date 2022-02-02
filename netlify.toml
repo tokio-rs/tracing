@@ -8,8 +8,10 @@
 [build.environment]
   RUSTDOCFLAGS="""
     -D warnings \
-    --cfg docsrs
+    --cfg docsrs \
+    --cfg tracing_unstable
     """
+  RUSTFLAGS="--cfg tracing_unstable"
 
 [[redirects]]
   from = "/"
