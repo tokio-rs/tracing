@@ -79,7 +79,7 @@
 //! </pre>
 //!
 //! For example:
-//! ```
+//! ```ignore
 //! // Derive `Valuable` for our types:
 //! use valuable::Valuable;
 //!
