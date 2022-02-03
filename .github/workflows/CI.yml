@@ -253,6 +253,26 @@ jobs:
         command: test
         args: --all
 
+  test-unstable:
+    # Test the `tracing-unstable` cfg flags
+    env:
+      RUSTFLAGS: "--cfg tracing_unstable"
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all --all-features
+
+
   features-stable:
     # Feature flag tests that run on stable Rust.
     # TODO(david): once tracing's MSRV goes up to Rust 1.51, we should be able to switch to 
