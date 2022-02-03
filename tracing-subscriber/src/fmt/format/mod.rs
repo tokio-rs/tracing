@@ -304,8 +304,7 @@ pub struct FieldFnVisitor<'a, F> {
 /// The compact format includes fields from all currently entered spans, after
 /// the event's fields. Span fields are not grouped by span, and span names are
 /// not shown. In addition, a more compact representation of each event's
-/// [`Level`](tracing::Level)
-/// is used.
+/// [`Level`](tracing::Level) is used.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
