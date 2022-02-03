@@ -301,13 +301,17 @@ pub struct FieldFnVisitor<'a, F> {
 }
 /// Marker for `Format` that indicates that the compact log format should be used.
 ///
-/// The compact format only includes the fields from the most recently entered span.
+/// The compact format includes fields from all currently entered spans, after
+/// the event's fields. Span fields are not grouped by span, and span names are
+/// not shown. In addition, a more compact representation of each event's
+/// [`Level`](tracing::Level) is used.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
-/// Marker for `Format` that indicates that the verbose log format should be used.
+/// Marker for `Format` that indicates that the default log format should be used.
 ///
-/// The full format includes fields from all entered spans.
+/// This format shows the span context before printing event data. Spans are
+/// displayed including their names and fields.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
 
