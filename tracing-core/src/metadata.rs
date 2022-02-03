@@ -402,8 +402,8 @@ impl Kind {
 
     /// Sets that this `Kind` is a [hint](Self::HINT).
     ///
-    /// This can be called on [`SPAN`] and [`EVENT`] kinds to construct a hint
-    /// callsite that also counts as a span or event.
+    /// This can be called on [`SPAN`](Self::SPAN) and [`EVENT`](Self::EVENT)
+    /// kinds to construct a hint callsite that also counts as a span or event.
     pub const fn hint(self) -> Self {
         Self(self.0 | Self::HINT_BIT)
     }
