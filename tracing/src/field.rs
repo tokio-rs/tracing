@@ -39,10 +39,10 @@
 //! unstructured text.
 //!
 //! To address `Value`'s limitations, `tracing` offers experimental support for
-//! the [`valuable`] crate, which provides object-safe inspection of structured 
+//! the [`valuable`] crate, which provides object-safe inspection of structured
 //! values. User-defined types can implement the [`valuable::Valuable`] trait,
 //! and be recorded as a `tracing` field by calling their [`as_value`] method.
-//! If the [`Subscriber`] also supports the `valuable` crate, it can 
+//! If the [`Subscriber`] also supports the `valuable` crate, it can
 //! then visit those types fields as structured values using `valuable`.
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
