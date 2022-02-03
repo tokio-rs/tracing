@@ -274,13 +274,6 @@ jobs:
     # Test the `tracing-unstable` cfg flags
     env:
       RUSTFLAGS: "--cfg tracing_unstable"
-    strategy:
-      matrix:
-        subcrate:
-        - tracing-core
-        - tracing
-        - tracing-serde
-        - tracing-subscriber
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -294,7 +287,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: -p ${{ matrix.subcrate }} --features "valuable"
+        args: --all --features "valuable"
 
 
   features-stable:
