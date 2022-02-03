@@ -1,4 +1,4 @@
-//! Span and `Event` key-value data.
+//! `Span` and `Event` key-value data.
 //!
 //! Spans and events may be annotated with key-value data, referred to as known
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
@@ -24,8 +24,81 @@
 //! recorded as typed data by calling the [`Value::record`] method on these
 //! trait objects with a _visitor_ implementing the [`Visit`] trait. This trait
 //! represents the behavior used to record values of various types. For example,
-//! we might record integers by incrementing counters for their field names,
-//! rather than printing them.
+//! an implementation of `Visit` might record integers by incrementing counters
+//! for their field names rather than printing them.
+//!
+//!
+//! # Using `valuable`
+//!
+//! `tracing`'s [`Value`] trait is intentionally minimalist: it supports only a small
+//! number of Rust primitives as typed values, and only permits recording
+//! user-defined types with their [`fmt::Debug`] or [`fmt::Display`]
+//! implementations. However, there are some cases where it may be useful to record
+//! nested values (such as arrays, `Vec`s, or `HashMap`s containing values), or
+//! user-defined `struct` and `enum` types without having to format them as
+//! unstructured text.
+//!
+//! To address `Value`'s limitations, `tracing` offers experimental support for
+//! the [`valuable`] crate, which provides object-safe inspection of structured
+//! values. User-defined types can implement the [`valuable::Valuable`] trait,
+//! and be recorded as a `tracing` field by calling their [`as_value`] method.
+//! If the [`Subscriber`] also supports the `valuable` crate, it can
+//! then visit those types fields as structured values using `valuable`.
+//!
+//! <pre class="ignore" style="white-space:normal;font:inherit;">
+//!     <strong>Note</strong>: <code>valuable</code> support is an
+//!     <a href = "../index.html#unstable-features">unstable feature</a>. See
+//!     the documentation on unstable features for details on how to enable it.
+//! </pre>
+//!
+//! For example:
+//! ```ignore
+//! // Derive `Valuable` for our types:
+//! use valuable::Valuable;
+//!
+//! #[derive(Clone, Debug, Valuable)]
+//! struct User {
+//!     name: String,
+//!     age: u32,
+//!     address: Address,
+//! }
+//!
+//! #[derive(Clone, Debug, Valuable)]
+//! struct Address {
+//!     country: String,
+//!     city: String,
+//!     street: String,
+//! }
+//!
+//! let user = User {
+//!     name: "Arwen Undomiel".to_string(),
+//!     age: 3000,
+//!     address: Address {
+//!         country: "Middle Earth".to_string(),
+//!         city: "Rivendell".to_string(),
+//!         street: "leafy lane".to_string(),
+//!     },
+//! };
+//!
+//! // Recording `user` as a `valuable::Value` will allow the `tracing` subscriber
+//! // to traverse its fields as a nested, typed structure:
+//! tracing::info!(current_user = user.as_value());
+//! ```
+//!
+//! Alternatively, the [`valuable()`] function may be used to convert a type
+//! implementing [`Valuable`] into a `tracing` field value.
+//!
+//! When the `valuable` feature is enabled, the [`Visit`] trait will include an
+//! optional [`record_value`] method. `Visit` implementations that wish to
+//! record `valuable` values can implement this method with custom behavior.
+//! If a visitor does not implement `record_value`, the [`valuable::Value`] will
+//! be forwarded to the visitor's [`record_debug`] method.
+//!
+//! [`valuable`]: https://crates.io/crates/valuable
+//! [`as_value`]: valuable::Valuable::as_value
+//! [`Subscriber`]: crate::Subscriber
+//! [`record_value`]: Visit::record_value
+//! [`record_debug`]: Visit::record_debug
 //!
 //! [`Value`]: trait.Value.html
 //! [span]: ../span/

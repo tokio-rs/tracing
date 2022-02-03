@@ -124,7 +124,7 @@ pub trait Instrument: Sized {
 }
 
 /// Extension trait allowing futures to be instrumented with
-/// a `tracing` [`Subscriber`].
+/// a `tracing` [`Subscriber`](crate::Subscriber).
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait WithSubscriber: Sized {
     /// Attaches the provided [`Subscriber`] to this type, returning a

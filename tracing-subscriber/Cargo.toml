@@ -43,7 +43,7 @@ tracing-core = { path = "../tracing-core", version = "0.1.20" }
 tracing = { optional = true, path = "../tracing", version = "0.1", default-features = false }
 matchers = { optional = true, version = "0.1.0" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
-smallvec = { optional = true, version = "1" }
+smallvec = { optional = true, version = "1.2.0" }
 lazy_static = { optional = true, version = "1" }
 
 # fmt
