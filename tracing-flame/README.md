@@ -48,9 +48,8 @@ of the `FlameLayer`, see the docs for [`FlushGuard`].
 ## Layer Setup
 
 ```rust
-use std::{fs::File, io::BufWriter};
 use tracing_flame::FlameLayer;
-use tracing_subscriber::{registry::Registry, prelude::*, fmt};
+use tracing_subscriber::{prelude::*, fmt};
 
 fn setup_global_subscriber() -> impl Drop {
     let fmt_layer = fmt::Layer::default();
