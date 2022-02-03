@@ -262,7 +262,7 @@ pub trait Visit {
     /// [`valuable`]: https://docs.rs/valuable
     #[cfg(all(tracing_unstable, feature = "valuable"))]
     #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
-    fn record_value(&mut self, field: &Field, value: &valuable::Value<'_>) {
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         self.record_debug(field, &value)
     }
 
