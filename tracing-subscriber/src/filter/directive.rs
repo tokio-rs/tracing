@@ -5,7 +5,7 @@ use alloc::vec;
 use alloc::{string::String, vec::Vec};
 
 use core::{cmp::Ordering, fmt, iter::FromIterator, slice, str::FromStr};
-use tracing_core::Metadata;
+use tracing_core::{Level, Metadata};
 /// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
 pub struct ParseError {
@@ -36,6 +36,10 @@ pub(in crate::filter) struct DirectiveSet<T> {
 pub(in crate::filter) trait Match {
     fn cares_about(&self, meta: &Metadata<'_>) -> bool;
     fn level(&self) -> &LevelFilter;
+}
+
+pub(in crate::filter) trait TargetMatch: Match {
+    fn cares_about_target(&self, to_check: &str) -> bool;
 }
 
 #[derive(Debug)]
@@ -78,6 +82,17 @@ impl<T: Match + Ord> DirectiveSet<T> {
         metadata: &'a Metadata<'a>,
     ) -> impl Iterator<Item = &'a T> + 'a {
         self.directives().filter(move |d| d.cares_about(metadata))
+    }
+
+    pub(crate) fn directives_for_target<'a>(
+        &'a self,
+        target: &'a str,
+    ) -> impl Iterator<Item = &'a T> + 'a
+    where
+        T: TargetMatch,
+    {
+        self.directives()
+            .filter(move |d| d.cares_about_target(target))
     }
 
     pub(crate) fn add(&mut self, directive: T) {
@@ -138,6 +153,15 @@ impl DirectiveSet<StaticDirective> {
     pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
         let level = meta.level();
         match self.directives_for(meta).next() {
+            Some(d) => d.level >= *level,
+            None => false,
+        }
+    }
+
+    /// Same as `enabled` above, but short circuits to false if the
+    /// `Directive` has fields
+    pub(crate) fn enabled_for(&self, target: &'static str, level: &Level) -> bool {
+        match self.directives_for_target(target).next() {
             Some(d) => d.level >= *level,
             None => false,
         }
@@ -234,6 +258,24 @@ impl Match for StaticDirective {
 
     fn level(&self) -> &LevelFilter {
         &self.level
+    }
+}
+
+impl TargetMatch for StaticDirective {
+    fn cares_about_target(&self, to_check: &str) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !to_check.starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        if !self.field_names.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 

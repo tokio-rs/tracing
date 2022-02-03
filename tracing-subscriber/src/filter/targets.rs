@@ -20,7 +20,7 @@ use core::{
     slice,
     str::FromStr,
 };
-use tracing_core::{Interest, Metadata, Subscriber};
+use tracing_core::{Interest, Level, Metadata, Subscriber};
 
 /// A filter that enables or disables spans and events based on their [target]
 /// and [level].
@@ -312,6 +312,36 @@ impl Targets {
         } else {
             Interest::never()
         }
+    }
+
+    /// Returns whether a [target]-[`Level`] pair would be enabled
+    /// for this `Targets`.
+    ///
+    /// You can use [`module_path!`] from `std` as the target
+    /// if you want to emulate the behavior of the
+    /// [`tracing::event!`] suite of macros.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{Targets, LevelFilter};
+    /// use tracing_core::Level;
+    ///
+    /// let filter = Targets::new()
+    ///     .with_target("my_crate", Level::INFO)
+    ///     .with_target("my_crate::interesting_module", Level::DEBUG);
+    ///
+    /// assert!(filter.enabled_for("my_crate", &Level::INFO));
+    /// assert!(!filter.enabled_for("my_crate::interesting_module", &Level::TRACE));
+    /// ```
+    ///
+    /// [target]: tracing_core::Metadata::target
+    /// [`tracing::event!`]: tracing::event!
+    /// [`module_path!`]: std::module_path!
+    pub fn enabled_for(&self, target: &'static str, level: &Level) -> bool {
+        // "Correct" to call because `Targets` only produces `StaticDirective`'s with NO
+        // fields
+        self.0.enabled_for(target, level)
     }
 }
 
