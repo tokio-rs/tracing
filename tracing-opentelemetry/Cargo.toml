@@ -17,13 +17,13 @@ categories = [
 keywords = ["tracing", "opentelemetry", "jaeger", "zipkin", "async"]
 license = "MIT"
 edition = "2018"
-rust-version = "1.42.0"
+rust-version = "1.46.0"
 
 [features]
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.1" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry", "std"] }
@@ -32,7 +32,7 @@ tracing-log = { path = "../tracing-log", version = "0.1", default-features = fal
 [dev-dependencies]
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
-opentelemetry-jaeger = "0.15"
+opentelemetry-jaeger = "0.16"
 
 [lib]
 bench = false

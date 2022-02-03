@@ -115,7 +115,7 @@ fn test_tracer() -> (Tracer, TracerProvider, TestExporter, impl Subscriber) {
     let provider = TracerProvider::builder()
         .with_simple_exporter(exporter.clone())
         .build();
-    let tracer = provider.tracer("test", None);
+    let tracer = provider.tracer("test");
     let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
     (tracer, provider, exporter, subscriber)
