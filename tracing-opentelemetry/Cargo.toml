@@ -22,6 +22,9 @@ rust-version = "1.46.0"
 [features]
 default = ["tracing-log"]
 
+[features]
+default = ["tracing-log"]
+
 [dependencies]
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.1", default-features = false, features = ["std"] }
