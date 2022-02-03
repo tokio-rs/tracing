@@ -343,18 +343,6 @@ pub trait Collect: 'static {
         id.clone()
     }
 
-    /// **This method is deprecated.**
-    ///
-    /// Using `drop_span` may result in collectors composed using
-    /// `tracing-subscriber` crate's `Subscriber` trait from observing close events.
-    /// Use [`try_close`] instead.
-    ///
-    /// The default implementation of this function does nothing.
-    ///
-    /// [`try_close`]: Collect::try_close
-    #[deprecated(since = "0.1.2", note = "use `Collector::try_close` instead")]
-    fn drop_span(&self, _id: span::Id) {}
-
     /// Notifies the collector that a [`span ID`] has been dropped, and returns
     /// `true` if there are now 0 IDs that refer to that span.
     ///
@@ -392,8 +380,6 @@ pub trait Collect: 'static {
     /// [`clone_span`]: Collect::clone_span
     /// [`drop_span`]: Collect::drop_span
     fn try_close(&self, id: span::Id) -> bool {
-        #[allow(deprecated)]
-        self.drop_span(id);
         false
     }
 

@@ -645,17 +645,12 @@ where
         self.subscriber.on_exit(span, self.ctx());
     }
 
-    fn clone_span(&self, old: &span::Id) -> span::Id {
+    fn clone_span(&self, old: &span::Id) {
         let new = self.inner.clone_span(old);
         if &new != old {
             self.subscriber.on_id_change(old, &new, self.ctx())
         };
         new
-    }
-
-    #[inline]
-    fn drop_span(&self, id: span::Id) {
-        self.try_close(id);
     }
 
     fn try_close(&self, id: span::Id) -> bool {
