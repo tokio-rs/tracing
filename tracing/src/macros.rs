@@ -878,9 +878,63 @@ macro_rules! event {
 /// }
 /// ```
 ///
+/// # Alternatives
+///
+/// `enabled!` queries subscribers with [`Metadata`] where
+/// [`is_event`] and [`is_span`] both return `false`. Alternatively,
+/// use [`enabled_event`] or [`enabled_span`] to ensure one of these
+/// returns true.
+///
+///
+/// [`Metadata`]: crate::Metadata
+/// [`is_event`]: crate::Metadata::is_event
+/// [`is_span`]: crate::Metadata::is_span
+/// [`enabled_event`]: crate::enabled_event
+/// [`enabled_span`]: crate::enabled_span
+///
 #[macro_export]
 macro_rules! enabled {
-    (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
+    ($($rest:tt)*)=> (
+        $crate::_enabled!(kind: { $crate::metadata::Kind::HINT }, $($rest)*)
+    )
+}
+
+/// The same as [`enabled`], but queries subscribers with `Metadata` where
+/// [`Metadata::is_event`] returns true.
+///
+/// See also [`enabled_span`].
+///
+/// [`enabled`]: crate::enabled
+/// [`Metadata::is_event`]: crate::Metadata::is_event
+/// [`enabled_span`]: crate::enabled_span
+///
+#[macro_export]
+macro_rules! enabled_event {
+    ($($rest:tt)*)=> (
+        $crate::_enabled!(kind: $crate::metadata::Kind::EVENT.hint(), $($rest)*)
+    )
+}
+
+/// The same as [`enabled`], but queries subscribers with `Metadata` where
+/// [`Metadata::is_span`] returns true.
+///
+/// See also [`enabled_event`].
+///
+/// [`enabled`]: crate::enabled
+/// [`Metadata::is_span`]: crate::Metadata::is_span
+/// [`enabled_event`]: crate::enabled_event
+///
+#[macro_export]
+macro_rules! enabled_span {
+    ($($rest:tt)*)=> (
+        $crate::_enabled!(kind: $crate::metadata::Kind::SPAN.hint(), $($rest)*)
+    )
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _enabled {
+    (kind: $kind:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
             static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
@@ -890,7 +944,7 @@ macro_rules! enabled {
                     ":",
                     line!()
                 ),
-                kind: $crate::metadata::Kind::HINT,
+                kind: $kind,
                 target: $target,
                 level: $lvl,
                 fields: $($fields)*
@@ -907,20 +961,22 @@ macro_rules! enabled {
         }
     });
     // Just target and level
-    (target: $target:expr, $lvl:expr ) => (
-        $crate::enabled!(target: $target, $lvl, { })
+    (kind: $kind:expr, target: $target:expr, $lvl:expr ) => (
+        $crate::_enabled!(kind: $kind, target: $target, $lvl, { })
     );
 
     // These two cases handle fields with no values
-    (target: $target:expr, $lvl:expr, $($field:tt)*) => (
-        $crate::enabled!(
+    (kind: $kind:expr, target: $target:expr, $lvl:expr, $($field:tt)*) => (
+        $crate::_enabled!(
+            kind: $kind,
             target: $target,
             $lvl,
             { $($field)*}
         )
     );
-    ($lvl:expr, $($field:tt)*) => (
-        $crate::enabled!(
+    (kind: $kind:expr, $lvl:expr, $($field:tt)*) => (
+        $crate::_enabled!(
+            kind: $kind,
             target: module_path!(),
             $lvl,
             { $($field)*}
@@ -928,8 +984,8 @@ macro_rules! enabled {
     );
 
     // Simplest `enabled!` case
-    ( $lvl:expr ) => (
-        $crate::enabled!(target: module_path!(), $lvl, { })
+    (kind: $kind:expr, $lvl:expr ) => (
+        $crate::_enabled!(kind: $kind, target: module_path!(), $lvl, { })
     );
 }
 
