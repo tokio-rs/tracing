@@ -724,7 +724,8 @@ impl Dispatch {
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.collector().clone_span(id)
+        self.collector().clone_span(id);
+        id.clone()
     }
 
     /// Notifies the collector that a [span ID] has been dropped, and returns

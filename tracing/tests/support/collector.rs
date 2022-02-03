@@ -446,7 +446,7 @@ where
         };
     }
 
-    fn clone_span(&self, id: &Id) -> Id {
+    fn clone_span(&self, id: &Id) {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
             let name = span.name;
             println!(
@@ -475,7 +475,6 @@ where
         if was_expected {
             expected.pop_front();
         }
-        id.clone()
     }
 
     fn try_close(&self, id: Id) -> bool {
