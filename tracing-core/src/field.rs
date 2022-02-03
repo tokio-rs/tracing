@@ -643,7 +643,7 @@ impl crate::sealed::Sealed for valuable::Value<'_> {}
 #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
 impl Value for valuable::Value<'_> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_value(key, self)
+        visitor.record_value(key, *self)
     }
 }
 
@@ -654,7 +654,7 @@ impl crate::sealed::Sealed for &'_ dyn valuable::Valuable {}
 #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
 impl Value for &'_ dyn valuable::Valuable {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_value(key, &self.as_value())
+        visitor.record_value(key, self.as_value())
     }
 }
 
