@@ -28,7 +28,7 @@ edition = "2018"
 rust-version = "1.42.0"
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.21", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.1.22", default-features = false }
 log = { version = "0.4", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.1.18", optional = true }
 cfg-if = "1.0.0"
@@ -81,4 +81,8 @@ maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+# enable unstable features in the documentation
+rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
+# it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
+# dependencies will not be enabled, and the docs build will fail.
+rustc-args = ["--cfg", "tracing_unstable"]
