@@ -1,4 +1,4 @@
-//! Span and `Event` key-value data.
+//! `Span` and `Event` key-value data.
 //!
 //! Spans and events may be annotated with key-value data, referred to as known
 //! as _fields_. These fields consist of a mapping from a key (corresponding to
@@ -24,53 +24,26 @@
 //! recorded as typed data by calling the [`Value::record`] method on these
 //! trait objects with a _visitor_ implementing the [`Visit`] trait. This trait
 //! represents the behavior used to record values of various types. For example,
-//! we might record integers by incrementing counters for their field names,
-//! rather than printing them.
+//! an implementation of `Visit` might record integers by incrementing counters
+//! for their field names rather than printing them.
 //!
-//! Span and `Event` key-value data.
-//!
-//! Spans and events may be annotated with key-value data, referred to as known
-//! as _fields_. These fields consist of a mapping from a key (corresponding to
-//! a `&str` but represented internally as an array index) to a [`Value`].
-//!
-//! # `Value`s and `Subscriber`s
-//!
-//! `Subscriber`s consume `Value`s as fields attached to [span]s or [`Event`]s.
-//! The set of field keys on a given span or is defined on its [`Metadata`].
-//! When a span is created, it provides [`Attributes`] to the `Subscriber`'s
-//! [`new_span`] method, containing any fields whose values were provided when
-//! the span was created; and may call the `Subscriber`'s [`record`] method
-//! with additional [`Record`]s if values are added for more of its fields.
-//! Similarly, the [`Event`] type passed to the subscriber's [`event`] method
-//! will contain any fields attached to each event.
-//!
-//! `tracing` represents values as either one of a set of Rust primitives
-//! (`i64`, `u64`, `f64`, `bool`, and `&str`) or using a `fmt::Display` or
-//! `fmt::Debug` implementation. `Subscriber`s are provided these primitive
-//! value types as `dyn Value` trait objects.
-//!
-//! These trait objects can be formatted using `fmt::Debug`, but may also be
-//! recorded as typed data by calling the [`Value::record`] method on these
-//! trait objects with a _visitor_ implementing the [`Visit`] trait. This trait
-//! represents the behavior used to record values of various types. For example,
-//! we might record integers by incrementing counters for their field names,
-//! rather than printing them.
 //!
 //! # Using `valuable`
 //!
-//! `tracing`'s [`Value`] trait is fairly minimalist: it supports only a small
+//! `tracing`'s [`Value`] trait is intentionally minimalist: it supports only a small
 //! number of Rust primitives as typed values, and only permits recording
 //! user-defined types with their [`fmt::Debug`] or [`fmt::Display`]
-//! implementations. In many cases, however, it may be useful to record
+//! implementations. However, there are some cases where it may be useful to record
 //! nested values (such as arrays, `Vec`s, or `HashMap`s containing values), or
-//! user-defined `struct` and `enum` types without having to format them as text.
+//! user-defined `struct` and `enum` types without having to format them as
+//! unstructured text.
 //!
-//! Therefore, `tracing` offers experimental support for the [`valuable`] crate,
-//! which provides object-safe inspection of structured values. User-defined
-//! types can implement the [`valuable::Valuable` trait], and be recorded as a
-//! `tracing` field by calling their [`as_value`] method. If the [`Subscriber`]
-//! also supports the `valuable` crate, it can then visit those types fields as
-//! structured values using `valuable`.
+//! To address `Value`'s limitations, `tracing` offers experimental support for
+//! the [`valuable`] crate, which provides object-safe inspection of structured
+//! values. User-defined types can implement the [`valuable::Valuable`] trait,
+//! and be recorded as a `tracing` field by calling their [`as_value`] method.
+//! If the [`Subscriber`] also supports the `valuable` crate, it can
+//! then visit those types fields as structured values using `valuable`.
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!     <strong>Note</strong>: <code>valuable</code> support is an
