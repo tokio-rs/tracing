@@ -356,6 +356,15 @@ impl<S> Visit for SerdeMapVisitor<S>
 where
     S: SerializeMap,
 {
+    #[cfg(all(tracing_unstable, feature = "valuable"))]
+    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+        if self.state.is_ok() {
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &valuable_serde::Serializable::new(value));
+        }
+    }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         // If previous fields serialized successfully, continue serializing,
         // otherwise, short-circuit and do nothing.
@@ -408,6 +417,15 @@ impl<S> Visit for SerdeStructVisitor<S>
 where
     S: SerializeStruct,
 {
+    #[cfg(all(tracing_unstable, feature = "valuable"))]
+    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+        if self.state.is_ok() {
+            self.state = self
+                .serializer
+                .serialize_field(field.name(), &valuable_serde::Serializable::new(value));
+        }
+    }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         // If previous fields serialized successfully, continue serializing,
         // otherwise, short-circuit and do nothing.

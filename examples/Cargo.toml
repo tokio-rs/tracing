@@ -64,3 +64,4 @@ valuable = { version = "0.1.0", features = ["derive"] }
 
 [target.'cfg(tracing_unstable)'.dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1", features = ["valuable"]}
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["json", "env-filter", "valuable"]}
