@@ -882,15 +882,15 @@ macro_rules! event {
 ///
 /// `enabled!` queries subscribers with [`Metadata`] where
 /// [`is_event`] and [`is_span`] both return `false`. Alternatively,
-/// use [`event_enabled`] or [`span_enabled`] to ensure one of these
+/// use [`event_enabled!`] or [`span_enabled!`] to ensure one of these
 /// returns true.
 ///
 ///
 /// [`Metadata`]: crate::Metadata
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
-/// [`event_enabled`]: crate::event_enabled
-/// [`span_enabled`]: crate::span_enabled
+/// [`event_enabled!`]: crate::event_enabled
+/// [`span_enabled!`]: crate::span_enabled
 ///
 #[macro_export]
 macro_rules! enabled {
@@ -899,14 +899,22 @@ macro_rules! enabled {
     )
 }
 
-/// The same as [`enabled`], but queries subscribers with `Metadata` where
-/// [`Metadata::is_event`] returns true.
+/// The same as [`enabled!`], but queries subscribers specifically for an event,
+/// whereas [`enabled!`] queries for an event _or_ span.
 ///
-/// See also [`span_enabled`].
+/// See also [`span_enabled!`].
 ///
-/// [`enabled`]: crate::enabled
-/// [`Metadata::is_event`]: crate::Metadata::is_event
-/// [`span_enabled`]: crate::span_enabled
+/// # Examples
+///
+/// ```rust
+/// # use tracing::{event_enabled, Level};
+/// if event_enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// ```
+///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 ///
 #[macro_export]
 macro_rules! event_enabled {
@@ -915,14 +923,22 @@ macro_rules! event_enabled {
     )
 }
 
-/// The same as [`enabled`], but queries subscribers with `Metadata` where
-/// [`Metadata::is_span`] returns true.
+/// The same as [`enabled!`], but queries subscribers specifically for an span,
+/// whereas [`enabled!`] queries for an event _or_ span.
 ///
-/// See also [`event_enabled`].
+/// See also [`event_enabled!`].
 ///
-/// [`enabled`]: crate::enabled
-/// [`Metadata::is_span`]: crate::Metadata::is_span
-/// [`event_enabled`]: crate::event_enabled
+/// # Examples
+///
+/// ```rust
+/// # use tracing::{span_enabled, Level};
+/// if span_enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// ```
+///
+/// [`enabled!`]: crate::enabled
+/// [`event_enabled!`]: crate::event_enabled
 ///
 #[macro_export]
 macro_rules! span_enabled {
