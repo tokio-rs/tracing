@@ -1,3 +1,40 @@
+# 0.1.22 (February 3, 2022)
+
+This release adds *experimental* support for recording structured field values
+using the [`valuable`] crate. See [this blog post][post] for details on
+`valuable`.
+
+Note that `valuable` support currently requires `--cfg tracing_unstable`. See
+the documentation for details.
+
+### Added
+
+- **field**: Experimental support for recording field values using the
+  [`valuable`] crate ([#1608], [#1888], [#1887])
+- **field**: Added `ValueSet::record` method ([#1823])
+- **subscriber**: `Default` impl for `NoSubscriber` ([#1785])
+- **metadata**: New `Kind::HINT` to support the `enabled!` macro in `tracing`
+  ([#1883], [#1891])
+### Fixed
+
+- Fixed a number of documentation issues ([#1665], [#1692], [#1737])
+
+Thanks to @xd009642, @Skepfyr, @guswynn, @Folyd, and @mbergkvist for
+contributing to this release!
+
+[`valuable`]: https://crates.io/crates/valuable
+[post]: https://tokio.rs/blog/2021-05-valuable
+[#1608]: https://github.com/tokio-rs/tracing/pull/1608
+[#1888]: https://github.com/tokio-rs/tracing/pull/1888
+[#1887]: https://github.com/tokio-rs/tracing/pull/1887
+[#1823]: https://github.com/tokio-rs/tracing/pull/1823
+[#1785]: https://github.com/tokio-rs/tracing/pull/1785
+[#1883]: https://github.com/tokio-rs/tracing/pull/1883
+[#1891]: https://github.com/tokio-rs/tracing/pull/1891
+[#1665]: https://github.com/tokio-rs/tracing/pull/1665
+[#1692]: https://github.com/tokio-rs/tracing/pull/1692
+[#1737]: https://github.com/tokio-rs/tracing/pull/1737
+
 # 0.1.21 (October 1, 2021)
 
 This release adds support for recording `Option<T> where T: Value` as typed
