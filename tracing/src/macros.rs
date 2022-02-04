@@ -889,8 +889,6 @@ macro_rules! event {
 /// [`Metadata`]: crate::Metadata
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
-/// [`event_enabled!`]: crate::event_enabled
-/// [`span_enabled!`]: crate::span_enabled
 ///
 #[macro_export]
 macro_rules! enabled {
@@ -913,9 +911,6 @@ macro_rules! enabled {
 /// }
 /// ```
 ///
-/// [`enabled!`]: crate::enabled
-/// [`span_enabled!`]: crate::span_enabled
-///
 #[macro_export]
 macro_rules! event_enabled {
     ($($rest:tt)*)=> (
@@ -936,9 +931,6 @@ macro_rules! event_enabled {
 ///     // some expensive work...
 /// }
 /// ```
-///
-/// [`enabled!`]: crate::enabled
-/// [`event_enabled!`]: crate::event_enabled
 ///
 #[macro_export]
 macro_rules! span_enabled {
