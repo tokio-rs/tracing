@@ -32,8 +32,8 @@ fn level_and_target() {
     assert!(!tracing::enabled!(Level::DEBUG));
 
     // Ensure that the `_event` and `_span` alternatives work corretly
-    assert!(!tracing::enabled_event!(Level::TRACE));
-    assert!(tracing::enabled_event!(Level::DEBUG));
+    assert!(!tracing::event_enabled!(Level::TRACE));
+    assert!(tracing::event_enabled!(Level::DEBUG));
 
-    assert!(tracing::enabled_span!(Level::TRACE));
+    assert!(tracing::span_enabled!(Level::TRACE));
 }

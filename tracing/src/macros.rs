@@ -882,15 +882,15 @@ macro_rules! event {
 ///
 /// `enabled!` queries subscribers with [`Metadata`] where
 /// [`is_event`] and [`is_span`] both return `false`. Alternatively,
-/// use [`enabled_event`] or [`enabled_span`] to ensure one of these
+/// use [`event_enabled`] or [`span_enabled`] to ensure one of these
 /// returns true.
 ///
 ///
 /// [`Metadata`]: crate::Metadata
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
-/// [`enabled_event`]: crate::enabled_event
-/// [`enabled_span`]: crate::enabled_span
+/// [`event_enabled`]: crate::event_enabled
+/// [`span_enabled`]: crate::span_enabled
 ///
 #[macro_export]
 macro_rules! enabled {
@@ -902,14 +902,14 @@ macro_rules! enabled {
 /// The same as [`enabled`], but queries subscribers with `Metadata` where
 /// [`Metadata::is_event`] returns true.
 ///
-/// See also [`enabled_span`].
+/// See also [`span_enabled`].
 ///
 /// [`enabled`]: crate::enabled
 /// [`Metadata::is_event`]: crate::Metadata::is_event
-/// [`enabled_span`]: crate::enabled_span
+/// [`span_enabled`]: crate::span_enabled
 ///
 #[macro_export]
-macro_rules! enabled_event {
+macro_rules! event_enabled {
     ($($rest:tt)*)=> (
         $crate::_enabled!(kind: $crate::metadata::Kind::EVENT.hint(), $($rest)*)
     )
@@ -918,14 +918,14 @@ macro_rules! enabled_event {
 /// The same as [`enabled`], but queries subscribers with `Metadata` where
 /// [`Metadata::is_span`] returns true.
 ///
-/// See also [`enabled_event`].
+/// See also [`event_enabled`].
 ///
 /// [`enabled`]: crate::enabled
 /// [`Metadata::is_span`]: crate::Metadata::is_span
-/// [`enabled_event`]: crate::enabled_event
+/// [`event_enabled`]: crate::event_enabled
 ///
 #[macro_export]
-macro_rules! enabled_span {
+macro_rules! span_enabled {
     ($($rest:tt)*)=> (
         $crate::_enabled!(kind: $crate::metadata::Kind::SPAN.hint(), $($rest)*)
     )

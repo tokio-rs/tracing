@@ -1,7 +1,7 @@
 #![deny(warnings)]
 use tracing::{
-    callsite, debug, debug_span, enabled, enabled_event, enabled_span, error, error_span, event,
-    info, info_span, span, trace, trace_span, warn, warn_span, Level,
+    callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
+    span, span_enabled, trace, trace_span, warn, warn_span, Level,
 };
 
 // Tests that macros work across various invocation syntax.
@@ -347,8 +347,8 @@ fn enabled() {
     enabled!(target: "rando", Level::DEBUG);
     enabled!(target: "rando", Level::DEBUG, field);
 
-    enabled_span!(target: "rando", Level::DEBUG, field);
-    enabled_event!(target: "rando", Level::DEBUG, field);
+    span_enabled!(target: "rando", Level::DEBUG, field);
+    event_enabled!(target: "rando", Level::DEBUG, field);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
