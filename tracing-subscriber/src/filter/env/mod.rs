@@ -100,6 +100,7 @@ use tracing_core::{
 /// [`level`]: tracing_core::Level
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Targets`]: crate::filter::Targets
+/// [`env_logger`]: https://crates.io/crates/env_logger
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
