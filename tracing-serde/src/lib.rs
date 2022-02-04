@@ -109,6 +109,36 @@
 //! subscriber (`JsonSubscriber` in the above example) to record serialized
 //! trace data.
 //!
+//! ### Unstable Features
+//!
+//! These feature flags enable **unstable** features. The public API may break in 0.1.x
+//! releases. To enable these features, the `--cfg tracing_unstable` must be passed to
+//! `rustc` when compiling.
+//!
+//! The following unstable feature flags are currently available:
+//!
+//! * `valuable`: Enables [`Visit::record_value`] implementations, for
+//!   serializing values recorded using the [`valuable`] crate.
+//!
+//! #### Enabling Unstable Features
+//!
+//! The easiest way to set the `tracing_unstable` cfg is to use the `RUSTFLAGS`
+//! env variable when running `cargo` commands:
+//!
+//! ```shell
+//! RUSTFLAGS="--cfg tracing_unstable" cargo build
+//! ```
+//! Alternatively, the following can be added to the `.cargo/config` file in a
+//! project to automatically enable the cfg flag for that project:
+//!
+//! ```toml
+//! [build]
+//! rustflags = ["--cfg", "tracing_unstable"]
+//! ```
+//!
+//! [feature flags]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-features-section
+//! [`valuable`]: https://crates.io/crates/valuable
+//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
@@ -130,6 +160,7 @@
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
@@ -357,6 +388,7 @@ where
     S: SerializeMap,
 {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
+    #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
     fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
         if self.state.is_ok() {
             self.state = self
@@ -418,6 +450,7 @@ where
     S: SerializeStruct,
 {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
+    #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
     fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
         if self.state.is_ok() {
             self.state = self
