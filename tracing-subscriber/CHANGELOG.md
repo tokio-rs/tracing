@@ -1,3 +1,50 @@
+# 0.3.8 (Feb 4, 2022)
+
+This release adds *experimental* support for recording structured field
+values using the [`valuable`] crate to the `format::Json` formatter. In
+particular, user-defined types which are recorded using their
+[`valuable::Valuable`] implementations will be serialized as JSON objects,
+rather than using their `fmt::Debug` representation. See [this blog post][post]
+for details on `valuable`.
+
+Note that `valuable` support currently requires `--cfg tracing_unstable`. See
+the documentation for details.
+
+Additionally, this release includes a number of other smaller API improvements.
+
+### Added
+
+- **json**: Experimental support for recording [`valuable`] values as structured
+  JSON ([#1862], [#1901])
+- **filter**: `Targets::would_enable` method for testing if a `Targets` filter
+  would enable a given target ([#1903])
+- **fmt**: `map_event_format`, `map_fmt_fields`, and `map_writer` methods to
+  `fmt::Layer` and `fmt::SubscriberBuilder` ([#1871])
+
+### Changed
+
+- `tracing-core`: updated to [0.1.22][core-0.1.22]
+
+### Fixed
+
+- Set `smallvec` minimal version to 1.2.0, to fix compilation errors with `-Z
+  minimal-versions` ([#1890])
+- Minor documentation fixes ([#1902], [#1893])
+
+Thanks to @guswynn, @glts, and @lilyball for contributing to this release!
+
+[`valuable`]: https://crates.io/crates/valuable
+[`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
+[post]: https://tokio.rs/blog/2021-05-valuable
+[core-0.1.22]: https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.22
+[#1862]: https://github.com/tokio-rs/tracing/pull/1862
+[#1901]: https://github.com/tokio-rs/tracing/pull/1901
+[#1903]: https://github.com/tokio-rs/tracing/pull/1903
+[#1871]: https://github.com/tokio-rs/tracing/pull/1871
+[#1890]: https://github.com/tokio-rs/tracing/pull/1890
+[#1902]: https://github.com/tokio-rs/tracing/pull/1902
+[#1893]: https://github.com/tokio-rs/tracing/pull/1893
+
 # 0.3.7 (Jan 25, 2022)
 
 This release adds combinators for combining filters.

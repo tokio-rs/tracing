@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.3.7"
+version = "0.3.8"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
@@ -38,7 +38,7 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 local-time = ["time/local-offset"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.20" }
+tracing-core = { path = "../tracing-core", version = "0.1.22" }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1", default-features = false }
