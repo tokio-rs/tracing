@@ -5,7 +5,7 @@ use alloc::vec;
 use alloc::{string::String, vec::Vec};
 
 use core::{cmp::Ordering, fmt, iter::FromIterator, slice, str::FromStr};
-use tracing_core::Metadata;
+use tracing_core::{Level, Metadata};
 /// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
 pub struct ParseError {
@@ -142,6 +142,22 @@ impl DirectiveSet<StaticDirective> {
             None => false,
         }
     }
+
+    /// Same as `enabled` above, but skips `Directive`'s with fields.
+    pub(crate) fn target_enabled(&self, target: &str, level: &Level) -> bool {
+        match self.directives_for_target(target).next() {
+            Some(d) => d.level >= *level,
+            None => false,
+        }
+    }
+
+    pub(crate) fn directives_for_target<'a>(
+        &'a self,
+        target: &'a str,
+    ) -> impl Iterator<Item = &'a StaticDirective> + 'a {
+        self.directives()
+            .filter(move |d| d.cares_about_target(target))
+    }
 }
 
 // === impl StaticDirective ===
@@ -157,6 +173,22 @@ impl StaticDirective {
             field_names,
             level,
         }
+    }
+
+    pub(in crate::filter) fn cares_about_target(&self, to_check: &str) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !to_check.starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        if !self.field_names.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 
