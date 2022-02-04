@@ -23,7 +23,7 @@ valuable = ["valuable_crate", "valuable-serde", "tracing-core/valuable"]
 
 [dependencies]
 serde = "1"
-tracing-core = { path = "../tracing-core", version = "0.1.2"}
+tracing-core = { path = "../tracing-core", version = "0.1.22"}
 
 [dev-dependencies]
 serde_json = "1"
