@@ -153,6 +153,7 @@ pub use pretty::*;
 /// DEBUG yak_shaving::shaver: some-span{field-on-span=foo}: started shaving yak
 /// ```
 ///
+/// [`layer::Context`]: crate::layer::Context
 /// [`fmt::Layer`]: super::Layer
 /// [`fmt::Subscriber`]: super::Subscriber
 /// [`Event`]: tracing::Event
