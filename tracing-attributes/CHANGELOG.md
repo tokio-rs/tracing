@@ -1,3 +1,27 @@
+# 0.1.19 (February 3, 2022)
+
+This release introduces a new `#[instrument(ret)]` argument to emit an event
+with the return value of an instrumented function.
+
+### Added
+
+- `#[instrument(ret)]` to record the return value of a function ([#1716])
+- added `err(Debug)` argument to cause `#[instrument(err)]` to record errors
+  with `Debug` rather than `Display ([#1631])
+
+### Fixed
+
+- incorrect code generation for functions returning async blocks ([#1866])
+- incorrect diagnostics when using `rust-analyzer` ([#1634])
+
+Thanks to @Swatinem, @hkmatsumoto, @cynecx, and @ciuncan for contributing to
+this release!
+
+[#1716]: https://github.com/tokio-rs/tracing/pull/1716
+[#1631]: https://github.com/tokio-rs/tracing/pull/1631
+[#1634]: https://github.com/tokio-rs/tracing/pull/1634
+[#1866]: https://github.com/tokio-rs/tracing/pull/1866
+
 # 0.1.18 (October 5, 2021)
 
 This release fixes issues introduced in v0.1.17.
