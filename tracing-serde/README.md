@@ -18,7 +18,7 @@ An adapter for serializing [`tracing`] types using [`serde`].
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
 scoped, structured, and async-aware diagnostics.`tracing-serde` enables
-serializing `tracing` types using [`serde`]. 
+serializing `tracing` types using [`serde`].
 
 Traditional logging is based on human-readable text messages.
 `tracing` gives us machine-readable structured diagnostic
