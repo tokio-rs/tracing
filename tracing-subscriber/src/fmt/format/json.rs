@@ -52,9 +52,23 @@ use tracing_log::NormalizeEvent;
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
 ///
+/// # Valuable Support
+///
+/// Experimental support is available for using the [`valuable`] crate to record
+/// user-defined values as structured JSON. When the ["valuable" unstable
+/// feature][unstable] is enabled, types implementing [`valuable::Valuable`] will
+/// be recorded as structured JSON, rather than
+/// using their [`std::fmt::Debug`] implementations.
+///
+/// **Note**: This is an experimental feature. [Unstable features][unstable]
+/// must be enabled in order to use `valuable` support.
+///
 /// [`Json::flatten_event`]: #method.flatten_event
 /// [`Json::with_current_span`]: #method.with_current_span
 /// [`Json::with_span_list`]: #method.with_span_list
+/// [`valuable`]: https://crates.io/crates/valuable
+/// [unstable]: crate#unstable-features
+/// [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
