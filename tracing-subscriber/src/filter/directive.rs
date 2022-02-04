@@ -38,10 +38,6 @@ pub(in crate::filter) trait Match {
     fn level(&self) -> &LevelFilter;
 }
 
-pub(in crate::filter) trait TargetMatch: Match {
-    fn cares_about_target(&self, to_check: &str) -> bool;
-}
-
 #[derive(Debug)]
 enum ParseErrorKind {
     #[cfg(feature = "std")]
@@ -82,17 +78,6 @@ impl<T: Match + Ord> DirectiveSet<T> {
         metadata: &'a Metadata<'a>,
     ) -> impl Iterator<Item = &'a T> + 'a {
         self.directives().filter(move |d| d.cares_about(metadata))
-    }
-
-    pub(crate) fn directives_for_target<'a>(
-        &'a self,
-        target: &'a str,
-    ) -> impl Iterator<Item = &'a T> + 'a
-    where
-        T: TargetMatch,
-    {
-        self.directives()
-            .filter(move |d| d.cares_about_target(target))
     }
 
     pub(crate) fn add(&mut self, directive: T) {
@@ -158,13 +143,20 @@ impl DirectiveSet<StaticDirective> {
         }
     }
 
-    /// Same as `enabled` above, but short circuits to false if the
-    /// `Directive` has fields
-    pub(crate) fn enabled_for(&self, target: &'static str, level: &Level) -> bool {
+    /// Same as `enabled` above, but skips `Directive`'s with fields.
+    pub(crate) fn target_enabled(&self, target: &str, level: &Level) -> bool {
         match self.directives_for_target(target).next() {
             Some(d) => d.level >= *level,
             None => false,
         }
+    }
+
+    pub(crate) fn directives_for_target<'a>(
+        &'a self,
+        target: &'a str,
+    ) -> impl Iterator<Item = &'a StaticDirective> + 'a {
+        self.directives()
+            .filter(move |d| d.cares_about_target(target))
     }
 }
 
@@ -181,6 +173,22 @@ impl StaticDirective {
             field_names,
             level,
         }
+    }
+
+    pub(in crate::filter) fn cares_about_target(&self, to_check: &str) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !to_check.starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        if !self.field_names.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -258,24 +266,6 @@ impl Match for StaticDirective {
 
     fn level(&self) -> &LevelFilter {
         &self.level
-    }
-}
-
-impl TargetMatch for StaticDirective {
-    fn cares_about_target(&self, to_check: &str) -> bool {
-        // Does this directive have a target filter, and does it match the
-        // metadata's target?
-        if let Some(ref target) = self.target {
-            if !to_check.starts_with(&target[..]) {
-                return false;
-            }
-        }
-
-        if !self.field_names.is_empty() {
-            return false;
-        }
-
-        true
     }
 }
 
