@@ -349,6 +349,10 @@ fn enabled() {
 
     span_enabled!(target: "rando", Level::DEBUG, field);
     event_enabled!(target: "rando", Level::DEBUG, field);
+
+    // other cases
+    span_enabled!(Level::DEBUG);
+    span_enabled!(Level::DEBUG, foo, bar.baz, quux,);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

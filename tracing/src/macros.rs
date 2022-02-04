@@ -801,6 +801,48 @@ macro_rules! event {
     );
 }
 
+/// The same as [`enabled!`], but queries subscribers specifically for an event,
+/// whereas [`enabled!`] queries for an event _or_ span.
+///
+/// See also [`span_enabled!`].
+///
+/// # Examples
+///
+/// ```rust
+/// # use tracing::{event_enabled, Level};
+/// if event_enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// ```
+///
+#[macro_export]
+macro_rules! event_enabled {
+    ($($rest:tt)*)=> (
+        $crate::enabled!(kind: $crate::metadata::Kind::EVENT.hint(), $($rest)*)
+    )
+}
+
+/// The same as [`enabled!`], but queries subscribers specifically for an span,
+/// whereas [`enabled!`] queries for an event _or_ span.
+///
+/// See also [`event_enabled!`].
+///
+/// # Examples
+///
+/// ```rust
+/// # use tracing::{span_enabled, Level};
+/// if span_enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// ```
+///
+#[macro_export]
+macro_rules! span_enabled {
+    ($($rest:tt)*)=> (
+        $crate::enabled!(kind: $crate::metadata::Kind::SPAN.hint(), $($rest)*)
+    )
+}
+
 /// Checks whether a span or event is [enabled] based on the provided [metadata].
 ///
 /// [enabled]: crate::Collect::enabled
@@ -892,56 +934,6 @@ macro_rules! event {
 ///
 #[macro_export]
 macro_rules! enabled {
-    ($($rest:tt)*)=> (
-        $crate::_enabled!(kind: { $crate::metadata::Kind::HINT }, $($rest)*)
-    )
-}
-
-/// The same as [`enabled!`], but queries subscribers specifically for an event,
-/// whereas [`enabled!`] queries for an event _or_ span.
-///
-/// See also [`span_enabled!`].
-///
-/// # Examples
-///
-/// ```rust
-/// # use tracing::{event_enabled, Level};
-/// if event_enabled!(target: "my_crate", Level::DEBUG) {
-///     // some expensive work...
-/// }
-/// ```
-///
-#[macro_export]
-macro_rules! event_enabled {
-    ($($rest:tt)*)=> (
-        $crate::_enabled!(kind: $crate::metadata::Kind::EVENT.hint(), $($rest)*)
-    )
-}
-
-/// The same as [`enabled!`], but queries subscribers specifically for an span,
-/// whereas [`enabled!`] queries for an event _or_ span.
-///
-/// See also [`event_enabled!`].
-///
-/// # Examples
-///
-/// ```rust
-/// # use tracing::{span_enabled, Level};
-/// if span_enabled!(target: "my_crate", Level::DEBUG) {
-///     // some expensive work...
-/// }
-/// ```
-///
-#[macro_export]
-macro_rules! span_enabled {
-    ($($rest:tt)*)=> (
-        $crate::_enabled!(kind: $crate::metadata::Kind::SPAN.hint(), $($rest)*)
-    )
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! _enabled {
     (kind: $kind:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
@@ -970,20 +962,33 @@ macro_rules! _enabled {
     });
     // Just target and level
     (kind: $kind:expr, target: $target:expr, $lvl:expr ) => (
-        $crate::_enabled!(kind: $kind, target: $target, $lvl, { })
+        $crate::enabled!(kind: $kind, target: $target, $lvl, { })
+    );
+    (target: $target:expr, $lvl:expr ) => (
+        $crate::enabled!(kind: $crate::metadata::Kind::HINT, target: $target, $lvl, { })
     );
 
     // These two cases handle fields with no values
     (kind: $kind:expr, target: $target:expr, $lvl:expr, $($field:tt)*) => (
-        $crate::_enabled!(
+        $crate::enabled!(
             kind: $kind,
             target: $target,
             $lvl,
             { $($field)*}
         )
     );
+    (target: $target:expr, $lvl:expr, $($field:tt)*) => (
+        $crate::enabled!(
+            kind: $crate::metadata::Kind::HINT,
+            target: $target,
+            $lvl,
+            { $($field)*}
+        )
+    );
+
+    // Level and field case
     (kind: $kind:expr, $lvl:expr, $($field:tt)*) => (
-        $crate::_enabled!(
+        $crate::enabled!(
             kind: $kind,
             target: module_path!(),
             $lvl,
@@ -992,8 +997,22 @@ macro_rules! _enabled {
     );
 
     // Simplest `enabled!` case
+    // Simplest `enabled!` case
     (kind: $kind:expr, $lvl:expr ) => (
-        $crate::_enabled!(kind: $kind, target: module_path!(), $lvl, { })
+        $crate::enabled!(kind: $kind, target: module_path!(), $lvl, { })
+    );
+    ($lvl:expr ) => (
+        $crate::enabled!(kind: $crate::metadata::Kind::HINT, target: module_path!(), $lvl, { })
+    );
+
+    // Fallthrough from above
+    ($lvl:expr, $($field:tt)*) => (
+        $crate::enabled!(
+            kind: $crate::metadata::Kind::HINT,
+            target: module_path!(),
+            $lvl,
+            { $($field)*}
+        )
     );
 }
 
