@@ -1,9 +1,7 @@
 use core::cell::UnsafeCell;
 use core::fmt;
+use core::hint::spin_loop;
 use core::sync::atomic::{AtomicUsize, Ordering};
-// TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
-#[allow(deprecated)]
-use core::sync::atomic::spin_loop_hint as cpu_relax;
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the
@@ -109,10 +107,8 @@ impl<T> Once<T> {
             match status {
                 INCOMPLETE => unreachable!(),
                 RUNNING => {
-                    // TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
-                    #[allow(deprecated)]
                     // We spin
-                    cpu_relax();
+                    spin_loop();
                     status = self.state.load(Ordering::SeqCst)
                 }
                 PANICKED => panic!("Once has panicked"),
@@ -138,9 +134,7 @@ impl<T> Once<T> {
                 INCOMPLETE => return None,
 
                 RUNNING => {
-                    // TODO(eliza): replace with `core::hint::spin_loop` once our MSRV supports it.
-                    #[allow(deprecated)]
-                    cpu_relax() // We spin
+                    spin_loop() // We spin
                 }
                 COMPLETE => return Some(self.force_get()),
                 PANICKED => panic!("Once has panicked"),
