@@ -8,11 +8,27 @@ use std::os::raw::c_uint;
 use std::os::unix::prelude::{FromRawFd, RawFd};
 
 fn create(flags: c_uint) -> Result<File> {
-    let fd = unsafe { memfd_create("tracing-journald\0".as_ptr() as *const c_char, flags) };
+    let fd = memfd_create_syscall(flags);
     if fd < 0 {
         Err(Error::last_os_error())
     } else {
         Ok(unsafe { File::from_raw_fd(fd as RawFd) })
+    }
+}
+
+/// Make the `memfd_create` syscall ourself instead of going through `libc`;
+/// `memfd_create` isn't supported on `glibc<2.27` so this allows us to
+/// support old-but-still-used distros like Ubuntu Xenial, Debian Stretch,
+/// RHEL 7, etc.
+///
+/// See: https://github.com/tokio-rs/tracing/issues/1879
+fn memfd_create_syscall(flags: c_uint) -> i64 {
+    unsafe {
+        syscall(
+            SYS_memfd_create,
+            "tracing-journald\0".as_ptr() as *const c_char,
+            flags,
+        )
     }
 }
 
