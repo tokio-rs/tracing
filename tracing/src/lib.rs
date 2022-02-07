@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -415,7 +415,7 @@
 //! ```
 //! # use tracing::{event, Level};
 //! # fn main() {
-//! let question = "the answer to the ultimate question of life, the universe, and everything";
+//! let question = "the ultimate question of life, the universe, and everything";
 //! let answer = 42;
 //! // records an event with the following fields:
 //! // - `question.answer` with the value 42,
@@ -868,7 +868,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
