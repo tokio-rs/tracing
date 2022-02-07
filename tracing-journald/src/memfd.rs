@@ -8,7 +8,13 @@ use std::os::raw::c_uint;
 use std::os::unix::prelude::{FromRawFd, RawFd};
 
 fn create(flags: c_uint) -> Result<File> {
-    let fd = unsafe { memfd_create("tracing-journald\0".as_ptr() as *const c_char, flags) };
+    let fd = unsafe {
+        syscall(
+            SYS_memfd_create,
+            "tracing-journald\0".as_ptr() as *const c_char,
+            flags,
+        )
+    };
     if fd < 0 {
         Err(Error::last_os_error())
     } else {
