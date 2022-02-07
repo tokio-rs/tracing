@@ -8,6 +8,11 @@ use std::os::raw::c_uint;
 use std::os::unix::prelude::{FromRawFd, RawFd};
 
 fn create(flags: c_uint) -> Result<File> {
+    // Make the `memfd_create` syscall ourself instead of going through `libc`;
+    // `memfd_create` isn't supported on `glibc<2.27` so this allows us to
+    // support old-but-still-used distros like Ubuntu Xenial, Debian Stretch,
+    // RHEL 7, etc.
+    // See: https://github.com/tokio-rs/tracing/issues/1879
     let fd = unsafe {
         syscall(
             SYS_memfd_create,
