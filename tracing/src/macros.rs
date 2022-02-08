@@ -829,7 +829,7 @@ macro_rules! event {
 #[macro_export]
 macro_rules! event_enabled {
     ($($rest:tt)*)=> (
-        $crate::enabled!(kind: $crate::metadata::Kind::EVENT.hint(), $($rest)*)
+        $crate::enabled!(kind: $crate::metadata::Kind::EVENT, $($rest)*)
     )
 }
 
@@ -861,7 +861,7 @@ macro_rules! event_enabled {
 #[macro_export]
 macro_rules! span_enabled {
     ($($rest:tt)*)=> (
-        $crate::enabled!(kind: $crate::metadata::Kind::SPAN.hint(), $($rest)*)
+        $crate::enabled!(kind: $crate::metadata::Kind::SPAN, $($rest)*)
     )
 }
 
@@ -966,7 +966,7 @@ macro_rules! enabled {
                     ":",
                     line!()
                 ),
-                kind: $kind,
+                kind: $kind.hint(),
                 target: $target,
                 level: $lvl,
                 fields: $($fields)*
