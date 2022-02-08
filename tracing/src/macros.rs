@@ -816,6 +816,14 @@ macro_rules! event {
 /// if event_enabled!(target: "my_crate", Level::DEBUG) {
 ///     // some expensive work...
 /// }
+/// // simpler
+/// if event_enabled!(Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// // with fields
+/// if event_enabled!(Level::DEBUG, foo_field) {
+///     // some expensive work...
+/// }
 /// ```
 ///
 #[macro_export]
@@ -838,6 +846,14 @@ macro_rules! event_enabled {
 /// ```rust
 /// # use tracing::{span_enabled, Level};
 /// if span_enabled!(target: "my_crate", Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// // simpler
+/// if span_enabled!(Level::DEBUG) {
+///     // some expensive work...
+/// }
+/// // with fields
+/// if span_enabled!(Level::DEBUG, foo_field) {
 ///     // some expensive work...
 /// }
 /// ```
