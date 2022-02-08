@@ -112,11 +112,6 @@ where
     fn on_close(&self, id: span::Id, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_close(id, ctx)
     }
-
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: subscribe::Context<'_, C>) {
-        try_lock!(self.inner.read()).on_id_change(old, new, ctx)
-    }
 }
 
 impl<S> Subscriber<S> {

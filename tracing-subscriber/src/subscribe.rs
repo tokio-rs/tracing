@@ -327,10 +327,6 @@ where
     /// Notifies this subscriber that the span with the given ID has been closed.
     fn on_close(&self, _id: span::Id, _ctx: Context<'_, C>) {}
 
-    /// Notifies this subscriber that a span ID has been cloned, and that the
-    /// subscriber returned a different ID.
-    fn on_id_change(&self, _old: &span::Id, _new: &span::Id, _ctx: Context<'_, C>) {}
-
     /// Composes this subscriber around the given collector, returning a `Layered`
     /// struct implementing `Subscribe`.
     ///
@@ -769,12 +765,6 @@ where
         self.subscriber.on_close(id, ctx);
     }
 
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
-        self.inner.on_id_change(old, new, ctx.clone());
-        self.subscriber.on_id_change(old, new, ctx);
-    }
-
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
@@ -864,13 +854,6 @@ where
         }
     }
 
-    #[inline]
-    fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
-        if let Some(ref inner) = self {
-            inner.on_id_change(old, new, ctx)
-        }
-    }
-
     #[doc(hidden)]
     #[inline]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
@@ -935,11 +918,6 @@ feature! {
             #[inline]
             fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
                 self.deref().on_close(id, ctx)
-            }
-
-            #[inline]
-            fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, C>) {
-                self.deref().on_id_change(old, new, ctx)
             }
 
             #[doc(hidden)]
