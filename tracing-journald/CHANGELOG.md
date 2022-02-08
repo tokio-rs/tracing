@@ -1,3 +1,18 @@
+# 0.2.3 (February 7, 2022)
+
+### Fixed
+
+- Fixed missing `memfd_create` with `glibc` versions < 2.25 ([#1912])
+
+### Changed
+
+- Updated minimum supported Rust version to 1.49.0 ([#1913])
+
+Thanks to @9999years for contributing to this release!
+
+[#1912]: https://github.com/tokio-rs/tracing/pull/1912
+[#1913]: https://github.com/tokio-rs/tracing/pull/1913
+
 # 0.2.2 (January 14, 2022)
 ### Added
 
