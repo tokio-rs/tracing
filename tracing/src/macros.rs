@@ -801,9 +801,12 @@ macro_rules! event {
     );
 }
 
-/// The same as [`enabled!`], but queries subscribers specifically for an event,
-/// whereas [`enabled!`] queries for an event _or_ span.
+/// Tests whether an event with the specified level and target would be enabled.
 ///
+/// This is similar to [`enabled!`], but queries the current collector specifically for
+/// an event, whereas [`enabled!`] queries for an event _or_ span.
+///
+/// See the documentation for [`enabled!]` for more details on using this macro.
 /// See also [`span_enabled!`].
 ///
 /// # Examples
@@ -822,10 +825,13 @@ macro_rules! event_enabled {
     )
 }
 
-/// The same as [`enabled!`], but queries subscribers specifically for an span,
-/// whereas [`enabled!`] queries for an event _or_ span.
+/// Tests whether a span with the specified level and target would be enabled.
 ///
-/// See also [`event_enabled!`].
+/// This is similar to [`enabled!`], but queries the current collector specifically for
+/// an event, whereas [`enabled!`] queries for an event _or_ span.
+///
+/// See the documentation for [`enabled!]` for more details on using this macro.
+/// See also [`span_enabled!`].
 ///
 /// # Examples
 ///
@@ -968,7 +974,7 @@ macro_rules! enabled {
         $crate::enabled!(kind: $crate::metadata::Kind::HINT, target: $target, $lvl, { })
     );
 
-    // These two cases handle fields with no values
+    // These four cases handle fields with no values
     (kind: $kind:expr, target: $target:expr, $lvl:expr, $($field:tt)*) => (
         $crate::enabled!(
             kind: $kind,
@@ -997,11 +1003,10 @@ macro_rules! enabled {
     );
 
     // Simplest `enabled!` case
-    // Simplest `enabled!` case
-    (kind: $kind:expr, $lvl:expr ) => (
+    (kind: $kind:expr, $lvl:expr) => (
         $crate::enabled!(kind: $kind, target: module_path!(), $lvl, { })
     );
-    ($lvl:expr ) => (
+    ($lvl:expr) => (
         $crate::enabled!(kind: $crate::metadata::Kind::HINT, target: module_path!(), $lvl, { })
     );
 

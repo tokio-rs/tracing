@@ -346,13 +346,34 @@ fn enabled() {
     enabled!(Level::DEBUG);
     enabled!(target: "rando", Level::DEBUG);
     enabled!(target: "rando", Level::DEBUG, field);
+}
 
-    span_enabled!(target: "rando", Level::DEBUG, field);
-    event_enabled!(target: "rando", Level::DEBUG, field);
-
-    // other cases
-    span_enabled!(Level::DEBUG);
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn span_enabled() {
     span_enabled!(Level::DEBUG, foo, bar.baz, quux,);
+    span_enabled!(Level::DEBUG, message);
+    span_enabled!(Level::INFO, foo, bar.baz, quux, message,);
+    span_enabled!(Level::INFO, foo, bar., message,);
+    span_enabled!(Level::DEBUG, foo);
+
+    span_enabled!(Level::DEBUG);
+    span_enabled!(target: "rando", Level::DEBUG);
+    span_enabled!(target: "rando", Level::DEBUG, field);
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn event_enabled() {
+    event_enabled!(Level::DEBUG, foo, bar.baz, quux,);
+    event_enabled!(Level::DEBUG, message);
+    event_enabled!(Level::INFO, foo, bar.baz, quux, message,);
+    event_enabled!(Level::INFO, foo, bar., message,);
+    event_enabled!(Level::DEBUG, foo);
+
+    event_enabled!(Level::DEBUG);
+    event_enabled!(target: "rando", Level::DEBUG);
+    event_enabled!(target: "rando", Level::DEBUG, field);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
