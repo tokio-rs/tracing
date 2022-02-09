@@ -548,10 +548,10 @@ where
             // See https://github.com/tokio-rs/tracing/issues/763
             #[cfg(feature = "tracing-log")]
             let normalized_meta = event.normalized_metadata();
-            #[cfg(not(feature = "tracing-log"))]
-            let normalized_meta = None;
-
+            #[cfg(feature = "tracing-log")]
             let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+            #[cfg(not(feature = "tracing-log"))]
+            let meta = event.metadata();
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
@@ -572,6 +572,8 @@ where
                 if self.event_location {
                     let builder_attrs = builder.attributes.get_or_insert(Vec::new());
 
+                    #[cfg(not(feature = "tracing-log"))]
+                    let normalized_meta = None;
                     let (file, module) = match &normalized_meta {
                         Some(meta) => (
                             meta.file().map(|s| Value::from(s.to_owned())),
