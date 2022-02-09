@@ -340,6 +340,8 @@ where
 
     /// Sets whether or not event span's metadata should include detailed location
     /// information, such as the file, module and line number.
+    ///
+    /// By default, event locations are enabled.
     pub fn with_event_location(self, event_location: bool) -> Self {
         Self {
             event_location,
