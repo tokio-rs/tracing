@@ -348,12 +348,11 @@ pub trait Collect: 'static {
     /// collector implementations may use this return value to notify any
     /// "layered" collectors that this collector considers the span closed.
     ///
-    /// The default implementation of this method calls the collector's
-    /// [`drop_span`] method and returns `false`. This means that, unless the
-    /// collector overrides the default implementation, close notifications
-    /// will never be sent to any layered collectors. In general, if the
-    /// collector tracks reference counts, this method should be implemented,
-    /// rather than `drop_span`.
+    /// The default implementation of this method simply returns `false`. This
+    /// means that, unless the  collector overrides the default implementation,
+    /// close notifications will never be sent to any layered collectors. In
+    /// general, if the collector tracks reference counts, this method should be
+    /// overridden.
     ///
     /// This function is guaranteed to only be called with span IDs that were
     /// returned by this collector's `new_span` function.
@@ -376,7 +375,6 @@ pub trait Collect: 'static {
     ///
     /// [`span ID`]: super::span::Id
     /// [`clone_span`]: Collect::clone_span
-    /// [`drop_span`]: Collect::drop_span
     fn try_close(&self, _id: span::Id) -> bool {
         false
     }
