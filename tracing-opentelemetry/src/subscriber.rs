@@ -1,8 +1,10 @@
 use crate::{OtelData, PreSampledTracer};
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
-    Context as OtelContext, Key, KeyValue,
+    Context as OtelContext, Key, KeyValue, Value,
 };
+#[cfg(not(feature = "tracing-log"))]
+use std::borrow::Cow;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
@@ -27,6 +29,7 @@ const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetrySubscriber<C, T> {
     tracer: T,
+    event_location: bool,
     tracked_inactivity: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<C>,
@@ -289,6 +292,7 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetrySubscriber {
             tracer,
+            event_location: true,
             tracked_inactivity: true,
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
@@ -327,9 +331,21 @@ where
     {
         OpenTelemetrySubscriber {
             tracer,
+            event_location: self.event_location,
             tracked_inactivity: self.tracked_inactivity,
             get_context: WithContext(OpenTelemetrySubscriber::<C, Tracer>::get_context),
             _registry: self._registry,
+        }
+    }
+
+    /// Sets whether or not event span's metadata should include detailed location
+    /// information, such as the file, module and line number.
+    ///
+    /// By default, event locations are enabled.
+    pub fn with_event_location(self, event_location: bool) -> Self {
+        Self {
+            event_location,
+            ..self
         }
     }
 
@@ -553,6 +569,33 @@ where
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(otel::StatusCode::Error);
+                }
+
+                if self.event_location {
+                    let builder_attrs = builder.attributes.get_or_insert(Vec::new());
+
+                    #[cfg(not(feature = "tracing-log"))]
+                    let normalized_meta = None;
+                    let (file, module) = match &normalized_meta {
+                        Some(meta) => (
+                            meta.file().map(|s| Value::from(s.to_owned())),
+                            meta.module_path().map(|s| Value::from(s.to_owned())),
+                        ),
+                        None => (
+                            event.metadata().file().map(Value::from),
+                            event.metadata().module_path().map(Value::from),
+                        ),
+                    };
+
+                    if let Some(file) = file {
+                        builder_attrs.push(KeyValue::new("code.filepath", file));
+                    }
+                    if let Some(module) = module {
+                        builder_attrs.push(KeyValue::new("code.namespace", module));
+                    }
+                    if let Some(line) = meta.line() {
+                        builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+                    }
                 }
 
                 if let Some(ref mut events) = builder.events {
