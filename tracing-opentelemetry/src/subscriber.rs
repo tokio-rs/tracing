@@ -578,8 +578,8 @@ where
                             meta.module_path().map(|s| Value::from(s.to_owned())),
                         ),
                         None => (
-                            event.metadata().file().map(|s| Value::from(s)),
-                            event.metadata().module_path().map(|s| Value::from(s)),
+                            event.metadata().file().map(Value::from),
+                            event.metadata().module_path().map(Value::from),
                         ),
                     };
 
