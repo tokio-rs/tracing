@@ -1,7 +1,7 @@
 use crate::{OtelData, PreSampledTracer};
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
-    Context as OtelContext, Key, KeyValue,
+    Context as OtelContext, Key, KeyValue, Value,
 };
 #[cfg(not(feature = "tracing-log"))]
 use std::borrow::Cow;
@@ -571,17 +571,29 @@ where
 
                 if self.event_location {
                     let builder_attrs = builder.attributes.get_or_insert(Vec::new());
-                    if let Some(file) = meta.file() {
-                        #[cfg(feature = "tracing-log")]
-                        builder_attrs.push(KeyValue::new("code.filepath", file.to_owned()));
-                        #[cfg(not(feature = "tracing-log"))]
-                        builder_attrs.push(KeyValue::new("code.filepath", Cow::Borrowed(file)));
+
+                    #[cfg(feature = "tracing-log")]
+                    let (file, module) = match &normalized_meta {
+                        Some(meta) => (
+                            meta.file().map(|s| Value::from(s.to_owned())),
+                            meta.module_path().map(|s| Value::from(s.to_owned())),
+                        ),
+                        None => (
+                            event.metadata().file().map(|s| Value::from(s)),
+                            event.metadata().module_path().map(|s| Value::from(s)),
+                        ),
+                    };
+                    #[cfg(not(feature = "tracing-log"))]
+                    let (file, module) = (
+                        event.metadata().file().map(|s| Value::from(s)),
+                        event.metadata().module_path().map(|s| Value::from(s)),
+                    );
+
+                    if let Some(file) = file {
+                        builder_attrs.push(KeyValue::new("code.filepath", file));
                     }
-                    if let Some(module) = meta.module_path() {
-                        #[cfg(feature = "tracing-log")]
-                        builder_attrs.push(KeyValue::new("code.namespace", module.to_owned()));
-                        #[cfg(not(feature = "tracing-log"))]
-                        builder_attrs.push(KeyValue::new("code.namespace", Cow::Borrowed(module)));
+                    if let Some(module) = module {
+                        builder_attrs.push(KeyValue::new("code.namespace", module));
                     }
                     if let Some(line) = meta.line() {
                         builder_attrs.push(KeyValue::new("code.lineno", line as i64));
