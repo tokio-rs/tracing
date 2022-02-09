@@ -554,13 +554,23 @@ where
             let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
             #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
+
+            let target = Key::new("target");
+
+            #[cfg(feature = "tracing-log")]
+            let target = if normalized_meta.is_some() {
+                target.string(meta.target().to_owned())
+            } else {
+                target.string(event.metadata().target())
+            };
+
+            #[cfg(not(feature = "tracing-log"))]
+            let target = target.string(meta.target());
+
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
-                vec![
-                    Key::new("level").string(meta.level().to_string()),
-                    Key::new("target").string(meta.target().to_string()),
-                ],
+                vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
             event.record(&mut SpanEventVisitor(&mut otel_event));
