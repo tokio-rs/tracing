@@ -570,7 +570,7 @@ where
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
-                vec![Key::new("level").string(meta.level().to_string()), target],
+                vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
             event.record(&mut SpanEventVisitor(&mut otel_event));
