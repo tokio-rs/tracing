@@ -17,9 +17,9 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-opentelemetry.svg
-[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.16.0
+[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.16.1
 [docs-badge]: https://docs.rs/tracing-opentelemetry/badge.svg
-[docs-url]: https://docs.rs/tracing-opentelemetry/0.16.0/tracing_opentelemetry
+[docs-url]: https://docs.rs/tracing-opentelemetry/0.16.1/tracing_opentelemetry
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_opentelemetry
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -33,9 +33,9 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 ## Overview
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This crate provides a 
-subscriber that connects spans from multiple systems into a trace and 
-emits them to [OpenTelemetry]-compatible distributed tracing systems 
+structured, event-based diagnostic information. This crate provides a
+subscriber that connects spans from multiple systems into a trace and
+emits them to [OpenTelemetry]-compatible distributed tracing systems
 for processing and visualization.
 
 The crate provides the following types:

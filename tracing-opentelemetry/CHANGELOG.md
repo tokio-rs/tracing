@@ -1,3 +1,14 @@
+# 0.16.1 (February 10, 2022)
+
+### Added
+
+- `OpenTelemetrySubscriber` can now add detailed location information to
+  forwarded events (defaults to on) (#1911)
+
+### Changed
+
+- Avoid allocations to improve performance (#1917)
+
 # 0.16.0 (January 30, 2022)
 
 ### Breaking Changes
@@ -5,6 +16,7 @@
 - Upgrade to `v0.17.0` of `opentelemetry` (#1853)
   For list of breaking changes in OpenTelemetry, see the
   [v0.17.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0170).
+
 # 0.15.0 (August 7, 2021)
 
 ### Breaking Changes
