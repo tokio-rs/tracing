@@ -44,6 +44,11 @@ jobs:
       with:
         command: check
         args: --all --exclude=tracing-appender
+    - name: Metadata
+      uses: actions-rs/cargo@v1
+      with:
+        command: metadata
+        args: --all --exclude=tracing-appender
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
@@ -60,4 +65,9 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
+        args: --lib=tracing-appender
+    - name: Metadata
+      uses: actions-rs/cargo@v1
+      with:
+        command: metadata
         args: --lib=tracing-appender
