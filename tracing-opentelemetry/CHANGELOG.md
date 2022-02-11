@@ -1,3 +1,21 @@
+# 0.17.1 (February 11, 2022)
+
+### Added
+
+- `OpenTelemetryLayer` can now add detailed location information to
+  forwarded events (defaults to on) ([#1911])
+- `OpenTelemetryLayer::with_event_location` to control whether source locations
+  are recorded ([#1911])
+### Changed
+
+- Avoid unnecessary allocations to improve performance when recording events
+  ([#1917])
+
+Thanks to @djc for contributing to this release!
+
+[#1917]: https://github.com/tokio-rs/tracing/pull/1917
+[#1911]: https://github.com/tokio-rs/tracing/pull/1911
+
 # 0.17.0 (February 3, 2022)
 
 ### Breaking Changes
@@ -6,7 +24,7 @@
   For list of breaking changes in OpenTelemetry, see the
   [v0.17.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0170).
 
-# 0.16.0 (October 23, 2021)
+# 0.17.1 (October 23, 2021)
 
 ### Breaking Changes
 
@@ -29,9 +47,9 @@ Thanks to @LehMaxence for contributing to this release!
 
 ### Breaking Changes
 
-- Upgrade to `v0.16.0` of `opentelemetry` (#1497)
+- Upgrade to `v0.17.1` of `opentelemetry` (#1497)
   For list of breaking changes in OpenTelemetry, see the
-  [v0.16.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0160).
+  [v0.17.1 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0160).
 
 # 0.14.0 (July 9, 2021)
 
