@@ -1,4 +1,33 @@
 //! Formatters for logging `tracing` events.
+//!
+//! This module provides several formatter implementations, as well as utilities
+//! for implementing custom formatters.
+//!
+//! # Formatters
+//! This module provides a number of formatter implementations:
+//!
+//! * [`Full`]: The default formatter. This emits human-readable,
+//!   single-line logs for each event that occurs, with the current span context
+//!   displayed before the formatted representation of the event. See
+//!   [here](Full#example-output) for sample output.
+//!
+//! * [`Compact`]: A variant of the default formatter, optimized for
+//!   short line lengths. Fields from the current span context are appended to
+//!   the fields of the formatted event, and span names are not shown; the
+//!   verbosity level is abbreviated to a single character. See
+//!   [here](Compact#example-output) for sample output.
+//!
+//! * [`Pretty`]: Emits excessively pretty, multi-line logs, optimized
+//!   for human readability. This is primarily intended to be used in local
+//!   development and debugging, or for command-line applications, where
+//!   automated analysis and compact storage of logs is less of a priority than
+//!   readability and visual appeal. See [here](Pretty#example-output)
+//!   for sample output.
+//!
+//! * [`Json`]: Outputs newline-delimited JSON logs. This is intended
+//!   for production use with systems where structured logs are consumed as JSON
+//!   by analysis and viewing tools. The JSON output is not optimized for human
+//!   readability. See [here](Json#example-output) for sample output.
 use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
@@ -299,19 +328,67 @@ pub struct FieldFnVisitor<'a, F> {
     writer: Writer<'a>,
     result: fmt::Result,
 }
-/// Marker for `Format` that indicates that the compact log format should be used.
+/// Marker for [`Format`] that indicates that the compact log format should be used.
 ///
 /// The compact format includes fields from all currently entered spans, after
-/// the event's fields. Span fields are not grouped by span, and span names are
-/// not shown. In addition, a more compact representation of each event's
-/// [`Level`](tracing::Level) is used.
+/// the event's fields. Span fields are ordered (but not grouped) grouped by
+/// span, and span names are  not shown.A more compact representation of the
+/// event's [`Level`](tracing::Level) is used, and additional information, such
+/// as the event's target, is disabled by default (but can be enabled
+/// explicitly).
+///
+/// # Example Output
+///
+/// <pre><font color="#4E9A06"><b>:;</b></font> <font color="#4E9A06">cargo</font> run --example fmt-compact
+/// <font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 0.08s
+/// <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-compact`
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579731Z </font><font color="#4E9A06">i</font> preparing to shave yaks <i>number_of_yaks</i><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579802Z </font><font color="#4E9A06">i</font> shaving yaks <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579836Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579861Z </font><font color="#75507B">.</font> yak shaved successfully <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579887Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=1 </font><i>shaved</i><font color="#AAAAAA">=true </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579904Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=1 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579926Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579941Z </font><font color="#75507B">.</font> yak shaved successfully <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579959Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=2 </font><i>shaved</i><font color="#AAAAAA">=true </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579973Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=2 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579994Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580013Z </font><font color="#C4A000">!</font> could not locate yak <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580032Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=3 </font><i>shaved</i><font color="#AAAAAA">=false </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580050Z </font><font color="#CC0000">X</font> failed to shave yak <i>yak</i><font color="#AAAAAA">=3 </font><i>error</i><font color="#AAAAAA">=missing yak </font><i>error.sources</i><font color="#AAAAAA">=[out of space, out of cash] </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580067Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=2 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580085Z </font><font color="#4E9A06">i</font> yak shaving completed <i>all_yaks_shaved</i><font color="#AAAAAA">=false</font>
+/// </pre>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
-/// Marker for `Format` that indicates that the default log format should be used.
+/// Marker for [`Format`] that indicates that the default log format should be used.
 ///
-/// This format shows the span context before printing event data. Spans are
+/// This formatter shows the span context before printing event data. Spans are
 /// displayed including their names and fields.
+///
+/// # Example Output
+///
+/// <pre><font color="#4E9A06"><b>:;</b></font> <font color="#4E9A06">cargo</font> run --example fmt
+/// <font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 0.08s
+/// <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt`
+/// <font color="#AAAAAA">2022-02-15T18:40:14.289898Z </font><font color="#4E9A06"> INFO</font> fmt: preparing to shave yaks <i>number_of_yaks</i><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.289974Z </font><font color="#4E9A06"> INFO</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: shaving yaks</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290011Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=1</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290038Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=1</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: yak shaved successfully</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290070Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=1 </font><i>shaved</i><font color="#AAAAAA">=true</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290089Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290114Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=2</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290134Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=2</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: yak shaved successfully</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290157Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=2 </font><i>shaved</i><font color="#AAAAAA">=true</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290174Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290198Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290222Z </font><font color="#C4A000"> WARN</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: could not locate yak</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290247Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=3 </font><i>shaved</i><font color="#AAAAAA">=false</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290268Z </font><font color="#CC0000">ERROR</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: failed to shave yak </font><i>yak</i><font color="#AAAAAA">=3 </font><i>error</i><font color="#AAAAAA">=missing yak </font><i>error.sources</i><font color="#AAAAAA">=[out of space, out of cash]</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290287Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290309Z </font><font color="#4E9A06"> INFO</font> fmt: yak shaving completed. <i>all_yaks_shaved</i><font color="#AAAAAA">=false</font>
+/// </pre>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
 
@@ -320,8 +397,11 @@ pub struct Full;
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 ///
 /// The default logging format, [`Full`] includes all fields in each event and its containing
-/// spans. The [`Compact`] logging format includes only the fields from the most-recently-entered
-/// span.
+/// spans. The [`Compact`] logging format is intended to produce shorter log
+/// lines; it displays each event's fields, along with fields from the current
+/// span context, but other information is abbreviated. The [`Pretty`] logging
+/// format is an extra-verbose, multi-line human-readable logging format
+/// intended for use in development.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
