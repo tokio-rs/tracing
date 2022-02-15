@@ -297,12 +297,11 @@ pub struct FieldFnVisitor<'a, F> {
     writer: Writer<'a>,
     result: fmt::Result,
 }
-/// Marker for `Format` that indicates that the compact log format should be used.
+/// Marker for [`Format`] that indicates that the compact log format should be used.
 ///
 /// The compact format includes fields from all currently entered spans, after
-/// the event's fields. Span fields are not grouped by span, and span names are
-/// not shown. In addition, a more compact representation of each event's
-/// [`Level`](tracing::Level) is used.
+/// the event's fields. Span names are listed in order before fields are
+/// displayed.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
