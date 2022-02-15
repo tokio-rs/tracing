@@ -16,24 +16,31 @@ This directory contains a collection of examples that demonstrate the use of the
     Fibonacci numbers, to demonstrate how the `#[instrument]` attribute can
     record function arguments.
 - **tracing-subscriber**:
-  + `fmt`: Demonstrates the use of the `fmt` module in `tracing-subscriber`,
+  + `fmt`: Demonstrates the use of the [`fmt`] module in `tracing-subscriber`,
     which provides a subscriber implementation that logs traces to the console.
+    This example uses the default formatter ([`format::Full`]).
   + `fmt-stderr`: Demonstrates overriding the output stream used by the `fmt`
     subscriber.
-  + `fmt-custom-field`: Demonstrates overriding how the `fmt` subscriber formats
+  + `fmt-pretty`: Demonstrates the output of the [`format::Pretty`] formatter in
+    [`tracing-subscriber::fmt`][`fmt`].
+  + `fmt-compact`: Demonstrates the output of the [`format::Compact`] formatter in
+    [`tracing-subscriber::fmt`][`fmt`].
+  + `fmt-json`: Demonstrates the output of the [`format::Json`] formatter in
+    [`tracing-subscriber::fmt`][`fmt`].
+  + `fmt-custom-field`: Demonstrates overriding how the [`fmt`] subscriber formats
     fields on spans and events.
-  + `fmt-custom-event`: Demonstrates overriding how the `fmt` subscriber formats
+  + `fmt-custom-event`: Demonstrates overriding how the [`fmt`] subscriber formats
     events.
-  + `fmt-multiple-writers.rs`: demonstrates how `fmt::Layer` can write
+  + `fmt-multiple-writers`: demonstrates how [`fmt::Layer`] can write
     to multiple destinations (in this instance, stdout and a file) simultaneously.
-  + `fmt-source-locations.rs`: demonstrates displaying source code locations
-    with `fmt::Layer`.
+  + `fmt-source-locations`: demonstrates displaying source code locations
+    with [`fmt::Layer`].
   + `subscriber-filter`: Demonstrates the `tracing-subscriber::filter` module,
     which provides a layer which adds configurable filtering to a subscriber
     implementation.
   + `tower-load`: Demonstrates how dynamically reloadable filters can be used to
     debug a server under load in production.
-  + `journald`: Demonstrates how to use `fmt` and `journald` layers to output to
+  + `journald`: Demonstrates how to use [`fmt`] and `journald` layers to output to
     both the terminal and the system journal.
   + `toggle-layers` : Demonstrates how Layers can be wrapped with an `Option` allowing
     them to be dynamically toggled.
@@ -75,3 +82,9 @@ This directory contains a collection of examples that demonstrate the use of the
 [tasks]: (https://docs.rs/tokio/0.2.21/tokio/task/index.html)
 [tokio-proxy]: https://github.com/tokio-rs/tokio/blob/v0.1.x/tokio/examples/proxy.rs
 [echo]: https://github.com/hyperium/hyper/blob/0.12.x/examples/echo.rs
+[`fmt`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+[`format::Full`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/format/struct.Full.html
+[`format::Pretty`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/format/struct.Pretty.html
+[`format::Compact`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/format/struct.Compact.html
+[`format::Json`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/format/struct.Json.html
+[`fmt::Layer`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Layer.html
