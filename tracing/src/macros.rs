@@ -1701,7 +1701,7 @@ macro_rules! warn {
     (%$($k:ident).+ = $($field:tt)*) => (
         $crate::event!(
             target: module_path!(),
-            $crate::Level::TRACE,
+            $crate::Level::WARN,
             { %$($k).+ = $($field)*}
         )
     );
