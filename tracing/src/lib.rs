@@ -803,7 +803,7 @@
 //!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
 //!    framework for validating the behavior of `tracing` spans.
 //!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
-//!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+//!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
 //!    grouping together logs from the same spans during writing.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
