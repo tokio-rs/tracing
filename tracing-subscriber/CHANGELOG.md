@@ -1,3 +1,22 @@
+# 0.3.9 (Feb 17, 2022)
+
+This release updates the minimum supported Rust version (MSRV) to 1.49.0, and
+updates the (optional) dependency on `parking_lot` to v0.12.
+
+### Changed
+
+- Updated minimum supported Rust version (MSRV) to 1.49.0 ([#1913])
+- `parking_lot`: updated to v0.12 ([008339d])
+
+### Added
+
+- **fmt**: Documentation improvements ([#1926], [#1927])
+
+[#1913]: https://github.com/tokio-rs/tracing/pull/1913
+[#1926]: https://github.com/tokio-rs/tracing/pull/1926
+[#1927]: https://github.com/tokio-rs/tracing/pull/1927
+[008339d]: https://github.com/tokio-rs/tracing/commit/008339d1e8750ffe7b4634fc7789bda0c522424f
+
 # 0.3.8 (Feb 4, 2022)
 
 This release adds *experimental* support for recording structured field
