@@ -803,6 +803,8 @@
 //!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
 //!    framework for validating the behavior of `tracing` spans.
 //!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+//!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
+//!    grouping together logs from the same spans during writing.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -836,6 +838,7 @@
 //! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 //! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 //! [Sentry]: https://sentry.io/welcome/
+//! [`tracing-forest`]: https://crates.io/crates/tracing-forest
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
