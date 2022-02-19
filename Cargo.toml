@@ -17,3 +17,8 @@ members = [
     "tracing-journald",
     "examples"
 ]
+
+[workspace.metadata.dylint]
+libraries = [
+    { path = "lints/await_holding_span_guard" },
+]

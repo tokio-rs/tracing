@@ -1,0 +1,28 @@
+[package]
+name = "await_holding_span_guard"
+version = "0.1.0"
+authors = ["authors go here"]
+description = "decription goes here"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[[example]]
+name = "ui"
+path = "ui/main.rs"
+
+[dependencies]
+clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "5707491b185f9c9fc913f25efbd09d2649136683" }
+dylint_linting = "1.0.13"
+if_chain = "1.0.2"
+
+[dev-dependencies]
+dylint_testing = "1.0.13"
+tracing = { path = "../../tracing" }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[workspace]
