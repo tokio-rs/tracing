@@ -112,7 +112,7 @@ a [`std::io::Write`][write]:
 
 ```rust
 fn main() {
-    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::Stdout);
+    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
     tracing_subscriber::fmt()
         .with_writer(non_blocking)
         .init();
