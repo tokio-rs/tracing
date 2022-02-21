@@ -106,7 +106,7 @@ where
     /// ```
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
-    /// [`Writer`]: crate::format::Writer
+    /// [`Writer`]: format::Writer
     pub fn event_format<E2>(self, e: E2) -> Subscriber<C, N, E2, W>
     where
         E2: FormatEvent<C, N> + 'static,
@@ -294,6 +294,30 @@ where
     pub fn with_target(self, display_target: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
+            ..self
+        }
+    }
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_file(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_line_number(display_line_number),
             ..self
         }
     }

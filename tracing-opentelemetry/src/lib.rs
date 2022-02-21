@@ -9,7 +9,7 @@
 //! [OpenTelemetry]: https://opentelemetry.io
 //! [`tracing`]: https://github.com/tokio-rs/tracing
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -79,7 +79,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -92,7 +92,7 @@
 //!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.15.0")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.16.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
@@ -109,3 +109,15 @@ mod tracer;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;
+
+/// Per-span OpenTelemetry data tracked by this crate.
+///
+/// Useful for implementing [PreSampledTracer] in alternate otel SDKs.
+#[derive(Debug, Clone)]
+pub struct OtelData {
+    /// The parent otel `Context` for the current tracing span.
+    pub parent_cx: opentelemetry::Context,
+
+    /// The otel span data recorded during the current tracing span.
+    pub builder: opentelemetry::trace::SpanBuilder,
+}

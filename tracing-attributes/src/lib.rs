@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -332,7 +332,7 @@ fn instrument_speculative(
 }
 
 /// Instrument the function, by fully parsing the function body,
-/// which allows us to rewrite some statements related to async_trait-like patterns.
+/// which allows us to rewrite some statements related to async-like patterns.
 fn instrument_precise(
     args: attr::InstrumentArgs,
     item: proc_macro::TokenStream,
@@ -342,8 +342,8 @@ fn instrument_precise(
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
-    if let Some(async_trait) = expand::AsyncTraitInfo::from_fn(&input) {
-        return Ok(async_trait.gen_async_trait(args, instrumented_function_name.as_str()));
+    if let Some(async_like) = expand::AsyncInfo::from_fn(&input) {
+        return Ok(async_like.gen_async(args, instrumented_function_name.as_str()));
     }
 
     Ok(expand::gen_function(
