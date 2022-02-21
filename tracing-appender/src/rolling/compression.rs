@@ -66,6 +66,7 @@ impl CompressionConfig {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn extension(&self) -> Option<&str> {
         match self {
             CompressionConfig::Gzip(_) => Some("gz"),
@@ -82,9 +83,11 @@ impl CompressionConfig {
 /// - compression level 9 (`CompressionOption::GzipBest` or `CompressionOption::GzipLevel9`)
 ///
 /// ```rust
+/// # #[cfg(feature = "gzip_compression")] {
 /// # fn docs() {
 /// use tracing_appender::compression::CompressionOption;
 /// let compression_level = CompressionOption::GzipBest;
+/// # }
 /// # }
 /// ```
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -166,7 +169,46 @@ impl Into<CompressionConfig> for CompressionOption {
 
 #[cfg(test)]
 mod test {
+    use crate::rolling::compression::CompressionOption;
+    use crate::rolling::test::write_to_log;
+    use crate::rolling::{RollingFileAppenderBuilder, Rotation};
+    use flate2::read::GzDecoder;
+    use std::fs;
+    use std::io::Read;
+    use std::path::Path;
+
+    fn find_str_in_compressed_log(dir_path: &Path, expected_value: &str) -> bool {
+        let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
+
+        for entry in dir_contents {
+            let path = entry.expect("Expected dir entry").path();
+            let bytes = fs::read(&path).expect("Cannot read bytes from compressed log");
+            let mut decoder = GzDecoder::new(&bytes[..]);
+            let mut s = String::new();
+            let _ = decoder.read_to_string(&mut s);
+            if s.as_str() == expected_value {
+                return true;
+            }
+        }
+
+        false
+    }
 
     #[test]
-    fn test_compression() {}
+    fn test_compressed_appender() {
+        let file_prefix = "my-app-compressed-log";
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let mut appender = RollingFileAppenderBuilder::new(directory.path(), file_prefix)
+            .rotation(Rotation::DAILY)
+            .compression(CompressionOption::GzipFast)
+            .build();
+
+        let expected_value = "Hello";
+        write_to_log(&mut appender, expected_value);
+        assert!(find_str_in_compressed_log(directory.path(), expected_value));
+
+        directory
+            .close()
+            .expect("Failed to explicitly close TempDir. TempDir should delete once out of scope.")
+    }
 }

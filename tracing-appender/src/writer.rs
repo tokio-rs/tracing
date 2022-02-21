@@ -11,6 +11,7 @@ use {
 #[cfg(feature = "compression_gzip")]
 #[derive(Debug)]
 pub(crate) struct CompressedGzip {
+    #[allow(unused)]
     compression: CompressionConfig,
     buffer: Mutex<BufWriter<GzEncoder<BufWriter<File>>>>,
 }
@@ -63,6 +64,7 @@ impl WriterChannel {
         Ok(WriterChannel::CompressedFileGzip(compressed_gz))
     }
 
+    #[allow(unused)]
     pub(crate) fn extension(self) -> Option<String> {
         match self {
             WriterChannel::File(_) => None,

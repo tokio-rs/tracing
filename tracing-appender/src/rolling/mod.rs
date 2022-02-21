@@ -428,7 +428,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                Rotation::format_params(filename, extension, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
             Rotation::HOURLY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]")
@@ -437,7 +437,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                Rotation::format_params(filename, extension, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
             Rotation::DAILY => {
                 let format = format_description::parse("[year]-[month]-[day]")
@@ -445,7 +445,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                Rotation::format_params(filename, extension, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
             Rotation::NEVER => {
                 if let Some(extension) = extension {
@@ -457,7 +457,7 @@ impl Rotation {
         }
     }
 
-    fn format_params(filename: &str, extension: Option<String>, date: String) -> String {
+    fn format_params(filename: &str, extension: Option<String>, date: &str) -> String {
         if let Some(extension) = extension {
             format!("{}.{}.{}", filename, date, extension)
         } else {
@@ -572,7 +572,7 @@ mod test {
         false
     }
 
-    fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
+    pub(crate) fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
         appender
             .write_all(msg.as_bytes())
             .expect("Failed to write to appender");
@@ -671,19 +671,19 @@ mod test {
         assert_eq!("app.log", path);
 
         // per-minute compressed
-        let path = Rotation::MINUTELY.join_date("app.log", &now, Some("gz"));
+        let path = Rotation::MINUTELY.join_date("app.log", &now, Some("gz".into()));
         assert_eq!("app.log.2020-02-01-10-01.gz", path);
 
         // per-hour compressed
-        let path = Rotation::HOURLY.join_date("app.log", &now, Some("gz"));
+        let path = Rotation::HOURLY.join_date("app.log", &now, Some("gz".into()));
         assert_eq!("app.log.2020-02-01-10.gz", path);
 
         // per-day compressed
-        let path = Rotation::DAILY.join_date("app.log", &now, Some("gz"));
+        let path = Rotation::DAILY.join_date("app.log", &now, Some("gz".into()));
         assert_eq!("app.log.2020-02-01.gz", path);
 
         // never compressed
-        let path = Rotation::NEVER.join_date("app.log", &now, Some("gz"));
+        let path = Rotation::NEVER.join_date("app.log", &now, Some("gz".into()));
         assert_eq!("app.log.gz", path)
     }
 }
