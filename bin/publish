@@ -31,6 +31,13 @@ verify() {
         exit 1
     fi
 
+    status "Checking" "if $CRATE builds without default features"
+    cargo check $VERBOSE --no-default-features
+    if [ "$?" -ne 0 ]; then
+        err "$CRATE did not build successfully with --no-default-features"
+        exit 1
+    fi
+
     if git tag -l | grep -Fxq "$TAG" ; then
         err "git tag \`$TAG\` already exists"
         exit 1
