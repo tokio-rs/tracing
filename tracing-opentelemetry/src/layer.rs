@@ -4,8 +4,6 @@ use opentelemetry::{
     Context as OtelContext, Key, KeyValue, Value,
 };
 use std::any::TypeId;
-#[cfg(not(feature = "tracing-log"))]
-use std::borrow::Cow;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
@@ -585,7 +583,7 @@ where
                     let builder_attrs = builder.attributes.get_or_insert(Vec::new());
 
                     #[cfg(not(feature = "tracing-log"))]
-                    let normalized_meta = None;
+                    let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
                     let (file, module) = match &normalized_meta {
                         Some(meta) => (
                             meta.file().map(|s| Value::from(s.to_owned())),
