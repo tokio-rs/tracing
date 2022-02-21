@@ -31,6 +31,18 @@ verify() {
         exit 1
     fi
 
+    if ! cargo list | grep -q "hack"; then
+        status "Installing" "cargo-hack"
+        cargo install cargo-hack
+    fi
+
+    status "Checking" "if $CRATE builds across feature combinations"
+
+    if ! cargo hack check $VERBOSE --feature-powerset --no-dev-deps; then
+        err "$CRATE did not build with all feature combinations!"
+        exit 1
+    fi
+
     if git tag -l | grep -Fxq "$TAG" ; then
         err "git tag \`$TAG\` already exists"
         exit 1
