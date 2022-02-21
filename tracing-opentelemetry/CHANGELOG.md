@@ -1,4 +1,16 @@
-# 0.17.1 (February 11, 2022)
+# 0.17.2 (February 21, 2022)
+
+This release fixes [an issue][#1944] introduced in v0.17.1 where
+`tracing-opentelemetry` could not be compiled with `default-features = false`.
+
+### Fixed
+
+- Compilation failure with `tracing-log` feature disabled ([#1949])
+
+[#1949]: https://github.com/tokio-rs/tracing/pull/1917
+[#1944]: https://github.com/tokio-rs/tracing/issues/1944
+
+# 0.17.1 (February 11, 2022) (YANKED)
 
 ### Added
 
@@ -24,7 +36,7 @@ Thanks to @djc for contributing to this release!
   For list of breaking changes in OpenTelemetry, see the
   [v0.17.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0170).
 
-# 0.17.1 (October 23, 2021)
+# 0.16.1 (October 23, 2021)
 
 ### Breaking Changes
 
