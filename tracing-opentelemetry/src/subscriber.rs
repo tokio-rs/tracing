@@ -3,8 +3,6 @@ use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
     Context as OtelContext, Key, KeyValue, Value,
 };
-#[cfg(not(feature = "tracing-log"))]
-use std::borrow::Cow;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
