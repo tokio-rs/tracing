@@ -185,7 +185,7 @@ mod test {
             let bytes = fs::read(&path).expect("Cannot read bytes from compressed log");
             let mut decoder = GzDecoder::new(&bytes[..]);
             let mut s = String::new();
-            let r = decoder
+            decoder
                 .read_to_string(&mut s)
                 .expect("Cannot decode compressed log file");
             if s.as_str() == expected_value {

@@ -90,10 +90,10 @@ pub mod compression;
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
 pub struct RollingFileAppender {
-    pub(crate) state: Inner,
-    pub(crate) writer: RwLock<WriterChannel>,
+    state: Inner,
+    writer: RwLock<WriterChannel>,
     #[cfg(features = "compression")]
-    pub(crate) compression: Option<CompressionConfig>,
+    compression: Option<CompressionConfig>,
 }
 
 /// A [writer] that writes to a rolling log file.

@@ -27,25 +27,45 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Creates a new `RollingFileAppnderBuilder`
+    /// Returns a new builder for configuring a [`RollingFileAppender`], with
+    /// the provided log directory and filename prefix.
     ///
-    /// It was introduced to open up the possibility to use `compression` without
-    /// breaking the current interface.
+    /// Calling [`build`] on the returned builder will construct a new
+    /// [`RollingFileAppender`] that writes to files in the provided directory.
+    /// By default, log files will never be rotated and compression will not be
+    /// enabled. A rotation policy can be added to the builder using the
+    /// [`rotation`] method. When the "compression" feature flag is enabled,
+    /// compression can be configured using the [`compression`] method.
     ///
-    /// Note that `compression` module is enabled by using an optional feature flag
-    /// `compression_gzip` (for gzip algorithm)
+    /// # Panics
     ///
-    // # Examples
-    // ```rust
-    // # #[cfg(feature = "gzip_compression")] {
-    // use tracing_appender::builder::RollingFileAppenderBuilder;
-    // use tracing_appender::compression::CompressionOption;
-    // use tracing_appender::rolling::Rotation;
-    // let builder = RollingFileAppenderBuilder::new("/var/tmp", "my-app")
-    //     .rotation(Rotation::DAILY)
-    //     .compression(CompressionOption::GzipFast);
-    // # }
-    // ```
+    /// This function panics if the provided log directory or log file prefix
+    /// are not valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// Building a `RollingFileAppender` with the default configuration:
+    ///
+    /// ```rust
+    /// use tracing_appender::rolling::Builder;
+    /// let appender = Builder::new("/var/tmp", "my-app")
+    ///     .build();
+    /// ```
+    ///
+    /// Enabling compression (needs a feature enabled `compression_gzip`):
+    ///
+    /// ```rust
+    /// #[cfg(feature = "compression_gzip")]
+    /// use tracing_appender::{
+    ///     rolling::{Builder, Rotation},
+    ///     rolling::compression::CompressionOption,
+    /// };
+    /// #[cfg(feature = "compression_gzip")]
+    /// let appender = Builder::new("/var/tmp", "my-app")
+    ///     .rotation(Rotation::DAILY)
+    ///     .compression(CompressionOption::GzipFast)
+    ///     .build();
+    /// ```
     pub fn new(log_directory: impl AsRef<Path>, log_filename_prefix: impl AsRef<Path>) -> Self {
         let log_directory = log_directory
             .as_ref()
@@ -130,7 +150,7 @@ impl Builder {
                 log_directory: self.log_directory,
                 log_filename_prefix: self.log_filename_prefix,
                 next_date,
-                rotation: rotation.clone(),
+                rotation,
                 #[cfg(feature = "compression_gzip")]
                 compression: self.compression,
             },
@@ -140,7 +160,7 @@ impl Builder {
 
     fn create_file_writer(&self, filename: &str) -> RwLock<WriterChannel> {
         let a = RwLock::new(WriterChannel::File(
-            create_writer_file(self.log_directory.as_str(), &filename)
+            create_writer_file(self.log_directory.as_str(), filename)
                 .expect("failed to create appender"),
         ));
         a
