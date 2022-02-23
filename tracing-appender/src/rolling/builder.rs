@@ -15,10 +15,9 @@ use {
 
 use crate::writer::WriterChannel;
 
-/// Struct for keeping temporary values of `RollingFileAppender`.
+/// A builder for configuring new [`RollingFileAppender`]s. 
 ///
-/// Note that `log_directory` and `log_filename_prefix` are obligatory parameters and should
-/// be passed into the constructor of `RollingFileAppenderBuilder`.
+/// This can be used to configure additional options, such as adding compression.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RollingFileAppenderBuilder {
     log_directory: String,
