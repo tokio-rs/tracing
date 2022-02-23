@@ -4,6 +4,10 @@
 		{
 			"type": "cargo",
 			"command": "build",
+			"args": [
+				"--features",
+				"compression"
+			],
 			"problemMatcher": [
 				"$rustc"
 			],

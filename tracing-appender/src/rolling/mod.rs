@@ -27,7 +27,7 @@
 //! # }
 //! ```
 mod builder;
-pub use crate::rolling::builder::RollingFileAppenderBuilder;
+pub use crate::rolling::builder::Builder;
 #[cfg(feature = "compression_gzip")]
 use crate::rolling::compression::CompressionConfig;
 use crate::sync::{RwLock, RwLockReadGuard};
@@ -146,7 +146,7 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
-        RollingFileAppenderBuilder::new(directory, file_name_prefix)
+        Builder::new(directory, file_name_prefix)
             .rotation(rotation)
             .build()
     }

@@ -9,17 +9,16 @@ use std::sync::atomic::AtomicUsize;
 use time::OffsetDateTime;
 
 #[cfg(feature = "compression_gzip")]
-use {
-    crate::rolling::compression::CompressionConfig, crate::rolling::compression::CompressionOption,
-};
+use crate::rolling::compression::{CompressionConfig, CompressionOption};
 
 use crate::writer::WriterChannel;
 
-/// A builder for configuring new [`RollingFileAppender`]s. 
+/// A builder for configuring new [`RollingFileAppender`]s.
 ///
-/// This can be used to configure additional options, such as adding compression.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RollingFileAppenderBuilder {
+/// Note that `log_directory` and `log_filename_prefix` are obligatory parameters and should
+/// be passed into the constructor of `RollingFileAppenderBuilder`.
+#[derive(Debug, Clone)]
+pub struct Builder {
     log_directory: String,
     log_filename_prefix: String,
     rotation: Option<Rotation>,
@@ -27,7 +26,7 @@ pub struct RollingFileAppenderBuilder {
     compression: Option<CompressionConfig>,
 }
 
-impl RollingFileAppenderBuilder {
+impl Builder {
     /// Creates a new `RollingFileAppnderBuilder`
     ///
     /// It was introduced to open up the possibility to use `compression` without
@@ -58,7 +57,7 @@ impl RollingFileAppenderBuilder {
             .to_str()
             .expect("`log_directory` must not contain invalid UTF-8 characters")
             .to_string();
-        RollingFileAppenderBuilder {
+        Builder {
             log_directory,
             log_filename_prefix,
             rotation: None,
@@ -98,7 +97,7 @@ impl RollingFileAppenderBuilder {
     /// Returns a new [`RollingFileAppender`] with the configuration defined by this builder.
     pub fn build(self) -> RollingFileAppender {
         let now = OffsetDateTime::now_utc();
-        let rotation = self.rotation.cloned().unwrap_or(Rotation::NEVER);
+        let rotation = self.rotation.clone().unwrap_or(Rotation::NEVER);
         let extension = self.get_extension();
         let filename = rotation.join_date(self.log_filename_prefix.as_str(), &now, extension);
         let next_date = rotation.next_date(&now);

@@ -171,7 +171,7 @@ impl Into<CompressionConfig> for CompressionOption {
 mod test {
     use crate::rolling::compression::CompressionOption;
     use crate::rolling::test::write_to_log;
-    use crate::rolling::{RollingFileAppenderBuilder, Rotation};
+    use crate::rolling::{Builder, Rotation};
     use flate2::read::GzDecoder;
     use std::fs;
     use std::io::Read;
@@ -185,7 +185,9 @@ mod test {
             let bytes = fs::read(&path).expect("Cannot read bytes from compressed log");
             let mut decoder = GzDecoder::new(&bytes[..]);
             let mut s = String::new();
-            let _ = decoder.read_to_string(&mut s);
+            let r = decoder
+                .read_to_string(&mut s)
+                .expect("Cannot decode compressed log file");
             if s.as_str() == expected_value {
                 return true;
             }
@@ -198,13 +200,14 @@ mod test {
     fn test_compressed_appender() {
         let file_prefix = "my-app-compressed-log";
         let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let mut appender = RollingFileAppenderBuilder::new(directory.path(), file_prefix)
+        let mut appender = Builder::new(directory.path(), file_prefix)
             .rotation(Rotation::DAILY)
             .compression(CompressionOption::GzipFast)
             .build();
 
         let expected_value = "Hello";
         write_to_log(&mut appender, expected_value);
+        drop(appender);
         assert!(find_str_in_compressed_log(directory.path(), expected_value));
 
         directory
