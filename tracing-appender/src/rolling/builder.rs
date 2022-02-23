@@ -68,7 +68,9 @@ impl RollingFileAppenderBuilder {
         }
     }
 
-    /// Sets Rotation
+    /// Configures when log files will be rotated.
+    ///
+    /// By default, no rotation will occur.
     pub fn rotation(mut self, rotation: Rotation) -> Self {
         self.rotation = Some(rotation);
         self
