@@ -51,12 +51,12 @@ impl RollingFileAppenderBuilder {
         let log_directory = log_directory
             .as_ref()
             .to_str()
-            .expect("Cannot convert log_directory Path to str")
+            .expect("`log_directory` must not contain invalid UTF-8 characters")
             .to_string();
         let log_filename_prefix = log_filename_prefix
             .as_ref()
             .to_str()
-            .expect("Cannot convert log_filename_prefix Path to str")
+            .expect("`log_directory` must not contain invalid UTF-8 characters")
             .to_string();
         RollingFileAppenderBuilder {
             log_directory,
