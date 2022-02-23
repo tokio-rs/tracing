@@ -63,7 +63,6 @@ impl RollingFileAppenderBuilder {
             log_filename_prefix,
             rotation: None,
             #[cfg(feature = "compression_gzip")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "compression_gzip")))]
             compression: None,
         }
     }
@@ -96,10 +95,10 @@ impl RollingFileAppenderBuilder {
         None
     }
 
-    /// Builds an instance of `RollingFileAppender` using previously defined attributes.
+    /// Returns a new [`RollingFileAppender`] with the configuration defined by this builder.
     pub fn build(self) -> RollingFileAppender {
         let now = OffsetDateTime::now_utc();
-        let rotation = self.rotation.clone().unwrap_or(Rotation::NEVER).clone();
+        let rotation = self.rotation.cloned().unwrap_or(Rotation::NEVER);
         let extension = self.get_extension();
         let filename = rotation.join_date(self.log_filename_prefix.as_str(), &now, extension);
         let next_date = rotation.next_date(&now);
