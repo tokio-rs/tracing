@@ -9,6 +9,28 @@
 //! change at runtime. Note that this layer introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
 //!
+//! # Examples
+//!
+//! Reloading a [`Filtered`](crate::filter::Filtered) layer to change the filter at runtime.
+//!
+//! ```
+//! # use tracing::info;
+//! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+//! # fn main() {
+//! let filtered_layer = fmt::Layer::default().with_filter(filter::LevelFilter::WARN);
+//! let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
+//! #
+//! # // specifying the Registry type is required
+//! # let _: &reload::Handle<filter::Filtered<fmt::Layer<Registry>,
+//! # filter::LevelFilter, Registry>,Registry>
+//! # = &reload_handle;
+//! #
+//! info!("This will be ignored");
+//! reload_handle.modify(|layer| *layer.filter_mut() = filter::LevelFilter::INFO);
+//! info!("This will be logged");
+//! # }
+//! ```
+//!
 //! [`Layer` type]: struct.Layer.html
 //! [`Layer` trait]: ../layer/trait.Layer.html
 use crate::layer;
@@ -36,7 +58,7 @@ pub struct Layer<L, S> {
     _s: PhantomData<fn(S)>,
 }
 
-/// Allows reloading the state of an associated `Layer`.
+/// Allows reloading the state of an associated [`Layer`](crate::layer::Layer).
 #[derive(Debug)]
 pub struct Handle<L, S> {
     inner: Weak<RwLock<L>>,
@@ -150,6 +172,11 @@ where
     S: Subscriber,
 {
     /// Replace the current layer with the provided `new_layer`.
+    ///
+    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
+    /// at runtime via the [`Handle::reload`] method.
+    /// Use the [`Handle::modify`] method to change the filter instead.
+    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
     pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
         self.modify(|layer| {
             *layer = new_layer.into();
