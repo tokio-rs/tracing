@@ -1,3 +1,31 @@
+# 0.2.1 (February 28, 2022)
+
+This release adds an implementation of the `MakeWriter` trait for
+`RollingFileAppender`, allowing it to be used without wrapping in a
+`NonBlocking` writer.
+
+This release increases the minimum supported Rust version to 1.53.0.
+
+### Added
+
+- **rolling**: Added `MakeWriter` implementation for `RollingFileAppender`
+  ([#1760])
+
+### Changed
+
+- Updated minimum supported Rust version (MSRV) to 1.53.0 ([#1851])
+- `parking_lot`: updated to v0.12 ([#1878])
+
+### Fixed
+
+- Fixed several documentation typos and issues ([#1780], [d868054], [#1943])
+
+[#1760]: https://github.com/tokio-rs/tracing/pull/1760
+[#1851]: https://github.com/tokio-rs/tracing/pull/1851
+[#1878]: https://github.com/tokio-rs/tracing/pull/1878
+[#1943]: https://github.com/tokio-rs/tracing/pull/1943
+[d868054]: https://github.com/tokio-rs/tracing/commit/d8680547b509978c7113c8f7e19e9b00c789c698
+
 # 0.2.0 (October 22, 2021)
 
 This breaking change release adds support for the new v0.3.x series of
@@ -10,9 +38,11 @@ This release increases the minimum supported Rust version to 1.51.0.
 - Updated `tracing-subscriber` to v0.3.x ([#1677])
 - Changed `NonBlocking::error_counter` to return an `ErrorCounter` type, rather
   than an `Arc<AtomicU64>` ([#1675])
+
 ### Changed
 
 - Updated `tracing-subscriber` to v0.3.x ([#1677])
+
 ### Fixed
 
 - **non-blocking**: Fixed compilation on 32-bit targets ([#1675])
