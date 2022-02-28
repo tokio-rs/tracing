@@ -1129,8 +1129,7 @@ where
         for span in ctx
             .event_scope()
             .into_iter()
-            .map(crate::registry::Scope::from_root)
-            .flatten()
+            .flat_map(crate::registry::Scope::from_root)
         {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
