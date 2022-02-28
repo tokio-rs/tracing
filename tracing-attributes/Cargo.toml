@@ -40,7 +40,7 @@ async-await = []
 
 [dependencies]
 proc-macro2 = "1"
-syn = { version = "1", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+syn = { version = "1.0.43", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1"
 
 [dev-dependencies]
