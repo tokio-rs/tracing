@@ -1092,12 +1092,7 @@ where
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        for span in ctx
-            .event_scope()
-            .into_iter()
-            .map(Scope::from_root)
-            .flatten()
-        {
+        for span in ctx.event_scope().into_iter().flat_map(Scope::from_root) {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
