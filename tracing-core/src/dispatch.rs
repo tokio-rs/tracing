@@ -147,10 +147,12 @@ use core::{
 };
 
 #[cfg(feature = "std")]
+use lazy_static::lazy_static;
+#[cfg(feature = "std")]
 use std::{
     cell::{Cell, RefCell, RefMut},
     error,
-    sync::Weak,
+    sync::{PoisonError, RwLock, Weak},
 };
 
 #[cfg(feature = "alloc")]
@@ -185,7 +187,7 @@ thread_local! {
 }
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
-static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+static GLOBAL_STATE: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
 #[cfg(feature = "std")]
 static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -193,6 +195,8 @@ static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
+#[cfg(feature = "std")]
+const IS_GLOBAL_SCOPED: usize = 3;
 
 static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
@@ -200,6 +204,12 @@ static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
     #[cfg(not(feature = "alloc"))]
     collector: &NO_COLLECTOR,
 };
+
+#[cfg(feature = "std")]
+lazy_static! {
+    static ref GLOBAL_SCOPED: RwLock<Dispatch> = RwLock::new(NONE.clone());
+}
+
 static NONE: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
     collector: Kind::Global(&NO_COLLECTOR),
@@ -234,7 +244,17 @@ struct Entered<'a>(&'a State);
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
-pub struct DefaultGuard(Option<Dispatch>);
+pub struct DefaultGuard(GuardInner);
+
+#[cfg(feature = "std")]
+#[derive(Debug)]
+enum GuardInner {
+    Local(Option<Dispatch>),
+    Global {
+        prev: Option<Dispatch>,
+        state: usize,
+    },
+}
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -302,7 +322,7 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
     // `current`—now the prior value—has been returned in the `Ok()` branch.
-    if GLOBAL_INIT
+    if GLOBAL_STATE
         .compare_exchange(
             UNINITIALIZED,
             INITIALIZING,
@@ -330,12 +350,32 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
         unsafe {
             GLOBAL_DISPATCH = Dispatch { collector };
         }
-        GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
+        GLOBAL_STATE.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
         Ok(())
     } else {
         Err(SetGlobalDefaultError { _no_construct: () })
     }
+}
+
+/// XXX eliza docs
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub fn set_global_scoped(dispatcher: Dispatch) -> DefaultGuard {
+    let state = GLOBAL_STATE.swap(IS_GLOBAL_SCOPED, Ordering::SeqCst);
+    let mut lock = GLOBAL_SCOPED
+        .write()
+        .expect("global dispatch state poisoned");
+    let prev = std::mem::replace(&mut *lock, dispatcher);
+    let prev = if state == IS_GLOBAL_SCOPED {
+        Some(prev)
+    } else {
+        None
+    };
+
+    EXISTS.store(true, Ordering::Release);
+
+    DefaultGuard(GuardInner::Global { prev, state })
 }
 
 /// Returns true if a `tracing` dispatcher has ever been set.
@@ -380,7 +420,7 @@ where
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped dispatcher has been set; just use the global
         // default.
-        return f(get_global());
+        return f(&get_global());
     }
 
     get_default_slow(f)
@@ -405,19 +445,14 @@ where
 
     CURRENT_STATE
         .try_with(|state| {
-            if state.can_enter.replace(false) {
-                let _guard = Entered(&state.can_enter);
-
-                let mut default = state.default.borrow_mut();
-
-                if default.is::<NoCollector>() {
-                    // don't redo this call on the next check
-                    *default = get_global().clone();
-                }
-                return f(&*default);
+            if let Some(entered) = state.enter() {
+                return match entered.current() {
+                    Some(ref current) => f(&*current),
+                    None => f(&get_global()),
+                };
+            } else {
+                f(&NONE)
             }
-
-            f(&Dispatch::none())
         })
         .unwrap_or_else(|_| f(&Dispatch::none()))
 }
@@ -433,10 +468,19 @@ where
 #[doc(hidden)]
 #[inline(never)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
+        // fast path if no scoped dispatcher has been set; just use the global
+        // default.
+        return Some(f(&get_global()));
+    }
+
     CURRENT_STATE
         .try_with(|state| {
             let entered = state.enter()?;
-            Some(f(&*entered.current()))
+            match entered.current() {
+                Some(ref current) => Some(f(&*current)),
+                None => Some(f(&get_global())),
+            }
         })
         .ok()?
 }
@@ -462,14 +506,19 @@ where
 }
 
 #[inline(always)]
-pub(crate) fn get_global() -> &'static Dispatch {
-    if GLOBAL_INIT.load(Ordering::Acquire) != INITIALIZED {
-        return &NONE;
-    }
-    unsafe {
-        // This is safe given the invariant that setting the global dispatcher
-        // also sets `GLOBAL_INIT` to `INITIALIZED`.
-        &GLOBAL_DISPATCH
+pub(crate) fn get_global() -> Dispatch {
+    match GLOBAL_STATE.load(Ordering::Acquire) {
+        INITIALIZED => unsafe {
+            // This is safe given the invariant that setting the global dispatcher
+            // also sets `GLOBAL_INIT` to `INITIALIZED`.
+            GLOBAL_DISPATCH.clone()
+        },
+        #[cfg(feature = "std")]
+        IS_GLOBAL_SCOPED => GLOBAL_SCOPED
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone(),
+        _ => NONE.clone(),
     }
 }
 
@@ -892,7 +941,7 @@ impl State {
             .ok();
         EXISTS.store(true, Ordering::Release);
         SCOPED_COUNT.fetch_add(1, Ordering::Release);
-        DefaultGuard(prior)
+        DefaultGuard(GuardInner::Local(prior))
     }
 
     #[inline]
@@ -910,15 +959,14 @@ impl State {
 #[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
-    fn current(&self) -> RefMut<'a, Dispatch> {
-        let mut default = self.0.default.borrow_mut();
+    fn current(&self) -> Option<RefMut<'a, Dispatch>> {
+        let default = self.0.default.borrow_mut();
 
         if default.is::<NoCollector>() {
-            // don't redo this call on the next check
-            *default = get_global().clone();
+            return None;
         }
 
-        default
+        Some(default)
     }
 }
 
@@ -936,15 +984,35 @@ impl<'a> Drop for Entered<'a> {
 impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
-        SCOPED_COUNT.fetch_sub(1, Ordering::Release);
-        if let Some(dispatch) = self.0.take() {
-            // Replace the dispatcher and then drop the old one outside
-            // of the thread-local context. Dropping the dispatch may
-            // lead to the drop of a collector which, in the process,
-            // could then also attempt to access the same thread local
-            // state -- causing a clash.
-            let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
-            drop(prev)
+        match self.0 {
+            GuardInner::Local(ref mut dispatch) => {
+                SCOPED_COUNT.fetch_sub(1, Ordering::Release);
+                if let Some(dispatch) = dispatch.take() {
+                    // Replace the dispatcher and then drop the old one outside
+                    // of the thread-local context. Dropping the dispatch may
+                    // lead to the drop of a collector which, in the process,
+                    // could then also attempt to access the same thread local
+                    // state -- causing a clash.
+                    let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
+                    drop(prev)
+                }
+            }
+            GuardInner::Global {
+                ref mut prev,
+                state,
+            } => {
+                *GLOBAL_SCOPED
+                    .write()
+                    .unwrap_or_else(PoisonError::into_inner) =
+                    prev.take().unwrap_or_else(|| NONE.clone());
+                let did_fetch_add_ok = GLOBAL_STATE.compare_exchange(
+                    IS_GLOBAL_SCOPED,
+                    state,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                );
+                debug_assert!(!std::thread::panicking() && did_fetch_add_ok.is_ok());
+            }
         }
     }
 }
