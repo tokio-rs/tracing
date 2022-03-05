@@ -74,7 +74,7 @@ mod socket;
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target. Enclosing spans are numbered counting up from
 /// the root, and their fields and metadata are included in fields prefixed by `Sn_` where `n` is
-/// that number.
+/// that number. Prefixing user-defined span fields may be disabled.
 ///
 /// User-defined fields other than the event `message` field have a prefix applied by default to
 /// prevent collision with standard fields.
@@ -84,6 +84,7 @@ pub struct Subscriber {
     #[cfg(unix)]
     socket: UnixDatagram,
     field_prefix: Option<String>,
+    span_field_prefix: Option<String>,
     syslog_identifier: String,
 }
 
@@ -102,6 +103,7 @@ impl Subscriber {
             let sub = Self {
                 socket,
                 field_prefix: Some("F".into()),
+                span_field_prefix: Some("S".into()),
                 syslog_identifier: std::env::current_exe()
                     .ok()
                     .as_ref()
@@ -126,6 +128,13 @@ impl Subscriber {
     /// field. Defaults to `Some("F")`.
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
+        self
+    }
+
+    /// Sets the prefix to apply to names of user-defined span fields.
+    /// Defaults to `Some("S")`.
+    pub fn with_span_field_prefix(mut self, x: Option<String>) -> Self {
+        self.span_field_prefix = x;
         self
     }
 
@@ -224,7 +233,8 @@ where
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
             depth,
-            prefix: self.field_prefix.as_ref().map(|x| &x[..]),
+            field_prefix: self.field_prefix.as_deref(),
+            span_field_prefix: self.span_field_prefix.as_deref(),
         });
 
         span.extensions_mut().insert(SpanFields(buf));
@@ -238,7 +248,8 @@ where
         values.record(&mut SpanVisitor {
             buf,
             depth,
-            prefix: self.field_prefix.as_ref().map(|x| &x[..]),
+            field_prefix: self.field_prefix.as_deref(),
+            span_field_prefix: self.span_field_prefix.as_deref(),
         });
     }
 
@@ -264,7 +275,7 @@ where
 
         event.record(&mut EventVisitor::new(
             &mut buf,
-            self.field_prefix.as_ref().map(|x| &x[..]),
+            self.field_prefix.as_deref(),
         ));
 
         // At this point we can't handle the error anymore so just ignore it.
@@ -277,16 +288,19 @@ struct SpanFields(Vec<u8>);
 struct SpanVisitor<'a> {
     buf: &'a mut Vec<u8>,
     depth: usize,
-    prefix: Option<&'a str>,
+    field_prefix: Option<&'a str>,
+    span_field_prefix: Option<&'a str>,
 }
 
 impl SpanVisitor<'_> {
     fn put_span_prefix(&mut self) {
-        write!(self.buf, "S{}", self.depth).unwrap();
-        if let Some(prefix) = self.prefix {
-            self.buf.extend_from_slice(prefix.as_bytes());
+        if let Some(span_prefix) = self.span_field_prefix {
+            write!(self.buf, "{}{}", span_prefix, self.depth).unwrap();
+            if let Some(prefix) = self.field_prefix {
+                self.buf.extend_from_slice(prefix.as_bytes());
+            }
+            self.buf.push(b'_');
         }
-        self.buf.push(b'_');
     }
 }
 
