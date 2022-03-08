@@ -770,7 +770,6 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     /// [`try_close`]: super::collect::Collect::try_close
     /// [`new_span`]: super::collect::Collect::new_span
-    #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.collector().try_close(id)
     }

@@ -1425,6 +1425,7 @@ impl<'a> From<&'a EnteredSpan> for Option<Id> {
 }
 
 impl Drop for Span {
+    #[inline(always)]
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
@@ -1434,15 +1435,15 @@ impl Drop for Span {
             collector.try_close(id.clone());
         }
 
-        if let Some(_meta) = self.meta {
-            if_log_enabled! { crate::Level::TRACE, {
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(meta) = self.meta {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
                     format_args!("-- {}", _meta.name()),
                 );
-            }}
-        }
+            }
+        }}
     }
 }
 
