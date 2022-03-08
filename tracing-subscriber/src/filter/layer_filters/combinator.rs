@@ -317,6 +317,7 @@ where
         // If either hint is `None`, return `None`. Otherwise, return the less restrictive.
         Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
     }
+    
     #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
