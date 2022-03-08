@@ -11,9 +11,29 @@
 //!
 //! # Examples
 //!
-//! Reloading a [`Filtered`](crate::filter::Filtered) layer to change the filter at runtime.
-//!
+//! Reloading a global filtering layer:
+//! ```rust
+//! # use tracing::info;
+//! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+//! # fn main() {
+//! let filter = filter::LevelFilter::WARN;
+//! let (filter, reload_handle) = reload::Layer::new(filter);
+//! Registry::default()
+//!   .with(filter)
+//!   .with(fmt::Layer::default())
+//!   .init();
+//! #
+//! # // specifying the Registry type is required
+//! # let _: &reload::Handle<filter::LevelFilter ,Registry> = &reload_handle;
+//! #
+//! info!("This will be ignored");
+//! reload_handle.modify(|filter| *filter = filter::LevelFilter::INFO);
+//! info!("This will be logged");
+//! # }
 //! ```
+//!
+//! Reloading a [`Filtered`](crate::filter::Filtered) layer:
+//! ```rust
 //! # use tracing::info;
 //! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
 //! # fn main() {
@@ -25,6 +45,9 @@
 //! # filter::LevelFilter, Registry>,Registry>
 //! # = &reload_handle;
 //! #
+//! Registry::default()
+//!   .with(filtered_layer)
+//!   .init();
 //! info!("This will be ignored");
 //! reload_handle.modify(|layer| *layer.filter_mut() = filter::LevelFilter::INFO);
 //! info!("This will be logged");
