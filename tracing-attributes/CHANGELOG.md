@@ -1,3 +1,19 @@
+# 0.1.20 (March 8, 2022)
+
+### Fixed
+
+- Compilation failure with `--minimal-versions` due to a too-permissive `syn`
+  dependency ([#1960])
+
+### Changed
+
+- Bumped minimum supported Rust version (MSRV) to 1.49.0 ([#1913])
+
+Thanks to new contributor @udoprog for contributing to this release!
+
+[#1960]: https://github.com/tokio-rs/tracing/pull/1960
+[#1913]: https://github.com/tokio-rs/tracing/pull/1913
+
 # 0.1.19 (February 3, 2022)
 
 This release introduces a new `#[instrument(ret)]` argument to emit an event
