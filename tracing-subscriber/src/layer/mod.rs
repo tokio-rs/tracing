@@ -1057,6 +1057,10 @@ feature! {
 
         /// Notifies this filter that a new span was constructed with the given
         /// `Attributes` and `Id`.
+        ///
+        /// By default, this method does nothing. `Filter` implementations that
+        /// need to be notified when new spans are created can override this
+        /// method.
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
             let _ = (attrs, id, ctx);
         }
