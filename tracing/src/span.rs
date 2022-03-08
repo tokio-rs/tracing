@@ -1440,7 +1440,7 @@ impl Drop for Span {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", _meta.name()),
+                    format_args!("-- {}", meta.name()),
                 );
             }
         }}
