@@ -133,6 +133,7 @@ where
         cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
     }
 
+    #[inline]
     fn on_new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
@@ -143,16 +144,19 @@ where
         self.b.on_new_span(attrs, id, ctx)
     }
 
+    #[inline]
     fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
     }
 
+    #[inline]
     fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx.clone());
         self.b.on_exit(id, ctx);
     }
 
+    #[inline]
     fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
         self.a.on_close(id.clone(), ctx.clone());
         self.b.on_close(id, ctx);
