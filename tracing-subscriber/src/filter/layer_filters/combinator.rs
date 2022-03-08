@@ -1,7 +1,11 @@
 //! Filter combinators
 use crate::layer::{Context, Filter};
 use std::{cmp, fmt, marker::PhantomData};
-use tracing_core::{subscriber::Interest, LevelFilter, Metadata};
+use tracing_core::{
+    span::{Attributes, Id},
+    subscriber::Interest,
+    LevelFilter, Metadata,
+};
 
 /// Combines two [`Filter`]s so that spans and events are enabled if and only if
 /// *both* filters return `true`.
@@ -134,30 +138,25 @@ where
     }
 
     #[inline]
-    fn on_new_span(
-        &self,
-        attrs: &tracing_core::span::Attributes<'_>,
-        id: &tracing_core::span::Id,
-        ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx.clone());
         self.b.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         self.a.on_close(id.clone(), ctx.clone());
         self.b.on_close(id, ctx);
     }
@@ -319,30 +318,25 @@ where
         Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
     }
     #[inline]
-    fn on_new_span(
-        &self,
-        attrs: &tracing_core::span::Attributes<'_>,
-        id: &tracing_core::span::Id,
-        ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
     }
 
     #[inline]
-    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx.clone());
         self.b.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         self.a.on_close(id.clone(), ctx.clone());
         self.b.on_close(id, ctx);
     }
@@ -415,27 +409,22 @@ where
     }
 
     #[inline]
-    fn on_new_span(
-        &self,
-        attrs: &tracing_core::span::Attributes<'_>,
-        id: &tracing_core::span::Id,
-        ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx);
     }
 
     #[inline]
-    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
         self.a.on_close(id, ctx);
     }
 }
