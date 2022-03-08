@@ -457,7 +457,7 @@
 //!         .json()
 //!         .with_writer(Arc::new(file));
 //!     Some(json_log)
-//! } else {   
+//! } else {
 //!     None
 //! };
 //!
@@ -1054,6 +1054,21 @@ feature! {
         fn max_level_hint(&self) -> Option<LevelFilter> {
             None
         }
+
+        /// Notifies this filter that a new span was constructed with the given
+        /// `Attributes` and `Id`.
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+            let _ = (attrs, id, ctx);
+        }
+
+        /// Notifies this filter that a span with the given ID was entered.
+        fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+
+        /// Notifies this filter that the span with the given ID was exited.
+        fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+
+        /// Notifies this filter that the span with the given ID has been closed.
+        fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
     }
 }
 
