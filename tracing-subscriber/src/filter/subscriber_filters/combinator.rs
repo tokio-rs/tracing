@@ -1,7 +1,11 @@
 //! Filter combinators
 use crate::subscribe::{Context, Filter};
 use std::{cmp, fmt, marker::PhantomData};
-use tracing_core::{collect::Interest, LevelFilter, Metadata};
+use tracing_core::{
+    collect::Interest,
+    span::{Attributes, Id},
+    LevelFilter, Metadata,
+};
 
 /// Combines two [`Filter`]s so that spans and events are enabled if and only if
 /// *both* filters return `true`.
@@ -131,6 +135,30 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // If either hint is `None`, return `None`. Otherwise, return the most restrictive.
         cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_new_span(attrs, id, ctx.clone());
+        self.b.on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx.clone());
+        self.b.on_enter(id, ctx);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx.clone());
+        self.b.on_exit(id, ctx);
+    }
+
+    #[inline]
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        self.a.on_close(id.clone(), ctx.clone());
+        self.b.on_close(id, ctx);
     }
 }
 
@@ -289,6 +317,30 @@ where
         // If either hint is `None`, return `None`. Otherwise, return the less restrictive.
         Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
     }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_new_span(attrs, id, ctx.clone());
+        self.b.on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx.clone());
+        self.b.on_enter(id, ctx);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx.clone());
+        self.b.on_exit(id, ctx);
+    }
+
+    #[inline]
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        self.a.on_close(id.clone(), ctx.clone());
+        self.b.on_close(id, ctx);
+    }
 }
 
 impl<A, B, S> Clone for Or<A, B, S>
@@ -355,6 +407,26 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // TODO(eliza): figure this out???
         None
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_new_span(attrs, id, ctx);
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx);
+    }
+
+    #[inline]
+    fn on_close(&self, id: Id, ctx: Context<'_, S>) {
+        self.a.on_close(id, ctx);
     }
 }
 
