@@ -768,7 +768,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn enter(&self) -> Entered<'_> {
         self.do_enter();
         Entered {
@@ -882,7 +882,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
         EnteredSpan {
@@ -1021,7 +1021,7 @@ impl Span {
         self
     }
 
-    #[inline]
+    #[inline(always)]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
@@ -1038,7 +1038,7 @@ impl Span {
     //
     // Running this behaviour on drop rather than with an explicit function
     // call means that spans may still be exited when unwinding.
-    #[inline]
+    #[inline(always)]
     fn do_exit(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.exit(&inner.id);

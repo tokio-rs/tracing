@@ -691,7 +691,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`enter`]: super::collect::Collect::enter
-    #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.collector().enter(span);
     }
