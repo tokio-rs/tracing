@@ -1067,7 +1067,10 @@ feature! {
         /// Notifies this filter that the span with the given ID was exited.
         fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
-        /// Notifies this filter that the span with the given ID has been closed.
+        /// Notifies this filter that a span with the given ID has been closed.
+        ///
+        /// By default, this method does nothing. `Filter` implementations that
+        /// need to be notified when a span is closed can override this method.
         fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
     }
 }
