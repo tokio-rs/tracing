@@ -612,8 +612,9 @@ where
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, C>) {
         self.did_enable(|| {
-            self.subscriber
-                .on_new_span(attrs, id, cx.with_filter(self.id()));
+            let cx = cx.with_filter(self.id());
+            self.filter.on_new_span(attrs, id, cx.clone());
+            self.subscriber.on_new_span(attrs, id, cx);
         })
     }
 
@@ -644,19 +645,22 @@ where
 
     fn on_enter(&self, id: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.subscriber.on_enter(id, cx)
+            self.filter.on_enter(id, cx.clone());
+            self.subscriber.on_enter(id, cx);
         }
     }
 
     fn on_exit(&self, id: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.subscriber.on_exit(id, cx)
+            self.filter.on_enter(id, cx.clone());
+            self.subscriber.on_exit(id, cx);
         }
     }
 
     fn on_close(&self, id: span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(&id, self.id()) {
-            self.subscriber.on_close(id, cx)
+            self.filter.on_close(id.clone(), cx.clone());
+            self.subscriber.on_close(id, cx);
         }
     }
 
