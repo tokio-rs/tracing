@@ -1064,7 +1064,10 @@ feature! {
         /// Notifies this filter that a span with the given ID was entered.
         fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
-        /// Notifies this filter that the span with the given ID was exited.
+        /// Notifies this filter that a span with the given ID was exited.
+        ///
+        /// By default, this method does nothing. `Filter` implementations that
+        /// need to be notified when a span is exited can override this method.
         fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
 
         /// Notifies this filter that a span with the given ID has been closed.
