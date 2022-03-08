@@ -965,6 +965,40 @@ pub trait Filter<S> {
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
+
+    /// Notifies this filter that a new span was constructed with the given
+    /// `Attributes` and `Id`.
+    ///
+    /// By default, this method does nothing. `Filter` implementations that
+    /// need to be notified when new spans are created can override this
+    /// method.
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        let _ = (attrs, id, ctx);
+    }
+
+    /// Notifies this filter that a span with the given ID was entered.
+    ///
+    /// By default, this method does nothing. `Filter` implementations that
+    /// need to be notified when a span is entered can override this method.
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let _ = (id, ctx);
+    }
+
+    /// Notifies this filter that a span with the given ID was exited.
+    ///
+    /// By default, this method does nothing. `Filter` implementations that
+    /// need to be notified when a span is exited can override this method.
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let _ = (id, ctx);
+    }
+
+    /// Notifies this filter that a span with the given ID has been closed.
+    ///
+    /// By default, this method does nothing. `Filter` implementations that
+    /// need to be notified when a span is closed can override this method.
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        let _ = (id, ctx);
+    }
 }
 
 /// Extension trait adding a `with(Subscribe)` combinator to types implementing
