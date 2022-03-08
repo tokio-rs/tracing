@@ -691,7 +691,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`enter`]: super::collect::Collect::enter
-    #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.collector().enter(span);
     }
@@ -703,7 +702,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`exit`]: super::collect::Collect::exit
-    #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.collector().exit(span);
     }
@@ -771,7 +769,6 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     /// [`try_close`]: super::collect::Collect::try_close
     /// [`new_span`]: super::collect::Collect::new_span
-    #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.collector().try_close(id)
     }
