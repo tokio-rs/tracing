@@ -524,7 +524,6 @@ impl Dispatch {
     ///
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`enter`]: ../subscriber/trait.Subscriber.html#method.enter
-    #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.subscriber.enter(span);
     }
@@ -536,7 +535,6 @@ impl Dispatch {
     ///
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`exit`]: ../subscriber/trait.Subscriber.html#method.exit
-    #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.subscriber.exit(span);
     }
@@ -604,7 +602,6 @@ impl Dispatch {
     /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
     /// [`try_close`]: ../subscriber/trait.Subscriber.html#method.try_close
     /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
-    #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.subscriber.try_close(id)
     }
