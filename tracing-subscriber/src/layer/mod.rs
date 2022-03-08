@@ -1069,19 +1069,25 @@ feature! {
         ///
         /// By default, this method does nothing. `Filter` implementations that
         /// need to be notified when a span is entered can override this method.
-        fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            let _ = (id, ctx);
+        }
 
         /// Notifies this filter that a span with the given ID was exited.
         ///
         /// By default, this method does nothing. `Filter` implementations that
         /// need to be notified when a span is exited can override this method.
-        fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, S>) {}
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+            let _ = (id, ctx);
+        }
 
         /// Notifies this filter that a span with the given ID has been closed.
         ///
         /// By default, this method does nothing. `Filter` implementations that
         /// need to be notified when a span is closed can override this method.
-        fn on_close(&self, _id: span::Id, _ctx: Context<'_, S>) {}
+        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+            let _ = (id, ctx);
+        }
     }
 }
 
