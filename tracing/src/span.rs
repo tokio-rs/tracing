@@ -1535,14 +1535,14 @@ impl Deref for EnteredSpan {
 }
 
 impl<'a> Drop for Entered<'a> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
 }
 
 impl Drop for EnteredSpan {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }

@@ -702,7 +702,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`exit`]: super::collect::Collect::exit
-    #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.collector().exit(span);
     }
