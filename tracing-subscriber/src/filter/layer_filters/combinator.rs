@@ -132,6 +132,31 @@ where
         // If either hint is `None`, return `None`. Otherwise, return the most restrictive.
         cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
     }
+
+    fn on_new_span(
+        &self,
+        attrs: &tracing_core::span::Attributes<'_>,
+        id: &tracing_core::span::Id,
+        ctx: Context<'_, S>,
+    ) {
+        self.a.on_new_span(attrs, id, ctx.clone());
+        self.b.on_new_span(attrs, id, ctx)
+    }
+
+    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx.clone());
+        self.b.on_enter(id, ctx);
+    }
+
+    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx.clone());
+        self.b.on_exit(id, ctx);
+    }
+
+    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_close(id.clone(), ctx.clone());
+        self.b.on_close(id, ctx);
+    }
 }
 
 impl<A, B, S> Clone for And<A, B, S>
@@ -289,6 +314,31 @@ where
         // If either hint is `None`, return `None`. Otherwise, return the less restrictive.
         Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
     }
+
+    fn on_new_span(
+        &self,
+        attrs: &tracing_core::span::Attributes<'_>,
+        id: &tracing_core::span::Id,
+        ctx: Context<'_, S>,
+    ) {
+        self.a.on_new_span(attrs, id, ctx.clone());
+        self.b.on_new_span(attrs, id, ctx)
+    }
+
+    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx.clone());
+        self.b.on_enter(id, ctx);
+    }
+
+    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx.clone());
+        self.b.on_exit(id, ctx);
+    }
+
+    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_close(id.clone(), ctx.clone());
+        self.b.on_close(id, ctx);
+    }
 }
 
 impl<A, B, S> Clone for Or<A, B, S>
@@ -355,6 +405,27 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // TODO(eliza): figure this out???
         None
+    }
+
+    fn on_new_span(
+        &self,
+        attrs: &tracing_core::span::Attributes<'_>,
+        id: &tracing_core::span::Id,
+        ctx: Context<'_, S>,
+    ) {
+        self.a.on_new_span(attrs, id, ctx);
+    }
+
+    fn on_enter(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_enter(id, ctx);
+    }
+
+    fn on_exit(&self, id: &tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_exit(id, ctx);
+    }
+
+    fn on_close(&self, id: tracing_core::span::Id, ctx: Context<'_, S>) {
+        self.a.on_close(id, ctx);
     }
 }
 
