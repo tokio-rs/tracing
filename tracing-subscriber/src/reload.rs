@@ -11,7 +11,7 @@
 //!
 //! # Examples
 //!
-//! Reloading a global filtering layer:
+//! Reloading a [global filtering](crate::layer#global-filtering) layer:
 //! ```rust
 //! # use tracing::info;
 //! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
