@@ -16,7 +16,6 @@
 //! ```rust
 //! # use tracing::info;
 //! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
-//! # fn main() {
 //! let filter = filter::LevelFilter::WARN;
 //! let (filter, reload_handle) = reload::Layer::new(filter);
 //! Registry::default()
@@ -30,14 +29,12 @@
 //! info!("This will be ignored");
 //! reload_handle.modify(|filter| *filter = filter::LevelFilter::INFO);
 //! info!("This will be logged");
-//! # }
 //! ```
 //!
 //! Reloading a [`Filtered`](crate::filter::Filtered) layer:
 //! ```rust
 //! # use tracing::info;
 //! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
-//! # fn main() {
 //! let filtered_layer = fmt::Layer::default().with_filter(filter::LevelFilter::WARN);
 //! let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
 //! #
@@ -52,7 +49,6 @@
 //! info!("This will be ignored");
 //! reload_handle.modify(|layer| *layer.filter_mut() = filter::LevelFilter::INFO);
 //! info!("This will be logged");
-//! # }
 //! ```
 //!
 //! [`Layer` type]: struct.Layer.html
