@@ -32,6 +32,7 @@
 //! ```
 //!
 //! Reloading a [`Filtered`](crate::filter::Filtered) layer:
+//!
 //! ```rust
 //! # use tracing::info;
 //! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
