@@ -74,7 +74,7 @@ mod socket;
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target. Enclosing spans are numbered counting up from
 /// the root, and their fields and metadata are included in fields prefixed by `Sn_` where `n` is
-/// that number. The prefix for user-defined span fields may be changed or  disabled using the 
+/// that number. The prefix for user-defined span fields may be changed or  disabled using the
 /// [`with_span_field_prefix`] method.
 ///
 /// [`with_span_field_prefix`]: Subscriber::with_span_field_prefix
@@ -138,6 +138,9 @@ impl Subscriber {
     ///
     /// By default, this is `Some("S")`. Setting the span field prefix to
     /// `None` will disable the prefix.
+    /// When set to `Some` prefix will be build as `<span_field_prefix><SPAN_DEPTH>_` e.g. `S0_`.
+    /// NOTE: Span field prefix should satisfy requirements of journald field names.
+    /// Setting this for example to empty string `Some("")` may cause unexpected behaviour.
     pub fn with_span_field_prefix(mut self, x: Option<String>) -> Self {
         self.span_field_prefix = x;
         self
@@ -301,9 +304,11 @@ impl SpanVisitor<'_> {
     fn put_span_prefix(&mut self) {
         if let Some(span_prefix) = self.span_field_prefix {
             write!(self.buf, "{}{}", span_prefix, self.depth).unwrap();
-            if let Some(prefix) = self.field_prefix {
-                self.buf.extend_from_slice(prefix.as_bytes());
-            }
+        }
+        if let Some(prefix) = self.field_prefix {
+            self.buf.extend_from_slice(prefix.as_bytes());
+        }
+        if self.span_field_prefix.is_some() || self.field_prefix.is_some() {
             self.buf.push(b'_');
         }
     }

@@ -46,7 +46,7 @@ impl PartialEq<&str> for Field {
         match self {
             Field::Text(s) => s == other,
             Field::Binary(_) => false,
-            Field::Array(_) => false
+            Field::Array(_) => false,
         }
     }
 }
@@ -56,7 +56,7 @@ impl PartialEq<[u8]> for Field {
         match self {
             Field::Text(s) => s.as_bytes() == other,
             Field::Binary(data) => data == other,
-            Field::Array(_) => false
+            Field::Array(_) => false,
         }
     }
 }
@@ -66,7 +66,7 @@ impl PartialEq<Vec<&str>> for Field {
         match self {
             Field::Text(_) => false,
             Field::Binary(_) => false,
-            Field::Array(data) => data == other
+            Field::Array(data) => data == other,
         }
     }
 }
@@ -228,7 +228,8 @@ fn span_metadata() {
 
 #[test]
 fn no_span_field_prefix() {
-    let sub = Subscriber::new().unwrap()
+    let sub = Subscriber::new()
+        .unwrap()
         .with_field_prefix(None)
         .with_span_field_prefix(None);
     with_journald_subscriber(sub, || {
@@ -251,7 +252,8 @@ fn no_span_field_prefix() {
 
 #[test]
 fn spans_field_collision() {
-    let sub = Subscriber::new().unwrap()
+    let sub = Subscriber::new()
+        .unwrap()
         .with_field_prefix(None)
         .with_span_field_prefix(None);
     with_journald_subscriber(sub, || {
