@@ -74,7 +74,10 @@ mod socket;
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target. Enclosing spans are numbered counting up from
 /// the root, and their fields and metadata are included in fields prefixed by `Sn_` where `n` is
-/// that number. Prefixing user-defined span fields may be disabled.
+/// that number. The prefix for user-defined span fields may be changed or  disabled using the 
+/// [`with_span_field_prefix`] method.
+///
+/// [`with_span_field_prefix`]: Subscriber::with_span_field_prefix
 ///
 /// User-defined fields other than the event `message` field have a prefix applied by default to
 /// prevent collision with standard fields.
@@ -132,7 +135,9 @@ impl Subscriber {
     }
 
     /// Sets the prefix to apply to names of user-defined span fields.
-    /// Defaults to `Some("S")`.
+    ///
+    /// By default, this is `Some("S")`. Setting the span field prefix to
+    /// `None` will disable the prefix.
     pub fn with_span_field_prefix(mut self, x: Option<String>) -> Self {
         self.span_field_prefix = x;
         self
