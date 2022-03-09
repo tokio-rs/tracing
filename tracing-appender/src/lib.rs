@@ -161,6 +161,8 @@ mod worker;
 
 pub(crate) mod sync;
 
+mod writer;
+
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
 /// See the [`non_blocking` module's docs][mod@non_blocking]'s for more details.

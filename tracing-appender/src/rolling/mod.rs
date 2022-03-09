@@ -26,7 +26,12 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
+mod builder;
+pub use crate::rolling::builder::Builder;
+#[cfg(feature = "compression_gzip")]
+use crate::rolling::compression::CompressionConfig;
 use crate::sync::{RwLock, RwLockReadGuard};
+use crate::writer::WriterChannel;
 use std::{
     fmt::Debug,
     fs::{self, File, OpenOptions},
@@ -35,6 +40,9 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
+
+#[cfg(feature = "compression_gzip")]
+pub mod compression;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -83,7 +91,9 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 #[derive(Debug)]
 pub struct RollingFileAppender {
     state: Inner,
-    writer: RwLock<File>,
+    writer: RwLock<WriterChannel>,
+    #[cfg(features = "compression")]
+    compression: Option<CompressionConfig>,
 }
 
 /// A [writer] that writes to a rolling log file.
@@ -93,14 +103,16 @@ pub struct RollingFileAppender {
 /// [writer]: std::io::Write
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
-pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
+pub struct RollingWriter<'a>(RwLockReadGuard<'a, WriterChannel>);
 
 #[derive(Debug)]
-struct Inner {
+pub(crate) struct Inner {
     log_directory: String,
     log_filename_prefix: String,
     rotation: Rotation,
     next_date: AtomicUsize,
+    #[cfg(feature = "compression_gzip")]
+    compression: Option<CompressionConfig>,
 }
 
 // === impl RollingFileAppender ===
@@ -134,28 +146,9 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
-        let now = OffsetDateTime::now_utc();
-        let log_directory = directory.as_ref().to_str().unwrap();
-        let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
-
-        let filename = rotation.join_date(log_filename_prefix, &now);
-        let next_date = rotation.next_date(&now);
-        let writer = RwLock::new(
-            create_writer(log_directory, &filename).expect("failed to create appender"),
-        );
-        Self {
-            state: Inner {
-                log_directory: log_directory.to_string(),
-                log_filename_prefix: log_filename_prefix.to_string(),
-                next_date: AtomicUsize::new(
-                    next_date
-                        .map(|date| date.unix_timestamp() as usize)
-                        .unwrap_or(0),
-                ),
-                rotation,
-            },
-            writer,
-        }
+        Builder::new(directory, file_name_prefix)
+            .rotation(rotation)
+            .build()
     }
 }
 
@@ -421,7 +414,12 @@ impl Rotation {
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
+    pub(crate) fn join_date(
+        &self,
+        filename: &str,
+        date: &OffsetDateTime,
+        extension: Option<String>,
+    ) -> String {
         match *self {
             Rotation::MINUTELY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
@@ -430,7 +428,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
             Rotation::HOURLY => {
                 let format = format_description::parse("[year]-[month]-[day]-[hour]")
@@ -439,7 +437,7 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
             Rotation::DAILY => {
                 let format = format_description::parse("[year]-[month]-[day]")
@@ -447,9 +445,23 @@ impl Rotation {
                 let date = date
                     .format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
+                Rotation::format_params(filename, extension, date.as_str())
             }
-            Rotation::NEVER => filename.to_string(),
+            Rotation::NEVER => {
+                if let Some(extension) = extension {
+                    format!("{}.{}", filename.to_string(), extension)
+                } else {
+                    filename.to_string()
+                }
+            }
+        }
+    }
+
+    fn format_params(filename: &str, extension: Option<String>, date: &str) -> String {
+        if let Some(extension) = extension {
+            format!("{}.{}.{}", filename, date, extension)
+        } else {
+            format!("{}.{}", filename, date)
         }
     }
 }
@@ -469,17 +481,29 @@ impl io::Write for RollingWriter<'_> {
 // === impl Inner ===
 
 impl Inner {
-    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
+    fn refresh_writer(&self, now: OffsetDateTime, file: &mut WriterChannel) {
         debug_assert!(self.should_rollover(now));
 
-        let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
+        let filename = self
+            .rotation
+            .join_date(&self.log_filename_prefix, &now, None);
 
-        match create_writer(&self.log_directory, &filename) {
-            Ok(new_file) => {
+        #[cfg(feature = "compression_gzip")]
+        let writer = WriterChannel::new(&self.log_directory, &filename, self.compression.clone());
+
+        #[cfg(not(feature = "compression_gzip"))]
+        let writer = WriterChannel::new(&self.log_directory, &filename);
+
+        Self::refresh_writer_channel(file, writer);
+    }
+
+    fn refresh_writer_channel(file: &mut WriterChannel, writer: io::Result<WriterChannel>) {
+        match writer {
+            Ok(new_writer) => {
                 if let Err(err) = file.flush() {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
-                *file = new_file;
+                *file = new_writer;
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }
@@ -511,7 +535,7 @@ impl Inner {
     }
 }
 
-fn create_writer(directory: &str, filename: &str) -> io::Result<File> {
+pub(crate) fn create_writer_file(directory: &str, filename: &str) -> io::Result<File> {
     let path = Path::new(directory).join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);
@@ -548,7 +572,7 @@ mod test {
         false
     }
 
-    fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
+    pub(crate) fn write_to_log(appender: &mut RollingFileAppender, msg: &str) {
         appender
             .write_all(msg.as_bytes())
             .expect("Failed to write to appender");
@@ -631,19 +655,35 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
         // per-minute
-        let path = Rotation::MINUTELY.join_date("app.log", &now);
+        let path = Rotation::MINUTELY.join_date("app.log", &now, None);
         assert_eq!("app.log.2020-02-01-10-01", path);
 
         // per-hour
-        let path = Rotation::HOURLY.join_date("app.log", &now);
+        let path = Rotation::HOURLY.join_date("app.log", &now, None);
         assert_eq!("app.log.2020-02-01-10", path);
 
         // per-day
-        let path = Rotation::DAILY.join_date("app.log", &now);
+        let path = Rotation::DAILY.join_date("app.log", &now, None);
         assert_eq!("app.log.2020-02-01", path);
 
         // never
-        let path = Rotation::NEVER.join_date("app.log", &now);
+        let path = Rotation::NEVER.join_date("app.log", &now, None);
         assert_eq!("app.log", path);
+
+        // per-minute compressed
+        let path = Rotation::MINUTELY.join_date("app.log", &now, Some("gz".into()));
+        assert_eq!("app.log.2020-02-01-10-01.gz", path);
+
+        // per-hour compressed
+        let path = Rotation::HOURLY.join_date("app.log", &now, Some("gz".into()));
+        assert_eq!("app.log.2020-02-01-10.gz", path);
+
+        // per-day compressed
+        let path = Rotation::DAILY.join_date("app.log", &now, Some("gz".into()));
+        assert_eq!("app.log.2020-02-01.gz", path);
+
+        // never compressed
+        let path = Rotation::NEVER.join_date("app.log", &now, Some("gz".into()));
+        assert_eq!("app.log.gz", path)
     }
 }
