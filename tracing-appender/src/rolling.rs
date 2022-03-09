@@ -38,6 +38,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicUsize, Ordering},
 };
+use symlink::{symlink_file, remove_symlink_file};
 use time::{format_description, Duration, OffsetDateTime, Time};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
@@ -151,6 +152,15 @@ impl RollingFileAppender {
         let writer = RwLock::new(
             create_writer(log_directory, &filename).expect("failed to create appender"),
         );
+
+        // Create a symlink to latest log file.
+        let latest_path = Path::new(&filename);
+        let symlink_path = Path::new(&log_directory).join(&log_filename_prefix);
+        let _ = remove_symlink_file(&symlink_path);
+        if let Err(err) = symlink_file(&latest_path, &symlink_path) {
+            eprintln!("Couldn't create symlink: {}", err);
+        }
+
         Self {
             state: Inner {
                 log_directory: log_directory.to_string(),
@@ -488,6 +498,14 @@ impl Inner {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
                 *file = new_file;
+                
+                // Create a symlink to latest log file.
+                let latest_path = Path::new(&filename);
+                let symlink_path = Path::new(&self.log_directory).join(&self.log_filename_prefix);
+                let _ = remove_symlink_file(&symlink_path);
+                if let Err(err) = symlink_file(&latest_path, &symlink_path) {
+                    eprintln!("Couldn't create symlink: {}", err);
+                }
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }
