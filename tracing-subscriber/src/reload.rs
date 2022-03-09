@@ -15,7 +15,7 @@
 //!
 //! ```rust
 //! # use tracing::info;
-//! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+//! use tracing_subscriber::{filter, fmt, reload, Registry, prelude::*};
 //! let filter = filter::LevelFilter::WARN;
 //! let (filter, reload_handle) = reload::Layer::new(filter);
 //! Registry::default()
