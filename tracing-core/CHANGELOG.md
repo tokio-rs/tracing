@@ -1,3 +1,14 @@
+# 0.1.23 (March 8, 2022)
+
+### Changed
+
+- Removed `#[inline]` attributes from some `Dispatch` methods whose callers are
+  now inlined ([#1974])
+- Bumped minimum supported Rust version (MSRV) to Rust 1.49.0 ([#1913])
+
+[#1913]: https://github.com/tokio-rs/tracing/pull/1913
+[#1974]: https://github.com/tokio-rs/tracing/pull/1974
+
 # 0.1.22 (February 3, 2022)
 
 This release adds *experimental* support for recording structured field values
