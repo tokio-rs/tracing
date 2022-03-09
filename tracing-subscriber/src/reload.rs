@@ -44,7 +44,7 @@
 //! # filter::LevelFilter, Registry>,Registry>
 //! # = &reload_handle;
 //! #
-//! Registry::default()
+//! tracing_subscriber::registry()
 //!   .with(filtered_layer)
 //!   .init();
 //! info!("This will be ignored");
