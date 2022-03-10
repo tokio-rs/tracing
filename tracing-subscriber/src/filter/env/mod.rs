@@ -519,40 +519,44 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
     }
 }
 
-impl<S> layer::Filter<S> for EnvFilter {
-    #[inline]
-    fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
-        self.enabled(meta)
-    }
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    
+    impl<S> layer::Filter<S> for EnvFilter {
+        #[inline]
+        fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+            self.enabled(meta)
+        }
 
-    #[inline]
-    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
-        self.register_callsite(meta)
-    }
+        #[inline]
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            self.register_callsite(meta)
+        }
 
-    #[inline]
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        EnvFilter::max_level_hint(self)
-    }
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            EnvFilter::max_level_hint(self)
+        }
 
-    #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
-        self.on_new_span(attrs, id)
-    }
+        #[inline]
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+            self.on_new_span(attrs, id)
+        }
 
-    #[inline]
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
-        self.on_enter(id);
-    }
+        #[inline]
+        fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+            self.on_enter(id);
+        }
 
-    #[inline]
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
-        self.on_exit(id);
-    }
+        #[inline]
+        fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+            self.on_exit(id);
+        }
 
-    #[inline]
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
-        self.on_close(id);
+        #[inline]
+        fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+            self.on_close(id);
+        }
     }
 }
 
