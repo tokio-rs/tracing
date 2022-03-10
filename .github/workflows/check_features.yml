@@ -64,7 +64,7 @@ jobs:
       # exclude some
       run: |
         CARGO_HACK=(cargo hack check --feature-powerset --no-dev-deps)
-        case "${{ matrix.subcrate }}" of
+        case "${{ matrix.subcrate }}" in
           tracing)
             EXCLUDE_FEATURES=(
               max_level_off max_level_error max_level_warn max_level_info
