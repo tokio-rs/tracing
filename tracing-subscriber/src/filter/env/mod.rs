@@ -10,7 +10,7 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    layer::{Context, Layer},
+    layer::{self, Context, Layer},
     sync::RwLock,
 };
 use directive::ParseError;
@@ -365,9 +365,7 @@ impl EnvFilter {
             Interest::never()
         }
     }
-}
 
-impl<S: Subscriber> Layer<S> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -388,20 +386,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        if self.dynamics.has_value_filters() {
-            // If we perform any filtering on span field *values*, we will
-            // enable *all* spans, because their field values are not known
-            // until recording.
-            return Some(LevelFilter::TRACE);
-        }
-        std::cmp::max(
-            self.statics.max_level.into(),
-            self.dynamics.max_level.into(),
-        )
-    }
-
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -444,7 +429,20 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         false
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        if self.dynamics.has_value_filters() {
+            // If we perform any filtering on span field *values*, we will
+            // enable *all* spans, because their field values are not known
+            // until recording.
+            return Some(LevelFilter::TRACE);
+        }
+        std::cmp::max(
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
+        )
+    }
+
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -452,13 +450,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            span.record_update(values);
-        }
-    }
-
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_enter(&self, id: &span::Id) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -467,13 +459,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id) {
         if self.cares_about_span(id) {
             SCOPE.with(|scope| scope.borrow_mut().pop());
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+    fn on_close(&self, id: span::Id) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -481,6 +473,86 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
         let mut spans = try_lock!(self.by_id.write());
         spans.remove(&id);
+    }
+}
+
+impl<S: Subscriber> Layer<S> for EnvFilter {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        EnvFilter::register_callsite(self, metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        EnvFilter::max_level_hint(self)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
+        self.enabled(metadata)
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+        self.on_new_span(attrs, id)
+    }
+
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            span.record_update(values);
+        }
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+        self.on_enter(id);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+        self.on_exit(id);
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+        self.on_close(id);
+    }
+}
+
+impl<S> layer::Filter<S> for EnvFilter {
+    #[inline]
+    fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
+        self.enabled(meta)
+    }
+
+    #[inline]
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        self.register_callsite(meta)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        EnvFilter::max_level_hint(self)
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+        self.on_new_span(attrs, id)
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
+        self.on_enter(id);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+        self.on_exit(id);
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
+        self.on_close(id);
     }
 }
 
