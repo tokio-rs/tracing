@@ -159,8 +159,8 @@ impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let now = self.now();
         let writer = self.writer.get_mut();
-        if self.state.should_rollover(now) {
-            let _did_cas = self.state.advance_date(now);
+        if let Some(current_time) = self.state.should_rollover(now) {
+            let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
             self.state.refresh_writer(now, writer);
         }
@@ -178,10 +178,10 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
         let now = self.now();
 
         // Should we try to roll over the log file?
-        if self.state.should_rollover(now) {
+        if let Some(current_time) = self.state.should_rollover(now) {
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
-            if self.state.advance_date(now) {
+            if self.state.advance_date(now, current_time) {
                 self.state.refresh_writer(now, &mut *self.writer.write());
             }
         }
@@ -473,11 +473,6 @@ impl io::Write for RollingWriter<'_> {
     }
 }
 
-impl Drop for RollingWriter<'_> {
-    fn drop(&mut self) {
-        (&*self.0).flush();
-    }
-}
 // === impl Inner ===
 
 impl Inner {
@@ -510,8 +505,6 @@ impl Inner {
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
-        debug_assert!(self.should_rollover(now));
-
         let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 
         match create_writer(&self.log_directory, &filename) {
@@ -525,28 +518,36 @@ impl Inner {
         }
     }
 
-    fn should_rollover(&self, date: OffsetDateTime) -> bool {
-        // the `None` case means that the `InnerAppender` *never* rotates log files.
+    /// Checks whether or not it's time to roll over the log file.
+    ///
+    /// Rather than returning a `bool`, this returns the current value of
+    /// `next_date` so that we can perform a `compare_exchange` operation with
+    /// that value when setting the next rollover time.
+    ///
+    /// If this method returns `Some`, we should roll to a new log file.
+    /// Otherwise, if this returns we should not rotate the log file.
+    fn should_rollover(&self, date: OffsetDateTime) -> Option<usize> {
         let next_date = self.next_date.load(Ordering::Acquire);
+        // if the next date is 0, this appender *never* rotates log files.
         if next_date == 0 {
-            return false;
+            return None;
         }
-        date.unix_timestamp() as usize >= next_date
+
+        if date.unix_timestamp() as usize >= next_date {
+            return Some(next_date);
+        }
+
+        None
     }
 
-    fn advance_date(&self, now: OffsetDateTime) -> bool {
+    fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
         let next_date = self
             .rotation
             .next_date(&now)
             .map(|date| date.unix_timestamp() as usize)
             .unwrap_or(0);
         self.next_date
-            .compare_exchange(
-                now.unix_timestamp() as usize,
-                next_date,
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            )
+            .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     }
 }
