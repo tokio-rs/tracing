@@ -281,7 +281,7 @@ fn multiple_spans_metadata() {
         assert!(message["CODE_FILE"].as_text().is_some());
         assert!(message["CODE_LINE"].as_text().is_some());
 
-        assert!(message["SPAN_CODE_FILE"].as_text().is_some());
+        assert!(message.contains_key("SPAN_CODE_FILE"));
         assert_eq!(message["SPAN_CODE_LINE"].as_array().unwrap().len(), 2);
     });
 }
