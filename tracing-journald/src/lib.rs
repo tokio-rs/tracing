@@ -37,6 +37,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
 use std::{fmt, io, io::Write};
@@ -69,15 +70,10 @@ mod socket;
 /// - `DEBUG` => Informational (6)
 /// - `TRACE` => Debug (7)
 ///
-/// Note that the naming scheme differs slightly for the latter half.
-///
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
-/// field is emitted containing the event's target. Enclosing spans are numbered counting up from
-/// the root, and their fields and metadata are included in fields prefixed by `Sn_` where `n` is
-/// that number. The prefix for user-defined span fields may be changed or  disabled using the
-/// [`with_span_field_prefix`] method.
+/// field is emitted containing the event's target.
 ///
-/// [`with_span_field_prefix`]: Subscriber::with_span_field_prefix
+/// For events recorded inside spans additional `SPAN_NAME` field is emitted.
 ///
 /// User-defined fields other than the event `message` field have a prefix applied by default to
 /// prevent collision with standard fields.
@@ -87,7 +83,6 @@ pub struct Subscriber {
     #[cfg(unix)]
     socket: UnixDatagram,
     field_prefix: Option<String>,
-    span_field_prefix: Option<String>,
     syslog_identifier: String,
 }
 
@@ -106,7 +101,6 @@ impl Subscriber {
             let sub = Self {
                 socket,
                 field_prefix: Some("F".into()),
-                span_field_prefix: Some("S".into()),
                 syslog_identifier: std::env::current_exe()
                     .ok()
                     .as_ref()
@@ -131,18 +125,6 @@ impl Subscriber {
     /// field. Defaults to `Some("F")`.
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
-        self
-    }
-
-    /// Sets the prefix to apply to names of user-defined span fields.
-    ///
-    /// By default, this is `Some("S")`. Setting the span field prefix to
-    /// `None` will disable the prefix.
-    /// When set to `Some` prefix will be build as `<span_field_prefix><SPAN_DEPTH>_` e.g. `S0_`.
-    /// NOTE: Span field prefix should satisfy requirements of journald field names.
-    /// Setting this for example to empty string `Some("")` may cause unexpected behaviour.
-    pub fn with_span_field_prefix(mut self, x: Option<String>) -> Self {
-        self.span_field_prefix = x;
         self
     }
 
@@ -232,17 +214,13 @@ where
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
-        let depth = span.scope().skip(1).count();
-
-        writeln!(buf, "S{}_NAME", depth).unwrap();
+        writeln!(buf, "SPAN_NAME").unwrap();
         put_value(&mut buf, span.name().as_bytes());
-        put_metadata(&mut buf, span.metadata(), Some(depth));
+        put_metadata(&mut buf, span.metadata(), true);
 
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
-            depth,
             field_prefix: self.field_prefix.as_deref(),
-            span_field_prefix: self.span_field_prefix.as_deref(),
         });
 
         span.extensions_mut().insert(SpanFields(buf));
@@ -250,14 +228,11 @@ where
 
     fn on_record(&self, id: &Id, values: &Record, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
-        let depth = span.scope().skip(1).count();
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;
         values.record(&mut SpanVisitor {
             buf,
-            depth,
             field_prefix: self.field_prefix.as_deref(),
-            span_field_prefix: self.span_field_prefix.as_deref(),
         });
     }
 
@@ -276,7 +251,7 @@ where
         }
 
         // Record event fields
-        put_metadata(&mut buf, event.metadata(), None);
+        put_metadata(&mut buf, event.metadata(), false);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
@@ -295,20 +270,13 @@ struct SpanFields(Vec<u8>);
 
 struct SpanVisitor<'a> {
     buf: &'a mut Vec<u8>,
-    depth: usize,
     field_prefix: Option<&'a str>,
-    span_field_prefix: Option<&'a str>,
 }
 
 impl SpanVisitor<'_> {
     fn put_span_prefix(&mut self) {
-        if let Some(span_prefix) = self.span_field_prefix {
-            write!(self.buf, "{}{}", span_prefix, self.depth).unwrap();
-        }
         if let Some(prefix) = self.field_prefix {
             self.buf.extend_from_slice(prefix.as_bytes());
-        }
-        if self.span_field_prefix.is_some() || self.field_prefix.is_some() {
             self.buf.push(b'_');
         }
     }
@@ -369,8 +337,8 @@ impl Visit for EventVisitor<'_> {
     }
 }
 
-fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
-    if span.is_none() {
+fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: bool) {
+    if !span {
         put_field_wellformed(
             buf,
             "PRIORITY",
@@ -383,20 +351,11 @@ fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
             },
         );
     }
-    if let Some(n) = span {
-        write!(buf, "S{}_", n).unwrap();
-    }
     put_field_wellformed(buf, "TARGET", meta.target().as_bytes());
     if let Some(file) = meta.file() {
-        if let Some(n) = span {
-            write!(buf, "S{}_", n).unwrap();
-        }
         put_field_wellformed(buf, "CODE_FILE", file.as_bytes());
     }
     if let Some(line) = meta.line() {
-        if let Some(n) = span {
-            write!(buf, "S{}_", n).unwrap();
-        }
         // Text format is safe as a line number can't possibly contain anything funny
         writeln!(buf, "CODE_LINE={}", line).unwrap();
     }
