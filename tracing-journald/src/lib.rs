@@ -216,7 +216,7 @@ where
 
         writeln!(buf, "SPAN_NAME").unwrap();
         put_value(&mut buf, span.name().as_bytes());
-        put_metadata(&mut buf, span.metadata(), true);
+        put_metadata(&mut buf, span.metadata(), Some("SPAN_"));
 
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
@@ -251,7 +251,8 @@ where
         }
 
         // Record event fields
-        put_metadata(&mut buf, event.metadata(), false);
+        put_priority(&mut buf, event.metadata());
+        put_metadata(&mut buf, event.metadata(), None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
@@ -337,25 +338,35 @@ impl Visit for EventVisitor<'_> {
     }
 }
 
-fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: bool) {
-    if !span {
-        put_field_wellformed(
-            buf,
-            "PRIORITY",
-            match *meta.level() {
-                Level::ERROR => b"3",
-                Level::WARN => b"4",
-                Level::INFO => b"5",
-                Level::DEBUG => b"6",
-                Level::TRACE => b"7",
-            },
-        );
+fn put_priority(buf: &mut Vec<u8>, meta: &Metadata) {
+    put_field_wellformed(
+        buf,
+        "PRIORITY",
+        match *meta.level() {
+            Level::ERROR => b"3",
+            Level::WARN => b"4",
+            Level::INFO => b"5",
+            Level::DEBUG => b"6",
+            Level::TRACE => b"7",
+        },
+    );
+}
+
+fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, prefix: Option<&str>) {
+    if let Some(prefix) = prefix {
+        write!(buf, "{}", prefix).unwrap();
     }
     put_field_wellformed(buf, "TARGET", meta.target().as_bytes());
     if let Some(file) = meta.file() {
+        if let Some(prefix) = prefix {
+            write!(buf, "{}", prefix).unwrap();
+        }
         put_field_wellformed(buf, "CODE_FILE", file.as_bytes());
     }
     if let Some(line) = meta.line() {
+        if let Some(prefix) = prefix {
+            write!(buf, "{}", prefix).unwrap();
+        }
         // Text format is safe as a line number can't possibly contain anything funny
         writeln!(buf, "CODE_LINE={}", line).unwrap();
     }

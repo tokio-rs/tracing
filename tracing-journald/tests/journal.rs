@@ -41,7 +41,7 @@ enum Field {
 }
 
 impl Field {
-    pub fn as_array(&self) -> Option<&Vec<String>> {
+    pub fn as_array(&self) -> Option<&[String]> {
         match self {
             Field::Text(_) => None,
             Field::Binary(_) => None,
@@ -253,7 +253,10 @@ fn span_metadata() {
         assert_eq!(message["SPAN_NAME"].as_text(), Some("span1"));
 
         assert!(message["CODE_FILE"].as_text().is_some());
-        assert_eq!(message["CODE_LINE"].as_array().unwrap().len(), 2);
+        assert!(message["CODE_LINE"].as_text().is_some());
+
+        assert!(message["SPAN_CODE_FILE"].as_text().is_some());
+        assert!(message["SPAN_CODE_LINE"].as_text().is_some());
     });
 }
 
@@ -276,20 +279,26 @@ fn multiple_spans_metadata() {
         assert_eq!(message["SPAN_NAME"], vec!["span1", "span2"]);
 
         assert!(message["CODE_FILE"].as_text().is_some());
-        assert_eq!(message["CODE_LINE"].as_array().unwrap().len(), 3);
+        assert!(message["CODE_LINE"].as_text().is_some());
+
+        assert!(message["SPAN_CODE_FILE"].as_text().is_some());
+        assert_eq!(message["SPAN_CODE_LINE"].as_array().unwrap().len(), 2);
     });
 }
 
 #[test]
 fn spans_field_collision() {
-    let sub = Subscriber::new().unwrap().with_field_prefix(None);
-    with_journald_subscriber(sub, || {
+    with_journald(|| {
         let s1 = info_span!("span1", span_field = "foo1");
         let _g1 = s1.enter();
         let s2 = info_span!("span2", span_field = "foo2");
         let _g2 = s2.enter();
 
-        info!(test.name = "spans_field_collision", span_field = "foo3", "Hello World");
+        info!(
+            test.name = "spans_field_collision",
+            span_field = "foo3",
+            "Hello World"
+        );
 
         let message = retry_read_one_line_from_journal("spans_field_collision");
         assert_eq!(message["MESSAGE"], "Hello World");
