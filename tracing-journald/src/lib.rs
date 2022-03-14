@@ -73,7 +73,8 @@ mod socket;
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target.
 ///
-/// For events recorded inside spans additional `SPAN_NAME` field is emitted.
+/// For events recorded inside spans, an additional `SPAN_NAME` field is emitted with the name of
+/// each of the event's parent spans.
 ///
 /// User-defined fields other than the event `message` field have a prefix applied by default to
 /// prevent collision with standard fields.

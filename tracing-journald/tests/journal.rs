@@ -48,6 +48,7 @@ impl Field {
             Field::Array(v) => Some(v),
         }
     }
+    
     pub fn as_text(&self) -> Option<&str> {
         match self {
             Field::Text(v) => Some(v.as_str()),
