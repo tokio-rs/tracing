@@ -334,8 +334,6 @@ mod per_layer_filter {
         let filter: EnvFilter = "info,[cool_span]=debug"
             .parse()
             .expect("filter should parse");
-        let cool_span = span::mock().named("cool_span");
-        let uncool_span = span::mock().named("uncool_span");
         let (layer, finished) = layer::mock()
             .event(event::mock().at_level(Level::INFO))
             .enter(span::mock().named("cool_span"))
