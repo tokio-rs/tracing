@@ -52,7 +52,7 @@ impl Field {
         match self {
             Field::Text(v) => Some(v.as_str()),
             Field::Binary(_) => None,
-            Field::Array(v) => None,
+            Field::Array(_) => None,
         }
     }
 }
