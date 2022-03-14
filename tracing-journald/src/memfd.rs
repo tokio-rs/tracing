@@ -22,13 +22,13 @@ fn create(flags: c_uint) -> Result<File> {
 /// RHEL 7, etc.
 ///
 /// See: https://github.com/tokio-rs/tracing/issues/1879
-fn memfd_create_syscall(flags: c_uint) -> i64 {
+fn memfd_create_syscall(flags: c_uint) -> c_int {
     unsafe {
         syscall(
             SYS_memfd_create,
             "tracing-journald\0".as_ptr() as *const c_char,
             flags,
-        )
+        ) as c_int
     }
 }
 
