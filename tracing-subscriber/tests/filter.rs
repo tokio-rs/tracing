@@ -337,15 +337,35 @@ mod per_layer_filter {
         let (layer, finished) = layer::mock()
             .event(event::mock().at_level(Level::INFO))
             .enter(span::mock().named("cool_span"))
-            .event(event::mock().at_level(Level::DEBUG))
+            .event(
+                event::mock()
+                    .at_level(Level::DEBUG)
+                    .in_scope(vec![span::mock().named("cool_span")]),
+            )
             .enter(span::mock().named("uncool_span"))
-            .event(event::mock().at_level(Level::WARN))
-            .event(event::mock().at_level(Level::DEBUG))
+            .event(
+                event::mock()
+                    .at_level(Level::WARN)
+                    .in_scope(vec![span::mock().named("uncool_span")]),
+            )
+            .event(
+                event::mock()
+                    .at_level(Level::DEBUG)
+                    .in_scope(vec![span::mock().named("uncool_span")]),
+            )
             .exit(span::mock().named("uncool_span"))
             .exit(span::mock().named("cool_span"))
             .enter(span::mock().named("uncool_span"))
-            .event(event::mock().at_level(Level::WARN))
-            .event(event::mock().at_level(Level::ERROR))
+            .event(
+                event::mock()
+                    .at_level(Level::WARN)
+                    .in_scope(vec![span::mock().named("uncool_span")]),
+            )
+            .event(
+                event::mock()
+                    .at_level(Level::ERROR)
+                    .in_scope(vec![span::mock().named("uncool_span")]),
+            )
             .exit(span::mock().named("uncool_span"))
             .done()
             .run_with_handle();
@@ -368,10 +388,12 @@ mod per_layer_filter {
             tracing::debug!("i'm still cool");
         }
 
-        let _enter = uncool_span.enter();
-        tracing::warn!("warning: not that cool");
-        tracing::trace!("im not cool enough");
-        tracing::error!("uncool error");
+        {
+            let _enter = uncool_span.enter();
+            tracing::warn!("warning: not that cool");
+            tracing::trace!("im not cool enough");
+            tracing::error!("uncool error");
+        }
 
         finished.assert_finished();
     }
