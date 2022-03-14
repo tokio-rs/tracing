@@ -13,7 +13,7 @@ use std::{
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct Match {
     pub(crate) name: String, // TODO: allow match patterns for names?
     pub(crate) value: Option<ValueMatch>,
