@@ -38,10 +38,40 @@ verify() {
 
     status "Checking" "if $CRATE builds across feature combinations"
 
-    if ! cargo hack check $VERBOSE --feature-powerset --no-dev-deps; then
+    CARGO_HACK=(cargo hack check $VERBOSE --feature-powerset  --no-dev-deps)
+    case "$CRATE" in
+        tracing-subscriber)
+            # for tracing-subscriber, don't test a complete powerset because
+            # there are lots of feature flags
+            INCLUDE_FEATURES=(fmt ansi json registry env-filter)
+            ${CARGO_HACK[@]} --include-features "${INCLUDE_FEATURES[*]}"
+            CARGO_HACK_STATUS="$?"
+            ;;
+        tracing)
+            # checking the full feature powerset for `tracing` will take
+            # *forever* because of the `max_level_XXX` and
+            # `release_max_level_XXX` features
+            EXCLUDE_FEATURES=(
+                max_level_off max_level_error max_level_warn max_level_info
+                max_level_debug max_level_trace release_max_level_off
+                release_max_level_error release_max_level_warn
+                release_max_level_info release_max_level_debug
+                release_max_level_trace
+            )
+            ${CARGO_HACK[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            CARGO_HACK_STATUS="$?"
+            ;;
+        *)
+            ${CARGO_HACK[@]}
+            CARGO_HACK_STATUS="$?"
+            ;;
+    esac
+
+    if "$CARGO_HACK_STATUS" ; then
         err "$CRATE did not build with all feature combinations!"
         exit 1
     fi
+
 
     if git tag -l | grep -Fxq "$TAG" ; then
         err "git tag \`$TAG\` already exists"
@@ -68,7 +98,7 @@ do
 case "$1" in
     -v|--verbose)
     VERBOSE="--verbose"
-    set +x
+    set -x
     shift
     ;;
     -d|--dry-run)
