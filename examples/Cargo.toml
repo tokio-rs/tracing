@@ -38,7 +38,7 @@ env_logger = "0.8"
 tower = { version = "0.4.4", features = ["full"] }
 http = "0.2"
 hyper = { version = "0.14.11", features = ["full"] }
-rand = "0.7"
+rand = "0.8"
 bytes = "1"
 argh = "0.1.5"
 
