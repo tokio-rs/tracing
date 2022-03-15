@@ -41,15 +41,15 @@ enum Field {
 }
 
 impl Field {
-    pub fn as_array(&self) -> Option<&[String]> {
+    fn as_array(&self) -> Option<&[String]> {
         match self {
             Field::Text(_) => None,
             Field::Binary(_) => None,
             Field::Array(v) => Some(v),
         }
     }
-    
-    pub fn as_text(&self) -> Option<&str> {
+
+    fn as_text(&self) -> Option<&str> {
         match self {
             Field::Text(v) => Some(v.as_str()),
             Field::Binary(_) => None,
