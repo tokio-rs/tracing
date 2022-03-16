@@ -768,10 +768,10 @@ impl Span {
     /// info!("i'm outside the span!")
     /// ```
     ///
-    /// [`Subscriber::enter`]: ../subscriber/trait.Subscriber.html#method.enter
-    /// [`Subscriber::exit`]: ../subscriber/trait.Subscriber.html#method.exit
-    /// [`Id`]: ../struct.Id.html
-    #[inline]
+    /// [`Subscriber::enter`]: super::subscriber::Subscriber::enter()
+    /// [`Subscriber::exit`]: super::subscriber::Subscriber::exit()
+    /// [`Id`]: super::Id
+    #[inline(always)]
     pub fn enter(&self) -> Entered<'_> {
         self.do_enter();
         Entered { span: self }
@@ -878,10 +878,11 @@ impl Span {
     /// span.record("some_field", &"hello world!");
     /// ```
     ///
-    /// [`Subscriber::enter`]: ../subscriber/trait.Subscriber.html#method.enter
-    /// [`Subscriber::exit`]: ../subscriber/trait.Subscriber.html#method.exit
-    /// [`Id`]: ../struct.Id.html
-    #[inline]
+
+    /// [`Subscriber::enter`]: super::subscriber::Subscriber::enter()
+    /// [`Subscriber::exit`]: super::subscriber::Subscriber::exit()
+    /// [`Id`]: super::Id
+    #[inline(always)]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
         EnteredSpan {
@@ -1020,7 +1021,7 @@ impl Span {
         self
     }
 
-    #[inline]
+    #[inline(always)]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.subscriber.enter(&inner.id);
@@ -1037,7 +1038,7 @@ impl Span {
     //
     // Running this behaviour on drop rather than with an explicit function
     // call means that spans may still be exited when unwinding.
-    #[inline]
+    #[inline(always)]
     fn do_exit(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.subscriber.exit(&inner.id);
@@ -1438,6 +1439,7 @@ impl<'a> From<&'a EnteredSpan> for Option<Id> {
 }
 
 impl Drop for Span {
+    #[inline(always)]
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
@@ -1447,15 +1449,15 @@ impl Drop for Span {
             subscriber.try_close(id.clone());
         }
 
-        if let Some(_meta) = self.meta {
-            if_log_enabled! { crate::Level::TRACE, {
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(meta) = self.meta {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", _meta.name()),
+                    format_args!("-- {}", meta.name()),
                 );
-            }}
-        }
+            }
+        }}
     }
 }
 
@@ -1547,14 +1549,14 @@ impl Deref for EnteredSpan {
 }
 
 impl<'a> Drop for Entered<'a> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
 }
 
 impl Drop for EnteredSpan {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }

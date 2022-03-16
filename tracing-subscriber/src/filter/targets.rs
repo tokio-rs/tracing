@@ -111,7 +111,7 @@ use tracing_core::{Interest, Level, Metadata, Subscriber};
 /// by the user at runtime.
 ///
 /// The `Targets` filter can be used as a [per-layer filter][plf] *and* as a
-/// [global filter]:
+/// [global filter][global]:
 ///
 /// ```rust
 /// use tracing_subscriber::{

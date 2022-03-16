@@ -1,3 +1,14 @@
+# 0.1.23 (March 8, 2022)
+
+### Changed
+
+- Removed `#[inline]` attributes from some `Dispatch` methods whose
+  callers are now inlined ([#1974])
+- Bumped minimum supported Rust version (MSRV) to Rust 1.49.0 ([#1913])
+
+[#1913]: https://github.com/tokio-rs/tracing/pull/1913
+[#1974]: https://github.com/tokio-rs/tracing/pull/1974
+
 # 0.1.22 (February 3, 2022)
 
 This release adds *experimental* support for recording structured field values
@@ -95,7 +106,7 @@ Thanks to @Folyd, @teozkr, and @dvdplm for contributing to this release!
 [#1435]: https://github.com/tokio-rs/tracing/pull/1435
 [#1446]: https://github.com/tokio-rs/tracing/pull/1446
 
-# 0.1.19 (April 30, 2021)
+# 0.1.18 (April 30, 2021)
 
 ### Added
 
@@ -257,17 +268,6 @@ Thanks to @oli-cosmian for contributing to this release!
 - Added missing `Value` impl for `u8` (#392)
 - Broken links in docs.
 
-# 0.1.7 (October 18, 2019)
-
-### Added
-
-- Added `dispatcher::set_default` API which returns a drop guard (#388)
-
-### Fixed
-
-- Added missing `Value` impl for `u8` (#392)
-- Broken links in docs.
-
 # 0.1.6 (September 12, 2019)
 
 ### Added
@@ -278,7 +278,7 @@ Thanks to @oli-cosmian for contributing to this release!
 
 - Clarified wording in `field::display` documentation (#340)
 
-# 0.1.6 (August 16, 2019)
+# 0.1.5 (August 16, 2019)
 
 ### Added
 
