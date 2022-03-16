@@ -214,7 +214,7 @@ pub trait Visit {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        self.record_debug(field, &format_args!("{}", value))
+        self.record_debug(field, &DisplayValue(value))
     }
 
     /// Visit a value implementing `fmt::Debug`.
@@ -499,19 +499,19 @@ where
     T: fmt::Display,
 {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_debug(key, &format_args!("{}", self.0))
+        visitor.record_debug(key, self)
     }
 }
 
 impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        fmt::Display::fmt(self, f)
     }
 }
 
 impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        self.0.fmt(f)
     }
 }
 
@@ -530,7 +530,7 @@ where
 
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
+        self.0.fmt(f)
     }
 }
 
