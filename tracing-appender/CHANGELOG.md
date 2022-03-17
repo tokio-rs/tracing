@@ -1,3 +1,13 @@
+# 0.2.2 (March 17, 2022)
+
+This release fixes an incorrect `compare_exchange` in RollingFileAppender 
+when rolling files over, causing a panic.
+
+### Fixed
+- **rolling**: Fixed a panic that prohibited rolling files over. ([#1989])
+
+[#1989]: https://github.com/tokio-rs/tracing/pull/1989
+
 # 0.2.1 (February 28, 2022)
 
 This release adds an implementation of the `MakeWriter` trait for
