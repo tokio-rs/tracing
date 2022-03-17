@@ -1,3 +1,14 @@
+# 0.2.4 (March 17, 2022)
+
+### Fixed
+
+- Fixed compilation error in `memfd_create_syscall` on 32-bit targets ([#1982])
+
+Thanks to new contributor @chrta for contributing to this release!
+
+
+[#1982]: https://github.com/tokio-rs/tracing/pull/1982
+
 # 0.2.3 (February 7, 2022)
 
 ### Fixed
