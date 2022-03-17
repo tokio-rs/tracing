@@ -1,7 +1,7 @@
 # 0.2.2 (March 17, 2022)
 
-This release fixes an incorrect `compare_exchange` in RollingFileAppender 
-when rolling files over, causing a panic.
+This release fixes a bug in `RollingFileAppender` that could result
+in a failure to rotate the log file, or in panics in debug mode.
 
 ### Fixed
 
