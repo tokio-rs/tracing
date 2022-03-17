@@ -1,3 +1,14 @@
+# 0.2.2 (March 17, 2022)
+
+This release fixes a bug in `RollingFileAppender` that could result
+in a failure to rotate the log file, or in panics in debug mode.
+
+### Fixed
+
+- **rolling**: Fixed a panic that prohibited rolling files over. ([#1989])
+
+[#1989]: https://github.com/tokio-rs/tracing/pull/1989
+
 # 0.2.1 (February 28, 2022)
 
 This release adds an implementation of the `MakeWriter` trait for
