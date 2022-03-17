@@ -4,6 +4,7 @@ This release fixes an incorrect `compare_exchange` in RollingFileAppender
 when rolling files over, causing a panic.
 
 ### Fixed
+
 - **rolling**: Fixed a panic that prohibited rolling files over. ([#1989])
 
 [#1989]: https://github.com/tokio-rs/tracing/pull/1989
