@@ -160,7 +160,7 @@ pub struct Dispatch {
 #[cfg(feature = "std")]
 thread_local! {
     static CURRENT_STATE: State = State {
-        default: RefCell::new(Dispatch::none()),
+        default: RefCell::new(None),
         can_enter: Cell::new(true),
     };
 }
@@ -178,7 +178,7 @@ static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
 #[cfg(feature = "std")]
 struct State {
     /// This thread's current default dispatcher.
-    default: RefCell<Dispatch>,
+    default: RefCell<Option<Dispatch>>,
     /// Whether or not we can currently begin dispatching a trace event.
     ///
     /// This is set to `false` when functions such as `enter`, `exit`, `event`,
@@ -641,7 +641,9 @@ impl Default for Dispatch {
 
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Dispatch(...)")
+        f.debug_tuple("Dispatch")
+            .field(&format_args!("{:p}", self.subscriber))
+            .finish()
     }
 }
 
@@ -682,7 +684,13 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state.default.replace(new_dispatch)
+                state
+                    .default
+                    .replace(Some(new_dispatch))
+                    // if the scoped default was not set on this thread, set the
+                    // `prior` default to the global default to populate the
+                    // scoped default when unsetting *this* default
+                    .unwrap_or_else(|| get_global().cloned().unwrap_or_else(Dispatch::none))
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
@@ -705,16 +713,10 @@ impl State {
 impl<'a> Entered<'a> {
     #[inline]
     fn current(&self) -> RefMut<'a, Dispatch> {
-        let mut default = self.0.default.borrow_mut();
-
-        if default.is::<NoSubscriber>() {
-            if let Some(global) = get_global() {
-                // don't redo this call on the next check
-                *default = global.clone();
-            }
-        }
-
-        default
+        let default = self.0.default.borrow_mut();
+        RefMut::map(default, |default| {
+            default.get_or_insert_with(|| get_global().cloned().unwrap_or_else(Dispatch::none))
+        })
     }
 }
 
@@ -738,7 +740,7 @@ impl Drop for DefaultGuard {
             // lead to the drop of a subscriber which, in the process,
             // could then also attempt to access the same thread local
             // state -- causing a clash.
-            let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
+            let prev = CURRENT_STATE.try_with(|state| state.default.replace(Some(dispatch)));
             drop(prev)
         }
     }
