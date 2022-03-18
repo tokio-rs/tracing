@@ -1477,6 +1477,93 @@ feature! {
     {
         subscriber_impl_body! {}
     }
+
+
+    impl<C, S> Subscribe<C> for Vec<S>
+    where
+        S: Subscribe<C>,
+        C: Collect,
+    {
+
+        fn on_subscribe(&mut self, collector: &mut C) {
+            for s in self {
+                s.on_subscribe(collector);
+            }
+        }
+
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            // Return highest level of interest.
+            let mut interest = Interest::never();
+            for s in self {
+                let new_interest = s.register_callsite(metadata);
+                if (interest.is_sometimes() && new_interest.is_always())
+                    || (interest.is_never() && !new_interest.is_never())
+                {
+                    interest = new_interest;
+                }
+            }
+            interest
+        }
+
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+            for s in self {
+                if s.enabled(metadata, ctx.clone()) {
+                    return true;
+                }
+            }
+            false
+        }
+
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_new_span(attrs, id, ctx.clone());
+            }
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            let mut max_level = LevelFilter::ERROR;
+            for s in self {
+                max_level = core::cmp::max(s.max_level_hint()?, max_level);
+            }
+            Some(max_level)
+        }
+
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_record(span, values, ctx.clone())
+            }
+        }
+
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_follows_from(span, follows, ctx.clone());
+            }
+        }
+
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_event(event, ctx.clone());
+            }
+        }
+
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_enter(id, ctx.clone());
+            }
+        }
+
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_exit(id, ctx.clone());
+            }
+        }
+
+        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_close(id.clone(), ctx.clone());
+            }
+        }
+    }
 }
 
 // === impl CollectExt ===
