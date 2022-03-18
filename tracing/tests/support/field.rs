@@ -26,6 +26,7 @@ pub enum MockValue {
     U64(u64),
     Bool(bool),
     Str(String),
+    Bytes(Vec<u8>),
     Debug(String),
     Any,
 }
@@ -151,6 +152,7 @@ impl fmt::Display for MockValue {
             MockValue::U64(v) => write!(f, "u64 = {:?}", v),
             MockValue::Bool(v) => write!(f, "bool = {:?}", v),
             MockValue::Str(v) => write!(f, "&str = {:?}", v),
+            MockValue::Bytes(v) => write!(f, "&[u8] = {:?}", v),
             MockValue::Debug(v) => write!(f, "&fmt::Debug = {:?}", v),
             MockValue::Any => write!(f, "_ = _"),
         }
@@ -184,6 +186,11 @@ impl<'a> Visit for CheckVisitor<'a> {
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
+        self.expect
+            .compare_or_panic(field.name(), &value, &self.ctx[..])
+    }
+
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
         self.expect
             .compare_or_panic(field.name(), &value, &self.ctx[..])
     }
@@ -230,6 +237,10 @@ impl<'a> From<&'a dyn Value> for MockValue {
 
             fn record_str(&mut self, _: &Field, value: &str) {
                 self.value = Some(MockValue::Str(value.to_owned()));
+            }
+
+            fn record_bytes(&mut self, _: &Field, value: &[u8]) {
+                self.value = Some(MockValue::Bytes(value.to_owned()));
             }
 
             fn record_debug(&mut self, _: &Field, value: &dyn fmt::Debug) {
