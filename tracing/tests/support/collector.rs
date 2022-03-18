@@ -446,7 +446,7 @@ where
         };
     }
 
-    fn clone_span(&self, id: &Id) -> Id {
+    fn clone_span(&self, id: &Id) {
         let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
             let name = span.name;
             println!(
@@ -475,11 +475,11 @@ where
         if was_expected {
             expected.pop_front();
         }
-        id.clone()
     }
 
-    fn drop_span(&self, id: Id) {
+    fn try_close(&self, id: Id) -> bool {
         let mut is_event = false;
+        let mut closing = false;
         let name = if let Ok(mut spans) = self.spans.try_lock() {
             spans.get_mut(&id).map(|span| {
                 let name = span.name;
@@ -487,17 +487,20 @@ where
                     is_event = true;
                 }
                 println!(
-                    "[{}] drop_span: {}; id={:?}; refs={:?};",
+                    "[{}] try_close: {}; id={:?}; refs={:?};",
                     self.name, name, id, span.refs
                 );
                 span.refs -= 1;
+                if span.refs == 0 {
+                    closing = true;
+                }
                 name
             })
         } else {
             None
         };
         if name.is_none() {
-            println!("[{}] drop_span: id={:?}", self.name, id);
+            println!("[{}] try_close: id={:?}", self.name, id);
         }
         if let Ok(mut expected) = self.expected.try_lock() {
             let was_expected = match expected.front() {
@@ -521,6 +524,7 @@ where
                 expected.pop_front();
             }
         }
+        closing
     }
 
     fn current_span(&self) -> tracing_core::span::Current {

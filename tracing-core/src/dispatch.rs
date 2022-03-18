@@ -723,36 +723,8 @@ impl Dispatch {
     /// [`new_span`]: super::collect::Collect::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.collector().clone_span(id)
-    }
-
-    /// Notifies the collector that a [span ID] has been dropped.
-    ///
-    /// This function must only be called with span IDs that were returned by
-    /// this `Dispatch`'s [`new_span`] function. The `tracing` crate upholds
-    /// this guarantee and any other libraries implementing instrumentation APIs
-    /// must as well.
-    ///
-    /// This calls the [`drop_span`] function on the [`Collect`] that this
-    ///  `Dispatch` forwards to.
-    ///
-    /// <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
-    ///
-    /// **Deprecated**: The [`try_close`] method is functionally identical, but returns `true` if the span is now closed.
-    /// It should be used instead of this method.
-    ///
-    /// </pre></div>
-    ///
-    /// [span ID]: super::span::Id
-    /// [`Collect`]: super::collect::Collect
-    /// [`drop_span`]: super::collect::Collect::drop_span
-    /// [`new_span`]: super::collect::Collect::new_span
-    /// [`try_close`]: Self::try_close
-    #[inline]
-    #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
-    pub fn drop_span(&self, id: span::Id) {
-        #[allow(deprecated)]
-        self.collector().drop_span(id);
+        self.collector().clone_span(id);
+        id.clone()
     }
 
     /// Notifies the collector that a [span ID] has been dropped, and returns

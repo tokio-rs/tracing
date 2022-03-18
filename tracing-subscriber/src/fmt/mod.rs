@@ -415,7 +415,7 @@ where
     }
 
     #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::Id) {
         self.inner.clone_span(id)
     }
 

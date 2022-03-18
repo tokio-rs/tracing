@@ -215,9 +215,15 @@ impl Collect for Registry {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
-            self.current_span().id().map(|id| self.clone_span(id))
+            self.current_span().id().map(|id| {
+                self.clone_span(id);
+                id.clone()
+            })
         } else {
-            attrs.parent().map(|id| self.clone_span(id))
+            attrs.parent().map(|id| {
+                self.clone_span(id);
+                id.clone()
+            })
         };
 
         let id = self
@@ -267,7 +273,7 @@ impl Collect for Registry {
         }
     }
 
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::Id) {
         let span = self
             .get(id)
             .unwrap_or_else(|| panic!("tried to clone {:?}, but no span exists with that ID", id));
@@ -282,7 +288,6 @@ impl Collect for Registry {
             "tried to clone a span ({:?}) that already closed",
             id
         );
-        id.clone()
     }
 
     fn current_span(&self) -> Current {

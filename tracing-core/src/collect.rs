@@ -324,14 +324,14 @@ pub trait Collect: 'static {
     /// This function is guaranteed to only be called with span IDs that were
     /// returned by this collector's `new_span` function.
     ///
-    /// Note that the default implementation of this function this is just the
-    /// identity function, passing through the identifier. However, it can be
-    /// used in conjunction with [`try_close`] to track the number of handles
-    /// capable of `enter`ing a span. When all the handles have been dropped
-    /// (i.e., `try_close` has been called one more time than `clone_span` for a
-    /// given ID), the collector may assume that the span will not be entered
-    /// again. It is then free to deallocate storage for data associated with
-    /// that span, write data from that span to IO, and so on.
+    /// Note that the default implementation of this function does nothing.
+    /// However, it can be used in conjunction with [`try_close`] to track the
+    /// number of handles capable of `enter`ing a span. When all the handles
+    /// have been dropped  (i.e., `try_close` has been called one more time than
+    /// `clone_span` for a given ID), the collector may assume that the span
+    /// will not be entered again. It is then free to deallocate storage for
+    /// data associated with that span, write data from that span to IO, and so
+    /// on.
     ///
     /// For more unsafe situations, however, if `id` is itself a pointer of some
     /// kind this can be used as a hook to "clone" the pointer, depending on
@@ -339,21 +339,7 @@ pub trait Collect: 'static {
     ///
     /// [span ID]: super::span::Id
     /// [`try_close`]: Collect::try_close
-    fn clone_span(&self, id: &span::Id) -> span::Id {
-        id.clone()
-    }
-
-    /// **This method is deprecated.**
-    ///
-    /// Using `drop_span` may result in collectors composed using
-    /// `tracing-subscriber` crate's `Subscriber` trait from observing close events.
-    /// Use [`try_close`] instead.
-    ///
-    /// The default implementation of this function does nothing.
-    ///
-    /// [`try_close`]: Collect::try_close
-    #[deprecated(since = "0.1.2", note = "use `Collector::try_close` instead")]
-    fn drop_span(&self, _id: span::Id) {}
+    fn clone_span(&self, _id: &span::Id) {}
 
     /// Notifies the collector that a [`span ID`] has been dropped, and returns
     /// `true` if there are now 0 IDs that refer to that span.
@@ -362,12 +348,11 @@ pub trait Collect: 'static {
     /// collector implementations may use this return value to notify any
     /// "layered" collectors that this collector considers the span closed.
     ///
-    /// The default implementation of this method calls the collector's
-    /// [`drop_span`] method and returns `false`. This means that, unless the
-    /// collector overrides the default implementation, close notifications
-    /// will never be sent to any layered collectors. In general, if the
-    /// collector tracks reference counts, this method should be implemented,
-    /// rather than `drop_span`.
+    /// The default implementation of this method simply returns `false`. This
+    /// means that, unless the  collector overrides the default implementation,
+    /// close notifications will never be sent to any layered collectors. In
+    /// general, if the collector tracks reference counts, this method should be
+    /// overridden.
     ///
     /// This function is guaranteed to only be called with span IDs that were
     /// returned by this collector's `new_span` function.
@@ -390,10 +375,7 @@ pub trait Collect: 'static {
     ///
     /// [`span ID`]: super::span::Id
     /// [`clone_span`]: Collect::clone_span
-    /// [`drop_span`]: Collect::drop_span
-    fn try_close(&self, id: span::Id) -> bool {
-        #[allow(deprecated)]
-        self.drop_span(id);
+    fn try_close(&self, _id: span::Id) -> bool {
         false
     }
 
@@ -642,7 +624,7 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
     }
 
     #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::Id) {
         self.as_ref().clone_span(id)
     }
 
@@ -713,7 +695,7 @@ impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
     }
 
     #[inline]
-    fn clone_span(&self, id: &span::Id) -> span::Id {
+    fn clone_span(&self, id: &span::Id) {
         self.as_ref().clone_span(id)
     }
 
