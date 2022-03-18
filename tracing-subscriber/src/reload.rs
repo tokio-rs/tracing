@@ -9,12 +9,36 @@
 //! change at runtime. Note that this subscriber introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
 //!
-//! [`Subscribe`]: crate::Subscribe
+//! # Examples
+//!
+//! Reloading a [`Filtered`](crate::filter::Filtered) layer to change the filter at runtime.
+//!
+//! ```
+//! # use tracing::info;
+//! # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+//! # fn main() {
+//! let filtered_subscriber = fmt::Subscriber::default().with_filter(filter::LevelFilter::WARN);
+//! let (filtered_subscriber, reload_handle) = reload::Subscriber::new(filtered_subscriber);
+//! #
+//! # // specifying the Registry type is required
+//! # let _: &reload::Handle<filter::Filtered<fmt::Subscriber<Registry>,
+//! # filter::LevelFilter, Registry>,Registry>
+//! # = &reload_handle;
+//! #
+//! info!("This will be ignored");
+//! reload_handle.modify(|subscriber| *subscriber.filter_mut() = filter::LevelFilter::INFO);
+//! info!("This will be logged");
+//! # }
+//! ```
+//!
+//! [`Layer` type]: struct.Layer.html
+//! [`Layer` trait]: ../layer/trait.Layer.html
 use crate::subscribe;
 use crate::sync::RwLock;
 
 use std::{
     error, fmt,
+    marker::PhantomData,
     sync::{Arc, Weak},
 };
 use tracing_core::{
@@ -25,18 +49,20 @@ use tracing_core::{
 
 /// Wraps a `Collect` or `Subscribe`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
-pub struct Subscriber<S> {
+pub struct Subscriber<S, C> {
     // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
     // eventually wish to replace it with a sharded lock implementation on top
     // of our internal `RwLock` wrapper type. If possible, we should profile
     // this first to determine if it's necessary.
     inner: Arc<RwLock<S>>,
+    _s: PhantomData<fn(C)>,
 }
 
-/// Allows reloading the state of an associated `Collect`.
+/// Allows reloading the state of an associated [`Subscriber`](crate::layer::Subscribe).
 #[derive(Debug)]
-pub struct Handle<S> {
+pub struct Handle<S, C> {
     inner: Weak<RwLock<S>>,
+    _s: PhantomData<fn(C)>,
 }
 
 /// Indicates that an error occurred when reloading a subscriber.
@@ -53,7 +79,7 @@ enum ErrorKind {
 
 // ===== impl Collect =====
 
-impl<S, C> crate::Subscribe<C> for Subscriber<S>
+impl<S, C> crate::Subscribe<C> for Subscriber<S, C>
 where
     S: crate::Subscribe<C> + 'static,
     C: Collect,
@@ -123,29 +149,44 @@ where
     }
 }
 
-impl<S> Subscriber<S> {
+impl<S, C> Subscriber<S, C>
+where
+    S: crate::Subscribe<C> + 'static,
+    C: Collect,
+{
     /// Wraps the given `Subscribe`, returning a subscriber and a `Handle` that allows
     /// the inner type to be modified at runtime.
-    pub fn new(inner: S) -> (Self, Handle<S>) {
+    pub fn new(inner: S) -> (Self, Handle<S, C>) {
         let this = Self {
             inner: Arc::new(RwLock::new(inner)),
+            _s: PhantomData,
         };
         let handle = this.handle();
         (this, handle)
     }
 
     /// Returns a `Handle` that can be used to reload the wrapped `Subscribe`.
-    pub fn handle(&self) -> Handle<S> {
+    pub fn handle(&self) -> Handle<S, C> {
         Handle {
             inner: Arc::downgrade(&self.inner),
+            _s: PhantomData,
         }
     }
 }
 
 // ===== impl Handle =====
 
-impl<S> Handle<S> {
-    /// Replace the current subscriber with the provided `new_subscriber`.
+impl<S, C> Handle<S, C>
+where
+    S: crate::Subscribe<C> + 'static,
+    C: Collect,
+{
+    /// Replace the current layer with the provided `new_layer`.
+    ///
+    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
+    /// at runtime via the [`Handle::reload`] method.
+    /// Use the [`Handle::modify`] method to change the filter instead.
+    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
     pub fn reload(&self, new_subscriber: impl Into<S>) -> Result<(), Error> {
         self.modify(|subscriber| {
             *subscriber = new_subscriber.into();
@@ -199,10 +240,11 @@ impl<S> Handle<S> {
     }
 }
 
-impl<S> Clone for Handle<S> {
+impl<S, C> Clone for Handle<S, C> {
     fn clone(&self) -> Self {
         Handle {
             inner: self.inner.clone(),
+            _s: PhantomData,
         }
     }
 }

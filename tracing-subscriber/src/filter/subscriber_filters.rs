@@ -280,6 +280,40 @@ impl<S, F, C> Filtered<S, F, C> {
     fn did_enable(&self, f: impl FnOnce()) {
         FILTERING.with(|filtering| filtering.did_enable(self.id(), f))
     }
+
+    /// Borrows the [`Filter`](crate::layer::Filter) used by this layer.
+    pub fn filter(&self) -> &F {
+        &self.filter
+    }
+
+    /// Mutably borrows the [`Filter`](crate::layer::Filter) used by this layer.
+    ///
+    /// When this layer can be mutably borrowed, this may be used to mutate the filter.
+    /// Generally, this will primarily be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::info;
+    /// # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+    /// # fn main() {
+    /// let filtered_layer = fmt::Layer::default().with_filter(filter::LevelFilter::WARN);
+    /// let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
+    /// #
+    /// # // specifying the Registry type is required
+    /// # let _: &reload::Handle<filter::Filtered<fmt::Layer<Registry>,
+    /// # filter::LevelFilter, Registry>,Registry>
+    /// # = &reload_handle;
+    /// #
+    /// info!("This will be ignored");
+    /// reload_handle.modify(|layer| *layer.filter_mut() = filter::LevelFilter::INFO);
+    /// info!("This will be logged");
+    /// # }
+    /// ```
+    pub fn filter_mut(&mut self) -> &mut F {
+        &mut self.filter
+    }
 }
 
 impl<C, S, F> Subscribe<C> for Filtered<S, F, C>
