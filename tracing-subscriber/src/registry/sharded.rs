@@ -198,7 +198,7 @@ thread_local! {
     /// track how many subscribers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
+    static CLOSE_COUNT: Cell<usize> = const { Cell::new(0) };
 }
 
 impl Collect for Registry {

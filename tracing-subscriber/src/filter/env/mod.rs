@@ -108,7 +108,7 @@ pub struct EnvFilter {
 }
 
 thread_local! {
-    static SCOPE: RefCell<Vec<LevelFilter>> = RefCell::new(Vec::new());
+    static SCOPE: RefCell<Vec<LevelFilter>> = const { RefCell::new(Vec::new()) };
 }
 
 type FieldMap<T> = HashMap<Field, T>;
