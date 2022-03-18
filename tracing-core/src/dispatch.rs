@@ -811,7 +811,25 @@ impl Default for Dispatch {
 
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Dispatch(...)")
+        match &self.collector {
+            #[cfg(feature = "alloc")]
+            Kind::Global(collector) => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(feature = "alloc")]
+            Kind::Scoped(collector) => f
+                .debug_tuple("Dispatch::Scoped")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(not(feature = "alloc"))]
+            collector => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+        }
     }
 }
 
