@@ -1,11 +1,13 @@
 //! [`Subscriber`]s that control which spans and events are enabled by the wrapped
-//! subscriber.
+//! collector.
 //!
-//! For details on filtering spans and events using [`Subscribe`]s, see the [`layer`
-//! module documentation].
+//! This module contains a number of types that provide implementations of
+//! various strategies for filtering which spans and events are enabled. For
+//! details on filtering spans and events using [`Subscriber`]s, see the
+//! [`subscriber` module's documentation].
 //!
-//! [`layer`  module documentation]: crate::layer#filtering-with-layers
-//! [`Layer`]: crate::layer
+//! [`subscriber` module documentation]: crate::subscribe#filtering-with-layers
+//! [`Subscriber`]: crate::subscriber
 #[cfg(feature = "env-filter")]
 mod env;
 mod level;
