@@ -198,26 +198,27 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # use futures::{Future, Poll, Async};
+//! # use std::future::Future;
+//! # use std::task::{Context, Poll};
+//! # use std::pin::Pin;
 //! struct MyFuture {
 //!    // data
 //!    span: tracing::Span,
 //! }
 //!
 //! impl Future for MyFuture {
-//!     type Item = ();
-//!     type Error = ();
+//!     type Output = ();
 //!
-//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//!     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
 //!         let _enter = self.span.enter();
 //!         // Do actual future work...
-//! # Ok(Async::Ready(()))
+//! # Poll::Ready(())
 //!     }
 //! }
 //! ```
 //!
 //! If this future was spawned on an executor, it might yield one or more times
-//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
+//! before `poll` returns [`Poll::Ready`]. If the future were to yield, then
 //! the executor would move on to poll the next future, which may _also_ enter
 //! an associated span or series of spans. Therefore, it is valid for a span to
 //! be entered repeatedly before it completes. Only the time when that span or
@@ -296,26 +297,25 @@
 //! much time was spent in each individual iteration, we would enter a new span
 //! on every iteration.
 //!
-//! [fields]: ../field/index.html
-//! [Metadata]: ../struct.Metadata.html
-//! [`Id`]: struct.Id.html
-//! [verbosity level]: ../struct.Level.html
-//! [`span!`]: ../macro.span.html
-//! [`trace_span!`]: ../macro.trace_span.html
-//! [`debug_span!`]: ../macro.debug_span.html
-//! [`info_span!`]: ../macro.info_span.html
-//! [`warn_span!`]: ../macro.warn_span.html
-//! [`error_span!`]: ../macro.error_span.html
-//! [`clone_span`]: ../subscriber/trait.Subscriber.html#method.clone_span
-//! [`drop_span`]: ../subscriber/trait.Subscriber.html#method.drop_span
-//! [`exit`]: ../subscriber/trait.Subscriber.html#tymethod.exit
-//! [`Subscriber`]: ../subscriber/trait.Subscriber.html
-//! [`Attributes`]: struct.Attributes.html
-//! [`enter`]: struct.Span.html#method.enter
-//! [`entered`]: struct.Span.html#method.entered
-//! [`in_scope`]: struct.Span.html#method.in_scope
-//! [`follows_from`]: struct.Span.html#method.follows_from
-//! [guard]: struct.Entered.html
+//! [fields]: super::field
+//! [Metadata]: super::Metadata
+//! [verbosity level]: super::Level
+//! [`Poll::Ready`]: std::task::Poll::Ready
+//! [`span!`]: super::span!
+//! [`trace_span!`]: super::trace_span!
+//! [`debug_span!`]: super::debug_span!
+//! [`info_span!`]: super::info_span!
+//! [`warn_span!`]: super::warn_span!
+//! [`error_span!`]: super::error_span!
+//! [`clone_span`]: super::subscriber::Subscriber::clone_span()
+//! [`drop_span`]: super::subscriber::Subscriber::drop_span()
+//! [`exit`]: super::subscriber::Subscriber::exit
+//! [`Subscriber`]: super::subscriber::Subscriber
+//! [`enter`]: Span::enter()
+//! [`entered`]: Span::entered()
+//! [`in_scope`]: Span::in_scope()
+//! [`follows_from`]: Span::follows_from()
+//! [guard]: Entered
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
