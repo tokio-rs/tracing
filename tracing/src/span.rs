@@ -182,26 +182,27 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # use futures::{Future, Poll, Async};
+//! # use std::future::Future;
+//! # use std::task::{Context, Poll};
+//! # use std::pin::Pin;
 //! struct MyFuture {
 //!    // data
 //!    span: tracing::Span,
 //! }
 //!
 //! impl Future for MyFuture {
-//!     type Item = ();
-//!     type Error = ();
+//!     type Output = ();
 //!
-//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//!     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
 //!         let _enter = self.span.enter();
 //!         // Do actual future work...
-//! # Ok(Async::Ready(()))
+//! # Poll::Ready(())
 //!     }
 //! }
 //! ```
 //!
 //! If this future was spawned on an executor, it might yield one or more times
-//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
+//! before `poll` returns [`Poll::Ready`]. If the future were to yield, then
 //! the executor would move on to poll the next future, which may _also_ enter
 //! an associated span or series of spans. Therefore, it is valid for a span to
 //! be entered repeatedly before it completes. Only the time when that span or
@@ -283,6 +284,7 @@
 //! [fields]: super::field
 //! [Metadata]: super::Metadata
 //! [verbosity level]: super::Level
+//! [`Poll::Ready`]: std::task::Poll::Ready
 //! [`span!`]: super::span!
 //! [`trace_span!`]: super::trace_span!
 //! [`debug_span!`]: super::debug_span!
