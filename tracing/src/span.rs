@@ -605,7 +605,9 @@ impl Span {
     /// async fn my_async_function() {
     ///     let span = info_span!("my_async_function");
     ///
-    ///     // THIS WILL RESULT IN INCORRECT TRACES
+    ///     // WARNING: This span will remain entered
+    ///     // while the runtime is given permission to
+    ///     // switch to ANY independent concurrent task.
     ///     let _enter = span.enter();
     ///     some_other_async_function().await;
     ///
