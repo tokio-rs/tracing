@@ -1,10 +1,8 @@
-mod support;
-use support::*;
-
-use crate::support::field::mock;
-use crate::support::span::NewSpan;
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
+use tracing_mock::field::mock;
+use tracing_mock::span::NewSpan;
+use tracing_mock::*;
 
 #[instrument(fields(foo = "bar", dsa = true, num = 1))]
 fn fn_no_param() {}

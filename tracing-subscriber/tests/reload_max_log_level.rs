@@ -1,8 +1,7 @@
 #![cfg(all(feature = "env-filter", feature = "tracing-log"))]
 
-mod support;
-use self::support::*;
 use tracing::{self, Level};
+use tracing_mock::*;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, reload};
 
 #[test]

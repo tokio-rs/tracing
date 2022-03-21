@@ -5,9 +5,6 @@
 // The alternative would be for each of these tests to be defined in a separate
 // file, which is :(
 #![cfg(feature = "std")]
-mod support;
-
-use self::support::*;
 
 use tracing::{
     collect::with_default,
@@ -15,6 +12,7 @@ use tracing::{
     field::{debug, display},
     info, trace, warn, Level,
 };
+use tracing_mock::*;
 
 macro_rules! event_without_message {
     ($name:ident: $e:expr) => {
