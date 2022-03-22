@@ -40,6 +40,7 @@ pin-project-lite = "0.2"
 [dev-dependencies]
 criterion = { version = "0.3", default_features = false }
 log = "0.4"
+tracing-mock = { path = "../tracing-mock" }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "^0.3"

@@ -1,15 +1,21 @@
-// this is the only way to make the path attribute play nice with `in
-// crate::support`...
-#[allow(clippy::module_inception)]
-#[path = "../../tracing/tests/support/mod.rs"]
-mod support;
 use std::{
-    future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
-pub use support::*;
-use tokio_test::task;
+
+pub mod collector;
+pub mod event;
+pub mod field;
+mod metadata;
+pub mod span;
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum Parent {
+    ContextualRoot,
+    Contextual(String),
+    ExplicitRoot,
+    Explicit(String),
+}
 
 pub struct PollN<T, E> {
     and_return: Option<Result<T, E>>,
@@ -56,10 +62,13 @@ impl PollN<(), ()> {
     }
 }
 
+#[cfg(feature = "tokio-test")]
 pub fn block_on_future<F>(future: F) -> F::Output
 where
-    F: Future,
+    F: std::future::Future,
 {
+    use tokio_test::task;
+
     let mut task = task::spawn(future);
     loop {
         if let Poll::Ready(v) = task.poll() {

@@ -1,8 +1,6 @@
-mod support;
-use support::*;
-
 use tracing::Instrument;
 use tracing::{collect::with_default, Level};
+use tracing_mock::*;
 
 #[test]
 fn enter_exit_is_reasonable() {
