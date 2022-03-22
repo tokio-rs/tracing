@@ -10,8 +10,8 @@ use std::fmt;
 #[derive(Default, Eq, PartialEq)]
 pub struct MockEvent {
     pub fields: Option<field::Expect>,
-    pub(in crate::support) parent: Option<Parent>,
     in_spans: Vec<span::MockSpan>,
+    pub(crate) parent: Option<Parent>,
     metadata: metadata::Expect,
 }
 

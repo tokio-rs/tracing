@@ -3,15 +3,14 @@
 // with the standard lib disabled.
 #![cfg(feature = "std")]
 
-mod support;
-
-use self::support::*;
 use std::thread;
+
 use tracing::{
     field::{debug, display},
     subscriber::with_default,
     Level, Span,
 };
+use tracing_mock::*;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]

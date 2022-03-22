@@ -1,19 +1,14 @@
 #![allow(missing_docs, dead_code)]
-pub use self::support::{event, field, span, subscriber};
-// This has to have the same name as the module in `tracing`.
-// path attribute requires referenced module to have same name so allow module inception here
-#[allow(clippy::module_inception)]
-#[path = "../../tracing/tests/support/mod.rs"]
-mod support;
+pub use tracing_mock::{event, field, span, subscriber};
 
-use self::{
-    event::MockEvent,
-    span::{MockSpan, NewSpan},
-    subscriber::{Expect, MockHandle},
-};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
+};
+use tracing_mock::{
+    event::MockEvent,
+    span::{MockSpan, NewSpan},
+    subscriber::{Expect, MockHandle},
 };
 use tracing_subscriber::{
     layer::{Context, Layer},
