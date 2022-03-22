@@ -147,17 +147,17 @@ fn span_name_filter_is_dynamic() {
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .event(event::mock().at_level(Level::INFO))
-        .enter(span::mock().named("cool_span"))
+        .enter(span::named("cool_span"))
         .event(event::mock().at_level(Level::DEBUG))
-        .enter(span::mock().named("uncool_span"))
+        .enter(span::named("uncool_span"))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::DEBUG))
-        .exit(span::mock().named("uncool_span"))
-        .exit(span::mock().named("cool_span"))
-        .enter(span::mock().named("uncool_span"))
+        .exit(span::named("uncool_span"))
+        .exit(span::named("cool_span"))
+        .enter(span::named("uncool_span"))
         .event(event::mock().at_level(Level::WARN))
         .event(event::mock().at_level(Level::ERROR))
-        .exit(span::mock().named("uncool_span"))
+        .exit(span::named("uncool_span"))
         .done()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -336,37 +336,37 @@ mod per_layer_filter {
             .expect("filter should parse");
         let (layer, finished) = layer::mock()
             .event(event::mock().at_level(Level::INFO))
-            .enter(span::mock().named("cool_span"))
+            .enter(span::named("cool_span"))
             .event(
                 event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::mock().named("cool_span")]),
+                    .in_scope(vec![span::named("cool_span")]),
             )
-            .enter(span::mock().named("uncool_span"))
+            .enter(span::named("uncool_span"))
             .event(
                 event::mock()
                     .at_level(Level::WARN)
-                    .in_scope(vec![span::mock().named("uncool_span")]),
+                    .in_scope(vec![span::named("uncool_span")]),
             )
             .event(
                 event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::mock().named("uncool_span")]),
+                    .in_scope(vec![span::named("uncool_span")]),
             )
-            .exit(span::mock().named("uncool_span"))
-            .exit(span::mock().named("cool_span"))
-            .enter(span::mock().named("uncool_span"))
+            .exit(span::named("uncool_span"))
+            .exit(span::named("cool_span"))
+            .enter(span::named("uncool_span"))
             .event(
                 event::mock()
                     .at_level(Level::WARN)
-                    .in_scope(vec![span::mock().named("uncool_span")]),
+                    .in_scope(vec![span::named("uncool_span")]),
             )
             .event(
                 event::mock()
                     .at_level(Level::ERROR)
-                    .in_scope(vec![span::mock().named("uncool_span")]),
+                    .in_scope(vec![span::named("uncool_span")]),
             )
-            .exit(span::mock().named("uncool_span"))
+            .exit(span::named("uncool_span"))
             .done()
             .run_with_handle();
 
