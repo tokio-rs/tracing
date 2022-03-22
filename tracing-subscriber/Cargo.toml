@@ -65,6 +65,7 @@ thread_local = { version = "1.1.4", optional = true }
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
+tracing-mock = { path = "../tracing-mock" }
 log = "0.4"
 tracing-log = { path = "../tracing-log", version = "0.2" }
 criterion = { version = "0.3", default_features = false }

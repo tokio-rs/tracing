@@ -1,11 +1,6 @@
-#[path = "../../tracing-futures/tests/support.rs"]
-// we don't use some of the test support functions, but `tracing-futures` does.
-#[allow(dead_code)]
-mod support;
-use support::*;
-
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
+use tracing_mock::*;
 
 use tracing::{collect::with_default, Level};
 use tracing_attributes::instrument;
