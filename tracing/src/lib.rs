@@ -745,6 +745,7 @@
 //!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 //!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
 //!    grouping together logs from the same spans during writing.
+//!  - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -779,6 +780,8 @@
 //! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 //! [Sentry]: https://sentry.io/welcome/
 //! [`tracing-forest`]: https://crates.io/crates/tracing-forest
+//! [`tracing-loki`]: https://crates.io/crates/tracing-loki
+//! [Grafana Loki]: https://grafana.com/oss/loki/
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!     <strong>Note</strong>: Some of these ecosystem crates are currently
