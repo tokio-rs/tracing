@@ -20,7 +20,7 @@ publish = false
 [dependencies]
 tracing = { path = "../tracing", version = "0.2", default-features = false }
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
-tokio-test = { version = "0.2.0", optional = true }
+tokio-test = { version = "0.3.0", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
