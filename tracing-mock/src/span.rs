@@ -8,14 +8,14 @@ use std::fmt;
 /// `subscriber` module.
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct MockSpan {
-    pub(in crate::support) metadata: metadata::Expect,
+    pub(crate) metadata: metadata::Expect,
 }
 
 #[derive(Default, Eq, PartialEq)]
 pub struct NewSpan {
-    pub(in crate::support) span: MockSpan,
-    pub(in crate::support) fields: field::Expect,
-    pub(in crate::support) parent: Option<Parent>,
+    pub(crate) span: MockSpan,
+    pub(crate) fields: field::Expect,
+    pub(crate) parent: Option<Parent>,
 }
 
 pub fn mock() -> MockSpan {

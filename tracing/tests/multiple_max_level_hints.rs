@@ -1,8 +1,7 @@
 #![cfg(feature = "std")]
-mod support;
 
-use self::support::*;
 use tracing::Level;
+use tracing_mock::*;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]

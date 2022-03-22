@@ -5,10 +5,9 @@
 // threads with shared global state lets them interfere with each other
 #[cfg(not(feature = "std"))]
 extern crate std;
-mod support;
 
-use self::support::*;
 use tracing::{span, Level};
+use tracing_mock::*;
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},

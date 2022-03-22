@@ -1,9 +1,3 @@
-#[path = "../../../tracing-futures/tests/support.rs"]
-// this is only needed for `block_on_future`
-#[allow(dead_code)]
-mod support;
-use support::*;
-
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -11,7 +5,7 @@ use tracing::span::{Attributes, Record};
 use tracing::{
     debug, error, info, instrument, span, trace, warn, Subscriber, Event, Id, Level, Metadata,
 };
-
+use tracing_mock::*;
 
 struct State {
     last_level: Mutex<Option<Level>>,

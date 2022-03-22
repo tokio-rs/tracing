@@ -7,9 +7,7 @@
 extern crate std;
 
 use tracing::{span, Level};
-mod support;
-
-use self::support::*;
+use tracing_mock::*;
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
