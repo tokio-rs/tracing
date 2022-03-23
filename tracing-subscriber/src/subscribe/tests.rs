@@ -20,8 +20,9 @@ impl Collect for NopCollector {
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
+
     fn current_span(&self) -> span::Current {
-        span::Current::unknown()
+        todo!()
     }
 }
 
@@ -36,15 +37,15 @@ impl<C: Collect> Subscribe<C> for NopSubscriber2 {}
 /// A subscriber that holds a string.
 ///
 /// Used to test that pointers returned by downcasting are actually valid.
-struct StringSubscriber(String);
+struct StringSubscriber(&'static str);
 impl<C: Collect> Subscribe<C> for StringSubscriber {}
-struct StringSubscriber2(String);
+struct StringSubscriber2(&'static str);
 impl<C: Collect> Subscribe<C> for StringSubscriber2 {}
 
-struct StringSubscriber3(String);
+struct StringSubscriber3(&'static str);
 impl<C: Collect> Subscribe<C> for StringSubscriber3 {}
 
-pub(crate) struct StringCollector(String);
+pub(crate) struct StringCollector(&'static str);
 
 impl Collect for StringCollector {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
@@ -100,30 +101,30 @@ fn downcasts_to_collector() {
     let s = NopSubscriber
         .and_then(NopSubscriber)
         .and_then(NopSubscriber)
-        .with_collector(StringCollector("collector".into()));
+        .with_collector(StringCollector("collector"));
     let collector =
         <dyn Collect>::downcast_ref::<StringCollector>(&s).expect("collector should downcast");
-    assert_eq!(&collector.0, "collector");
+    assert_eq!(collector.0, "collector");
 }
 
 #[test]
 fn downcasts_to_subscriber() {
-    let s = StringSubscriber("subscriber_1".into())
-        .and_then(StringSubscriber2("subscriber_2".into()))
-        .and_then(StringSubscriber3("subscriber_3".into()))
+    let s = StringSubscriber("subscriber_1")
+        .and_then(StringSubscriber2("subscriber_2"))
+        .and_then(StringSubscriber3("subscriber_3"))
         .with_collector(NopCollector);
     let subscriber =
         <dyn Collect>::downcast_ref::<StringSubscriber>(&s).expect("subscriber 1 should downcast");
-    assert_eq!(&subscriber.0, "subscriber_1");
+    assert_eq!(subscriber.0, "subscriber_1");
     let subscriber =
         <dyn Collect>::downcast_ref::<StringSubscriber2>(&s).expect("subscriber 2 should downcast");
-    assert_eq!(&subscriber.0, "subscriber_2");
+    assert_eq!(subscriber.0, "subscriber_2");
     let subscriber =
         <dyn Collect>::downcast_ref::<StringSubscriber3>(&s).expect("subscriber 3 should downcast");
-    assert_eq!(&subscriber.0, "subscriber_3");
+    assert_eq!(subscriber.0, "subscriber_3");
 }
 
-#[cfg(feature = "registry")]
+#[cfg(all(feature = "registry", feature = "std"))]
 mod registry_tests {
     use super::*;
     use crate::registry::LookupSpan;

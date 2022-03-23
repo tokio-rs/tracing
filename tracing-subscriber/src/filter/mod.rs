@@ -8,36 +8,45 @@
 //!
 //! [`subscribe` module documentation]: crate::subscribe#filtering-with-subscribers
 //! [`Subscribe`]: crate::subscribe
-mod directive;
-#[cfg(feature = "env-filter")]
-mod env;
 mod filter_fn;
 mod level;
-#[cfg(feature = "registry")]
-mod subscriber_filters;
-pub mod targets;
 
-pub use self::directive::ParseError;
+feature! {
+    #![all(feature = "env-filter", feature = "std")]
+    mod env;
+    pub use self::env::*;
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    mod subscriber_filters;
+    pub use self::subscriber_filters::*;
+}
+
 pub use self::filter_fn::*;
 #[cfg(not(feature = "registry"))]
 pub(crate) use self::has_psf_stubs::*;
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-pub use self::subscriber_filters::*;
 
 pub use self::level::{LevelFilter, ParseError as LevelParseError};
 
-#[cfg(feature = "env-filter")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
-pub use self::env::*;
+#[cfg(not(all(feature = "registry", feature = "std")))]
+#[allow(unused_imports)]
+pub(crate) use self::has_psf_stubs::*;
 
-pub use self::targets::Targets;
+feature! {
+    #![any(feature = "std", feature = "alloc")]
+    pub mod targets;
+    pub use self::targets::Targets;
+
+    mod directive;
+    pub use self::directive::ParseError;
+}
 
 /// Stub implementations of the per-subscriber-fitler detection functions for
 /// when the `registry` feature is disabled.
-#[cfg(not(feature = "registry"))]
+#[cfg(not(all(feature = "registry", feature = "std")))]
 mod has_psf_stubs {
-    pub(crate) fn is_psf_downcast_marker(_: std::any::TypeId) -> bool {
+    pub(crate) fn is_psf_downcast_marker(_: core::any::TypeId) -> bool {
         false
     }
 

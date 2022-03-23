@@ -13,8 +13,11 @@ use crate::{
     },
     subscribe,
 };
-use std::{
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+use core::{
     iter::{Extend, FilterMap, FromIterator},
+    slice,
     str::FromStr,
 };
 use tracing_core::{Collect, Interest, Metadata};
@@ -462,7 +465,7 @@ impl Iterator for IntoIter {
 #[derive(Debug)]
 pub struct Iter<'a>(
     FilterMap<
-        std::slice::Iter<'a, StaticDirective>,
+        slice::Iter<'a, StaticDirective>,
         fn(&'a StaticDirective) -> Option<(&'a str, LevelFilter)>,
     >,
 );
@@ -493,6 +496,17 @@ impl<'a> Iterator for Iter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    feature! {
+        #![not(feature = "std")]
+        use alloc::{vec, vec::Vec, string::ToString};
+
+        // `dbg!` is only available with `libstd`; just nop it out when testing
+        // with alloc only.
+        macro_rules! dbg {
+            ($x:expr) => { $x }
+        }
+    }
 
     fn expect_parse(s: &str) -> Targets {
         match dbg!(s).parse::<Targets>() {
@@ -643,6 +657,8 @@ mod tests {
     }
 
     #[test]
+    // `println!` is only available with `libstd`.
+    #[cfg(feature = "std")]
     fn size_of_filters() {
         fn print_sz(s: &str) {
             let filter = s.parse::<Targets>().expect("filter should parse");
