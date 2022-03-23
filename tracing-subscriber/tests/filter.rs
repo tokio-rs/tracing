@@ -327,8 +327,6 @@ mod per_layer_filter {
                     .in_scope(vec![span::named("cool_span")]),
             )
             .exit(span::named("cool_span"))
-            .enter(span::named("uncool_span"))
-            .exit(span::named("uncool_span"))
             .done()
             .run_with_handle();
 
