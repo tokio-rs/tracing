@@ -58,10 +58,6 @@ where
     S: crate::Subscribe<C> + 'static,
     C: Collect,
 {
-    fn on_subscribe(&mut self, collector: &mut C) {
-        try_lock!(self.inner.write(), else return).on_subscribe(collector);
-    }
-
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)
@@ -146,6 +142,11 @@ impl<S> Subscriber<S> {
 
 impl<S> Handle<S> {
     /// Replace the current subscriber with the provided `new_subscriber`.
+    ///
+    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
+    /// at runtime via the [`Handle::reload`] method.
+    /// Use the [`Handle::modify`] method to change the filter instead.
+    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
     pub fn reload(&self, new_subscriber: impl Into<S>) -> Result<(), Error> {
         self.modify(|subscriber| {
             *subscriber = new_subscriber.into();

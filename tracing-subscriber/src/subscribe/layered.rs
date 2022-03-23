@@ -78,7 +78,14 @@ where
             // if the outer subscriber enables the callsite metadata, ask the collector.
             self.inner.enabled(metadata)
         } else {
-            // otherwise, the callsite is disabled by the collector
+            // otherwise, the callsite is disabled by the subscriber
+
+            // If per-subscriber filters are in use, and we are short-circuiting
+            // (rather than calling into the inner type), clear the current
+            // per-subscriber filter `enabled` state.
+            #[cfg(feature = "registry")]
+            filter::FilterState::clear_enabled();
+
             false
         }
     }
