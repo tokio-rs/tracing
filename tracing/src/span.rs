@@ -605,11 +605,13 @@ impl Span {
     /// async fn my_async_function() {
     ///     let span = info_span!("my_async_function");
     ///
-    ///     // WARNING: This span will remain entered
-    ///     // while the runtime is given permission to
-    ///     // switch to ANY independent concurrent task.
+    ///     // WARNING: This span will remain entered until this
+    ///     // guard is dropped...
     ///     let _enter = span.enter();
-    ///     some_other_async_function().await;
+    ///     // ...but the `await` keyword may yield, causing the
+    ///     // runtime to switch to another task, while remaining in
+    ///     // this span!
+    ///     some_other_async_function().await
     ///
     ///     // ...
     /// }
