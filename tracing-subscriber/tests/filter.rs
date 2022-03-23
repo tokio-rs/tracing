@@ -87,6 +87,46 @@ fn level_filter_event_with_target() {
 }
 
 #[test]
+fn level_filter_event_with_target_and_span_global() {
+    let filter: EnvFilter = "info,stuff[cool_span]=debug"
+        .parse()
+        .expect("filter should parse");
+
+    let (subscriber, handle) = subscriber::mock()
+        .enter(span::named("cool_span"))
+        .event(
+            event::mock()
+                .at_level(Level::DEBUG)
+                .in_scope(vec![span::named("cool_span")]),
+        )
+        .exit(span::named("cool_span"))
+        .enter(span::named("uncool_span"))
+        .exit(span::named("uncool_span"))
+        .done()
+        .run_with_handle();
+
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        {
+            let span = tracing::info_span!(target: "stuff", "cool_span");
+            let _enter = span.enter();
+            tracing::debug!("this should be enabled");
+        }
+
+        tracing::debug!("should also be disabled");
+
+        {
+            let span = tracing::info_span!("uncool_span");
+            let _enter = span.enter();
+            tracing::debug!("this should be disabled");
+        }
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
 fn not_order_dependent() {
     // this test reproduces tokio-rs/tracing#623
 
@@ -275,7 +315,7 @@ mod per_layer_filter {
 
     #[test]
     fn level_filter_event_with_target_and_span() {
-        let filter: EnvFilter = "info,stuff[cool_span]=debug"
+        let filter: EnvFilter = "stuff[cool_span]=debug"
             .parse()
             .expect("filter should parse");
 
@@ -283,59 +323,11 @@ mod per_layer_filter {
             .enter(span::named("cool_span"))
             .event(
                 event::mock()
-                    .at_level(Level::INFO)
-                    .in_scope(vec![span::named("cool_span")]),
-            )
-            // this is the only event that was enabled due to the span filter
-            .event(
-                event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::named("cool_span")])
-                    .with_target("stuff"),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::WARN)
-                    .in_scope(vec![span::named("cool_span")])
-                    .with_target("stuff"),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::ERROR)
                     .in_scope(vec![span::named("cool_span")]),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::ERROR)
-                    .in_scope(vec![span::named("cool_span")])
-                    .with_target("stuff"),
             )
             .exit(span::named("cool_span"))
             .enter(span::named("uncool_span"))
-            // uncool_span entered,
-            // only the single debug event from the first list is missing here
-            .event(
-                event::mock()
-                    .at_level(Level::INFO)
-                    .in_scope(vec![span::named("cool_span")]),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::WARN)
-                    .in_scope(vec![span::named("cool_span")])
-                    .with_target("stuff"),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::ERROR)
-                    .in_scope(vec![span::named("cool_span")]),
-            )
-            .event(
-                event::mock()
-                    .at_level(Level::ERROR)
-                    .in_scope(vec![span::named("cool_span")])
-                    .with_target("stuff"),
-            )
             .exit(span::named("uncool_span"))
             .done()
             .run_with_handle();
@@ -345,31 +337,17 @@ mod per_layer_filter {
             .set_default();
 
         {
-            let span = tracing::info_span!("cool_span");
+            let span = tracing::info_span!(target: "stuff", "cool_span");
             let _enter = span.enter();
-            tracing::trace!("this should be disabled");
-            tracing::info!("this shouldn't be");
-            tracing::debug!(target: "stuff", "this should be enabled");
-            tracing::debug!("but this shouldn't");
-            tracing::trace!(target: "stuff", "and neither should this");
-            tracing::warn!(target: "stuff", "this should be enabled");
-            tracing::error!("this should be enabled too");
-            tracing::error!(target: "stuff", "this should be enabled also");
+            tracing::debug!("this should be enabled");
         }
 
-        tracing::debug!("should be ignored as well");
+        tracing::debug!("should also be disabled");
 
         {
-            let span = tracing::info_span!("uncool_target");
+            let span = tracing::info_span!("uncool_span");
             let _enter = span.enter();
-            tracing::trace!("this should be disabled");
-            tracing::info!("this shouldn't be");
-            tracing::debug!(target: "stuff", "this should be enabled");
-            tracing::debug!("but this shouldn't");
-            tracing::trace!(target: "stuff", "and neither should this");
-            tracing::warn!(target: "stuff", "this should be enabled");
-            tracing::error!("this should be enabled too");
-            tracing::error!(target: "stuff", "this should be enabled also");
+            tracing::debug!("this should be disabled");
         }
 
         handle.assert_finished();
