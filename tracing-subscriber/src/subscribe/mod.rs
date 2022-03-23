@@ -419,7 +419,11 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{any::TypeId, ops::Deref, ptr::NonNull, sync::Arc};
+use std::{
+    any::TypeId,
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
@@ -1088,6 +1092,11 @@ where
 macro_rules! subscriber_impl_body {
     () => {
         #[inline]
+        fn on_subscribe(&mut self, collect: &mut C) {
+            self.deref_mut().on_subscribe(collect);
+        }
+
+        #[inline]
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_new_span(attrs, id, ctx)
         }
@@ -1148,21 +1157,6 @@ macro_rules! subscriber_impl_body {
             self.deref().downcast_raw(id)
         }
     };
-}
-
-impl<S, C> Subscribe<C> for Arc<S>
-where
-    S: Subscribe<C>,
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
-
-impl<C> Subscribe<C> for Arc<dyn Subscribe<C>>
-where
-    C: Collect,
-{
-    subscriber_impl_body! {}
 }
 
 impl<S, C> Subscribe<C> for Box<S>
