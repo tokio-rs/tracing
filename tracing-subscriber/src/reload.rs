@@ -58,6 +58,10 @@ where
     S: crate::Subscribe<C> + 'static,
     C: Collect,
 {
+    fn on_subscribe(&mut self, collector: &mut C) {
+        try_lock!(self.inner.write(), else return).on_subscribe(collector);
+    }
+
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)
