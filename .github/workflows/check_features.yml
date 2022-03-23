@@ -45,10 +45,8 @@ jobs:
         - tracing-serde
         - tracing-tower
         - tracing-opentelemetry
-        # tracing and tracing-subscriber have too many features to be checked by
-        # cargo-hack --feature-powerset, combinatorics there is exploding.
-        #- tracing
-        #- tracing-subscriber
+        - tracing
+        - tracing-subscriber
     steps:
     - uses: actions/checkout@main
     - uses: actions-rs/toolchain@v1
@@ -61,53 +59,31 @@ jobs:
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
       working-directory: ${{ matrix.subcrate }}
-      run: cargo hack check --feature-powerset --no-dev-deps
-
-  cargo-check-tracing:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        featureset:
-        - ""
-        - log-always
-        - std log-always
-        - std
-      fail-fast: false
-    steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-    - name: cargo check
-      working-directory: tracing
-      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
-
-  cargo-check-subscriber:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        featureset:
-        - ""
-        - fmt
-        - fmt ansi
-        - fmt json
-        - fmt json ansi
-        - fmt registry
-        - fmt env-filter
-        - registry
-        - env-filter
-    steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-    - name: cargo check
-      working-directory: tracing-subscriber
-      run: cargo check --no-default-features --features "${{ matrix.featureset }}"
+      # tracing and tracing-subscriber have too many features to be checked by
+      # cargo-hack --feature-powerset with all features in the powerset, so
+      # exclude some
+      run: |
+        CARGO_HACK=(cargo hack check --feature-powerset --no-dev-deps)
+        case "${{ matrix.subcrate }}" in
+          tracing)
+            EXCLUDE_FEATURES=(
+              max_level_off max_level_error max_level_warn max_level_info
+              max_level_debug max_level_trace release_max_level_off
+              release_max_level_error release_max_level_warn
+              release_max_level_info release_max_level_debug
+              release_max_level_trace
+            )
+            ${CARGO_HACK[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            ;;
+          tracing-subscriber)
+            INCLUDE_FEATURES=(fmt ansi json registry env-filter)
+            ${CARGO_HACK[@]} --include-features "${INCLUDE_FEATURES[*]}"
+            ;;
+          *)
+            ${CARGO_HACK[@]}
+            ;;
+        esac
+      shell: bash
 
   features-stable:
     # Feature flag tests that run on stable Rust.
