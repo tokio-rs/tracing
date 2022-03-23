@@ -827,6 +827,30 @@ where
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
 
+    /// Called before `on_event`, to determine if `on_event` should be called.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note**: This method determines whether an event is globally enabled,
+    /// *not* whether the individual subscriber will be notified about the
+    /// event. This is intended to be used by layers that implement filtering
+    /// for the entire stack. Layers which do not wish to be notified about
+    /// certain events but do not wish to globally disable them should ignore
+    /// those events in their [on_event][Self::on_event].
+    ///
+    /// </pre></div>
+    ///
+    /// See [the trait-level documentation] for more information on filtering
+    /// with `Subscriber`s.
+    ///
+    /// [`Interest`]: tracing_core::Interest
+    /// [the trait-level documentation]: #filtering-with-subscribers
+    #[inline] // collapse this to a constant please mrs optimizer
+    fn event_enabled(&self, _event: &Event<'_>, _ctx: Context<'_, C>) -> bool {
+        true
+    }
+
     /// Notifies this subscriber that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
