@@ -9,9 +9,9 @@ use crate::{
     registry::LookupSpan,
     subscribe::{Context, Subscribe},
 };
-#[cfg(feature = "registry")]
+#[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
-use std::{any::TypeId, fmt, marker::PhantomData, ptr::NonNull};
+use core::{any::TypeId, cmp, fmt, marker::PhantomData, ptr::NonNull};
 
 /// A [collector] composed of a [collector] wrapped by one or more
 /// [subscriber]s.
@@ -142,16 +142,16 @@ where
     }
 
     fn try_close(&self, id: span::Id) -> bool {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let subscriber = &self.inner as &dyn Collect;
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let mut guard = subscriber
             .downcast_ref::<Registry>()
             .map(|registry| registry.start_close(id.clone()));
         if self.inner.try_close(id.clone()) {
             // If we have a registry's close guard, indicate that the span is
             // closing.
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if let Some(g) = guard.as_mut() {
                     g.is_closing()
@@ -341,7 +341,7 @@ where
         self.inner.span_data(id)
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn register_filter(&mut self) -> FilterId {
         self.inner.register_filter()
     }
@@ -362,9 +362,9 @@ where
     C: Collect,
 {
     pub(super) fn new(subscriber: A, inner: B, inner_has_subscriber_filter: bool) -> Self {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let inner_is_registry = TypeId::of::<C>() == TypeId::of::<crate::registry::Registry>();
-        #[cfg(not(feature = "registry"))]
+        #[cfg(not(all(feature = "registry", feature = "std")))]
         let inner_is_registry = false;
 
         let inner_has_subscriber_filter = inner_has_subscriber_filter || inner_is_registry;
@@ -427,14 +427,12 @@ where
         outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
     ) -> Option<LevelFilter> {
-        use std::cmp::max;
-
         if self.inner_is_registry {
             return outer_hint;
         }
 
         if self.has_subscriber_filter && self.inner_has_subscriber_filter {
-            return Some(max(outer_hint?, inner_hint?));
+            return Some(cmp::max(outer_hint?, inner_hint?));
         }
 
         if self.has_subscriber_filter && inner_hint.is_none() {
@@ -445,7 +443,7 @@ where
             return None;
         }
 
-        max(outer_hint, inner_hint)
+        cmp::max(outer_hint, inner_hint)
     }
 }
 
@@ -455,13 +453,13 @@ where
     B: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         let alt = f.alternate();
         let mut s = f.debug_struct("Layered");
         // These additional fields are more verbose and usually only necessary
         // for internal debugging purposes, so only print them if alternate mode
         // is enabled.
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         if alt {
             s.field("inner_is_registry", &self.inner_is_registry)
                 .field("has_subscriber_filter", &self.has_subscriber_filter)

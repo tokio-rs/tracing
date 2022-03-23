@@ -60,8 +60,6 @@
 //! [lookup]: crate::subscribe::Context::span()
 use core::fmt::Debug;
 
-#[cfg(feature = "registry")]
-use crate::filter::FilterId;
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
 feature! {
@@ -80,6 +78,8 @@ feature! {
 
     pub use sharded::Data;
     pub use sharded::Registry;
+
+    use crate::filter::FilterId;
 }
 
 /// Provides access to stored span data.
@@ -228,7 +228,7 @@ pub struct Scope<'a, R> {
     registry: &'a R,
     next: Option<Id>,
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     filter: FilterId,
 }
 
@@ -237,7 +237,6 @@ feature! {
 
     #[cfg(not(feature = "smallvec"))]
     use alloc::vec::{self, Vec};
-
     use core::{fmt,iter};
 
     /// An iterator over the parents of a span, ordered from root to leaf.
@@ -319,18 +318,20 @@ where
         loop {
             let curr = self.registry.span(self.next.as_ref()?)?;
 
-            #[cfg(feature = "registry")]
+            #[cfg(all(feature = "registry", feature = "std"))]
             let curr = curr.with_filter(self.filter);
             self.next = curr.data.parent().cloned();
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
 
-            #[cfg(feature = "registry")]
-            if !curr.is_enabled_for(self.filter) {
-                // The current span in the chain is disabled for this
-                // filter. Try its parent.
-                continue;
+            #[cfg(all(feature = "registry", feature = "std"))]
+            {
+                if !curr.is_enabled_for(self.filter) {
+                    // The current span in the chain is disabled for this
+                    // filter. Try its parent.
+                    continue;
+                }
             }
 
             return Some(curr);
@@ -407,7 +408,7 @@ where
         let id = self.data.parent()?;
         let data = self.registry.span_data(id)?;
 
-        #[cfg(feature = "registry")]
+        #[cfg(all(feature = "registry", feature = "std"))]
         {
             // move these into mut bindings if the registry feature is enabled,
             // since they may be mutated in the loop.
@@ -428,7 +429,7 @@ where
             }
         }
 
-        #[cfg(not(feature = "registry"))]
+        #[cfg(not(all(feature = "registry", feature = "std")))]
         Some(Self {
             registry: self.registry,
             data,
@@ -532,7 +533,7 @@ where
         self.data.extensions_mut()
     }
 
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn try_with_filter(self, filter: FilterId) -> Option<Self> {
         if self.is_enabled_for(filter) {
             return Some(self.with_filter(filter));
@@ -542,13 +543,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     pub(crate) fn is_enabled_for(&self, filter: FilterId) -> bool {
         self.data.is_enabled_for(filter)
     }
 
     #[inline]
-    #[cfg(feature = "registry")]
+    #[cfg(all(feature = "registry", feature = "std"))]
     fn with_filter(self, filter: FilterId) -> Self {
         Self { filter, ..self }
     }

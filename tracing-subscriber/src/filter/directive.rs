@@ -1,6 +1,7 @@
 use crate::filter::level::{self, LevelFilter};
-use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
-use tracing_core::Metadata;
+use alloc::{string::String, vec::Vec};
+use core::{cmp::Ordering, fmt, iter::FromIterator, slice, str::FromStr};
+use tracing_core::{Level, Metadata};
 /// Indicates that a string could not be parsed as a filtering directive.
 #[derive(Debug)]
 pub struct ParseError {
@@ -35,7 +36,8 @@ pub(in crate::filter) trait Match {
 
 #[derive(Debug)]
 enum ParseErrorKind {
-    Field(Box<dyn Error + Send + Sync>),
+    #[cfg(feature = "std")]
+    Field(Box<dyn std::error::Error + Send + Sync>),
     Level(level::ParseError),
     Other(Option<&'static str>),
 }
@@ -43,11 +45,12 @@ enum ParseErrorKind {
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
+    #[cfg(feature = "std")]
     pub(crate) fn is_empty(&self) -> bool {
         self.directives.is_empty()
     }
 
-    pub(crate) fn iter(&self) -> std::slice::Iter<'_, T> {
+    pub(crate) fn iter(&self) -> slice::Iter<'_, T> {
         self.directives.iter()
     }
 }
@@ -118,7 +121,7 @@ impl<T> IntoIterator for DirectiveSet<T> {
     #[cfg(feature = "smallvec")]
     type IntoIter = smallvec::IntoIter<[T; 8]>;
     #[cfg(not(feature = "smallvec"))]
-    type IntoIter = std::vec::IntoIter<T>;
+    type IntoIter = alloc::vec::IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.directives.into_iter()
@@ -135,6 +138,22 @@ impl DirectiveSet<StaticDirective> {
             None => false,
         }
     }
+
+    /// Same as `enabled` above, but skips `Directive`'s with fields.
+    pub(crate) fn target_enabled(&self, target: &str, level: &Level) -> bool {
+        match self.directives_for_target(target).next() {
+            Some(d) => d.level >= *level,
+            None => false,
+        }
+    }
+
+    pub(crate) fn directives_for_target<'a>(
+        &'a self,
+        target: &'a str,
+    ) -> impl Iterator<Item = &'a StaticDirective> + 'a {
+        self.directives()
+            .filter(move |d| d.cares_about_target(target))
+    }
 }
 
 // === impl StaticDirective ===
@@ -150,6 +169,22 @@ impl StaticDirective {
             field_names,
             level,
         }
+    }
+
+    pub(in crate::filter) fn cares_about_target(&self, to_check: &str) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !to_check.starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        if !self.field_names.is_empty() {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -353,6 +388,7 @@ impl FromStr for StaticDirective {
 // === impl ParseError ===
 
 impl ParseError {
+    #[cfg(feature = "std")]
     pub(crate) fn new() -> Self {
         ParseError {
             kind: ParseErrorKind::Other(None),
@@ -372,17 +408,19 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
             ParseErrorKind::Other(Some(msg)) => write!(f, "invalid filter directive: {}", msg),
             ParseErrorKind::Level(ref l) => l.fmt(f),
+            #[cfg(feature = "std")]
             ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
         }
     }
 }
 
-impl Error for ParseError {
+#[cfg(feature = "std")]
+impl std::error::Error for ParseError {
     fn description(&self) -> &str {
         "invalid filter directive"
     }
 
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self.kind {
             ParseErrorKind::Other(_) => None,
             ParseErrorKind::Level(ref l) => Some(l),
@@ -391,8 +429,9 @@ impl Error for ParseError {
     }
 }
 
-impl From<Box<dyn Error + Send + Sync>> for ParseError {
-    fn from(e: Box<dyn Error + Send + Sync>) -> Self {
+#[cfg(feature = "std")]
+impl From<Box<dyn std::error::Error + Send + Sync>> for ParseError {
+    fn from(e: Box<dyn std::error::Error + Send + Sync>) -> Self {
         Self {
             kind: ParseErrorKind::Field(e),
         }
