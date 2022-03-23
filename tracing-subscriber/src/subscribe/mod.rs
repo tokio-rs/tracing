@@ -499,16 +499,20 @@
 //! [`LevelFilter`]: crate::filter::LevelFilter
 //! [feat]: crate#feature-flags
 use crate::filter;
-use std::{
-    any::TypeId,
-    ops::{Deref, DerefMut},
-    ptr::NonNull,
-};
+
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
     span, Event, LevelFilter,
 };
+
+use core::{any::TypeId, ptr::NonNull};
+
+feature! {
+    #![feature = "alloc"]
+    use alloc::boxed::Box;
+    use core::ops::{Deref, DerefMut};
+}
 
 mod context;
 mod layered;
@@ -560,6 +564,7 @@ where
     /// [`register_filter`]: crate::registry::LookupSpan::register_filter
     /// [per-subscribe filtering]: #per-subscriber-filtering
     /// [`FilterId`]: crate::filter::FilterId
+    /// [collector]: tracing_core::Collect
     fn on_subscribe(&mut self, collector: &mut C) {
         let _ = collector;
     }
@@ -875,8 +880,8 @@ where
 
 /// A per-[`Subscribe`] filter that determines whether a span or event is enabled
 /// for an individual subscriber.
-#[cfg(feature = "registry")]
-#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+#[cfg(all(feature = "registry", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Filter<S> {
     /// Returns `true` if this subscriber is interested in a span or event with the
@@ -1205,6 +1210,7 @@ where
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! subscriber_impl_body {
     () => {
         #[inline]
@@ -1218,18 +1224,8 @@ macro_rules! subscriber_impl_body {
         }
 
         #[inline]
-        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-            self.deref().register_callsite(metadata)
-        }
-
-        #[inline]
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
             self.deref().enabled(metadata, ctx)
-        }
-
-        #[inline]
-        fn max_level_hint(&self) -> Option<LevelFilter> {
-            self.deref().max_level_hint()
         }
 
         #[inline]
@@ -1275,19 +1271,23 @@ macro_rules! subscriber_impl_body {
     };
 }
 
-impl<S, C> Subscribe<C> for Box<S>
-where
-    S: Subscribe<C>,
-    C: Collect,
-{
-    subscriber_impl_body! {}
-}
+feature! {
+    #![any(feature = "std", feature = "alloc")]
 
-impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
-where
-    C: Collect,
-{
-    subscriber_impl_body! {}
+    impl<S, C> Subscribe<C> for Box<S>
+    where
+        S: Subscribe<C>,
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
+
+    impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
+    where
+        C: Collect,
+    {
+        subscriber_impl_body! {}
+    }
 }
 
 // === impl CollectExt ===

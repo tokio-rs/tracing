@@ -86,8 +86,9 @@ use tracing_core::{
 /// [ot]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#spancontext
 /// [fields]: https://docs.rs/tracing-core/latest/tracing-core/field/index.html
 /// [stored span data]: crate::registry::SpanData::extensions_mut
-#[derive(Debug)]
+#[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
+#[derive(Debug)]
 pub struct Registry {
     spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
@@ -103,6 +104,9 @@ pub struct Registry {
 ///
 /// [`Subscriber`s]: crate::Subscribe
 /// [extensions]: Extensions
+/// [`Registry`]: struct.Registry.html
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
 pub struct Data<'a> {
     /// Immutable reference to the pooled `DataInner` entry.

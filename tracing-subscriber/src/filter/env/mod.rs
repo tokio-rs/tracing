@@ -102,7 +102,6 @@ use tracing_core::{
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Targets`]: crate::filter::Targets
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
-#[cfg(feature = "env-filter")]
 #[derive(Debug)]
 pub struct EnvFilter {
     statics: directive::Statics,
