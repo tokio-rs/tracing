@@ -14,9 +14,34 @@
 //!
 //! [msrv]: #supported-rust-versions
 //!
-//! ## Included Subscribers
+//! ## Subscribers and Filters
 //!
-//! The following `Collector`s are provided for application authors:
+//! The most important component of the `tracing-subscriber` API is the
+//! [`Subscribe`] trait, which provides a composable abstraction for building
+//! [collector]s. Like the [`Collect`] trait, [`Subscribe`] defines a
+//! particular behavior for collecting trace data. Unlike [`Collect`],
+//! which implements a *complete* strategy for how trace data is collected,
+//! [`Subscribe`] provide *modular* implementations of specific behaviors.
+//! Therefore, they can be [composed together] to form a [collector] which is
+//! capable of recording traces in a variety of ways. See the [`subscribe` module's
+//! documentation][subscribe] for details on using [subscribers].
+//!
+//! In addition, the [`Filter`] trait defines an interface for filtering what
+//! spans and events are recorded by a particular subscriber. This allows different
+//! [`Subscribe`] implementationss to handle separate subsets of the trace data
+//! emitted by a program. See the [documentation on per-subscriber
+//! filtering][psf] for more information on using [`Filter`]s.
+//!
+//! [`Subscribe`]: crate::subscribe::Subscribe
+//! [composed together]: crate::subscribe#composing-subscribers
+//! [subscribe]: crate::subscribe
+//! [subscribers]: crate::subscribe
+//! [`Filter`]: crate::subscribe::Filter
+//! [psf]: crate::subscribe#per-subscriber-filtering
+//!
+//! ## Included Collectors
+//!
+//! The following [ollectors] are provided for application authors:
 //!
 //! - [`fmt`] - Formats and logs tracing data (requires the `fmt` feature flag)
 //!
@@ -95,6 +120,7 @@
 //! [`fmt`]: mod@fmt
 //! [`registry`]: mod@registry
 //! [`Collect`]: tracing_core::collect::Collect
+//! [collector]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
@@ -109,7 +135,15 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(
+    docsrs,
+    // Allows displaying cfgs/feature flags in the documentation.
+    feature(doc_cfg),
+    // Allows adding traits to RustDoc's list of "notable traits"
+    feature(doc_notable_trait),
+    // Fail the docs build if any intra-docs links are broken
+    deny(rustdoc::broken_intra_doc_links),
+)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
