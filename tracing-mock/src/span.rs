@@ -1,4 +1,6 @@
 #![allow(missing_docs)]
+use tracing_core::Level;
+
 use super::{field, metadata, Parent};
 use std::fmt;
 
@@ -86,6 +88,14 @@ impl MockSpan {
         self.metadata.name.as_ref().map(String::as_ref)
     }
 
+    pub fn level(&self) -> Option<Level> {
+        self.metadata.level
+    }
+
+    pub fn target(&self) -> Option<&str> {
+        self.metadata.target.as_ref().map(String::as_ref)
+    }
+
     pub fn with_field<I>(self, fields: I) -> NewSpan
     where
         I: Into<field::Expect>,
@@ -147,6 +157,32 @@ impl NewSpan {
         NewSpan {
             fields: fields.into(),
             ..self
+        }
+    }
+
+    pub fn check(
+        &mut self,
+        span: &tracing_core::span::Attributes<'_>,
+        get_parent_name: impl FnOnce() -> Option<String>,
+        subscriber_name: &str,
+    ) {
+        let meta = span.metadata();
+        let name = meta.name();
+        self.span
+            .metadata
+            .check(meta, format_args!("span `{}`", name), subscriber_name);
+        let mut checker = self.fields.checker(name.to_string());
+        span.record(&mut checker);
+        checker.finish();
+
+        if let Some(expected_parent) = self.parent.as_ref() {
+            let actual_parent = get_parent_name();
+            expected_parent.check_parent_name(
+                actual_parent.as_deref(),
+                span.parent().cloned(),
+                format_args!("span `{}`", name),
+                subscriber_name,
+            )
         }
     }
 }

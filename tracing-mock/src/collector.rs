@@ -22,7 +22,7 @@ use tracing::{
 };
 
 #[derive(Debug, Eq, PartialEq)]
-enum Expect {
+pub(crate) enum Expect {
     Event(MockEvent),
     Enter(MockSpan),
     Exit(MockSpan),
@@ -235,7 +235,7 @@ where
             None => {}
             Some(Expect::Event(mut expected)) => {
                 let spans = self.spans.lock().unwrap();
-                expected.check(event);
+                expected.check(event, || None, &self.name);
                 match expected.parent {
                     Some(Parent::ExplicitRoot) => {
                         assert!(
@@ -324,7 +324,7 @@ where
                 expected
                     .span
                     .metadata
-                    .check(meta, format_args!("span `{}`", name));
+                    .check(meta, format_args!("span `{}`", name), &self.name);
                 let mut checker = expected.fields.checker(name.to_string());
                 span.record(&mut checker);
                 checker.finish();
@@ -537,6 +537,10 @@ where
 }
 
 impl MockHandle {
+    pub(crate) fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
+        Self(expected, name)
+    }
+
     pub fn assert_finished(&self) {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
@@ -550,7 +554,7 @@ impl MockHandle {
 }
 
 impl Expect {
-    fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
+    pub(crate) fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
             Expect::Event(e) => panic!("[{}] expected event {}, but {} instead", name, e, what,),
