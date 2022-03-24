@@ -2,7 +2,7 @@
 use crate::layer::{Context, Filter};
 use std::{cmp, fmt, marker::PhantomData};
 use tracing_core::{
-    span::{Attributes, Id},
+    span::{Attributes, Id, Record},
     subscriber::Interest,
     LevelFilter, Metadata,
 };
@@ -141,6 +141,12 @@ where
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
+        self.b.on_record(id, values, ctx);
     }
 
     #[inline]
@@ -317,11 +323,17 @@ where
         // If either hint is `None`, return `None`. Otherwise, return the less restrictive.
         Some(cmp::max(self.a.max_level_hint()?, self.b.max_level_hint()?))
     }
-    
+
     #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
+        self.b.on_record(id, values, ctx);
     }
 
     #[inline]
@@ -412,6 +424,11 @@ where
     #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx);
+    }
+
+    #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
     }
 
     #[inline]
