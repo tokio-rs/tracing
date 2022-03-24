@@ -724,4 +724,13 @@ mod tests {
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
     }
+
+    #[test]
+    fn from_level() {
+        let f1: EnvFilter = "info".parse().unwrap();
+        let f2: EnvFilter = EnvFilter::from_level(tracing::level_filters::LevelFilter::INFO);
+
+        assert_eq!(f1.statics, f2.statics);
+        assert_eq!(f1.dynamics, f2.dynamics);
+    }
 }
