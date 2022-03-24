@@ -139,6 +139,69 @@ pub fn register(callsite: &'static dyn Callsite) {
     registry.callsites.push(callsite);
 }
 
+/// Attempts to register a new `Callsite` with the global registry, if the
+/// *current* thread is not already registering a callsite.
+///
+/// This returns `true` if the callsite was successfully registered. Otherwise,
+/// if it returns `false`, the callsite registry was already locked by the
+/// current thread, and the registration will need to be attempted again.
+///
+/// This function may need to be called multiple times per callsite before it
+/// returns `true`; once it returns `true`, this function will not need to be
+/// called again.
+#[cfg(feature = "std")]
+pub fn try_register(callsite: &'static dyn Callsite) -> bool {
+    use std::cell::Cell;
+    std::thread_local! {
+        static IS_REGISTERING: Cell<bool> = Cell::new(false);
+    }
+
+    IS_REGISTERING
+        .try_with(|cell| {
+            if cell.replace(true) {
+                // this thread is already registering a callsite, bail!
+                return false;
+            }
+
+            // okay, we can register the callsite.
+            register(callsite);
+            cell.set(false);
+            true
+        })
+        .unwrap_or(false)
+}
+
+/// Attempts to register a new [`Callsite`] with the global registry, if the
+/// global registry can be accessed.
+///
+/// This returns `true` if the callsite was successfully registered, or `false` if
+/// the registry was busy.
+///
+/// This function may need to be called multiple times per callsite before it
+/// returns `true`; once it returns `true`, this function will not need to be
+/// called again.
+#[cfg(not(feature = "std"))]
+pub fn try_register(callsite: &'static dyn Callsite) -> bool {
+    use core::sync::atomic::{AtomicBool, Ordering};
+    static IS_REGISTERING: AtomicBool = AtomicBool::new(false);
+    // If a callsite is currently being registered, bail. This avoids potential
+    // deadlocks due to a recursive `register_callsite` call.
+    if IS_REGISTERING
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return false;
+    }
+
+    // Otherwise, try to register the callsite. This will acquire the mutex, but
+    // that's okay --- if the cached interests are being re-evaluated, we can
+    // happily wait for that to complete without deadlocking.
+    register(callsite);
+    // Reset the flag once the callsite is registered.
+    IS_REGISTERING.store(false, Ordering::Release);
+    true
+}
+
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
     let mut registry = REGISTRY.lock();
     registry.dispatchers.push(dispatch.registrar());
