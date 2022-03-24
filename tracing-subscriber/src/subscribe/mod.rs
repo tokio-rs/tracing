@@ -1242,6 +1242,16 @@ pub trait Filter<S> {
         let _ = (attrs, id, ctx);
     }
 
+    /// Notifies this filter that a span with the given `Id` recorded the given
+    /// `values`.
+    ///
+    /// By default, this method does nothing. `Filter` implementations that
+    /// need to be notified when new spans are created can override this
+    /// method.
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        let _ = (id, values, ctx);
+    }
+
     /// Notifies this filter that a span with the given ID was entered.
     ///
     /// By default, this method does nothing. `Filter` implementations that
