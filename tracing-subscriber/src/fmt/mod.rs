@@ -1066,7 +1066,10 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let builder = Collector::builder();
 
     #[cfg(feature = "env-filter")]
-    let builder = builder.with_env_filter(crate::EnvFilter::from_default_env());
+    let builder = builder.with_env_filter(
+        crate::EnvFilter::try_from_default_env()
+            .unwrap_or(crate::EnvFilter::from_level(Collector::DEFAULT_MAX_LEVEL)),
+    );
 
     builder.try_init()
 }

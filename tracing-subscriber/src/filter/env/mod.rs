@@ -188,6 +188,22 @@ impl EnvFilter {
         env::var(env.as_ref())?.parse().map_err(Into::into)
     }
 
+    /// Returns a new `EnvFilter` with the value of the given level as a
+    /// global filter. You can use this as an easy way to fallback to a global
+    /// filter if the `RUST_LOG` env variable is unset.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::LevelFilter;
+    /// EnvFilter::try_from_default_env().unwrap_or(
+    ///     EnvFilter::from_level(tracing::Level::INFO.into()
+    /// ))
+    /// ```
+    pub fn from_level(level: LevelFilter) -> Self {
+        Self::from_directives([level.into()])
+    }
+
     /// Add a filtering directive to this `EnvFilter`.
     ///
     /// The added directive will be used in addition to any previously set
