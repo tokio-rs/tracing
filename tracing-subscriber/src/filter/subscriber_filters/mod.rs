@@ -614,7 +614,7 @@ where
 
     fn on_exit(&self, id: &span::Id, cx: Context<'_, C>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.filter.on_enter(id, cx.clone());
+            self.filter.on_exit(id, cx.clone());
             self.subscriber.on_exit(id, cx);
         }
     }
