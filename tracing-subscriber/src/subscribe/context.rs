@@ -86,7 +86,7 @@ where
         }
     }
 
-    /// Returns the wrapped subscriber's view of the current span.
+    /// Returns the wrapped collector's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber
@@ -96,7 +96,7 @@ where
             .unwrap_or_else(span::Current::none)
     }
 
-    /// Returns whether the wrapped subscriber would enable the current span.
+    /// Returns whether the wrapped collector would enable the current span.
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber
@@ -108,20 +108,20 @@ where
             .unwrap_or(true)
     }
 
-    /// Records the provided `event` with the wrapped subscriber.
+    /// Records the provided `event` with the wrapped collector.
     ///
     /// # Notes
     ///
-    /// - The subscriber is free to expect that the event's callsite has been
+    /// - The collector is free to expect that the event's callsite has been
     ///   [registered][register], and may panic or fail to observe the event if this is
     ///   not the case. The `tracing` crate's macros ensure that all events are
     ///   registered, but if the event is constructed through other means, the
     ///   user is responsible for ensuring that [`register_callsite`][register]
     ///   has been called prior to calling this method.
-    /// - This does _not_ call [`enabled`] on the inner subscriber. If the
-    ///   caller wishes to apply the wrapped subscriber's filter before choosing
+    /// - This does _not_ call [`enabled`] on the inner collector. If the
+    ///   caller wishes to apply the wrapped collector's filter before choosing
     ///   whether to record the event, it may first call [`Context::enabled`] to
-    ///   check whether the event would be enabled. This allows `Layer`s to
+    ///   check whether the event would be enabled. This allows subscriberss to
     ///   elide constructing the event if it would not be recorded.
     ///
     /// [register]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.register_callsite
@@ -185,7 +185,7 @@ where
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
@@ -225,7 +225,7 @@ where
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
@@ -250,7 +250,7 @@ where
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
@@ -263,14 +263,14 @@ where
         self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
     }
 
-    /// Returns [stored data] for the span that the wrapped subscriber considers
+    /// Returns [stored data] for the span that the wrapped collector considers
     /// to be the current.
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
@@ -303,7 +303,7 @@ where
             //
             // Currently, `LookupSpan` doesn't have a nice way of exposing access to
             // the whole span stack. However, if we can downcast the innermost
-            // subscriber to a a `Registry`, we can iterate over its current span
+            // collector to a a `Registry`, we can iterate over its current span
             // stack.
             //
             // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
@@ -338,40 +338,6 @@ where
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
-    /// current context, starting the root of the trace tree and ending with
-    /// the current span.
-    ///
-    /// If this iterator is empty, then there are no spans in the current context.
-    ///
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
-    /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
-    /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
-    /// declaration</a> for details.
-    /// </pre></div>
-    ///
-    /// [stored data]: ../registry/struct.SpanRef.html
-    #[deprecated(
-        note = "equivalent to `self.current_span().id().and_then(|id| self.span_scope(id).from_root())` but consider passing an explicit ID instead of relying on the contextual span",
-        since = "0.2.19"
-    )]
-    #[allow(deprecated)]
-    pub fn scope(&self) -> Scope<'_, C>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        Scope(
-            self.lookup_current()
-                .as_ref()
-                .map(registry::SpanRef::scope)
-                .map(registry::Scope::from_root)
-                .into_iter()
-                .flatten(),
-        )
-    }
-
-    /// Returns an iterator over the [stored data] for all the spans in the
     /// current context, starting with the specified span and ending with the
     /// root of the trace tree and ending with the current span.
     ///
@@ -391,7 +357,7 @@ where
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
@@ -419,7 +385,7 @@ where
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: This requires the wrapped subscriber to implement the
+    /// <strong>Note</strong>: This requires the wrapped collector to implement the
     /// <a href="../registry/trait.LookupSpan.html"><code>LookupSpan</code></a> trait.
     /// See the documentation on <a href="./struct.Context.html"><code>Context</code>'s
     /// declaration</a> for details.
