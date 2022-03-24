@@ -99,20 +99,20 @@ pub fn register(callsite: &'static dyn Callsite) {
     CALLSITES.push_dyn(callsite);
 }
 
-crate::lazy_static! {
-    static ref CALLSITES: Callsites = Callsites {
-        list_head: AtomicPtr::new(ptr::null_mut()),
-        has_locked_callsites: AtomicBool::new(false),
-        locked_callsites: Mutex::new(Vec::new()),
-    };
+static CALLSITES: Callsites = Callsites {
+    list_head: AtomicPtr::new(ptr::null_mut()),
+    has_locked_callsites: AtomicBool::new(false),
+};
 
-    static ref DISPATCHERS: Dispatchers = Dispatchers::new();
+static DISPATCHERS: Dispatchers = Dispatchers::new();
+
+crate::lazy_static! {
+    static ref LOCKED_CALLSITES: Mutex<Vec<&'static dyn Callsite>> = Mutex::new(Vec::new());
 }
 
 struct Callsites {
     list_head: AtomicPtr<DefaultCallsite>,
     has_locked_callsites: AtomicBool,
-    locked_callsites: Mutex<Vec<&'static dyn Callsite>>,
 }
 
 // === impl DefaultCallsite ===
@@ -232,7 +232,7 @@ impl Callsites {
     ///
     /// This will attempt to lock the callsites vector.
     fn push_dyn(&self, callsite: &'static dyn Callsite) {
-        let mut lock = self.locked_callsites.lock().unwrap();
+        let mut lock = LOCKED_CALLSITES.lock().unwrap();
         self.has_locked_callsites.store(true, Ordering::Release);
         lock.push(callsite);
     }
@@ -280,7 +280,7 @@ impl Callsites {
         }
 
         if self.has_locked_callsites.load(Ordering::Acquire) {
-            let locked = self.locked_callsites.lock().unwrap();
+            let locked = LOCKED_CALLSITES.lock().unwrap();
             for &cs in locked.iter() {
                 f(cs);
             }
@@ -315,27 +315,45 @@ fn rebuild_callsite_interest(
 #[cfg(feature = "std")]
 mod dispatchers {
     use crate::dispatcher;
-    use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        RwLock, RwLockReadGuard, RwLockWriteGuard,
+    };
 
-    pub(super) struct Dispatchers(RwLock<Vec<dispatcher::Registrar>>);
+    pub(super) struct Dispatchers {
+        has_just_one: AtomicBool,
+    }
+
+    crate::lazy_static! {
+        static ref LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
+    }
+
     pub(super) enum Rebuilder<'a> {
+        JustOne,
         Read(RwLockReadGuard<'a, Vec<dispatcher::Registrar>>),
         Write(RwLockWriteGuard<'a, Vec<dispatcher::Registrar>>),
     }
 
     impl Dispatchers {
-        pub(super) fn new() -> Self {
-            Self(RwLock::new(Vec::new()))
+        pub(super) const fn new() -> Self {
+            Self {
+                has_just_one: AtomicBool::new(true),
+            }
         }
 
         pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
-            Rebuilder::Read(self.0.read().unwrap())
+            if self.has_just_one.load(Ordering::SeqCst) {
+                return Rebuilder::JustOne;
+            }
+            Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
         }
 
         pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder<'_> {
-            let mut dispatchers = self.0.write().unwrap();
+            let mut dispatchers = LOCKED_DISPATCHERS.write().unwrap();
             dispatchers.retain(|d| d.upgrade().is_some());
             dispatchers.push(dispatch.registrar());
+            self.has_just_one
+                .store(dispatchers.len() <= 1, Ordering::SeqCst);
             Rebuilder::Write(dispatchers)
         }
     }
@@ -343,6 +361,10 @@ mod dispatchers {
     impl Rebuilder<'_> {
         pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
             let iter = match self {
+                Rebuilder::JustOne => {
+                    dispatcher::get_default(f);
+                    return;
+                }
                 Rebuilder::Read(vec) => vec.iter(),
                 Rebuilder::Write(vec) => vec.iter(),
             };
@@ -362,7 +384,7 @@ mod dispatchers {
     pub(super) struct Rebuilder<'a>(PhantomData<'a>);
 
     impl Dispatchers {
-        pub(super) fn new() -> Self {
+        pub(super) const fn new() -> Self {
             Self(())
         }
 
@@ -377,6 +399,7 @@ mod dispatchers {
     }
 
     impl Rebuilder<'_> {
+        #[inline(always)]
         pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
             // on no_std, there can only ever be one dispatcher
             dispatcher::get_default(f)
