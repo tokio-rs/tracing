@@ -378,10 +378,9 @@ mod dispatchers {
 mod dispatchers {
     use crate::dispatcher;
     use core::marker::PhantomData;
-    use std::marker::PhantomData;
 
     pub(super) struct Dispatchers(());
-    pub(super) struct Rebuilder<'a>(PhantomData<'a>);
+    pub(super) struct Rebuilder<'a>(PhantomData<&'a ()>);
 
     impl Dispatchers {
         pub(super) const fn new() -> Self {
