@@ -101,4 +101,8 @@ jobs:
           cargo hack --remove-dev-deps --workspace
           # Update Cargo.lock to minimal version dependencies.
           cargo update -Z minimal-versions
-          cargo hack check --all-features --ignore-private
+          cargo hack check \
+            --package tracing \
+            --package tracing-core \
+            --package tracing-subscriber \
+            --all-features --ignore-private
