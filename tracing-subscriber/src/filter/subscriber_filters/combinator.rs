@@ -3,7 +3,7 @@ use crate::subscribe::{Context, Filter};
 use std::{cmp, fmt, marker::PhantomData};
 use tracing_core::{
     collect::Interest,
-    span::{Attributes, Id},
+    span::{Attributes, Id, Record},
     LevelFilter, Metadata,
 };
 
@@ -141,6 +141,12 @@ where
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
+        self.b.on_record(id, values, ctx);
     }
 
     #[inline]
@@ -325,6 +331,12 @@ where
     }
 
     #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
+        self.b.on_record(id, values, ctx);
+    }
+
+    #[inline]
     fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
         self.a.on_enter(id, ctx.clone());
         self.b.on_enter(id, ctx);
@@ -412,6 +424,11 @@ where
     #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx);
+    }
+
+    #[inline]
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        self.a.on_record(id, values, ctx.clone());
     }
 
     #[inline]
