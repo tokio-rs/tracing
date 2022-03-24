@@ -3,12 +3,12 @@
 use crate::stdlib::{
     fmt,
     hash::{Hash, Hasher},
-    sync::Mutex,
     vec::Vec,
 };
 use crate::{
     dispatcher::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
+    mutex::Mutex,
     subscriber::Interest,
 };
 
@@ -125,7 +125,7 @@ pub struct Identifier(
 /// [`Interest::sometimes()`]: ../subscriber/struct.Interest.html#method.sometimes
 /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
 pub fn rebuild_interest_cache() {
-    let mut registry = REGISTRY.lock().unwrap();
+    let mut registry = REGISTRY.lock();
     registry.rebuild_interest();
 }
 
@@ -134,13 +134,13 @@ pub fn rebuild_interest_cache() {
 /// This should be called once per callsite after the callsite has been
 /// constructed.
 pub fn register(callsite: &'static dyn Callsite) {
-    let mut registry = REGISTRY.lock().unwrap();
+    let mut registry = REGISTRY.lock();
     registry.rebuild_callsite_interest(callsite);
     registry.callsites.push(callsite);
 }
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-    let mut registry = REGISTRY.lock().unwrap();
+    let mut registry = REGISTRY.lock();
     registry.dispatchers.push(dispatch.registrar());
     registry.rebuild_interest();
 }

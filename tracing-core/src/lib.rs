@@ -282,6 +282,7 @@ pub mod dispatcher;
 pub mod event;
 pub mod field;
 pub mod metadata;
+pub(crate) mod mutex;
 mod parent;
 pub mod span;
 pub(crate) mod stdlib;
