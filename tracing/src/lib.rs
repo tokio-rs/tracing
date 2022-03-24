@@ -971,11 +971,10 @@ pub mod __macro_support {
     pub use crate::callsite::Callsite;
     use crate::stdlib::{
         fmt,
-        sync::atomic::{AtomicUsize, Ordering},
+        sync::atomic::{AtomicU8, Ordering},
     };
     use crate::{subscriber::Interest, Metadata};
     pub use core::concat;
-    use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.
     ///
@@ -986,10 +985,18 @@ pub mod __macro_support {
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
     pub struct MacroCallsite {
-        interest: AtomicUsize,
+        interest: AtomicU8,
+        registration: AtomicU8,
         meta: &'static Metadata<'static>,
-        registration: Once,
     }
+
+    const INTEREST_NEVER: u8 = 0;
+    const INTEREST_SOMETIMES: u8 = 1;
+    const INTEREST_ALWAYS: u8 = 2;
+
+    const UNREGISTERED: u8 = 0;
+    const REGISTERING: u8 = 1;
+    const REGISTERED: u8 = 2;
 
     impl MacroCallsite {
         /// Returns a new `MacroCallsite` with the specified `Metadata`.
@@ -1002,9 +1009,9 @@ pub mod __macro_support {
         /// without warning.
         pub const fn new(meta: &'static Metadata<'static>) -> Self {
             Self {
-                interest: AtomicUsize::new(0xDEADFACED),
+                interest: AtomicU8::new(255),
+                registration: AtomicU8::new(UNREGISTERED),
                 meta,
-                registration: Once::new(),
             }
         }
 
@@ -1022,11 +1029,51 @@ pub mod __macro_support {
         // This only happens once (or if the cached interest value was corrupted).
         #[cold]
         pub fn register(&'static self) -> Interest {
-            self.registration
-                .call_once(|| crate::callsite::register(self));
+            loop {
+                // Attempt to advance the registration state to `REGISTERING`...
+                match self.registration.compare_exchange(
+                    UNREGISTERED,
+                    REGISTERING,
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
+                ) {
+                    Ok(_) => {
+                        // Okay, we advanced the state, try to register the callsite.
+                        if crate::callsite::try_register(self) {
+                            // We successfully registered the callsite, advance
+                            // its state to `REGISTERED` so we don't try to
+                            // register again.
+                            self.registration.store(REGISTERED, Ordering::Release);
+                            break;
+                        } else {
+                            // We are already inside of a `register_callsite`
+                            // call (or something weird is going on). Don't
+                            // register the callsite yet, bail out.
+                            self.registration.store(UNREGISTERED, Ordering::Release);
+                            // Returning `Interest::never()` here means that we
+                            // will skip the callsite *this time*. This is
+                            // necessary to ensure subscribers never see
+                            // unregistered callsites.
+                            return Interest::never();
+                        }
+                    }
+                    // Great, the callsite is already registered! Just load its
+                    // previous cached interest.
+                    Err(REGISTERED) => break,
+                    // Someone else is registering...
+                    Err(_state) => {
+                        debug_assert_eq!(_state, REGISTERING, "weird callsite registration state");
+                        // XXX(eliza): it would be nicer if this waited for the
+                        // registry mutex to be released, but there isn't really
+                        // a nice way for `tracing_core` to expose it without
+                        // leaking a ton of impl details...
+                        core::hint::spin_loop();
+                    }
+                }
+            }
             match self.interest.load(Ordering::Relaxed) {
-                0 => Interest::never(),
-                2 => Interest::always(),
+                INTEREST_NEVER => Interest::never(),
+                INTEREST_ALWAYS => Interest::always(),
                 _ => Interest::sometimes(),
             }
         }
@@ -1043,9 +1090,9 @@ pub mod __macro_support {
         #[inline]
         pub fn interest(&'static self) -> Interest {
             match self.interest.load(Ordering::Relaxed) {
-                0 => Interest::never(),
-                1 => Interest::sometimes(),
-                2 => Interest::always(),
+                INTEREST_NEVER => Interest::never(),
+                INTEREST_SOMETIMES => Interest::sometimes(),
+                INTEREST_ALWAYS => Interest::always(),
                 _ => self.register(),
             }
         }
