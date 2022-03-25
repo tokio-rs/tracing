@@ -1339,13 +1339,6 @@ feature! {
     {
         subscriber_impl_body! {}
     }
-
-    impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
-    where
-        C: Collect,
-    {
-        subscriber_impl_body! {}
-    }
 }
 
 // === impl CollectExt ===
