@@ -592,6 +592,7 @@ where
 
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, cx: Context<'_, S>) {
         if let Some(cx) = cx.if_enabled_for(span, self.id()) {
+            self.filter.on_record(span, values, cx.clone());
             self.layer.on_record(span, values, cx)
         }
     }
@@ -619,7 +620,7 @@ where
 
     fn on_exit(&self, id: &span::Id, cx: Context<'_, S>) {
         if let Some(cx) = cx.if_enabled_for(id, self.id()) {
-            self.filter.on_enter(id, cx.clone());
+            self.filter.on_exit(id, cx.clone());
             self.layer.on_exit(id, cx);
         }
     }

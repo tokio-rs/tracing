@@ -1,10 +1,11 @@
 use core::cell::UnsafeCell;
 use core::default::Default;
 use core::fmt;
+use core::hint;
 use core::marker::Sync;
 use core::ops::{Deref, DerefMut, Drop};
 use core::option::Option::{self, None, Some};
-use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, Ordering};
 
 /// This type provides MUTual EXclusion based on spinning.
 pub(crate) struct Mutex<T: ?Sized> {
@@ -37,10 +38,14 @@ impl<T> Mutex<T> {
 
 impl<T: ?Sized> Mutex<T> {
     fn obtain_lock(&self) {
-        while self.lock.compare_and_swap(false, true, Ordering::Acquire) != false {
+        while self
+            .lock
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
             // Wait until the lock looks unlocked before retrying
             while self.lock.load(Ordering::Relaxed) {
-                cpu_relax();
+                hint::spin_loop();
             }
         }
     }
@@ -60,7 +65,11 @@ impl<T: ?Sized> Mutex<T> {
     /// Tries to lock the mutex. If it is already locked, it will return None. Otherwise it returns
     /// a guard within Some.
     pub(crate) fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false {
+        if self
+            .lock
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
+        {
             Some(MutexGuard {
                 lock: &self.lock,
                 data: unsafe { &mut *self.data.get() },
