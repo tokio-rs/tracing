@@ -70,7 +70,7 @@ pub struct Layer<
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
-    _inner: PhantomData<S>,
+    _inner: PhantomData<fn(S)>,
 }
 
 impl<S> Layer<S> {
