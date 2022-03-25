@@ -265,7 +265,8 @@
 //! ```
 //!
 //! [prelude]: crate::prelude
-//! [box-impl]: #impl-Layer<S>-for-Box<dyn Layer<S> + Send + Sync>
+//! [option-impl]: Layer#impl-Layer<S>-for-Option<L>
+//! [box-impl]: Layer#impl-Layer%3CS%3E-for-Box%3Cdyn%20Layer%3CS%3E%20+%20Send%20+%20Sync%3E
 //! [prelude]: crate::prelude
 //!
 //! # Recording Traces
@@ -533,7 +534,6 @@
 //! [`Layer::register_callsite`]: Layer::register_callsite
 //! [`Layer::enabled`]: Layer::enabled
 //! [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-//! [option-impl]: crate::layer::Layer#impl-Layer<S>-for-Option<L>
 //! [`Filtered`]: crate::filter::Filtered
 //! [`filter`]: crate::filter
 //! [`Targets`]: crate::filter::Targets
