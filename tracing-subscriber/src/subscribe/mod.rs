@@ -1608,10 +1608,9 @@ feature! {
         }
 
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            // NOTE(eliza): we use a fold here because we *must* iterate over
-            // all the subscribers, rather than short-circuiting, in case any of
-            // them are using per-layer filtering!
-            self.iter().fold(true, |enabled, s| enabled && s.enabled(metadata, ctx.clone()))
+            // XXX(eliza): does this need to clear the filter state when it
+            // returns false, or will `Layered` always take care of that for us?
+            self.iter().all(|s| s.enabled(metadata, ctx.clone()))
         }
 
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
