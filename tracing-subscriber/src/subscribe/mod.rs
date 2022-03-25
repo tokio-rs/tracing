@@ -268,10 +268,108 @@
 //!
 //! The [`Subscribe::boxed`] method is provided to make boxing a subscriber
 //! more convenient, but [`Box::new`] may be used as well.
+//! 
+//! When the _number_ of subscribers varies at runtime, note that a
+//! [`Vec<S> where S: Subscribe` also implements `Subscribe`][vec-impl]. This
+//! can be used to add a variable number of subscribers to a collector:
+//!
+//! ```
+//! use tracing_subscriber::{Subscribe, prelude::*};
+//! struct MySubscriber {
+//!     // ...
+//! }
+//! # impl MySubscriber { fn new() -> Self { Self {} }}
+//!
+//! impl<C: tracing_core::Collect> Subscribe<C> for MySubscriber {
+//!     // ...
+//! }
+//!
+//! /// Returns how many subscribers we need
+//! fn how_many_subscribers() -> usize {
+//!     // ...
+//!     # 3
+//! }
+//!
+//! // Create a variable-length `Vec` of subscribers
+//! let mut subscribers = Vec::new();
+//! for _ in 0..how_many_subscribers() {
+//!     subscribers.push(MySubscriber::new());
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(subscribers)
+//!     .init();
+//! ```
+//!
+//! If a variable number of subscribers is needed, and those subscribers have
+//! different types, a `Vec` of [boxed subscriber trait objects][box-impl] may
+//! be used. For example:
+//!
+//! ```
+//! use tracing_subscriber::{filter::LevelFilter, Subscribe, prelude::*};
+//! use std::fs::File;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! struct Config {
+//!     enable_log_file: bool,
+//!     enable_stdout: bool,
+//!     enable_stderr: bool,
+//!     // ...
+//! }
+//! # impl Config {
+//! #    fn from_config_file()-> Result<Self, Box<dyn std::error::Error>> {
+//! #         // don't enable the log file so that the example doesn't actually create it
+//! #         Ok(Self { enable_log_file: false, enable_stdout: true, enable_stderr: true })
+//! #    }
+//! # }
+//!
+//! let cfg = Config::from_config_file()?;
+//!
+//! // Based on our dynamically loaded config file, create any number of subscribers:
+//! let mut subscribers = Vec::new();
+//!
+//! if cfg.enable_log_file {
+//!     let file = File::create("myapp.log")?;
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .with_thread_names(true)
+//!         .with_target(true)
+//!         .json()
+//!         .with_writer(file)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .pretty()
+//!         .with_filter(LevelFilter::INFO)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .with_target(false)
+//!         .with_filter(LevelFilter::WARN)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(subscribers)
+//!     .init();
+//!# Ok(()) }
+//! ```
 //!
 //! [prelude]: crate::prelude
 //! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [box-impl]: Subscribe#impl-Subscribe%3CC%3E-for-Box%3Cdyn%20Subscribe%3CC%3E%20+%20Send%20+%20Sync%20+%20%27static%3E
+//! [vec-impl]: Subscribe#impl-Subscribe<C>-for-Vec<S>
 //!
 //! # Recording Traces
 //!
