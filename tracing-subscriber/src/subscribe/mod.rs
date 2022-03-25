@@ -1663,6 +1663,19 @@ feature! {
                 s.on_close(id.clone(), ctx.clone());
             }
         }
+
+        #[doc(hidden)]
+        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+            // If downcasting to `Self`, return a pointer to `self`.
+            if id == TypeId::of::<Self>() {
+                return Some(NonNull::from(self).cast());
+            }
+
+            // Otherwise, return the first child of `self` that downcaaasts to
+            // the selected type, if any.
+            // XXX(eliza): hope this is reasonable lol
+            self.iter().find_map(|s| s.downcast_raw(id))
+        }
     }
 }
 
