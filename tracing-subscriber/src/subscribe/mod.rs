@@ -366,6 +366,10 @@
 //!# Ok(()) }
 //! ```
 //!
+//! Finally, if the number of subscribers _changes_ at runtime, a `Vec` of
+//! subscribers can be used alongside the [`reload`](crate::reload) module to
+//! add or remove subscribers dynamically at runtime.
+//!
 //! [prelude]: crate::prelude
 //! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [box-impl]: Subscribe#impl-Subscribe%3CC%3E-for-Box%3Cdyn%20Subscribe%3CC%3E%20+%20Send%20+%20Sync%20+%20%27static%3E
