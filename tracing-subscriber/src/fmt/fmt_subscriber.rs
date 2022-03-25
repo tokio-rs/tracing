@@ -68,7 +68,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
-    _inner: PhantomData<C>,
+    _inner: PhantomData<fn(C)>,
 }
 
 impl<C> Subscriber<C> {
