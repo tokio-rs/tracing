@@ -236,10 +236,10 @@
 //! }
 //!
 //! impl LogConfig {
-//!     pub fn layer<C>(self) -> Box<dyn Layer<C> + Send + Sync + 'static>
+//!     pub fn layer<S>(self) -> Box<dyn Layer<S> + Send + Sync + 'static>
 //!     where
-//!         C: tracing_core::Subscriber + Send + Sync,
-//!         for<'a> C: LookupSpan<'a>,
+//!         S: tracing_core::Subscriber,
+//!         for<'a> S: LookupSpan<'a>,
 //!     {
 //!         // Shared configuration regardless of where logs are output to.
 //!         let fmt = tracing_subscriber::fmt::layer()
