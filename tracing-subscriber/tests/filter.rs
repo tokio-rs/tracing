@@ -518,7 +518,7 @@ mod per_layer_filter {
             .set_default();
 
         tracing::info_span!("span1").in_scope(|| {
-            tracing::info!("hello from span 1");
+            tracing::debug!("hello from span 1");
             tracing::trace!("not enabled");
         });
 
