@@ -92,16 +92,18 @@ fn level_filter_event_with_target_and_span_global() {
         .parse()
         .expect("filter should parse");
 
+    let cool_span = span::named("cool_span");
+    let uncool_span = span::named("uncool_span");
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::named("cool_span"))
+        .enter(cool_span.clone())
         .event(
             event::mock()
                 .at_level(Level::DEBUG)
-                .in_scope(vec![span::named("cool_span")]),
+                .in_scope(vec![cool_span.clone()]),
         )
-        .exit(span::named("cool_span"))
-        .enter(span::named("uncool_span"))
-        .exit(span::named("uncool_span"))
+        .exit(cool_span)
+        .enter(uncool_span.clone())
+        .exit(uncool_span)
         .done()
         .run_with_handle();
 
@@ -109,16 +111,14 @@ fn level_filter_event_with_target_and_span_global() {
 
     with_default(subscriber, || {
         {
-            let span = tracing::info_span!(target: "stuff", "cool_span");
-            let _enter = span.enter();
+            let _span = tracing::info_span!(target: "stuff", "cool_span").entered();
             tracing::debug!("this should be enabled");
         }
 
         tracing::debug!("should also be disabled");
 
         {
-            let span = tracing::info_span!("uncool_span");
-            let _enter = span.enter();
+            let _span = tracing::info_span!("uncool_span").entered();
             tracing::debug!("this should be disabled");
         }
     });
@@ -319,14 +319,15 @@ mod per_layer_filter {
             .parse()
             .expect("filter should parse");
 
+        let cool_span = span::named("cool_span");
         let (layer, handle) = layer::mock()
-            .enter(span::named("cool_span"))
+            .enter(cool_span.clone())
             .event(
                 event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::named("cool_span")]),
+                    .in_scope(vec![cool_span.clone()]),
             )
-            .exit(span::named("cool_span"))
+            .exit(cool_span.clone())
             .done()
             .run_with_handle();
 
@@ -335,16 +336,14 @@ mod per_layer_filter {
             .set_default();
 
         {
-            let span = tracing::info_span!(target: "stuff", "cool_span");
-            let _enter = span.enter();
+            let _span = tracing::info_span!(target: "stuff", "cool_span").entered();
             tracing::debug!("this should be enabled");
         }
 
         tracing::debug!("should also be disabled");
 
         {
-            let span = tracing::info_span!("uncool_span");
-            let _enter = span.enter();
+            let _span = tracing::info_span!("uncool_span").entered();
             tracing::debug!("this should be disabled");
         }
 
@@ -412,39 +411,41 @@ mod per_layer_filter {
         let filter: EnvFilter = "info,[cool_span]=debug"
             .parse()
             .expect("filter should parse");
+        let cool_span = span::named("cool_span");
+        let uncool_span = span::named("uncool_span");
         let (layer, finished) = layer::mock()
             .event(event::mock().at_level(Level::INFO))
-            .enter(span::named("cool_span"))
+            .enter(cool_span.clone())
             .event(
                 event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::named("cool_span")]),
+                    .in_scope(vec![cool_span.clone()]),
             )
-            .enter(span::named("uncool_span"))
+            .enter(uncool_span.clone())
             .event(
                 event::mock()
                     .at_level(Level::WARN)
-                    .in_scope(vec![span::named("uncool_span")]),
+                    .in_scope(vec![uncool_span.clone()]),
             )
             .event(
                 event::mock()
                     .at_level(Level::DEBUG)
-                    .in_scope(vec![span::named("uncool_span")]),
+                    .in_scope(vec![uncool_span.clone()]),
             )
-            .exit(span::named("uncool_span"))
-            .exit(span::named("cool_span"))
-            .enter(span::named("uncool_span"))
+            .exit(uncool_span.clone())
+            .exit(cool_span)
+            .enter(uncool_span.clone())
             .event(
                 event::mock()
                     .at_level(Level::WARN)
-                    .in_scope(vec![span::named("uncool_span")]),
+                    .in_scope(vec![uncool_span.clone()]),
             )
             .event(
                 event::mock()
                     .at_level(Level::ERROR)
-                    .in_scope(vec![span::named("uncool_span")]),
+                    .in_scope(vec![uncool_span.clone()]),
             )
-            .exit(span::named("uncool_span"))
+            .exit(uncool_span)
             .done()
             .run_with_handle();
 
