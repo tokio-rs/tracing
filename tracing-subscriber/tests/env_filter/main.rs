@@ -331,7 +331,7 @@ mod per_layer_filter {
                     .at_level(Level::DEBUG)
                     .in_scope(vec![cool_span.clone()]),
             )
-            .exit(cool_span.clone())
+            .exit(cool_span)
             .done()
             .run_with_handle();
 
