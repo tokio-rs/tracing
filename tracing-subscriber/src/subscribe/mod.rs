@@ -268,7 +268,7 @@
 //!
 //! The [`Subscribe::boxed`] method is provided to make boxing a subscriber
 //! more convenient, but [`Box::new`] may be used as well.
-//! 
+//!
 //! When the _number_ of subscribers varies at runtime, note that a
 //! [`Vec<S> where S: Subscribe` also implements `Subscribe`][vec-impl]. This
 //! can be used to add a variable number of subscribers to a collector:
