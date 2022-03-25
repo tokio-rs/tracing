@@ -19,7 +19,7 @@
 //! [`Subscriber`] behavior; it can _observe_ events and spans, but does not
 //! assign IDs.
 //!
-//! ## Composing Layers
+//! # Composing Layers
 //!
 //! Since a [`Layer`] does not implement a complete strategy for collecting
 //! traces, it must be composed with a `Subscriber` in order to be used. The
@@ -135,9 +135,140 @@
 //! [`Layer::with_subscriber`] as an implementation detail, as `with_subscriber`
 //! calls must be nested, leading to less clear code for the reader.
 //!
+//! ## Runtime Configuration With `Layer`s
+//!
+//! In some cases, a particular [`Layer`] may be enabled or disabled based on
+//! runtime configuration. This can introduce challenges, because the type of a
+//! layered [`Subscriber`] depends on which layers are added to it: if an `if`
+//! or `match` expression adds some [`Layer`] implementation in one branch,
+//! and other layers in another, the [`Subscriber`] values returned by those
+//! branches will have different types. For example, the following _will not_
+//! work:
+//!
+//! ```compile_fail
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
+//! let subscriber = Registry::default().with(stdout_log);
+//!
+//! // The compile error will occur here because the if and else
+//! // branches have different (and therefore incompatible) types.
+//! let subscriber = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let layer = tracing_subscriber::fmt::layer()
+//!         .json()
+//!         .with_writer(Arc::new(file));
+//!     layer.with(subscriber)
+//! } else {
+//!     layer
+//! };
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+//!     .expect("Unable to set global subscriber");
+//! # Ok(()) }
+//! ```
+//!
+//! However, a [`Layer`] wrapped in an [`Option`] [also implements the `Layer`
+//! trait][option-impl]. This allows individual layers to be enabled or disabled at
+//! runtime while always producing a [`Subscriber`] of the same type. For
+//! example:
+//!
+//! ```
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
+//! let subscriber = Registry::default().with(stdout_log);
+//!
+//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
+//! let json_log = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let json_log = tracing_subscriber::fmt::layer()
+//!         .json()
+//!         .with_writer(file);
+//!     Some(json_log)
+//! } else {
+//!     None
+//! };
+//!
+//! // If `cfg.is_prod` is false, then `json` will be `None`, and this layer
+//! // will do nothing. However, the subscriber will still have the same type
+//! // regardless of whether the `Option`'s value is `None` or `Some`.
+//! let subscriber = subscriber.with(json_log);
+//!
+//! tracing::subscriber::set_global_default(subscriber)
+//!    .expect("Unable to set global subscriber");
+//! # Ok(()) }
+//! ```
+//!
+//! If a [`Layer`] may be one of several different types, note that [`Box<dyn
+//! Layer<C> + Send + Sync>` implements `Layer`][box-impl].
+//! This may be used to erase the type of a [`Layer`].
+//!
+//! For example, a function that configures a [`Layer`] to log to one of
+//! several outputs might return a `Box<dyn Layer<C> + Send + Sync + 'static>`:
+//! ```
+//! use tracing_subscriber::{
+//!     Layer,
+//!     registry::LookupSpan,
+//!     prelude::*,
+//! };
+//! use std::{path::PathBuf, fs::File, io};
+//!
+//! /// Configures whether logs are emitted to a file, to stdout, or to stderr.
+//! pub enum LogConfig {
+//!     File(PathBuf),
+//!     Stdout,
+//!     Stderr,
+//! }
+//!
+//! impl LogConfig {
+//!     pub fn layer<C>(self) -> Box<dyn Layer<C> + Send + Sync + 'static>
+//!     where
+//!         C: tracing_core::Subscriber + Send + Sync,
+//!         for<'a> C: LookupSpan<'a>,
+//!     {
+//!         // Shared configuration regardless of where logs are output to.
+//!         let fmt = tracing_subscriber::fmt::layer()
+//!             .with_target(true)
+//!             .with_thread_names(true);
+//!
+//!         // Configure the writer based on the desired log target:
+//!         match self {
+//!             LogConfig::File(path) => {
+//!                 let file = File::create(path).expect("failed to create log file");
+//!                 Box::new(fmt.with_writer(file))
+//!             },
+//!             LogConfig::Stdout => Box::new(fmt.with_writer(io::stdout)),
+//!             LogConfig::Stderr => Box::new(fmt.with_writer(io::stderr)),
+//!         }
+//!     }
+//! }
+//!
+//! let config = LogConfig::Stdout;
+//! tracing_subscriber::registry()
+//!     .with(config.layer())
+//!     .init();
+//! ```
+//!
+//! [prelude]: crate::prelude
+//! [box-impl]: #impl-Layer<S>-for-Box<dyn Layer<S> + Send + Sync>
 //! [prelude]: crate::prelude
 //!
-//! ## Recording Traces
+//! # Recording Traces
 //!
 //! The [`Layer`] trait defines a set of methods for consuming notifications from
 //! tracing instrumentation, which are generally equivalent to the similarly
@@ -146,7 +277,7 @@
 //! information provided by the wrapped subscriber (such as [the current span])
 //! to the layer.
 //!
-//! ## Filtering with `Layer`s
+//! # Filtering with `Layer`s
 //!
 //! As well as strategies for handling trace events, the `Layer` trait may also
 //! be used to represent composable _filters_. This allows the determination of
@@ -158,7 +289,7 @@
 //! combined with _per-layer filters_ that control what spans and events are
 //! recorded by those layers.
 //!
-//! ### Global Filtering
+//! ## Global Filtering
 //!
 //! A `Layer` that implements a filtering strategy should override the
 //! [`register_callsite`] and/or [`enabled`] methods. It may also choose to implement
@@ -179,7 +310,7 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
-//! ### Per-Layer Filtering
+//! ## Per-Layer Filtering
 //!
 //! **Note**: per-layer filtering APIs currently require the [`"registry"` crate
 //! feature flag][feat] to be enabled.
@@ -390,84 +521,6 @@
 //! // This event will be seen by both the stdout log layer *and*
 //! // the debug log file layer, but not by the metrics layer.
 //! tracing::warn!("the message is a warning about danger!");
-//! # Ok(()) }
-//! ```
-//!
-//! ## Runtime Configuration With Layers
-//!
-//! In some cases, a particular [`Layer`] may be enabled or disabled based on
-//! runtime configuration. This can introduce challenges, because the type of a
-//! layered [`Subscriber`] depends on which layers are added to it: if an `if`
-//! or `match` expression adds some [`Layer`]s in one branch and other layers
-//! in another, the [`Subscriber`] values returned by those branches will have
-//! different types. For example, the following _will not_ work:
-//!
-//! ```compile_fail
-//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
-//! # struct Config {
-//! #    is_prod: bool,
-//! #    path: &'static str,
-//! # }
-//! # let cfg = Config { is_prod: false, path: "debug.log" };
-//! use std::{fs::File, sync::Arc};
-//! use tracing_subscriber::{Registry, prelude::*};
-//!
-//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
-//! let subscriber = Registry::default().with(stdout_log);
-//!
-//! // The compile error will occur here because the if and else
-//! // branches have different (and therefore incompatible) types.
-//! let subscriber = if cfg.is_prod {
-//!     let file = File::create(cfg.path)?;
-//!     let layer = tracing_subscriber::fmt::layer()
-//!         .json()
-//!         .with_writer(Arc::new(file));
-//!     subscriber.with(layer)
-//! } else {
-//!     subscriber
-//! };
-//!
-//! tracing::subscriber::set_global_default(subscriber)
-//!     .expect("Unable to set global subscriber");
-//! # Ok(()) }
-//! ```
-//!
-//! However, a [`Layer`] wrapped in an [`Option`] [also implements the `Layer`
-//! trait][option-impl]. This allows individual layers to be enabled or disabled at
-//! runtime while always producing a [`Subscriber`] of the same type. For
-//! example:
-//!
-//! ```
-//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
-//! # struct Config {
-//! #    is_prod: bool,
-//! #    path: &'static str,
-//! # }
-//! # let cfg = Config { is_prod: false, path: "debug.log" };
-//! use std::{fs::File, sync::Arc};
-//! use tracing_subscriber::{Registry, prelude::*};
-//!
-//! let stdout_log = tracing_subscriber::fmt::layer().pretty();
-//! let subscriber = Registry::default().with(stdout_log);
-//!
-//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
-//! let json_log = if cfg.is_prod {
-//!     let file = File::create(cfg.path)?;
-//!     let json_log = tracing_subscriber::fmt::layer()
-//!         .json()
-//!         .with_writer(Arc::new(file));
-//!     Some(json_log)
-//! } else {
-//!     None
-//! };
-//!
-//! // If `cfg.is_prod` is false, then `json` will be `None`, and this layer
-//! // will do nothing. However, the subscriber will still have the same type
-//! // regardless of whether the `Option`'s value is `None` or `Some`.
-//! let subscriber = subscriber.with(json_log);
-//!
-//! tracing::subscriber::set_global_default(subscriber)
-//!    .expect("Unable to set global subscriber");
 //! # Ok(()) }
 //! ```
 //!
