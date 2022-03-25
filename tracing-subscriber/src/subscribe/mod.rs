@@ -240,7 +240,7 @@
 //! impl LogConfig {
 //!     pub fn subscriber<C>(self) -> Box<dyn Subscribe<C> + Send + Sync + 'static>
 //!     where
-//!         C: tracing_core::Collect + Send + Sync,
+//!         C: tracing_core::Collect,
 //!         for<'a> C: LookupSpan<'a>,
 //!     {
 //!         // Shared configuration regardless of where logs are output to.
