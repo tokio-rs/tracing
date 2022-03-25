@@ -216,6 +216,57 @@
 //! # Ok(()) }
 //! ```
 //!
+//! If a subscriber may be one of several different types, note that [`Box<dyn
+//! Subscribe<C> + Send + Sync + 'static>` implements `Subscribe`][box-impl].
+//! This may be used to erase the type of a subscriber.
+//!
+//! For example, a function that configures a subscriber to log to one of
+//! several outputs might return a `Box<dyn Subscribe<C> + Send + Sync + 'static>`:
+//! ```
+//! use tracing_subscriber::{
+//!     Subscribe,
+//!     registry::LookupSpan,
+//!     prelude::*,
+//! };
+//! use std::{path::PathBuf, fs::File, io};
+//!
+//! /// Configures whether logs are emitted to a file, to stdout, or to stderr.
+//! pub enum LogConfig {
+//!     File(PathBuf),
+//!     Stdout,
+//!     Stderr,
+//! }
+//!
+//! impl LogConfig {
+//!     pub fn subscriber<C>(self) -> Box<dyn Subscribe<C> + Send + Sync + 'static>
+//!     where
+//!         C: tracing_core::Collect + Send + Sync,
+//!         for<'a> C: LookupSpan<'a>,
+//!     {
+//!         // Shared configuration regardless of where logs are output to.
+//!         let fmt = tracing_subscriber::fmt::subscriber()
+//!             .with_target(true)
+//!             .with_thread_names(true);
+//!
+//!         // Configure the writer based on the desired log target:
+//!         match self {
+//!             LogConfig::File(path) => {
+//!                 let file = File::create(path).expect("failed to create log file");
+//!                 Box::new(fmt.with_writer(file))
+//!             },
+//!             LogConfig::Stdout => Box::new(fmt.with_writer(io::stdout)),
+//!             LogConfig::Stderr => Box::new(fmt.with_writer(io::stderr)),
+//!         }
+//!     }
+//! }
+//!
+//! let config = LogConfig::Stdout;
+//! tracing_subscriber::registry()
+//!     .with(config.subscriber())
+//!     .init();
+//! ```
+//!
+//! [box-impl]: #impl-Subscribe<C>-for-Box<dyn Subscribe<C> + Send + Sync + 'static>
 //! [prelude]: crate::prelude
 //!
 //! # Recording Traces
