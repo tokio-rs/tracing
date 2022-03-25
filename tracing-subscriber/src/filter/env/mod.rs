@@ -15,6 +15,7 @@ use crate::{
 };
 use directive::ParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use thread_local::ThreadLocal;
 use tracing_core::{
     callsite,
     field::Field,
@@ -109,10 +110,7 @@ pub struct EnvFilter {
     has_dynamics: bool,
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
-}
-
-thread_local! {
-    static SCOPE: RefCell<Vec<LevelFilter>> = RefCell::new(Vec::new());
+    scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -350,6 +348,10 @@ impl EnvFilter {
             has_dynamics,
             by_id: RwLock::new(HashMap::new()),
             by_cs: RwLock::new(HashMap::new()),
+            // TODO(eliza): maybe worth allocating capacity for `num_cpus`
+            // threads or something (assuming we're running in Tokio)? or
+            // `num_cpus * 2` or something?
+            scope: ThreadLocal::new(),
         }
     }
 
@@ -406,14 +408,15 @@ impl EnvFilter {
                 }
             }
 
-            let enabled_by_scope = SCOPE.with(|scope| {
-                for filter in scope.borrow().iter() {
+            let enabled_by_scope = {
+                let scope = self.scope.get_or_default().borrow();
+                for filter in &*scope {
                     if filter >= level {
                         return true;
                     }
                 }
                 false
-            });
+            };
             if enabled_by_scope {
                 return true;
             }
@@ -455,13 +458,13 @@ impl EnvFilter {
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            SCOPE.with(|scope| scope.borrow_mut().push(span.level()));
+            self.scope.get_or_default().borrow_mut().push(span.level());
         }
     }
 
     fn on_exit(&self, id: &span::Id) {
         if self.cares_about_span(id) {
-            SCOPE.with(|scope| scope.borrow_mut().pop());
+            self.scope.get_or_default().borrow_mut().pop();
         }
     }
 
@@ -521,7 +524,7 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
 
 feature! {
     #![all(feature = "registry", feature = "std")]
-    
+
     impl<S> layer::Filter<S> for EnvFilter {
         #[inline]
         fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
