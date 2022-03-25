@@ -19,7 +19,7 @@
 //! [`Collect`] behavior; it can _observe_ events and spans, but does not
 //! assign IDs.
 //!
-//! ## Composing Subscribers
+//! # Composing Subscribers
 //!
 //! Since a [subscriber] does not implement a complete strategy for collecting
 //! traces, it must be composed with a [collector] in order to be used. The
@@ -137,9 +137,139 @@
 //! [`Subscribe::with_collector`] as an implementation detail, as `with_collector`
 //! calls must be nested, leading to less clear code for the reader.
 //!
-//! [prelude]: crate::prelude
+//! ## Runtime Configuration With Subscribers
 //!
-//! ## Recording Traces
+//! In some cases, a particular [subscriber] may be enabled or disabled based on
+//! runtime configuration. This can introduce challenges, because the type of a
+//! layered [collector] depends on which subscribers are added to it: if an `if`
+//! or `match` expression adds some [`Subscribe`] implementation in one branch,
+//! and other subscribers in another, the [collector] values returned by those
+//! branches will have different types. For example, the following _will not_
+//! work:
+//!
+//! ```compile_fail
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
+//! let collector = Registry::default().with(stdout_log);
+//!
+//! // The compile error will occur here because the if and else
+//! // branches have different (and therefore incompatible) types.
+//! let collector = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let collector = tracing_subscriber::fmt::subscriber()
+//!         .json()
+//!         .with_writer(Arc::new(file));
+//!     collector.with(subscriber)
+//! } else {
+//!     collector
+//! };
+//!
+//! tracing::collect::set_global_default(collector)
+//!     .expect("Unable to set global collector");
+//! # Ok(()) }
+//! ```
+//!
+//! However, a [`Subscribe`] wrapped in an [`Option`] [also implements the `Subscribe`
+//! trait][option-impl]. This allows individual layers to be enabled or disabled at
+//! runtime while always producing a [`Collect`] of the same type. For
+//! example:
+//!
+//! ```
+//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
+//! # struct Config {
+//! #    is_prod: bool,
+//! #    path: &'static str,
+//! # }
+//! # let cfg = Config { is_prod: false, path: "debug.log" };
+//! use std::fs::File;
+//! use tracing_subscriber::{Registry, prelude::*};
+//!
+//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
+//! let collector = Registry::default().with(stdout_log);
+//!
+//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
+//! let json_log = if cfg.is_prod {
+//!     let file = File::create(cfg.path)?;
+//!     let json_log = tracing_subscriber::fmt::subscriber()
+//!         .json()
+//!         .with_writer(file);
+//!     Some(json_log)
+//! } else {
+//!     None
+//! };
+//!
+//! // If `cfg.is_prod` is false, then `json` will be `None`, and this subscriber
+//! // will do nothing. However, the collector will still have the same type
+//! // regardless of whether the `Option`'s value is `None` or `Some`.
+//! let collector = collector.with(json_log);
+//!
+//! tracing::collect::set_global_default(collector)
+//!    .expect("Unable to set global collector");
+//! # Ok(()) }
+//! ```
+//!
+//! If a subscriber may be one of several different types, note that [`Box<dyn
+//! Subscribe<C> + Send + Sync + 'static>` implements `Subscribe`][box-impl].
+//! This may be used to erase the type of a subscriber.
+//!
+//! For example, a function that configures a subscriber to log to one of
+//! several outputs might return a `Box<dyn Subscribe<C> + Send + Sync + 'static>`:
+//! ```
+//! use tracing_subscriber::{
+//!     Subscribe,
+//!     registry::LookupSpan,
+//!     prelude::*,
+//! };
+//! use std::{path::PathBuf, fs::File, io};
+//!
+//! /// Configures whether logs are emitted to a file, to stdout, or to stderr.
+//! pub enum LogConfig {
+//!     File(PathBuf),
+//!     Stdout,
+//!     Stderr,
+//! }
+//!
+//! impl LogConfig {
+//!     pub fn subscriber<C>(self) -> Box<dyn Subscribe<C> + Send + Sync + 'static>
+//!     where
+//!         C: tracing_core::Collect + Send + Sync,
+//!         for<'a> C: LookupSpan<'a>,
+//!     {
+//!         // Shared configuration regardless of where logs are output to.
+//!         let fmt = tracing_subscriber::fmt::subscriber()
+//!             .with_target(true)
+//!             .with_thread_names(true);
+//!
+//!         // Configure the writer based on the desired log target:
+//!         match self {
+//!             LogConfig::File(path) => {
+//!                 let file = File::create(path).expect("failed to create log file");
+//!                 Box::new(fmt.with_writer(file))
+//!             },
+//!             LogConfig::Stdout => Box::new(fmt.with_writer(io::stdout)),
+//!             LogConfig::Stderr => Box::new(fmt.with_writer(io::stderr)),
+//!         }
+//!     }
+//! }
+//!
+//! let config = LogConfig::Stdout;
+//! tracing_subscriber::registry()
+//!     .with(config.subscriber())
+//!     .init();
+//! ```
+//!
+//! [prelude]: crate::prelude
+//! [box-impl]: #impl-Subscribe<C>-for-Box<dyn Subscribe<C> + Send + Sync + 'static>
+//!
+//! # Recording Traces
 //!
 //! The [`Subscribe`] trait defines a set of methods for consuming notifications from
 //! tracing instrumentation, which are generally equivalent to the similarly
@@ -148,7 +278,7 @@
 //! information provided by the wrapped subscriber (such as [the current span])
 //! to the subscriber.
 //!
-//! ## Filtering with `Subscribers`s
+//! # Filtering with `Subscriber`s
 //!
 //! As well as strategies for handling trace events, the `Subscribe` trait may also
 //! be used to represent composable _filters_. This allows the determination of
@@ -160,7 +290,7 @@
 //! combined with _per-subscriber filters_ that control what spans and events are
 //! recorded by those subscribers.
 //!
-//! ### Global Filtering
+//! ## Global Filtering
 //!
 //! A `Subscribe` that implements a filtering strategy should override the
 //! [`register_callsite`] and/or [`enabled`] methods. It may also choose to implement
@@ -181,7 +311,7 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
-//! ### Per-Subscriber Filtering
+//! ## Per-Subscriber Filtering
 //!
 //! **Note**: per-subscriber filtering APIs currently require the [`"registry"` crate
 //! feature flag][feat] to be enabled.
@@ -396,85 +526,6 @@
 //! # Ok(()) }
 //! ```
 //!
-//!
-//! ## Runtime Configuration With Subscribers
-//!
-//! In some cases, a particular [subscriber] may be enabled or disabled based on
-//! runtime configuration. This can introduce challenges, because the type of a
-//! layered [collector] depends on which subscribers are added to it: if an `if`
-//! or `match` expression adds some [`Subscribe`] implementation in one branch,
-//! and other subscribers in another, the [collector] values returned by those
-//! branches will have different types. For example, the following _will not_
-//! work:
-//!
-//! ```compile_fail
-//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
-//! # struct Config {
-//! #    is_prod: bool,
-//! #    path: &'static str,
-//! # }
-//! # let cfg = Config { is_prod: false, path: "debug.log" };
-//! use std::fs::File;
-//! use tracing_subscriber::{Registry, prelude::*};
-//!
-//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
-//! let collector = Registry::default().with(stdout_log);
-//!
-//! // The compile error will occur here because the if and else
-//! // branches have different (and therefore incompatible) types.
-//! let collector = if cfg.is_prod {
-//!     let file = File::create(cfg.path)?;
-//!     let collector = tracing_subscriber::fmt::subscriber()
-//!         .json()
-//!         .with_writer(Arc::new(file));
-//!     collector.with(subscriber)
-//! } else {
-//!     collector
-//! };
-//!
-//! tracing::collect::set_global_default(collector)
-//!     .expect("Unable to set global collector");
-//! # Ok(()) }
-//! ```
-//!
-//! However, a [`Subscribe`] wrapped in an [`Option`] [also implements the `Subscribe`
-//! trait][option-impl]. This allows individual layers to be enabled or disabled at
-//! runtime while always producing a [`Collect`] of the same type. For
-//! example:
-//!
-//! ```
-//! # fn docs() -> Result<(), Box<dyn std::error::Error + 'static>> {
-//! # struct Config {
-//! #    is_prod: bool,
-//! #    path: &'static str,
-//! # }
-//! # let cfg = Config { is_prod: false, path: "debug.log" };
-//! use std::fs::File;
-//! use tracing_subscriber::{Registry, prelude::*};
-//!
-//! let stdout_log = tracing_subscriber::fmt::subscriber().pretty();
-//! let collector = Registry::default().with(stdout_log);
-//!
-//! // if `cfg.is_prod` is true, also log JSON-formatted logs to a file.
-//! let json_log = if cfg.is_prod {
-//!     let file = File::create(cfg.path)?;
-//!     let json_log = tracing_subscriber::fmt::subscriber()
-//!         .json()
-//!         .with_writer(file);
-//!     Some(json_log)
-//! } else {
-//!     None
-//! };
-//!
-//! // If `cfg.is_prod` is false, then `json` will be `None`, and this subscriber
-//! // will do nothing. However, the collector will still have the same type
-//! // regardless of whether the `Option`'s value is `None` or `Some`.
-//! let collector = collector.with(json_log);
-//!
-//! tracing::collect::set_global_default(collector)
-//!    .expect("Unable to set global collector");
-//! # Ok(()) }
-//! ```
 //! [subscriber]: Subscribe
 //! [`Collect`]:tracing_core::Collect
 //! [collector]: tracing_core::Collect
@@ -1282,7 +1333,7 @@ feature! {
         subscriber_impl_body! {}
     }
 
-    impl<C> Subscribe<C> for Box<dyn Subscribe<C>>
+    impl<C> Subscribe<C> for Box<dyn Subscribe<C> + Send + Sync + 'static>
     where
         C: Collect,
     {
