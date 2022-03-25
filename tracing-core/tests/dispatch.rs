@@ -1,9 +1,9 @@
+#![cfg(feature = "std")]
 mod common;
 
 use common::*;
 use tracing_core::dispatcher::*;
 
-#[cfg(feature = "std")]
 #[test]
 fn set_default_dispatch() {
     set_global_default(Dispatch::new(TestSubscriberA)).expect("global dispatch set failed");
@@ -28,7 +28,6 @@ fn set_default_dispatch() {
     });
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn nested_set_default() {
     let _guard = set_default(&Dispatch::new(TestSubscriberA));
