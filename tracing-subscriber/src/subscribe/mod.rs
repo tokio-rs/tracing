@@ -267,7 +267,8 @@
 //! ```
 //!
 //! [prelude]: crate::prelude
-//! [box-impl]: #impl-Subscribe<C>-for-Box<dyn Subscribe<C> + Send + Sync + 'static>
+//! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
+//! [box-impl]: Subscribe#impl-Subscribe%3CC%3E-for-Box%3Cdyn%20Subscribe%3CC%3E%20+%20Send%20+%20Sync%20+%20%27static%3E
 //!
 //! # Recording Traces
 //!
@@ -537,7 +538,6 @@
 //! [`Subscribe::register_callsite`]: Subscribe::register_callsite
 //! [`Subscribe::enabled`]: Subscribe::enabled
 //! [`Interest::never()`]: tracing_core::collect::Interest::never
-//! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [`Filtered`]: crate::filter::Filtered
 //! [`filter`]: crate::filter
 //! [`Targets`]: crate::filter::Targets
