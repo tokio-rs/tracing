@@ -475,4 +475,59 @@ mod per_layer_filter {
 
         finished.assert_finished();
     }
+
+    #[test]
+    fn multiple_dynamic_filters() {
+        // Test that multiple dynamic (span) filters only apply to the layers
+        // they're attached to.
+        let (layer1, handle1) = {
+            let span = span::named("span1");
+            let filter: EnvFilter = "[span1]=debug".parse().expect("filter 1 should parse");
+            let (layer, handle) = layer::named("layer1")
+                .enter(span.clone())
+                .event(
+                    event::mock()
+                        .at_level(Level::DEBUG)
+                        .in_scope(vec![span.clone()]),
+                )
+                .exit(span)
+                .done()
+                .run_with_handle();
+            (layer.with_filter(filter), handle)
+        };
+
+        let (layer2, handle2) = {
+            let span = span::named("span2");
+            let filter: EnvFilter = "[span2]=info".parse().expect("filter 2 should parse");
+            let (layer, handle) = layer::named("layer2")
+                .enter(span.clone())
+                .event(
+                    event::mock()
+                        .at_level(Level::INFO)
+                        .in_scope(vec![span.clone()]),
+                )
+                .exit(span)
+                .done()
+                .run_with_handle();
+            (layer.with_filter(filter), handle)
+        };
+
+        let _subscriber = tracing_subscriber::registry()
+            .with(layer1)
+            .with(layer2)
+            .set_default();
+
+        tracing::info_span!("span1").in_scope(|| {
+            tracing::info!("hello from span 1");
+            tracing::trace!("not enabled");
+        });
+
+        tracing::info_span!("span2").in_scope(|| {
+            tracing::info!("hello from span 2");
+            tracing::debug!("not enabled");
+        });
+
+        handle1.assert_finished();
+        handle2.assert_finished();
+    }
 }
