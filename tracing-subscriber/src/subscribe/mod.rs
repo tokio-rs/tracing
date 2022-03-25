@@ -1604,12 +1604,10 @@ feature! {
         }
 
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            for s in self {
-                if s.enabled(metadata, ctx.clone()) {
-                    return true;
-                }
-            }
-            false
+            // NOTE(eliza): we use a fold here because we *must* iterate over
+            // all the subscribers, rather than short-circuiting, in case any of
+            // them are using per-layer filtering!
+            self.iter().fold(true, |enabled, s| enabled && s.enabled(metadata, ctx.clone()))
         }
 
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
