@@ -229,24 +229,22 @@ fn vec_boxed() {
         .event(event::mock().at_level(Level::INFO))
         .done()
         .run_with_handle();
-    let unfiltered_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> =
-        Box::new(unfiltered_subscriber);
+    let unfiltered_subscriber = unfiltered_subscriber.boxed();
 
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
         .event(event::mock().at_level(Level::DEBUG))
         .event(event::mock().at_level(Level::INFO))
         .done()
         .run_with_handle();
-    let debug_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> =
-        Box::new(debug_subscriber.with_filter(LevelFilter::DEBUG));
+    let debug_subscriber = debug_subscriber.with_filter(LevelFilter::DEBUG).boxed();
 
     let (target_subscriber, target_handle) = subscriber::named("target")
         .event(event::mock().at_level(Level::INFO))
         .done()
         .run_with_handle();
-    let target_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> = Box::new(
-        target_subscriber.with_filter(filter::filter_fn(|meta| meta.target() == "my_target")),
-    );
+    let target_subscriber = target_subscriber
+        .with_filter(filter::filter_fn(|meta| meta.target() == "my_target"))
+        .boxed();
 
     let _collector = tracing_subscriber::registry()
         .with(vec![
