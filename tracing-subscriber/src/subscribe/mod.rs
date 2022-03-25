@@ -1614,6 +1614,10 @@ feature! {
         fn max_level_hint(&self) -> Option<LevelFilter> {
             let mut max_level = LevelFilter::ERROR;
             for s in self {
+                // NOTE(eliza): this is slightly subtle: if *any* subscriber
+                // returns `None`, we have to return `None`, assuming there is
+                // no max level hint, since that particular subscriber cannot
+                // provide a hint.
                 max_level = core::cmp::max(s.max_level_hint()?, max_level);
             }
             Some(max_level)
