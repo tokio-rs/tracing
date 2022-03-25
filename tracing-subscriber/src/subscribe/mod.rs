@@ -266,8 +266,8 @@
 //!     .init();
 //! ```
 //!
-//! [box-impl]: #impl-Subscribe<C>-for-Box<dyn Subscribe<C> + Send + Sync + 'static>
 //! [prelude]: crate::prelude
+//! [box-impl]: #impl-Subscribe<C>-for-Box<dyn Subscribe<C> + Send + Sync + 'static>
 //!
 //! # Recording Traces
 //!
