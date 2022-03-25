@@ -27,6 +27,16 @@ use tracing_core::{
 /// A [`Layer`] which filters spans and events based on a set of filter
 /// directives.
 ///
+/// `EnvFilter` implements both the [`Layer`](#impl-Layer<S>) and [`Filter`] traits, so it may
+/// be used for both [global filtering][global] and [per-layer filtering][plf],
+/// respectively. See [the documentation on filtering with `Layer`s][filtering]
+/// for details.
+///
+/// The [`Targets`] type implements a similar form of filtering, but without the
+/// ability to dynamically enable events based on the current span context, and
+/// without filtering on field values. When these features are not required,
+/// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
+///
 /// # Directives
 ///
 /// A filter consists of one or more comma-separated directives which match on [`Span`]s and [`Event`]s.
@@ -73,7 +83,7 @@ use tracing_core::{
 /// - A dash in a target will only appear when being specified explicitly:
 ///   `tracing::info!(target: "target-name", ...);`
 ///
-/// ## Examples
+/// ## Example Syntax
 ///
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
@@ -90,10 +100,54 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
-/// The [`Targets`] type implements a similar form of filtering, but without the
-/// ability to dynamically enable events based on the current span context, and
-/// without filtering on field values. When these features are not required,
-/// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
+/// # Examples
+///
+/// Parsing an `EnvFilter` from the [default environment
+/// variable](EnvFilter::from_default_env) (`RUST_LOG`):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::layer())
+///     .with(EnvFilter::from_default_env())
+///     .init();
+/// ```
+///
+/// Parsing an `EnvFilter` [from a user-provided environment
+/// variable](EnvFilter::from_env):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::layer())
+///     .with(EnvFilter::from_env("MYAPP_LOG"))
+///     .init();
+/// ```
+///
+/// Using `EnvFilter` as a [per-layer filter][plf] to filter only a single
+/// [`Layer`]:
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// // Parse an `EnvFilter` configuration from the `RUST_LOG`
+/// // environment variable.
+/// let filter = EnvFilter::from_default_env();
+///
+/// // Apply the filter to this layer *only*.
+/// let filtered_layer = fmt::layer().with_filter(filter);
+///
+/// // Some other layer, whose output we don't want to filter.
+/// let unfiltered_layer = // ...
+///     # fmt::layer();
+///
+/// tracing_subscriber::registry()
+///     .with(filtered_layer)
+///     .with(unfiltered_layer)
+///     .init();
+/// ```
 ///
 /// [`Span`]: tracing_core::span
 /// [fields]: tracing_core::Field
@@ -102,6 +156,10 @@ use tracing_core::{
 /// [`Metadata`]: tracing_core::Metadata
 /// [`Targets`]: crate::filter::Targets
 /// [`env_logger`]: https://crates.io/crates/env_logger
+/// [`Filter`]: #impl-Filter<S>
+/// [global]: crate::layer#global-filtering
+/// [plf]: crate::layer#per-layer-filtering
+/// [filtering]: crate::layer#filtering-with-layers
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
