@@ -7,7 +7,7 @@ mod targets;
 mod trees;
 
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*};
+use tracing_subscriber::{filter, prelude::*, Subscribe};
 
 #[test]
 fn basic_subscriber_filters() {
@@ -183,4 +183,84 @@ fn filter_fn() {
     foo_handle.assert_finished();
     bar_handle.assert_finished();
     all_handle.assert_finished();
+}
+
+#[test]
+fn vec_with_filters() {
+    let (trace_subscriber, trace_handle) = subscriber::named("trace")
+        .event(event::mock().at_level(Level::TRACE))
+        .event(event::mock().at_level(Level::DEBUG))
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let trace_subscriber = trace_subscriber.with_filter(LevelFilter::TRACE);
+
+    let (debug_subscriber, debug_handle) = subscriber::named("debug")
+        .event(event::mock().at_level(Level::DEBUG))
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let debug_subscriber = debug_subscriber.with_filter(LevelFilter::DEBUG);
+
+    let (info_subscriber, info_handle) = subscriber::named("info")
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let info_subscriber = info_subscriber.with_filter(LevelFilter::INFO);
+
+    let _collector = tracing_subscriber::registry()
+        .with(vec![trace_subscriber, debug_subscriber, info_subscriber])
+        .set_default();
+
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!("hello info");
+
+    trace_handle.assert_finished();
+    debug_handle.assert_finished();
+    info_handle.assert_finished();
+}
+
+#[test]
+fn vec_boxed() {
+    let (unfiltered_subscriber, unfiltered_handle) = subscriber::named("unfiltered")
+        .event(event::mock().at_level(Level::TRACE))
+        .event(event::mock().at_level(Level::DEBUG))
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let unfiltered_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> =
+        Box::new(unfiltered_subscriber);
+
+    let (debug_subscriber, debug_handle) = subscriber::named("debug")
+        .event(event::mock().at_level(Level::DEBUG))
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let debug_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> =
+        Box::new(debug_subscriber.with_filter(LevelFilter::DEBUG));
+
+    let (target_subscriber, target_handle) = subscriber::named("target")
+        .event(event::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+    let target_subscriber: Box<dyn Subscribe<_> + Send + Sync + 'static> = Box::new(
+        target_subscriber.with_filter(filter::filter_fn(|meta| meta.target() == "my_target")),
+    );
+
+    let _collector = tracing_subscriber::registry()
+        .with(vec![
+            unfiltered_subscriber,
+            debug_subscriber,
+            target_subscriber,
+        ])
+        .set_default();
+
+    tracing::trace!("hello trace");
+    tracing::debug!("hello debug");
+    tracing::info!(target: "my_target", "hello my target");
+
+    unfiltered_handle.assert_finished();
+    debug_handle.assert_finished();
+    target_handle.assert_finished();
 }
