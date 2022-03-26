@@ -266,6 +266,9 @@
 //!     .init();
 //! ```
 //!
+//! The [`Subscribe::boxed`] method is provided to make boxing a subscriber
+//! more convenient, but [`Box::new`] may be used as well.
+//!
 //! [prelude]: crate::prelude
 //! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [box-impl]: Subscribe#impl-Subscribe%3CC%3E-for-Box%3Cdyn%20Subscribe%3CC%3E%20+%20Send%20+%20Sync%20+%20%27static%3E
@@ -371,7 +374,7 @@
 //!     metadata.target() == "http_access"
 //! }));
 //!
-//! // A gteneral-purpose logging subscriber.
+//! // A general-purpose logging subscriber.
 //! let fmt_subscriber = tracing_subscriber::fmt::subscriber();
 //!
 //! // Build a subscriber that combines the access log and stdout log
@@ -917,6 +920,131 @@ where
         F: Filter<C>,
     {
         filter::Filtered::new(self, filter)
+    }
+
+    /// Erases the type of this subscriber, returning a [`Box`]ed `dyn
+    /// Subscribe` trait object.
+    ///
+    /// This can be used when a function returns a subscriber which may be of
+    /// one of several types, or when a composed subscriber has a very long type
+    /// signature.
+    ///
+    /// # Examples
+    ///
+    /// The following example will *not* compile, because the value assigned to
+    /// `log_subscriber` may have one of several different types:
+    ///
+    /// ```compile_fail
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use tracing_subscriber::{Subscribe, filter::LevelFilter, prelude::*};
+    /// use std::{path::PathBuf, fs::File, io};
+    ///
+    /// /// Configures whether logs are emitted to a file, to stdout, or to stderr.
+    /// pub enum LogConfig {
+    ///     File(PathBuf),
+    ///     Stdout,
+    ///     Stderr,
+    /// }
+    ///
+    /// let config = // ...
+    ///     # LogConfig::Stdout;
+    ///
+    /// // Depending on the config, construct a subscriber of one of several types.
+    /// let log_subscriber = match config {
+    ///     // If logging to a file, use a maximally-verbose configuration.
+    ///     LogConfig::File(path) => {
+    ///         let file = File::create(path)?;
+    ///         tracing_subscriber::fmt::subscriber()
+    ///             .with_thread_ids(true)
+    ///             .with_thread_names(true)
+    ///             // Selecting the JSON logging format changes the subscriber's
+    ///             // type.
+    ///             .json()
+    ///             .with_span_list(true)
+    ///             // Setting the writer to use our log file changes the
+    ///             // subscriber's type again.
+    ///             .with_writer(file)
+    ///     },
+    ///
+    ///     // If logging to stdout, use a pretty, human-readable configuration.
+    ///     LogConfig::Stdout => tracing_subscriber::fmt::subscriber()
+    ///         // Selecting the "pretty" logging format changes the
+    ///         // subscriber's type!
+    ///         .pretty()
+    ///         .with_writer(io::stdout)
+    ///         // Add a filter based on the RUST_LOG environment variable;
+    ///         // this changes the type too!
+    ///         .and_then(tracing_subscriber::EnvFilter::from_default_env()),
+    ///
+    ///     // If logging to stdout, only log errors and warnings.
+    ///     LogConfig::Stderr => tracing_subscriber::fmt::subscriber()
+    ///         // Changing the writer changes the subscriber's type
+    ///         .with_writer(io::stderr)
+    ///         // Only log the `WARN` and `ERROR` levels. Adding a filter
+    ///         // changes the subscriber's type to `Filtered<LevelFilter, ...>`.
+    ///         .with_filter(LevelFilter::WARN),
+    /// };
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(log_subscriber)
+    ///     .init();
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// However, adding a call to `.boxed()` after each match arm erases the
+    /// subscriber's type, so this code *does* compile:
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use tracing_subscriber::{Subscribe, filter::LevelFilter, prelude::*};
+    /// # use std::{path::PathBuf, fs::File, io};
+    /// # pub enum LogConfig {
+    /// #    File(PathBuf),
+    /// #    Stdout,
+    /// #    Stderr,
+    /// # }
+    /// # let config = LogConfig::Stdout;
+    /// let log_subscriber = match config {
+    ///     LogConfig::File(path) => {
+    ///         let file = File::create(path)?;
+    ///         tracing_subscriber::fmt::subscriber()
+    ///             .with_thread_ids(true)
+    ///             .with_thread_names(true)
+    ///             .json()
+    ///             .with_span_list(true)
+    ///             .with_writer(file)
+    ///             // Erase the type by boxing the subscriber
+    ///             .boxed()
+    ///     },
+    ///
+    ///     LogConfig::Stdout => tracing_subscriber::fmt::subscriber()
+    ///         .pretty()
+    ///         .with_writer(io::stdout)
+    ///         .and_then(tracing_subscriber::EnvFilter::from_default_env())
+    ///         // Erase the type by boxing the subscriber
+    ///         .boxed(),
+    ///
+    ///     LogConfig::Stderr => tracing_subscriber::fmt::subscriber()
+    ///         .with_writer(io::stderr)
+    ///         .with_filter(LevelFilter::WARN)
+    ///         // Erase the type by boxing the subscriber
+    ///         .boxed(),
+    /// };
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(log_subscriber)
+    ///     .init();
+    /// # Ok(()) }
+    /// ```
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
+    fn boxed(self) -> Box<dyn Subscribe<C> + Send + Sync + 'static>
+    where
+        Self: Sized,
+        Self: Subscribe<C> + Send + Sync + 'static,
+        C: Collect,
+    {
+        Box::new(self)
     }
 
     #[doc(hidden)]
