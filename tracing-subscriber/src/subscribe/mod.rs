@@ -1398,6 +1398,11 @@ macro_rules! subscriber_impl_body {
         }
 
         #[inline]
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            self.deref().register_callsite(metadata)
+        }
+
+        #[inline]
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_new_span(attrs, id, ctx)
         }
