@@ -275,7 +275,7 @@ impl EnvFilter {
             };
             let ctx_prefixed = |prefix: &str, msg: &str| {
                 #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("note: {}", msg);
+                let msg = format!("{} {}", prefix, msg);
                 #[cfg(feature = "ansi_term")]
                 let msg = {
                     let mut equal = Color::Fixed(21).paint("="); // dark blue
