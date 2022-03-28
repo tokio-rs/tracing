@@ -24,6 +24,13 @@ pub fn mock() -> MockSpan {
     }
 }
 
+pub fn named<I>(name: I) -> MockSpan
+where
+    I: Into<String>,
+{
+    mock().named(name)
+}
+
 impl MockSpan {
     pub fn named<I>(self, name: I) -> Self
     where
