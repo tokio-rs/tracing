@@ -1604,6 +1604,7 @@ feature! {
                     interest = new_interest;
                 }
             }
+
             interest
         }
 
@@ -1672,6 +1673,18 @@ feature! {
             // If downcasting to `Self`, return a pointer to `self`.
             if id == TypeId::of::<Self>() {
                 return Some(NonNull::from(self).cast());
+            }
+
+            // Someone is looking for per-subscriber filters. But, this `Vec`
+            // might contain subscribers with per-subscriber filters *and*
+            // subscribers without filters. It should only be treated as a
+            // per-subscriber-filtered subscriber if *all* its subscribers have
+            // per-subscriber filters.
+            // XXX(eliza): it's a bummer we have to do this linear search every
+            // time. It would be nice if this could be cached, but that would
+            // require replacing the `Vec` impl with an impl for a newtype...
+            if filter::is_psf_downcast_marker(id) && self.iter().any(|s| s.downcast_raw(id).is_none()) {
+                return None;
             }
 
             // Otherwise, return the first child of `self` that downcaaasts to
