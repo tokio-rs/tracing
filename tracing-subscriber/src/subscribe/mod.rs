@@ -1447,6 +1447,11 @@ macro_rules! subscriber_impl_body {
             self.deref().on_id_change(old, new, ctx)
         }
 
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            self.deref().max_level_hint()
+        }
+
         #[doc(hidden)]
         #[inline]
         unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
