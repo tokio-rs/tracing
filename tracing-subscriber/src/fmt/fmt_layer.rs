@@ -185,6 +185,18 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
+    pub fn writer(&self) -> &W {
+        &self.make_writer
+    }
+
+    pub fn writer_mut(&mut self) -> &mut W {
+        &mut self.make_writer
+    }
+
+    pub fn set_ansi(&mut self, ansi: bool) {
+        self.is_ansi = ansi;
+    }
+
     /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///

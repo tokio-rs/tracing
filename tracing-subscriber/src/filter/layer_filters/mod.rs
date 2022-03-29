@@ -504,6 +504,14 @@ impl<L, F, S> Filtered<L, F, S> {
     pub fn filter_mut(&mut self) -> &mut F {
         &mut self.filter
     }
+
+    pub fn wrapped(&self) -> &L {
+        &self.layer
+    }
+
+    pub fn wrapped_mut(&mut self) -> &mut L {
+        &mut self.layer
+    }
 }
 
 impl<S, L, F> Layer<S> for Filtered<L, F, S>
