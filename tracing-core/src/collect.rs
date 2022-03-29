@@ -239,8 +239,7 @@ pub trait Collect: 'static {
     /// but values for them won't be recorded at this time.
     ///
     /// ```rust,ignore
-    /// #[macro_use]
-    /// extern crate tracing;
+    /// # use tracing::span;
     ///
     /// let mut span = span!("my_span", foo = 3, bar, baz);
     ///
@@ -404,12 +403,8 @@ pub trait Collect: 'static {
     /// if the thread from which this method is called is inside a span,
     /// or [`Current::none`] if the thread is not inside a span.
     ///
-    /// If the collector does not implement a current span, it should
-    /// return [`Current:unknown`].
-    ///
     /// [`Current::new`]: super::span::Current::new
     /// [`Current::none`]: super::span::Current::none
-    /// [`Current::unknown`]: super::span::Current::unknown
     fn current_span(&self) -> span::Current;
 
     // === Downcasting methods ================================================
@@ -551,6 +546,52 @@ impl Interest {
             Interest::sometimes()
         }
     }
+}
+
+/// A no-op [collector](Collect).
+///
+/// [`NoCollector`] implements the [`Collect`] trait by never being enabled,
+/// never being interested in any callsite, and drops all spans and events.
+#[derive(Debug, Default, Copy, Clone)]
+pub struct NoCollector(());
+
+impl NoCollector {
+    /// Returns a new `NoCollector` instance.
+    ///
+    /// This function is equivalent to calling `NoCollector::default()`, but
+    /// this is usable in `const fn` contexts.
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
+impl Collect for NoCollector {
+    #[inline]
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::never()
+    }
+
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+        span::Id::from_u64(0xDEAD)
+    }
+
+    fn event(&self, _event: &Event<'_>) {}
+
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        false
+    }
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
+
+    fn enter(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::Id) {}
 }
 
 #[cfg(feature = "alloc")]

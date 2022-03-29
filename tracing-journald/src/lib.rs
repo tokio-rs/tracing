@@ -11,7 +11,7 @@
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -21,7 +21,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -48,6 +48,11 @@ use tracing_core::{
     Collect, Field, Level, Metadata,
 };
 use tracing_subscriber::{registry::LookupSpan, subscribe::Context};
+
+#[cfg(target_os = "linux")]
+mod memfd;
+#[cfg(target_os = "linux")]
+mod socket;
 
 /// Sends events and their fields to journald
 ///
@@ -79,7 +84,11 @@ pub struct Subscriber {
     #[cfg(unix)]
     socket: UnixDatagram,
     field_prefix: Option<String>,
+    syslog_identifier: String,
 }
+
+#[cfg(unix)]
+const JOURNALD_PATH: &str = "/run/systemd/journal/socket";
 
 impl Subscriber {
     /// Construct a journald subscriber
@@ -90,11 +99,21 @@ impl Subscriber {
         #[cfg(unix)]
         {
             let socket = UnixDatagram::unbound()?;
-            socket.connect("/run/systemd/journal/socket")?;
-            Ok(Self {
+            let sub = Self {
                 socket,
                 field_prefix: Some("F".into()),
-            })
+                syslog_identifier: std::env::current_exe()
+                    .ok()
+                    .as_ref()
+                    .and_then(|p| p.file_name())
+                    .map(|n| n.to_string_lossy().into_owned())
+                    // If we fail to get the name of the current executable fall back to an empty string.
+                    .unwrap_or_else(String::new),
+            };
+            // Check that we can talk to journald, by sending empty payload which journald discards.
+            // However if the socket didn't exist or if none listened we'd get an error here.
+            sub.send_payload(&[])?;
+            Ok(sub)
         }
         #[cfg(not(unix))]
         Err(io::Error::new(
@@ -108,6 +127,76 @@ impl Subscriber {
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
         self
+    }
+
+    /// Sets the syslog identifier for this logger.
+    ///
+    /// The syslog identifier comes from the classic syslog interface (`openlog()`
+    /// and `syslog()`) and tags log entries with a given identifier.
+    /// Systemd exposes it in the `SYSLOG_IDENTIFIER` journal field, and allows
+    /// filtering log messages by syslog identifier with `journalctl -t`.
+    /// Unlike the unit (`journalctl -u`) this field is not trusted, i.e. applications
+    /// can set it freely, and use it e.g. to further categorize log entries emitted under
+    /// the same systemd unit or in the same process.  It also allows to filter for log
+    /// entries of processes not started in their own unit.
+    ///
+    /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+    /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
+    /// for more information.
+    ///
+    /// Defaults to the file name of the executable of the current process, if any.
+    pub fn with_syslog_identifier(mut self, identifier: String) -> Self {
+        self.syslog_identifier = identifier;
+        self
+    }
+
+    /// Returns the syslog identifier in use.
+    pub fn syslog_identifier(&self) -> &str {
+        &self.syslog_identifier
+    }
+
+    #[cfg(not(unix))]
+    fn send_payload(&self, _opayload: &[u8]) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "journald not supported on non-Unix",
+        ))
+    }
+
+    #[cfg(unix)]
+    fn send_payload(&self, payload: &[u8]) -> io::Result<usize> {
+        self.socket
+            .send_to(payload, JOURNALD_PATH)
+            .or_else(|error| {
+                if Some(libc::EMSGSIZE) == error.raw_os_error() {
+                    self.send_large_payload(payload)
+                } else {
+                    Err(error)
+                }
+            })
+    }
+
+    #[cfg(all(unix, not(target_os = "linux")))]
+    fn send_large_payload(&self, _payload: &[u8]) -> io::Result<usize> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "Large payloads not supported on non-Linux OS",
+        ))
+    }
+
+    /// Send large payloads to journald via a memfd.
+    #[cfg(target_os = "linux")]
+    fn send_large_payload(&self, payload: &[u8]) -> io::Result<usize> {
+        // If the payload's too large for a single datagram, send it through a memfd, see
+        // https://systemd.io/JOURNAL_NATIVE_PROTOCOL/
+        use std::os::unix::prelude::AsRawFd;
+        // Write the whole payload to a memfd
+        let mut mem = memfd::create_sealable()?;
+        mem.write_all(payload)?;
+        // Fully seal the memfd to signal journald that its backing data won't resize anymore
+        // and so is safe to mmap.
+        memfd::seal_fully(mem.as_raw_fd())?;
+        socket::send_one_fd_to(&self.socket, mem.as_raw_fd(), JOURNALD_PATH)
     }
 }
 
@@ -169,14 +258,17 @@ where
 
         // Record event fields
         put_metadata(&mut buf, event.metadata(), None);
+        put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
+            write!(buf, "{}", self.syslog_identifier).unwrap()
+        });
+
         event.record(&mut EventVisitor::new(
             &mut buf,
             self.field_prefix.as_ref().map(|x| &x[..]),
         ));
 
-        // What could we possibly do on error?
-        #[cfg(unix)]
-        let _ = self.socket.send(&buf);
+        // At this point we can't handle the error anymore so just ignore it.
+        let _ = self.send_payload(&buf);
     }
 }
 

@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate tracing;
-extern crate test_log_support;
-
 use test_log_support::Test;
-use tracing::Level;
+use tracing::{error, info, span, trace, warn, Level};
 use tracing_core::span::Current;
 
 pub struct NopCollector;

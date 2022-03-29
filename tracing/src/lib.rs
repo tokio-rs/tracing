@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -415,7 +415,7 @@
 //! ```
 //! # use tracing::{event, Level};
 //! # fn main() {
-//! let question = "the answer to the ultimate question of life, the universe, and everything";
+//! let question = "the ultimate question of life, the universe, and everything";
 //! let answer = 42;
 //! // records an event with the following fields:
 //! // - `question.answer` with the value 42,
@@ -482,7 +482,7 @@
 //! use tracing::{debug, error, info, span, warn, Level};
 //!
 //! // the `#[tracing::instrument]` attribute creates and enters a span
-//! // every time the instrumented function is called. The span is named after the
+//! // every time the instrumented function is called. The span is named after
 //! // the function or method. Parameters passed to the function are recorded as fields.
 //! #[tracing::instrument]
 //! pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -524,7 +524,7 @@
 //!
 //!         if let Err(ref error) = res {
 //!             // Like spans, events can also use the field initialization shorthand.
-//!             // In this instance, `yak` is the field being initalized.
+//!             // In this instance, `yak` is the field being initialized.
 //!             error!(yak, error = error.as_ref(), "failed to shave yak!");
 //!         } else {
 //!             yaks_shaved += 1;
@@ -800,6 +800,12 @@
 //!    applications.
 //!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 //!  - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+//!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
+//!    framework for validating the behavior of `tracing` spans.
+//!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+//!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
+//!    grouping together logs from the same spans during writing.
+//!  - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -830,6 +836,12 @@
 //! [Elastic APM]: https://www.elastic.co/apm
 //! [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 //! [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+//! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
+//! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+//! [Sentry]: https://sentry.io/welcome/
+//! [`tracing-forest`]: https://crates.io/crates/tracing-forest
+//! [`tracing-loki`]: https://crates.io/crates/tracing-loki
+//! [Grafana Loki]: https://grafana.com/oss/loki/
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
@@ -862,7 +874,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -928,9 +940,6 @@
     unused_parens,
     while_true
 )]
-
-#[macro_use]
-extern crate cfg_if;
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
@@ -1107,6 +1116,68 @@ pub mod __macro_support {
                 .field("register", &self.register)
                 .field("registration", &self.registration)
                 .finish()
+        }
+    }
+
+    #[cfg(feature = "log")]
+    use tracing_core::field::{Field, ValueSet, Visit};
+
+    /// Utility to format [`ValueSet`] for logging, used by macro-generated code.
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// without warning.
+    #[cfg(feature = "log")]
+    #[allow(missing_debug_implementations)]
+    pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
+
+    #[cfg(feature = "log")]
+    impl<'a> fmt::Display for LogValueSet<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut visit = LogVisitor {
+                f,
+                is_first: true,
+                result: Ok(()),
+            };
+            self.0.record(&mut visit);
+            visit.result
+        }
+    }
+
+    #[cfg(feature = "log")]
+    struct LogVisitor<'a, 'b> {
+        f: &'a mut fmt::Formatter<'b>,
+        is_first: bool,
+        result: fmt::Result,
+    }
+
+    #[cfg(feature = "log")]
+    impl Visit for LogVisitor<'_, '_> {
+        fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+            let res = if self.is_first {
+                self.is_first = false;
+                if field.name() == "message" {
+                    write!(self.f, "{:?}", value)
+                } else {
+                    write!(self.f, "{}={:?}", field.name(), value)
+                }
+            } else {
+                write!(self.f, " {}={:?}", field.name(), value)
+            };
+            if let Err(err) = res {
+                self.result = self.result.and(Err(err));
+            }
+        }
+
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "message" {
+                self.record_debug(field, &format_args!("{}", value))
+            } else {
+                self.record_debug(field, &value)
+            }
         }
     }
 }

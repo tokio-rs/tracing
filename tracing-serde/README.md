@@ -36,7 +36,7 @@ and tracing data to monitor your services in production.
 The `tracing` crate provides the APIs necessary for instrumenting
 libraries and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.49+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -53,10 +53,6 @@ tracing-serde = "0.1"
 Next, add this to your crate:
 
 ```rust
-#[macro_use]
-extern crate tracing;
-extern crate tracing_serde;
-
 use tracing_serde::AsSerde;
 ```
 
@@ -117,7 +113,7 @@ The following crate feature flags are available:
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

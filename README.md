@@ -98,7 +98,7 @@ fn main() {
         // build but do not install the subscriber.
         .finish();
 
-    tracing::collector::with_default(collector, || {
+    tracing::collect::with_default(collector, || {
         info!("This will be logged to stdout");
     });
     info!("This will _not_ be logged to stdout");
@@ -129,7 +129,7 @@ use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
-// every time the instrumented function is called. The span is named after the
+// every time the instrumented function is called. The span is named after
 // the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -209,9 +209,6 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
 }
 ```
 
-The [`tracing-futures`] crate must be specified as a dependency to enable
-`async` support.
-
 Special handling is needed for the general case of code using
 [`std::future::Future`][std-future] or blocks with `async`/`await`, as the
 following example _will not_ work:
@@ -250,15 +247,14 @@ Under the hood, the [`#[instrument]`][instrument] macro performs same the explic
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
 [closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
-[instrument]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -404,6 +400,10 @@ are not maintained by the `tokio` project. These include:
   applications.
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+  grouping together logs from the same spans during writing.
+- [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -436,6 +436,11 @@ please let us know!)
 [Elastic APM]: https://www.elastic.co/apm
 [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
+[`tracing-forest`]: https://crates.io/crates/tracing-forest
+[`tracing-loki`]: https://crates.io/crates/tracing-loki
+[Grafana Loki]: https://grafana.com/oss/loki/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

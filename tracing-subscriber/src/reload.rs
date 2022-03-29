@@ -142,6 +142,11 @@ impl<S> Subscriber<S> {
 
 impl<S> Handle<S> {
     /// Replace the current subscriber with the provided `new_subscriber`.
+    ///
+    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
+    /// at runtime via the [`Handle::reload`] method.
+    /// Use the [`Handle::modify`] method to change the filter instead.
+    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
     pub fn reload(&self, new_subscriber: impl Into<S>) -> Result<(), Error> {
         self.modify(|subscriber| {
             *subscriber = new_subscriber.into();

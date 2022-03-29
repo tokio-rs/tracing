@@ -9,7 +9,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{ErrorMode, Field, Fields, InstrumentArgs},
+    attr::{Field, Fields, FormatMode, InstrumentArgs},
     MaybeItemFnRef,
 };
 
@@ -191,8 +191,18 @@ fn gen_block<B: ToTokens>(
     })();
 
     let err_event = match args.err_mode {
-        Some(ErrorMode::Display) => Some(quote!(tracing::error!(error = %e))),
-        Some(ErrorMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        Some(FormatMode::Default) | Some(FormatMode::Display) => {
+            Some(quote!(tracing::error!(error = %e)))
+        }
+        Some(FormatMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        _ => None,
+    };
+
+    let ret_event = match args.ret_mode {
+        Some(FormatMode::Display) => Some(quote!(tracing::event!(#level, return = %x))),
+        Some(FormatMode::Default) | Some(FormatMode::Debug) => {
+            Some(quote!(tracing::event!(#level, return = ?x)))
+        }
         _ => None,
     };
 
@@ -201,9 +211,26 @@ fn gen_block<B: ToTokens>(
     // which is `instrument`ed using `tracing-futures`. Otherwise, this will
     // enter the span and then perform the rest of the body.
     // If `err` is in args, instrument any resulting `Err`s.
+    // If `ret` is in args, instrument any resulting `Ok`s when the function
+    // returns `Result`s, otherwise instrument any resulting values.
     if async_context {
-        let mk_fut = match err_event {
-            Some(err_event) => quote_spanned!(block.span()=>
+        let mk_fut = match (err_event, ret_event) {
+            (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
+                async move {
+                    match async move { #block }.await {
+                        #[allow(clippy::unit_arg)]
+                        Ok(x) => {
+                            #ret_event;
+                            Ok(x)
+                        },
+                        Err(e) => {
+                            #err_event;
+                            Err(e)
+                        }
+                    }
+                }
+            ),
+            (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
                     match async move { #block }.await {
                         #[allow(clippy::unit_arg)]
@@ -215,7 +242,14 @@ fn gen_block<B: ToTokens>(
                     }
                 }
             ),
-            None => quote_spanned!(block.span()=>
+            (None, Some(ret_event)) => quote_spanned!(block.span()=>
+                async move {
+                    let x = async move { #block }.await;
+                    #ret_event;
+                    x
+                }
+            ),
+            (None, None) => quote_spanned!(block.span()=>
                 async move { #block }
             ),
         };
@@ -254,8 +288,23 @@ fn gen_block<B: ToTokens>(
         }
     );
 
-    if let Some(err_event) = err_event {
-        return quote_spanned!(block.span()=>
+    match (err_event, ret_event) {
+        (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
+            #span
+            #[allow(clippy::redundant_closure_call)]
+            match (move || #block)() {
+                #[allow(clippy::unit_arg)]
+                Ok(x) => {
+                    #ret_event;
+                    Ok(x)
+                },
+                Err(e) => {
+                    #err_event;
+                    Err(e)
+                }
+            }
+        },
+        (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
             match (move || #block)() {
@@ -266,22 +315,28 @@ fn gen_block<B: ToTokens>(
                     Err(e)
                 }
             }
-        );
-    }
-
-    quote_spanned!(block.span() =>
-        // Because `quote` produces a stream of tokens _without_ whitespace, the
-        // `if` and the block will appear directly next to each other. This
-        // generates a clippy lint about suspicious `if/else` formatting.
-        // Therefore, suppress the lint inside the generated code...
-        #[allow(clippy::suspicious_else_formatting)]
-        {
+        ),
+        (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
-            // ...but turn the lint back on inside the function body.
-            #[warn(clippy::suspicious_else_formatting)]
-            #block
-        }
-    )
+            #[allow(clippy::redundant_closure_call)]
+            let x = (move || #block)();
+            #ret_event;
+            x
+        ),
+        (None, None) => quote_spanned!(block.span() =>
+            // Because `quote` produces a stream of tokens _without_ whitespace, the
+            // `if` and the block will appear directly next to each other. This
+            // generates a clippy lint about suspicious `if/else` formatting.
+            // Therefore, suppress the lint inside the generated code...
+            #[allow(clippy::suspicious_else_formatting)]
+            {
+                #span
+                // ...but turn the lint back on inside the function body.
+                #[warn(clippy::suspicious_else_formatting)]
+                #block
+            }
+        ),
+    }
 }
 
 /// Indicates whether a field should be recorded as `Value` or `Debug`.
@@ -382,43 +437,56 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
     }
 }
 
-enum AsyncTraitKind<'a> {
-    // old construction. Contains the function
+/// The specific async code pattern that was detected
+enum AsyncKind<'a> {
+    /// Immediately-invoked async fn, as generated by `async-trait <= 0.1.43`:
+    /// `async fn foo<...>(...) {...}; Box::pin(foo<...>(...))`
     Function(&'a ItemFn),
-    // new construction. Contains a reference to the async block
-    Async(&'a ExprAsync),
+    /// A function returning an async (move) block, optionally `Box::pin`-ed,
+    /// as generated by `async-trait >= 0.1.44`:
+    /// `Box::pin(async move { ... })`
+    Async {
+        async_expr: &'a ExprAsync,
+        pinned_box: bool,
+    },
 }
 
-pub(crate) struct AsyncTraitInfo<'block> {
+pub(crate) struct AsyncInfo<'block> {
     // statement that must be patched
     source_stmt: &'block Stmt,
-    kind: AsyncTraitKind<'block>,
+    kind: AsyncKind<'block>,
     self_type: Option<syn::TypePath>,
     input: &'block ItemFn,
 }
 
-impl<'block> AsyncTraitInfo<'block> {
-    /// Get the AST of the inner function we need to hook, if it was generated
-    /// by async-trait.
+impl<'block> AsyncInfo<'block> {
+    /// Get the AST of the inner function we need to hook, if it looks like a
+    /// manual future implementation.
     ///
-    /// When we are given a function annotated by async-trait, that function
-    /// is only a placeholder that returns a pinned future containing the
-    /// user logic, and it is that pinned future that needs to be instrumented.
+    /// When we are given a function that returns a (pinned) future containing the
+    /// user logic, it is that (pinned) future that needs to be instrumented.
     /// Were we to instrument its parent, we would only collect information
     /// regarding the allocation of that future, and not its own span of execution.
-    /// Depending on the version of async-trait, we inspect the block of the function
-    /// to find if it matches the pattern
     ///
-    /// `async fn foo<...>(...) {...}; Box::pin(foo<...>(...))` (<=0.1.43), or if
-    /// it matches `Box::pin(async move { ... }) (>=0.1.44). We the return the
-    /// statement that must be instrumented, along with some other informations.
+    /// We inspect the block of the function to find if it matches any of the
+    /// following patterns:
+    ///
+    /// - Immediately-invoked async fn, as generated by `async-trait <= 0.1.43`:
+    ///   `async fn foo<...>(...) {...}; Box::pin(foo<...>(...))`
+    ///
+    /// - A function returning an async (move) block, optionally `Box::pin`-ed,
+    ///   as generated by `async-trait >= 0.1.44`:
+    ///   `Box::pin(async move { ... })`
+    ///
+    /// We the return the statement that must be instrumented, along with some
+    /// other information.
     /// 'gen_body' will then be able to use that information to instrument the
     /// proper function/future.
     ///
     /// (this follows the approach suggested in
     /// https://github.com/dtolnay/async-trait/issues/45#issuecomment-571245673)
     pub(crate) fn from_fn(input: &'block ItemFn) -> Option<Self> {
-        // are we in an async context? If yes, this isn't a async_trait-like pattern
+        // are we in an async context? If yes, this isn't a manual async-like pattern
         if input.sig.asyncness.is_some() {
             return None;
         }
@@ -436,10 +504,8 @@ impl<'block> AsyncTraitInfo<'block> {
             None
         });
 
-        // last expression of the block (it determines the return value
-        // of the block, so that if we are working on a function whose
-        // `trait` or `impl` declaration is annotated by async_trait,
-        // this is quite likely the point where the future is pinned)
+        // last expression of the block: it determines the return value of the
+        // block, this is quite likely a `Box::pin` statement or an async block
         let (last_expr_stmt, last_expr) = block.stmts.iter().rev().find_map(|stmt| {
             if let Stmt::Expr(expr) = stmt {
                 Some((stmt, expr))
@@ -447,6 +513,19 @@ impl<'block> AsyncTraitInfo<'block> {
                 None
             }
         })?;
+
+        // is the last expression an async block?
+        if let Expr::Async(async_expr) = last_expr {
+            return Some(AsyncInfo {
+                source_stmt: last_expr_stmt,
+                kind: AsyncKind::Async {
+                    async_expr,
+                    pinned_box: false,
+                },
+                self_type: None,
+                input,
+            });
+        }
 
         // is the last expression a function call?
         let (outside_func, outside_args) = match last_expr {
@@ -473,12 +552,12 @@ impl<'block> AsyncTraitInfo<'block> {
         // Is the argument to Box::pin an async block that
         // captures its arguments?
         if let Expr::Async(async_expr) = &outside_args[0] {
-            // check that the move 'keyword' is present
-            async_expr.capture?;
-
-            return Some(AsyncTraitInfo {
+            return Some(AsyncInfo {
                 source_stmt: last_expr_stmt,
-                kind: AsyncTraitKind::Async(async_expr),
+                kind: AsyncKind::Async {
+                    async_expr,
+                    pinned_box: true,
+                },
                 self_type: None,
                 input,
             });
@@ -524,15 +603,15 @@ impl<'block> AsyncTraitInfo<'block> {
             }
         }
 
-        Some(AsyncTraitInfo {
+        Some(AsyncInfo {
             source_stmt: stmt_func_declaration,
-            kind: AsyncTraitKind::Function(func),
+            kind: AsyncKind::Function(func),
             self_type,
             input,
         })
     }
 
-    pub(crate) fn gen_async_trait(
+    pub(crate) fn gen_async(
         self,
         args: InstrumentArgs,
         instrumented_function_name: &str,
@@ -556,15 +635,18 @@ impl<'block> AsyncTraitInfo<'block> {
         {
             // instrument the future by rewriting the corresponding statement
             out_stmts[iter] = match self.kind {
-                // async-trait <= 0.1.43
-                AsyncTraitKind::Function(fun) => gen_function(
+                // `Box::pin(immediately_invoked_async_fn())`
+                AsyncKind::Function(fun) => gen_function(
                     fun.into(),
                     args,
                     instrumented_function_name,
                     self.self_type.as_ref(),
                 ),
-                // async-trait >= 0.1.44
-                AsyncTraitKind::Async(async_expr) => {
+                // `async move { ... }`, optionally pinned
+                AsyncKind::Async {
+                    async_expr,
+                    pinned_box,
+                } => {
                     let instrumented_block = gen_block(
                         &async_expr.block,
                         &self.input.sig.inputs,
@@ -574,8 +656,14 @@ impl<'block> AsyncTraitInfo<'block> {
                         None,
                     );
                     let async_attrs = &async_expr.attrs;
-                    quote! {
-                        Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                    if pinned_box {
+                        quote! {
+                            Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                        }
+                    } else {
+                        quote! {
+                            #(#async_attrs) * async move { #instrumented_block }
+                        }
                     }
                 }
             };

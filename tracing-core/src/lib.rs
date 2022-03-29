@@ -23,7 +23,7 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -109,7 +109,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -273,11 +273,6 @@ macro_rules! metadata {
         )
     };
 }
-
-// std uses lazy_static from crates.io
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate lazy_static;
 
 // Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]
