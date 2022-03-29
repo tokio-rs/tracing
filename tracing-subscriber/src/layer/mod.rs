@@ -215,11 +215,11 @@
 //! ```
 //!
 //! If a [`Layer`] may be one of several different types, note that [`Box<dyn
-//! Layer<C> + Send + Sync>` implements `Layer`][box-impl].
+//! Layer<S> + Send + Sync>` implements `Layer`][box-impl].
 //! This may be used to erase the type of a [`Layer`].
 //!
 //! For example, a function that configures a [`Layer`] to log to one of
-//! several outputs might return a `Box<dyn Layer<C> + Send + Sync + 'static>`:
+//! several outputs might return a `Box<dyn Layer<S> + Send + Sync + 'static>`:
 //! ```
 //! use tracing_subscriber::{
 //!     Layer,
@@ -266,6 +266,107 @@
 //!
 //! The [`Layer::boxed`] method is provided to make boxing a `Layer`
 //! more convenient, but [`Box::new`] may be used as well.
+//!
+//! When the number of `Layer`s varies at runtime, note that a
+//! [`Vec<L> where L: `Layer`` also implements `Layer`][vec-impl]. This
+//! can be used to add a variable number of `Layer`s to a `Subscriber`:
+//!
+//! ```
+//! use tracing_subscriber::{Layer, prelude::*};
+//! struct MyLayer {
+//!     // ...
+//! }
+//! # impl MyLayer { fn new() -> Self { Self {} }}
+//!
+//! impl<S: tracing_core::Subscriber> Layer<S> for MyLayer {
+//!     // ...
+//! }
+//!
+//! /// Returns how many layers we need
+//! fn how_many_layers() -> usize {
+//!     // ...
+//!     # 3
+//! }
+//!
+//! // Create a variable-length `Vec` of layers
+//! let mut layers = Vec::new();
+//! for _ in 0..how_many_layers() {
+//!     layers.push(MyLayer::new());
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(layers)
+//!     .init();
+//! ```
+//!
+//! If a variable number of `Layer` is needed and those `Layer`s have
+//! different types, a `Vec` of [boxed `Layer` trait objects][box-impl] may
+//! be used. For example:
+//!
+//! ```
+//! use tracing_subscriber::{filter::LevelFilter, Layer, prelude::*};
+//! use std::fs::File;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! struct Config {
+//!     enable_log_file: bool,
+//!     enable_stdout: bool,
+//!     enable_stderr: bool,
+//!     // ...
+//! }
+//! # impl Config {
+//! #    fn from_config_file()-> Result<Self, Box<dyn std::error::Error>> {
+//! #         // don't enable the log file so that the example doesn't actually create it
+//! #         Ok(Self { enable_log_file: false, enable_stdout: true, enable_stderr: true })
+//! #    }
+//! # }
+//!
+//! let cfg = Config::from_config_file()?;
+//!
+//! // Based on our dynamically loaded config file, create any number of layers:
+//! let mut layers = Vec::new();
+//!
+//! if cfg.enable_log_file {
+//!     let file = File::create("myapp.log")?;
+//!     let layer = tracing_subscriber::fmt::layer()
+//!         .with_thread_names(true)
+//!         .with_target(true)
+//!         .json()
+//!         .with_writer(file)
+//!         // Box the layer as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     layers.push(layer);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let layer = tracing_subscriber::fmt::layer()
+//!         .pretty()
+//!         .with_filter(LevelFilter::INFO)
+//!         // Box the layer as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     layers.push(layer);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let layer = tracing_subscriber::fmt::layer()
+//!         .with_target(false)
+//!         .with_filter(LevelFilter::WARN)
+//!         // Box the layer as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     layers.push(layer);
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(layers)
+//!     .init();
+//!# Ok(()) }
+//! ```
+//!
+//! Finally, if the number of layers _changes_ at runtime, a `Vec` of
+//! subscribers can be used alongside the [`reload`](crate::reload) module to
+//! add or remove subscribers dynamically at runtime.
 //!
 //! [option-impl]: Layer#impl-Layer<S>-for-Option<L>
 //! [box-impl]: Layer#impl-Layer%3CS%3E-for-Box%3Cdyn%20Layer%3CS%3E%20+%20Send%20+%20Sync%3E
@@ -1060,6 +1161,7 @@ where
 
 feature! {
     #![all(feature = "registry", feature = "std")]
+
     /// A per-[`Layer`] filter that determines whether a span or event is enabled
     /// for an individual layer.
     ///
@@ -1406,6 +1508,8 @@ where
 
 feature! {
     #![any(feature = "std", feature = "alloc")]
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
 
     macro_rules! layer_impl_body {
         () => {
@@ -1490,6 +1594,120 @@ feature! {
         S: Subscriber,
     {
         layer_impl_body! {}
+    }
+
+
+
+    impl<S, L> Layer<S> for Vec<L>
+    where
+        L: Layer<S>,
+        S: Subscriber,
+    {
+
+        fn on_layer(&mut self, subscriber: &mut S) {
+            for l in self {
+                l.on_layer(subscriber);
+            }
+        }
+
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            // Return highest level of interest.
+            let mut interest = Interest::never();
+            for l in self {
+                let new_interest = l.register_callsite(metadata);
+                if (interest.is_sometimes() && new_interest.is_always())
+                    || (interest.is_never() && !new_interest.is_never())
+                {
+                    interest = new_interest;
+                }
+            }
+
+            interest
+        }
+
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+            self.iter().all(|l| l.enabled(metadata, ctx.clone()))
+        }
+
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_new_span(attrs, id, ctx.clone());
+            }
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            let mut max_level = LevelFilter::ERROR;
+            for l in self {
+                // NOTE(eliza): this is slightly subtle: if *any* layer
+                // returns `None`, we have to return `None`, assuming there is
+                // no max level hint, since that particular layer cannot
+                // provide a hint.
+                let hint = l.max_level_hint()?;
+                max_level = core::cmp::max(hint, max_level);
+            }
+            Some(max_level)
+        }
+
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_record(span, values, ctx.clone())
+            }
+        }
+
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_follows_from(span, follows, ctx.clone());
+            }
+        }
+
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_event(event, ctx.clone());
+            }
+        }
+
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_enter(id, ctx.clone());
+            }
+        }
+
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_exit(id, ctx.clone());
+            }
+        }
+
+        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+            for l in self {
+                l.on_close(id.clone(), ctx.clone());
+            }
+        }
+
+        #[doc(hidden)]
+        unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+            // If downcasting to `Self`, return a pointer to `self`.
+            if id == TypeId::of::<Self>() {
+                return Some(self as *const _ as *const ());
+            }
+
+            // Someone is looking for per-layer filters. But, this `Vec`
+            // might contain layers with per-layer filters *and*
+            // layers without filters. It should only be treated as a
+            // per-layer-filtered layer if *all* its layers have
+            // per-layer filters.
+            // XXX(eliza): it's a bummer we have to do this linear search every
+            // time. It would be nice if this could be cached, but that would
+            // require replacing the `Vec` impl with an impl for a newtype...
+            if filter::is_plf_downcast_marker(id) && self.iter().any(|s| s.downcast_raw(id).is_none()) {
+                return None;
+            }
+
+            // Otherwise, return the first child of `self` that downcaasts to
+            // the selected type, if any.
+            // XXX(eliza): hope this is reasonable lol
+            self.iter().find_map(|l| l.downcast_raw(id))
+        }
     }
 }
 

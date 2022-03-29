@@ -7,9 +7,10 @@ mod downcast_raw;
 mod filter_scopes;
 mod targets;
 mod trees;
+mod vec;
 
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*};
+use tracing_subscriber::{filter, prelude::*, Layer};
 
 #[test]
 fn basic_layer_filters() {
