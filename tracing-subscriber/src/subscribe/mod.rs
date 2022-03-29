@@ -269,7 +269,7 @@
 //! The [`Subscribe::boxed`] method is provided to make boxing a subscriber
 //! more convenient, but [`Box::new`] may be used as well.
 //!
-//! When the _number_ of subscribers varies at runtime, note that a
+//! When the number of subscribers varies at runtime, note that a
 //! [`Vec<S> where S: Subscribe` also implements `Subscribe`][vec-impl]. This
 //! can be used to add a variable number of subscribers to a collector:
 //!
@@ -301,7 +301,7 @@
 //!     .init();
 //! ```
 //!
-//! If a variable number of subscribers is needed, and those subscribers have
+//! If a variable number of subscribers is needed and those subscribers have
 //! different types, a `Vec` of [boxed subscriber trait objects][box-impl] may
 //! be used. For example:
 //!
@@ -1609,8 +1609,6 @@ feature! {
         }
 
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            // XXX(eliza): does this need to clear the filter state when it
-            // returns false, or will `Layered` always take care of that for us?
             self.iter().all(|s| s.enabled(metadata, ctx.clone()))
         }
 
@@ -1627,7 +1625,8 @@ feature! {
                 // returns `None`, we have to return `None`, assuming there is
                 // no max level hint, since that particular subscriber cannot
                 // provide a hint.
-                max_level = core::cmp::max(s.max_level_hint()?, max_level);
+                let hint = s.max_level_hint()?;
+                max_level = core::cmp::max(hint, max_level);
             }
             Some(max_level)
         }
