@@ -178,10 +178,10 @@ enum Kind<T> {
 
 #[cfg(feature = "std")]
 thread_local! {
-    static CURRENT_STATE: State = State {
+    static CURRENT_STATE: State = const { State {
         default: RefCell::new(None),
         can_enter: Cell::new(true),
-    };
+    } };
 }
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
