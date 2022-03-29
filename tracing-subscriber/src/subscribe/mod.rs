@@ -269,9 +269,111 @@
 //! The [`Subscribe::boxed`] method is provided to make boxing a subscriber
 //! more convenient, but [`Box::new`] may be used as well.
 //!
+//! When the number of subscribers varies at runtime, note that a
+//! [`Vec<S> where S: Subscribe` also implements `Subscribe`][vec-impl]. This
+//! can be used to add a variable number of subscribers to a collector:
+//!
+//! ```
+//! use tracing_subscriber::{Subscribe, prelude::*};
+//! struct MySubscriber {
+//!     // ...
+//! }
+//! # impl MySubscriber { fn new() -> Self { Self {} }}
+//!
+//! impl<C: tracing_core::Collect> Subscribe<C> for MySubscriber {
+//!     // ...
+//! }
+//!
+//! /// Returns how many subscribers we need
+//! fn how_many_subscribers() -> usize {
+//!     // ...
+//!     # 3
+//! }
+//!
+//! // Create a variable-length `Vec` of subscribers
+//! let mut subscribers = Vec::new();
+//! for _ in 0..how_many_subscribers() {
+//!     subscribers.push(MySubscriber::new());
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(subscribers)
+//!     .init();
+//! ```
+//!
+//! If a variable number of subscribers is needed and those subscribers have
+//! different types, a `Vec` of [boxed subscriber trait objects][box-impl] may
+//! be used. For example:
+//!
+//! ```
+//! use tracing_subscriber::{filter::LevelFilter, Subscribe, prelude::*};
+//! use std::fs::File;
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! struct Config {
+//!     enable_log_file: bool,
+//!     enable_stdout: bool,
+//!     enable_stderr: bool,
+//!     // ...
+//! }
+//! # impl Config {
+//! #    fn from_config_file()-> Result<Self, Box<dyn std::error::Error>> {
+//! #         // don't enable the log file so that the example doesn't actually create it
+//! #         Ok(Self { enable_log_file: false, enable_stdout: true, enable_stderr: true })
+//! #    }
+//! # }
+//!
+//! let cfg = Config::from_config_file()?;
+//!
+//! // Based on our dynamically loaded config file, create any number of subscribers:
+//! let mut subscribers = Vec::new();
+//!
+//! if cfg.enable_log_file {
+//!     let file = File::create("myapp.log")?;
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .with_thread_names(true)
+//!         .with_target(true)
+//!         .json()
+//!         .with_writer(file)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .pretty()
+//!         .with_filter(LevelFilter::INFO)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! if cfg.enable_stdout {
+//!     let subscriber = tracing_subscriber::fmt::subscriber()
+//!         .with_target(false)
+//!         .with_filter(LevelFilter::WARN)
+//!         // Box the subscriber as a type-erased trait object, so that it can
+//!         // be pushed to the `Vec`.
+//!         .boxed();
+//!     subscribers.push(subscriber);
+//! }
+//!
+//! tracing_subscriber::registry()
+//!     .with(subscribers)
+//!     .init();
+//!# Ok(()) }
+//! ```
+//!
+//! Finally, if the number of subscribers _changes_ at runtime, a `Vec` of
+//! subscribers can be used alongside the [`reload`](crate::reload) module to
+//! add or remove subscribers dynamically at runtime.
+//!
 //! [prelude]: crate::prelude
 //! [option-impl]: crate::subscribe::Subscribe#impl-Subscribe<C>-for-Option<S>
 //! [box-impl]: Subscribe#impl-Subscribe%3CC%3E-for-Box%3Cdyn%20Subscribe%3CC%3E%20+%20Send%20+%20Sync%20+%20%27static%3E
+//! [vec-impl]: Subscribe#impl-Subscribe<C>-for-Vec<S>
 //!
 //! # Recording Traces
 //!
@@ -1486,6 +1588,119 @@ feature! {
         C: Collect,
     {
         subscriber_impl_body! {}
+    }
+
+
+    impl<C, S> Subscribe<C> for Vec<S>
+    where
+        S: Subscribe<C>,
+        C: Collect,
+    {
+
+        fn on_subscribe(&mut self, collector: &mut C) {
+            for s in self {
+                s.on_subscribe(collector);
+            }
+        }
+
+        fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+            // Return highest level of interest.
+            let mut interest = Interest::never();
+            for s in self {
+                let new_interest = s.register_callsite(metadata);
+                if (interest.is_sometimes() && new_interest.is_always())
+                    || (interest.is_never() && !new_interest.is_never())
+                {
+                    interest = new_interest;
+                }
+            }
+
+            interest
+        }
+
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+            self.iter().all(|s| s.enabled(metadata, ctx.clone()))
+        }
+
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_new_span(attrs, id, ctx.clone());
+            }
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            let mut max_level = LevelFilter::ERROR;
+            for s in self {
+                // NOTE(eliza): this is slightly subtle: if *any* subscriber
+                // returns `None`, we have to return `None`, assuming there is
+                // no max level hint, since that particular subscriber cannot
+                // provide a hint.
+                let hint = s.max_level_hint()?;
+                max_level = core::cmp::max(hint, max_level);
+            }
+            Some(max_level)
+        }
+
+        fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_record(span, values, ctx.clone())
+            }
+        }
+
+        fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_follows_from(span, follows, ctx.clone());
+            }
+        }
+
+        fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_event(event, ctx.clone());
+            }
+        }
+
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_enter(id, ctx.clone());
+            }
+        }
+
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_exit(id, ctx.clone());
+            }
+        }
+
+        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+            for s in self {
+                s.on_close(id.clone(), ctx.clone());
+            }
+        }
+
+        #[doc(hidden)]
+        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+            // If downcasting to `Self`, return a pointer to `self`.
+            if id == TypeId::of::<Self>() {
+                return Some(NonNull::from(self).cast());
+            }
+
+            // Someone is looking for per-subscriber filters. But, this `Vec`
+            // might contain subscribers with per-subscriber filters *and*
+            // subscribers without filters. It should only be treated as a
+            // per-subscriber-filtered subscriber if *all* its subscribers have
+            // per-subscriber filters.
+            // XXX(eliza): it's a bummer we have to do this linear search every
+            // time. It would be nice if this could be cached, but that would
+            // require replacing the `Vec` impl with an impl for a newtype...
+            if filter::is_psf_downcast_marker(id) && self.iter().any(|s| s.downcast_raw(id).is_none()) {
+                return None;
+            }
+
+            // Otherwise, return the first child of `self` that downcaaasts to
+            // the selected type, if any.
+            // XXX(eliza): hope this is reasonable lol
+            self.iter().find_map(|s| s.downcast_raw(id))
+        }
     }
 }
 
