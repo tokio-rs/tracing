@@ -2,7 +2,7 @@ use matchers::Pattern;
 use std::{
     cmp::Ordering,
     error::Error,
-    fmt,
+    fmt::{self, Write},
     str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering::*},
@@ -43,6 +43,7 @@ pub(crate) enum ValueMatch {
     U64(u64),
     I64(i64),
     NaN,
+    Debug(MatchDebug),
     Pat(Box<MatchPattern>),
 }
 
@@ -97,6 +98,9 @@ impl Ord for ValueMatch {
 
             (Pat(this), Pat(that)) => this.cmp(that),
             (Pat(_), _) => Ordering::Greater,
+
+            (Debug(this), Debug(that)) => this.cmp(that),
+            (Debug(_), _) => Ordering::Greater,
         }
     }
 }
@@ -113,6 +117,11 @@ pub(crate) struct MatchPattern {
     pattern: Arc<str>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct MatchDebug {
+    pattern: Arc<str>,
+}
+
 /// Indicates that a field name specified in a filter directive was invalid.
 #[derive(Clone, Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -122,22 +131,6 @@ pub struct BadName {
 
 // === impl Match ===
 
-impl FromStr for Match {
-    type Err = Box<dyn Error + Send + Sync>;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split('=');
-        let name = parts
-            .next()
-            .ok_or_else(|| BadName {
-                name: "".to_string(),
-            })?
-            // TODO: validate field name
-            .to_string();
-        let value = parts.next().map(ValueMatch::from_str).transpose()?;
-        Ok(Match { name, value })
-    }
-}
-
 impl Match {
     pub(crate) fn has_value(&self) -> bool {
         self.value.is_some()
@@ -146,6 +139,25 @@ impl Match {
     // TODO: reference count these strings?
     pub(crate) fn name(&self) -> String {
         self.name.clone()
+    }
+
+    pub(crate) fn parse(s: &str, regex: bool) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        let mut parts = s.split('=');
+        let name = parts
+            .next()
+            .ok_or_else(|| BadName {
+                name: "".to_string(),
+            })?
+            // TODO: validate field name
+            .to_string();
+        let value = parts
+            .next()
+            .map(|part| match regex {
+                true => ValueMatch::parse_regex(part),
+                false => Ok(ValueMatch::parse_non_regex(part)),
+            })
+            .transpose()?;
+        Ok(Match { name, value })
     }
 }
 
@@ -199,9 +211,8 @@ fn value_match_f64(v: f64) -> ValueMatch {
     }
 }
 
-impl FromStr for ValueMatch {
-    type Err = matchers::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl ValueMatch {
+    fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
@@ -211,6 +222,15 @@ impl FromStr for ValueMatch {
                 s.parse::<MatchPattern>()
                     .map(|p| ValueMatch::Pat(Box::new(p)))
             })
+    }
+
+    fn parse_non_regex(s: &str) -> Self {
+        s.parse::<bool>()
+            .map(ValueMatch::Bool)
+            .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
+            .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
+            .or_else(|_| s.parse::<f64>().map(value_match_f64))
+            .unwrap_or_else(|_| ValueMatch::Debug(MatchDebug::new(s)))
     }
 }
 
@@ -222,6 +242,7 @@ impl fmt::Display for ValueMatch {
             ValueMatch::NaN => fmt::Display::fmt(&std::f64::NAN, f),
             ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
+            ValueMatch::Debug(ref inner) => fmt::Display::fmt(inner, f),
             ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
         }
     }
@@ -264,6 +285,12 @@ impl MatchPattern {
     fn debug_matches(&self, d: &impl fmt::Debug) -> bool {
         self.matcher.debug_matches(d)
     }
+
+    pub(super) fn into_debug_match(self) -> MatchDebug {
+        MatchDebug {
+            pattern: self.pattern,
+        }
+    }
 }
 
 impl PartialEq for MatchPattern {
@@ -283,6 +310,79 @@ impl PartialOrd for MatchPattern {
 }
 
 impl Ord for MatchPattern {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.pattern.cmp(&other.pattern)
+    }
+}
+
+// === impl MatchDebug ===
+
+impl MatchDebug {
+    fn new(s: &str) -> Self {
+        Self {
+            pattern: s.to_owned().into(),
+        }
+    }
+
+    #[inline]
+    fn debug_matches(&self, d: &impl fmt::Debug) -> bool {
+        struct Matcher<'a> {
+            pattern: &'a str,
+        }
+
+        impl fmt::Write for Matcher<'_> {
+            fn write_str(&mut self, s: &str) -> fmt::Result {
+                if s.len() > self.pattern.len() {
+                    return Err(fmt::Error);
+                }
+
+                if self.pattern.starts_with(s) {
+                    self.pattern = &self.pattern[s.len()..];
+                    return Ok(());
+                }
+
+                Err(fmt::Error)
+            }
+        }
+        let mut matcher = Matcher {
+            pattern: &self.pattern,
+        };
+        write!(matcher, "{:?}", d).is_ok()
+    }
+}
+
+impl fmt::Display for MatchDebug {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&*self.pattern, f)
+    }
+}
+
+impl AsRef<str> for MatchDebug {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.pattern.as_ref()
+    }
+}
+
+impl PartialEq for MatchDebug {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.pattern == other.pattern
+    }
+}
+
+impl Eq for MatchDebug {}
+
+impl PartialOrd for MatchDebug {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.pattern.cmp(&other.pattern))
+    }
+}
+
+impl Ord for MatchDebug {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.pattern.cmp(&other.pattern)
@@ -401,6 +501,9 @@ impl<'a> Visit for MatchVisitor<'a> {
             Some((ValueMatch::Pat(ref e), ref matched)) if e.str_matches(&value) => {
                 matched.store(true, Release);
             }
+            Some((ValueMatch::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
+                matched.store(true, Release)
+            }
             _ => {}
         }
     }
@@ -410,7 +513,63 @@ impl<'a> Visit for MatchVisitor<'a> {
             Some((ValueMatch::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
                 matched.store(true, Release);
             }
+            Some((ValueMatch::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
+                matched.store(true, Release)
+            }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct MyStruct {
+        answer: usize,
+        question: &'static str,
+    }
+
+    #[test]
+    fn debug_struct_match() {
+        let my_struct = MyStruct {
+            answer: 42,
+            question: "life, the universe, and everything",
+        };
+
+        let pattern = "MyStruct { answer: 42, question: \"life, the universe, and everything\" }";
+
+        assert_eq!(
+            format!("{:?}", my_struct),
+            pattern,
+            "`MyStruct`'s `Debug` impl doesn't output the expected string"
+        );
+
+        let matcher = MatchDebug {
+            pattern: pattern.into(),
+        };
+        assert!(matcher.debug_matches(&my_struct))
+    }
+
+    #[test]
+    fn debug_struct_not_match() {
+        let my_struct = MyStruct {
+            answer: 42,
+            question: "what shall we have for lunch?",
+        };
+
+        let pattern = "MyStruct { answer: 42, question: \"life, the universe, and everything\" }";
+
+        assert_eq!(
+            format!("{:?}", my_struct),
+            "MyStruct { answer: 42, question: \"what shall we have for lunch?\" }",
+            "`MyStruct`'s `Debug` impl doesn't output the expected string"
+        );
+
+        let matcher = MatchDebug {
+            pattern: pattern.into(),
+        };
+        assert!(!matcher.debug_matches(&my_struct))
     }
 }
