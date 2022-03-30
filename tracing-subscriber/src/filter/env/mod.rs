@@ -252,10 +252,12 @@ impl EnvFilter {
     ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-    //
+    ///
+    /// # fn docs() -> EnvFilter {
     /// EnvFilter::builder()
     ///     .with_default_directive(LevelFilter::ERROR.into())
     ///     .from_env_lossy()
+    /// # }
     /// ```
     ///
     /// [`ERROR`]: tracing::Level::ERROR
@@ -280,11 +282,13 @@ impl EnvFilter {
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
+    /// # fn docs() -> EnvFilter {
     /// # let env = "";
     /// EnvFilter::builder()
     ///     .with_default_directive(LevelFilter::ERROR.into())
     ///     .with_env_var(env)
     ///     .from_env_lossy()
+    /// # }
     /// ```
     ///
     /// [`ERROR`]: tracing::Level::ERROR
@@ -309,10 +313,12 @@ impl EnvFilter {
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
+    /// # fn docs() -> EnvFilter {
     /// # let directives = "";
     /// EnvFilter::builder()
     ///     .with_default_directive(LevelFilter::ERROR.into())
     ///     .parse_lossy(directives)
+    /// # }
     /// ```
     ///
     /// [`ERROR`]: tracing::Level::ERROR
@@ -336,10 +342,12 @@ impl EnvFilter {
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::ParseError> {
     /// # let directives = "";
     /// EnvFilter::builder()
     ///     .with_default_directive(LevelFilter::ERROR.into())
     ///     .parse(directives)
+    /// # }
     /// ```
     ///
     /// [`ERROR`]: tracing::Level::ERROR
@@ -359,7 +367,9 @@ impl EnvFilter {
     /// ```rust
     /// use tracing_subscriber::EnvFilter;
     ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
     /// EnvFilter::builder().try_from_env()
+    /// # }
     /// ```
     pub fn try_from_default_env() -> Result<Self, FromEnvError> {
         Self::builder().try_from_env()
@@ -377,8 +387,10 @@ impl EnvFilter {
     /// ```rust
     /// use tracing_subscriber::EnvFilter;
     ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
     /// # let env = "";
     /// EnvFilter::builder().with_env_var(env).try_from_env()
+    /// # }
     /// ```
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
         Self::builder().with_env_var(env.as_ref()).try_from_env()
@@ -403,7 +415,7 @@ impl EnvFilter {
     /// # Examples
     ///
     /// From [`LevelFilter`]:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     /// let mut filter = EnvFilter::from_default_env()
@@ -418,9 +430,9 @@ impl EnvFilter {
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(Level::INFO.into());
     /// ```
-    ////
+    ///
     /// Parsed from a string:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
     ///

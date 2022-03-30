@@ -45,10 +45,10 @@ impl Builder {
     /// filtering directives, the default directive is used instead:
     ///
     /// ```rust
-    /// use tracing_subscriber::EnvFilter;
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
     /// let filter = EnvFilter::builder()
-    ///     .default_directive(LevelFilter::INFO.into())
+    ///     .with_default_directive(LevelFilter::INFO.into())
     ///     .parse_lossy("some_target=fake level,foo::bar=lolwut");
     ///
     /// assert_eq!(format!("{}", filter), "info");
@@ -59,23 +59,25 @@ impl Builder {
     /// filtering directives, the default directive is used instead:
     ///
     /// ```rust
-    /// use tracing_subscriber::EnvFilter;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
     /// let filter = EnvFilter::builder()
-    ///     .default_directive(LevelFilter::INFO.into())
-    ///     .parse("");
+    ///     .with_default_directive(LevelFilter::INFO.into())
+    ///     .parse("")?;
     ///
     /// assert_eq!(format!("{}", filter), "info");
+    /// # Ok(()) }
     /// ```
     ///
     /// If the string or environment variable contains valid filtering
     /// directives, the default directive is not used:
     ///
     /// ```rust
-    /// use tracing_subscriber::EnvFilter;
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
     /// let filter = EnvFilter::builder()
-    ///     .default_directive(LevelFilter::INFO.into())
+    ///     .with_default_directive(LevelFilter::INFO.into())
     ///     .parse_lossy("foo=trace");
     ///
     /// // The default directive is *not* used:
@@ -85,16 +87,18 @@ impl Builder {
     /// Parsing a more complex default directive from a string:
     ///
     /// ```rust
-    /// use tracing_subscriber::EnvFilter;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     ///
     /// let default = "myapp=debug".parse()
     ///     .expect("hard-coded default directive should be valid");
     ///
     /// let filter = EnvFilter::builder()
-    ///     .default_directive(default)
-    ///     .parse("");
+    ///     .with_default_directive(default)
+    ///     .parse("")?;
     ///
-    /// assert_eq!(format!("{}", filter), "myapp=trace");
+    /// assert_eq!(format!("{}", filter), "myapp=debug");
+    /// # Ok(()) }
     /// ```
     ///
     /// [`parse_lossy`]: Self::parse_lossy
@@ -143,8 +147,11 @@ impl Builder {
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// or an error if any are invalid.
     pub fn parse<S: AsRef<str>>(&self, dirs: S) -> Result<EnvFilter, directive::ParseError> {
+        let dirs = dirs.as_ref();
+        if dirs.is_empty() {
+            return Ok(self.from_directives(std::iter::empty()));
+        }
         let directives = dirs
-            .as_ref()
             .split(',')
             .map(|s| Directive::parse(s, self.regex))
             .collect::<Result<Vec<_>, _>>()?;
