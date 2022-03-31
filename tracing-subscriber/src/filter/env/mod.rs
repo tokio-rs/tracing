@@ -64,16 +64,17 @@ use tracing_core::{
 ///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
 ///    it will match _only_ on that value. Otherwise, this filter matches the
-///    `std::fmt::Debug` output from the value.
+///    [`std::fmt::Debug`] output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
 ///
 /// When a field value directive (`[{<FIELD NAME>=<FIELD_VALUE>}]=...`) matches a
-/// value's `fmt::Debug` output (i.e., the field value in the directive is not a
-/// `bool`, `i64`, `u64`, `f64`, or string literal), the matched pattern may be
-/// interpreted as either a regular expression or as the precise expected output
-/// of the field's `Debug` implementation. By default, these filters are
-/// interpreted as regular expressions, but this can be disabled using the
-/// [`Builder::with_regex`] builder method to use precise matching instead.
+/// value's [`std::fmt::Debug`] output (i.e., the field value in the directive
+/// is not a `bool`, `i64`, `u64`, or `f64` literal), the matched pattern may be
+/// interpreted as either a regular expression or as the precise expected
+/// output of the field's [`std::fmt::Debug`] implementation. By default, these
+/// filters are interpreted as regular expressions, but this can be disabled
+/// using the [`Builder::with_regex`] builder method to use precise matching
+/// instead.
 ///
 /// When field value filters are interpreted as regular expressions, the
 /// [`regex-automata` crate's regular expression syntax][re-syntax] is

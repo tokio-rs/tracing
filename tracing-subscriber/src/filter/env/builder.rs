@@ -23,8 +23,8 @@ impl Builder {
     ///
     /// If this is `true`, field filter directives will be interpreted as
     /// regular expressions if they are not able to be interpreted as a `bool`,
-    /// `i64`, `u64`, `f64`, or `String` literal. If this is `false,` those
-    /// field values will be interpreted as literal `fmt::Debug` output instead.
+    /// `i64`, `u64`, or `f64` literal. If this is `false,` those field values
+    /// will be interpreted as literal [`std::fmt::Debug`] output instead.
     ///
     /// By default, regular expressions are enabled.
     ///
