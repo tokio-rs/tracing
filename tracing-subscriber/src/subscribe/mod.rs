@@ -1505,6 +1505,14 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+        match self {
+            Some(ref inner) => inner.event_enabled(event, ctx),
+            None => false,
+        }
+    }
+
+    #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_event(event, ctx);
@@ -1581,6 +1589,11 @@ macro_rules! subscriber_impl_body {
         #[inline]
         fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_follows_from(span, follows, ctx)
+        }
+
+        #[inline]
+        fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+            self.deref().event_enabled(event, ctx)
         }
 
         #[inline]
