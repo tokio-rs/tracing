@@ -230,9 +230,10 @@ impl Match for Directive {
         }
 
         // Does the metadata define all the fields that this directive cares about?
-        let fields = meta.fields();
-        for field in &self.fields {
-            if fields.field(&field.name).is_none() {
+        let actual_fields = meta.fields();
+        for expected_field in &self.fields {
+            // Does the actual field set (from the metadata) contain this field?
+            if actual_fields.field(&expected_field.name).is_none() {
                 return false;
             }
         }
