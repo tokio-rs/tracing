@@ -18,8 +18,7 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Sets whether or not span field values can be matched with regular
-    /// expressions.
+    /// Sets whether span field values can be matched with regular expressions.
     ///
     /// If this is `true`, field filter directives will be interpreted as
     /// regular expressions if they are not able to be interpreted as a `bool`,
@@ -34,14 +33,14 @@ impl Builder {
         Self { regex, ..self }
     }
 
-    /// Sets a [filtering directive] that will be added to the filter if
+    /// Sets a default [filtering directive] that will be added to the filter if
     /// the parsed string or environment variable contains no filter directives.
     ///
     /// By default, there is no default directive.
     ///
     /// # Examples
     ///
-    /// If [`parse_lossy`] or [`from_env_lossy`] is called with only invalid
+    /// If [`parse_lossy`] or [`from_env_lossy`] is called with _only_ invalid
     /// filtering directives, the default directive is used instead:
     ///
     /// ```rust
@@ -55,8 +54,8 @@ impl Builder {
     /// ```
     ///
     /// If [`parse`], [`parse_lossy`], [`from_env`], or [`from_env_lossy`] are
-    /// called with only invalid
-    /// filtering directives, the default directive is used instead:
+    /// called with an empty string or environment variable, the default
+    /// directive is used instead:
     ///
     /// ```rust
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
