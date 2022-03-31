@@ -686,7 +686,31 @@ pub(crate) mod tests;
 /// be composed together with other subscribers to build a [collector]. See the
 /// [module-level documentation](crate::subscribe) for details.
 ///
+/// # Enabling interest
+///
+/// Whenever an tracing event (or span) is emitted, it goes through a number of
+/// steps to determine how and how much it should be processed. The earlier an
+/// event is disabled, the less work has to be done to process the event, so
+/// subscribers should attempt to provide accurate information as early as
+/// possible. Note that this determines **global** interest for the entire stack
+/// of subscribers; a subscriber that wants to ignore certain events/spans
+/// should just ignore them in the notifications. In order, each event checks:
+///
+/// - [`register_callsite`], once per callsite (roughly: once per time that
+///   `event!` or `span!` is written in the source code; this is cached at the
+///   callsite). See [`Collect::register_callsite`] for how this behaves.
+/// - [`enabled`], once per emitted event (or span). This is the main point to
+///   (globally) filter events based on their [`Metadata`]. If an event can be
+///   disabled by just its structure, it should be, as this allows construction
+///   of the actual `Event`/`Span` to be skipped.
+/// - For events only (and not spans), [`event_enabled`] is called just before
+///   processing the event. This gives subscribers one last chance to say that
+///   an event should be filtered out, now that the event's fields are known.
+///
 /// [collector]: tracing_core::Collect
+/// [`enabled`]: Self::enabled
+/// [`event_enabled`]: Self::event_enabled
+/// [`register_callsite`]: Self::register_callsite
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Subscribe<C>
 where
@@ -827,7 +851,7 @@ where
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
 
-    /// Called before `on_event`, to determine if `on_event` should be called.
+    /// Called before [`on_event`], to determine if `on_event` should be called.
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
@@ -844,6 +868,7 @@ where
     /// See [the trait-level documentation] for more information on filtering
     /// with `Subscriber`s.
     ///
+    /// [`on_event`]: Self::on_event
     /// [`Interest`]: tracing_core::Interest
     /// [the trait-level documentation]: #filtering-with-subscribers
     #[inline] // collapse this to a constant please mrs optimizer
