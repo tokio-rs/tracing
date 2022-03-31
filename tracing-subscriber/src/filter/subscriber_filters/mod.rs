@@ -473,8 +473,7 @@ impl<S, F, C> Filtered<S, F, C> {
 
     /// Mutably borrows the [`Filter`](crate::subscribe::Filter) used by this subscriber.
     ///
-    /// When this subscriber can be mutably borrowed, this may be used to mutate the filter.
-    /// Generally, this will primarily be used with the
+    /// This method is primarily expected to be used with the
     /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
     ///
     /// # Examples
@@ -498,6 +497,46 @@ impl<S, F, C> Filtered<S, F, C> {
     /// ```
     pub fn filter_mut(&mut self) -> &mut F {
         &mut self.filter
+    }
+
+    /// Borrows the inner [subscriber] wrapped by this `Filtered` subscriber.
+    ///
+    /// [subscriber]: Subscribe
+    pub fn inner(&self) -> &S {
+        &self.subscriber
+    }
+
+    /// Mutably borrows the inner [subscriber] wrapped by this `Filtered` subscriber.
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::info;
+    /// # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+    /// # fn non_blocking<T: std::io::Write>(writer: T) -> (fn() -> std::io::Stdout) {
+    /// #   std::io::stdout
+    /// # }
+    /// # fn main() {
+    /// let filtered_subscriber = fmt::subscriber().with_writer(non_blocking(std::io::stderr())).with_filter(filter::LevelFilter::INFO);
+    /// let (filtered_subscriber, reload_handle) = reload::Subscriber::new(filtered_subscriber);
+    /// #
+    /// # // specifying the Registry type is required
+    /// # let _: &reload::Handle<filter::Filtered<fmt::Subscriber<Registry, _, _, fn() -> std::io::Stdout>,
+    /// # filter::LevelFilter, Registry>>
+    /// # = &reload_handle;
+    /// #
+    /// info!("This will be logged to stderr");
+    /// reload_handle.modify(|subscriber| *subscriber.inner_mut().writer_mut() = non_blocking(std::io::stdout()));
+    /// info!("This will be logged to stdout");
+    /// # }
+    /// ```
+    ///
+    /// [subscriber]: Subscribe
+    pub fn inner_mut(&mut self) -> &mut S {
+        &mut self.subscriber
     }
 }
 
