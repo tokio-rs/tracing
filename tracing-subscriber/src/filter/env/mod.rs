@@ -4,19 +4,18 @@
 // these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
-pub use self::{
-    directive::{Directive, ParseError},
-    field::BadName as BadFieldName,
-};
+pub use self::{directive::Directive, field::BadName as BadFieldName};
 mod directive;
 mod field;
 
 use crate::{
     filter::LevelFilter,
-    subscribe::{Context, Subscribe},
+    subscribe::{self, Context, Subscribe},
     sync::RwLock,
 };
+use directive::ParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use thread_local::ThreadLocal;
 use tracing_core::{
     callsite,
     collect::{Collect, Interest},
@@ -26,6 +25,16 @@ use tracing_core::{
 
 /// A [`Subscriber`] which filters spans and events based on a set of filter
 /// directives.
+///
+/// `EnvFilter` implements both the [`Subscribe`](#impl-Subscribe<C>) and
+/// [`Filter`] traits, so it may be used for both [global filtering][global] and
+/// [per-subscriber filtering][psf], respectively. See [the documentation on
+/// filtering with `Subscriber`s][filtering]  for details.
+///
+/// The [`Targets`] type implements a similar form of filtering, but without the
+/// ability to dynamically enable events based on the current span context, and
+/// without filtering on field values. When these features are not required,
+/// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
 ///
 /// # Directives
 ///
@@ -73,7 +82,7 @@ use tracing_core::{
 /// - A dash in a target will only appear when being specified explicitly:
 ///   `tracing::info!(target: "target-name", ...);`
 ///
-/// ## Examples
+/// ## Example Syntax
 ///
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
@@ -90,6 +99,55 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
+/// # Examples
+///
+/// Parsing an `EnvFilter` from the [default environment
+/// variable](EnvFilter::from_default_env) (`RUST_LOG`):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::subscriber())
+///     .with(EnvFilter::from_default_env())
+///     .init();
+/// ```
+///
+/// Parsing an `EnvFilter` [from a user-provided environment
+/// variable](EnvFilter::from_env):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::subscriber())
+///     .with(EnvFilter::from_env("MYAPP_LOG"))
+///     .init();
+/// ```
+///
+/// Using `EnvFilter` as a [per-subscriber filter][psf] to filter only a single
+/// [subscriber](crate::subscribe::Subscribe):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// // Parse an `EnvFilter` configuration from the `RUST_LOG`
+/// // environment variable.
+/// let filter = EnvFilter::from_default_env();
+///
+/// // Apply the filter to this subscriber *only*.
+/// let filtered_subscriber = fmt::subscriber().with_filter(filter);
+///
+/// // Some other subscriber, whose output we don't want to filter.
+/// let unfiltered_subscriber = // ...
+///     # fmt::subscriber();
+///
+/// tracing_subscriber::registry()
+///     .with(filtered_subscriber)
+///     .with(unfiltered_subscriber)
+///     .init();
+/// ```
+///
 /// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: tracing_core::span
@@ -97,6 +155,11 @@ use tracing_core::{
 /// [`Event`]: tracing_core::Event
 /// [`level`]: tracing_core::Level
 /// [`Metadata`]: tracing_core::Metadata
+/// [`Targets`]: crate::filter::Targets
+/// [`Filter`]: #impl-Filter<C>
+/// [global]: crate::subscribe#global-filtering
+/// [psf]: crate::subscribe#per-subscriber-filtering
+/// [filtering]: crate::subscribe#filtering-with-subscribers
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -105,18 +168,10 @@ pub struct EnvFilter {
     has_dynamics: bool,
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
-}
-
-thread_local! {
-    static SCOPE: RefCell<Vec<LevelFilter>> = RefCell::new(Vec::new());
+    scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
-
-#[cfg(feature = "smallvec")]
-type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
-#[cfg(not(feature = "smallvec"))]
-type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
@@ -165,7 +220,7 @@ impl EnvFilter {
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
-    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::ParseError> {
         let directives = dirs
             .as_ref()
             .split(',')
@@ -276,7 +331,7 @@ impl EnvFilter {
             };
             let ctx_prefixed = |prefix: &str, msg: &str| {
                 #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("note: {}", msg);
+                let msg = format!("{} {}", prefix, msg);
                 #[cfg(feature = "ansi_term")]
                 let msg = {
                     let mut equal = Color::Fixed(21).paint("="); // dark blue
@@ -348,6 +403,10 @@ impl EnvFilter {
             has_dynamics,
             by_id: RwLock::new(HashMap::new()),
             by_cs: RwLock::new(HashMap::new()),
+            // TODO(eliza): maybe worth allocating capacity for `num_cpus`
+            // threads or something (assuming we're running in Tokio)? or
+            // `num_cpus * 2` or something?
+            scope: ThreadLocal::new(),
         }
     }
 
@@ -363,9 +422,7 @@ impl EnvFilter {
             Interest::never()
         }
     }
-}
 
-impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -386,20 +443,7 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
         }
     }
 
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        if self.dynamics.has_value_filters() {
-            // If we perform any filtering on span field *values*, we will
-            // enable *all* spans, because their field values are not known
-            // until recording.
-            return Some(LevelFilter::TRACE);
-        }
-        std::cmp::max(
-            self.statics.max_level.into(),
-            self.dynamics.max_level.into(),
-        )
-    }
-
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -419,14 +463,15 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
                 }
             }
 
-            let enabled_by_scope = SCOPE.with(|scope| {
-                for filter in scope.borrow().iter() {
+            let enabled_by_scope = {
+                let scope = self.scope.get_or_default().borrow();
+                for filter in &*scope {
                     if filter >= level {
                         return true;
                     }
                 }
                 false
-            });
+            };
             if enabled_by_scope {
                 return true;
             }
@@ -442,7 +487,20 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
         false
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        if self.dynamics.has_value_filters() {
+            // If we perform any filtering on span field *values*, we will
+            // enable *all* spans, because their field values are not known
+            // until recording.
+            return Some(LevelFilter::TRACE);
+        }
+        std::cmp::max(
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
+        )
+    }
+
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -450,28 +508,22 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
         }
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            span.record_update(values);
-        }
-    }
-
-    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
+    fn on_enter(&self, id: &span::Id) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            SCOPE.with(|scope| scope.borrow_mut().push(span.level()));
+            self.scope.get_or_default().borrow_mut().push(span.level());
         }
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
+    fn on_exit(&self, id: &span::Id) {
         if self.cares_about_span(id) {
-            SCOPE.with(|scope| scope.borrow_mut().pop());
+            self.scope.get_or_default().borrow_mut().pop();
         }
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
+    fn on_close(&self, id: span::Id) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -482,8 +534,92 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
     }
 }
 
+impl<C: Collect> Subscribe<C> for EnvFilter {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        EnvFilter::register_callsite(self, metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        EnvFilter::max_level_hint(self)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
+        self.enabled(metadata)
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
+        self.on_new_span(attrs, id)
+    }
+
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            span.record_update(values);
+        }
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
+        self.on_enter(id);
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
+        self.on_exit(id);
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
+        self.on_close(id);
+    }
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+
+    impl<C> subscribe::Filter<C> for EnvFilter {
+        #[inline]
+        fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, C>) -> bool {
+            self.enabled(meta)
+        }
+
+        #[inline]
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            self.register_callsite(meta)
+        }
+
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            EnvFilter::max_level_hint(self)
+        }
+
+        #[inline]
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
+            self.on_new_span(attrs, id)
+        }
+
+        #[inline]
+        fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
+            self.on_enter(id);
+        }
+
+        #[inline]
+        fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
+            self.on_exit(id);
+        }
+
+        #[inline]
+        fn on_close(&self, id: span::Id, _: Context<'_, C>) {
+            self.on_close(id);
+        }
+    }
+}
+
 impl FromStr for EnvFilter {
-    type Err = ParseError;
+    type Err = directive::ParseError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
         Self::try_new(spec)
@@ -534,8 +670,8 @@ impl fmt::Display for EnvFilter {
 
 // ===== impl FromEnvError =====
 
-impl From<ParseError> for FromEnvError {
-    fn from(p: ParseError) -> Self {
+impl From<directive::ParseError> for FromEnvError {
+    fn from(p: directive::ParseError) -> Self {
         Self {
             kind: ErrorKind::Parse(p),
         }
@@ -707,5 +843,34 @@ mod tests {
         let f2: EnvFilter = format!("{}", f1).parse().unwrap();
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
+    }
+
+    #[test]
+    fn size_of_filters() {
+        fn print_sz(s: &str) {
+            let filter = s.parse::<EnvFilter>().expect("filter should parse");
+            println!(
+                "size_of_val({:?})\n -> {}B",
+                s,
+                std::mem::size_of_val(&filter)
+            );
+        }
+
+        print_sz("info");
+
+        print_sz("foo=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off",
+        );
+
+        print_sz("[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off,[span1{foo=1}]=error,\
+            [span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
+        );
     }
 }

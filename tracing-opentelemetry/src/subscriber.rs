@@ -1,7 +1,7 @@
 use crate::{OtelData, PreSampledTracer};
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
-    Context as OtelContext, Key, KeyValue,
+    Context as OtelContext, Key, KeyValue, Value,
 };
 use std::fmt;
 use std::marker;
@@ -27,6 +27,7 @@ const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetrySubscriber<C, T> {
     tracer: T,
+    event_location: bool,
     tracked_inactivity: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<C>,
@@ -289,6 +290,7 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetrySubscriber {
             tracer,
+            event_location: true,
             tracked_inactivity: true,
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
@@ -327,9 +329,21 @@ where
     {
         OpenTelemetrySubscriber {
             tracer,
+            event_location: self.event_location,
             tracked_inactivity: self.tracked_inactivity,
             get_context: WithContext(OpenTelemetrySubscriber::<C, Tracer>::get_context),
             _registry: self._registry,
+        }
+    }
+
+    /// Sets whether or not event span's metadata should include detailed location
+    /// information, such as the file, module and line number.
+    ///
+    /// By default, event locations are enabled.
+    pub fn with_event_location(self, event_location: bool) -> Self {
+        Self {
+            event_location,
+            ..self
         }
     }
 
@@ -538,13 +552,23 @@ where
             let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
             #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
+
+            let target = Key::new("target");
+
+            #[cfg(feature = "tracing-log")]
+            let target = if normalized_meta.is_some() {
+                target.string(meta.target().to_owned())
+            } else {
+                target.string(event.metadata().target())
+            };
+
+            #[cfg(not(feature = "tracing-log"))]
+            let target = target.string(meta.target());
+
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
-                vec![
-                    Key::new("level").string(meta.level().to_string()),
-                    Key::new("target").string(meta.target().to_string()),
-                ],
+                vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
             event.record(&mut SpanEventVisitor(&mut otel_event));
@@ -553,6 +577,33 @@ where
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(otel::StatusCode::Error);
+                }
+
+                if self.event_location {
+                    let builder_attrs = builder.attributes.get_or_insert(Vec::new());
+
+                    #[cfg(not(feature = "tracing-log"))]
+                    let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
+                    let (file, module) = match &normalized_meta {
+                        Some(meta) => (
+                            meta.file().map(|s| Value::from(s.to_owned())),
+                            meta.module_path().map(|s| Value::from(s.to_owned())),
+                        ),
+                        None => (
+                            event.metadata().file().map(Value::from),
+                            event.metadata().module_path().map(Value::from),
+                        ),
+                    };
+
+                    if let Some(file) = file {
+                        builder_attrs.push(KeyValue::new("code.filepath", file));
+                    }
+                    if let Some(module) = module {
+                        builder_attrs.push(KeyValue::new("code.namespace", module));
+                    }
+                    if let Some(line) = meta.line() {
+                        builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+                    }
                 }
 
                 if let Some(ref mut events) = builder.events {

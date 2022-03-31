@@ -136,7 +136,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
-    collect::{self, Collect},
+    collect::{self, Collect, NoCollector},
     span, Event, LevelFilter, Metadata,
 };
 
@@ -179,7 +179,7 @@ enum Kind<T> {
 #[cfg(feature = "std")]
 thread_local! {
     static CURRENT_STATE: State = State {
-        default: RefCell::new(Dispatch::none()),
+        default: RefCell::new(None),
         can_enter: Cell::new(true),
     };
 }
@@ -206,13 +206,13 @@ static NONE: Dispatch = Dispatch {
     #[cfg(not(feature = "alloc"))]
     collector: &NO_COLLECTOR,
 };
-static NO_COLLECTOR: NoCollector = NoCollector;
+static NO_COLLECTOR: NoCollector = NoCollector::new();
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
 struct State {
     /// This thread's current default dispatcher.
-    default: RefCell<Dispatch>,
+    default: RefCell<Option<Dispatch>>,
     /// Whether or not we can currently begin dispatching a trace event.
     ///
     /// This is set to `false` when functions such as `enter`, `exit`, `event`,
@@ -409,11 +409,12 @@ where
                 let _guard = Entered(&state.can_enter);
 
                 let mut default = state.default.borrow_mut();
+                let default = default
+                    // if the local default for this thread has never been set,
+                    // populate it with the global default, so we don't have to
+                    // keep getting the global on every `get_default_slow` call.
+                    .get_or_insert_with(|| get_global().clone());
 
-                if default.is::<NoCollector>() {
-                    // don't redo this call on the next check
-                    *default = get_global().clone();
-                }
                 return f(&*default);
             }
 
@@ -691,7 +692,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`enter`]: super::collect::Collect::enter
-    #[inline]
     pub fn enter(&self, span: &span::Id) {
         self.collector().enter(span);
     }
@@ -703,7 +703,6 @@ impl Dispatch {
     ///
     /// [`Collect`]: super::collect::Collect
     /// [`exit`]: super::collect::Collect::exit
-    #[inline]
     pub fn exit(&self, span: &span::Id) {
         self.collector().exit(span);
     }
@@ -771,7 +770,6 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     /// [`try_close`]: super::collect::Collect::try_close
     /// [`new_span`]: super::collect::Collect::new_span
-    #[inline]
     pub fn try_close(&self, id: span::Id) -> bool {
         self.collector().try_close(id)
     }
@@ -814,7 +812,25 @@ impl Default for Dispatch {
 
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Dispatch(...)")
+        match &self.collector {
+            #[cfg(feature = "alloc")]
+            Kind::Global(collector) => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(feature = "alloc")]
+            Kind::Scoped(collector) => f
+                .debug_tuple("Dispatch::Scoped")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(not(feature = "alloc"))]
+            collector => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+        }
     }
 }
 
@@ -826,36 +842,6 @@ where
     #[inline]
     fn from(collector: C) -> Self {
         Dispatch::new(collector)
-    }
-}
-
-struct NoCollector;
-impl Collect for NoCollector {
-    #[inline]
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> collect::Interest {
-        collect::Interest::never()
-    }
-
-    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
-        span::Id::from_u64(0xDEAD)
-    }
-
-    fn event(&self, _event: &Event<'_>) {}
-
-    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
-
-    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
-
-    #[inline]
-    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
-        false
-    }
-
-    fn enter(&self, _span: &span::Id) {}
-    fn exit(&self, _span: &span::Id) {}
-
-    fn current_span(&self) -> span::Current {
-        span::Current::none()
     }
 }
 
@@ -887,7 +873,13 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state.default.replace(new_dispatch)
+                state
+                    .default
+                    .replace(Some(new_dispatch))
+                    // if the scoped default was not set on this thread, set the
+                    // `prior` default to the global default to populate the
+                    // scoped default when unsetting *this* default
+                    .unwrap_or_else(|| get_global().clone())
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
@@ -911,14 +903,10 @@ impl State {
 impl<'a> Entered<'a> {
     #[inline]
     fn current(&self) -> RefMut<'a, Dispatch> {
-        let mut default = self.0.default.borrow_mut();
-
-        if default.is::<NoCollector>() {
-            // don't redo this call on the next check
-            *default = get_global().clone();
-        }
-
-        default
+        let default = self.0.default.borrow_mut();
+        RefMut::map(default, |default| {
+            default.get_or_insert_with(|| get_global().clone())
+        })
     }
 }
 
@@ -943,7 +931,7 @@ impl Drop for DefaultGuard {
             // lead to the drop of a collector which, in the process,
             // could then also attempt to access the same thread local
             // state -- causing a clash.
-            let prev = CURRENT_STATE.try_with(|state| state.default.replace(dispatch));
+            let prev = CURRENT_STATE.try_with(|state| state.default.replace(Some(dispatch)));
             drop(prev)
         }
     }
@@ -967,7 +955,7 @@ mod test {
 
     #[test]
     fn dispatch_downcasts() {
-        let dispatcher = Dispatch::from_static(&NoCollector);
+        let dispatcher = Dispatch::from_static(&NO_COLLECTOR);
         assert!(dispatcher.downcast_ref::<NoCollector>().is_some());
     }
 

@@ -28,7 +28,7 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
-    fmt::Debug,
+    fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
     path::Path,
@@ -80,10 +80,11 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 /// ```
 ///
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
-#[derive(Debug)]
 pub struct RollingFileAppender {
     state: Inner,
     writer: RwLock<File>,
+    #[cfg(test)]
+    now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
 }
 
 /// A [writer] that writes to a rolling log file.
@@ -135,36 +136,31 @@ impl RollingFileAppender {
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
         let now = OffsetDateTime::now_utc();
-        let log_directory = directory.as_ref().to_str().unwrap();
-        let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
-
-        let filename = rotation.join_date(log_filename_prefix, &now);
-        let next_date = rotation.next_date(&now);
-        let writer = RwLock::new(
-            create_writer(log_directory, &filename).expect("failed to create appender"),
-        );
+        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
         Self {
-            state: Inner {
-                log_directory: log_directory.to_string(),
-                log_filename_prefix: log_filename_prefix.to_string(),
-                next_date: AtomicUsize::new(
-                    next_date
-                        .map(|date| date.unix_timestamp() as usize)
-                        .unwrap_or(0),
-                ),
-                rotation,
-            },
+            state,
             writer,
+            #[cfg(test)]
+            now: Box::new(OffsetDateTime::now_utc),
         }
+    }
+
+    #[inline]
+    fn now(&self) -> OffsetDateTime {
+        #[cfg(test)]
+        return (self.now)();
+
+        #[cfg(not(test))]
+        OffsetDateTime::now_utc()
     }
 }
 
 impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let now = OffsetDateTime::now_utc();
+        let now = self.now();
         let writer = self.writer.get_mut();
-        if self.state.should_rollover(now) {
-            let _did_cas = self.state.advance_date(now);
+        if let Some(current_time) = self.state.should_rollover(now) {
+            let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
             self.state.refresh_writer(now, writer);
         }
@@ -179,17 +175,28 @@ impl io::Write for RollingFileAppender {
 impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
     type Writer = RollingWriter<'a>;
     fn make_writer(&'a self) -> Self::Writer {
-        let now = OffsetDateTime::now_utc();
+        let now = self.now();
 
         // Should we try to roll over the log file?
-        if self.state.should_rollover(now) {
+        if let Some(current_time) = self.state.should_rollover(now) {
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
-            if self.state.advance_date(now) {
+            if self.state.advance_date(now, current_time) {
                 self.state.refresh_writer(now, &mut *self.writer.write());
             }
         }
         RollingWriter(self.writer.read())
+    }
+}
+
+impl fmt::Debug for RollingFileAppender {
+    // This manual impl is required because of the `now` field (only present
+    // with `cfg(test)`), which is not `Debug`...
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RollingFileAppender")
+            .field("state", &self.state)
+            .field("writer", &self.writer)
+            .finish()
     }
 }
 
@@ -469,9 +476,35 @@ impl io::Write for RollingWriter<'_> {
 // === impl Inner ===
 
 impl Inner {
-    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
-        debug_assert!(self.should_rollover(now));
+    fn new(
+        now: OffsetDateTime,
+        rotation: Rotation,
+        directory: impl AsRef<Path>,
+        file_name_prefix: impl AsRef<Path>,
+    ) -> (Self, RwLock<File>) {
+        let log_directory = directory.as_ref().to_str().unwrap();
+        let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
 
+        let filename = rotation.join_date(log_filename_prefix, &now);
+        let next_date = rotation.next_date(&now);
+        let writer = RwLock::new(
+            create_writer(log_directory, &filename).expect("failed to create appender"),
+        );
+
+        let inner = Inner {
+            log_directory: log_directory.to_string(),
+            log_filename_prefix: log_filename_prefix.to_string(),
+            next_date: AtomicUsize::new(
+                next_date
+                    .map(|date| date.unix_timestamp() as usize)
+                    .unwrap_or(0),
+            ),
+            rotation,
+        };
+        (inner, writer)
+    }
+
+    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
         let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
 
         match create_writer(&self.log_directory, &filename) {
@@ -485,28 +518,36 @@ impl Inner {
         }
     }
 
-    fn should_rollover(&self, date: OffsetDateTime) -> bool {
-        // the `None` case means that the `InnerAppender` *never* rotates log files.
+    /// Checks whether or not it's time to roll over the log file.
+    ///
+    /// Rather than returning a `bool`, this returns the current value of
+    /// `next_date` so that we can perform a `compare_exchange` operation with
+    /// that value when setting the next rollover time.
+    ///
+    /// If this method returns `Some`, we should roll to a new log file.
+    /// Otherwise, if this returns we should not rotate the log file.
+    fn should_rollover(&self, date: OffsetDateTime) -> Option<usize> {
         let next_date = self.next_date.load(Ordering::Acquire);
+        // if the next date is 0, this appender *never* rotates log files.
         if next_date == 0 {
-            return false;
+            return None;
         }
-        date.unix_timestamp() as usize >= next_date
+
+        if date.unix_timestamp() as usize >= next_date {
+            return Some(next_date);
+        }
+
+        None
     }
 
-    fn advance_date(&self, now: OffsetDateTime) -> bool {
+    fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
         let next_date = self
             .rotation
             .next_date(&now)
             .map(|date| date.unix_timestamp() as usize)
             .unwrap_or(0);
         self.next_date
-            .compare_exchange(
-                now.unix_timestamp() as usize,
-                next_date,
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            )
+            .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     }
 }
@@ -538,9 +579,10 @@ mod test {
 
         for entry in dir_contents {
             let path = entry.expect("Expected dir entry").path();
-            let result = fs::read_to_string(path).expect("Failed to read file");
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
 
-            if result.as_str() == expected_value {
+            if file.as_str() == expected_value {
                 return true;
             }
         }
@@ -645,5 +687,80 @@ mod test {
         // never
         let path = Rotation::NEVER.join_date("app.log", &now);
         assert_eq!("app.log", path);
+    }
+
+    #[test]
+    fn test_make_writer() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) =
+            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer");
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        tracing::info!("file 1");
+
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        tracing::info!("file 1");
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        tracing::info!("file 2");
+
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        tracing::info!("file 2");
+
+        drop(default);
+
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+            let path = entry.expect("Expected dir entry").path();
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
+
+            match path
+                .extension()
+                .expect("found a file without a date!")
+                .to_str()
+                .expect("extension should be UTF8")
+            {
+                "2020-02-01-10" => {
+                    assert_eq!("file 1\nfile 1\n", file);
+                }
+                "2020-02-01-11" => {
+                    assert_eq!("file 2\nfile 2\n", file);
+                }
+                x => panic!("unexpected date {}", x),
+            }
+        }
     }
 }
