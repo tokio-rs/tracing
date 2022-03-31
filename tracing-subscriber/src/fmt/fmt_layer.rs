@@ -185,7 +185,57 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
-    /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
+    /// Borrows the [writer] for this [`Layer`].
+    ///
+    /// [writer]: MakeWriter
+    pub fn writer(&self) -> &W {
+        &self.make_writer
+    }
+
+    /// Mutably borrows the [writer] for this [`Layer`].
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::info;
+    /// # use tracing_subscriber::{fmt,reload,Registry,prelude::*};
+    /// # fn non_blocking<T: std::io::Write>(writer: T) -> (fn() -> std::io::Stdout) {
+    /// #   std::io::stdout
+    /// # }
+    /// # fn main() {
+    /// let layer = fmt::layer().with_writer(non_blocking(std::io::stderr()));
+    /// let (layer, reload_handle) = reload::Layer::new(layer);
+    /// #
+    /// # // specifying the Registry type is required
+    /// # let _: &reload::Handle<fmt::Layer<Registry, _, _, _>, Registry> = &reload_handle;
+    /// #
+    /// info!("This will be logged to stderr");
+    /// reload_handle.modify(|layer| *layer.writer_mut() = non_blocking(std::io::stdout()));
+    /// info!("This will be logged to stdout");
+    /// # }
+    /// ```
+    ///
+    /// [writer]: MakeWriter
+    pub fn writer_mut(&mut self) -> &mut W {
+        &mut self.make_writer
+    }
+
+    /// Sets whether this layer should use ANSI terminal formatting
+    /// escape codes (such as colors).
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method when changing
+    /// the writer.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn set_ansi(&mut self, ansi: bool) {
+        self.is_ansi = ansi;
+    }
+
+    /// Configures the layer to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///
     /// See [`TestWriter`] for additional details.

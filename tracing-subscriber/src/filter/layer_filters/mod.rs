@@ -504,6 +504,44 @@ impl<L, F, S> Filtered<L, F, S> {
     pub fn filter_mut(&mut self) -> &mut F {
         &mut self.filter
     }
+
+    /// Borrows the inner [`Layer`] wrapped by this `Filtered` layer.
+    pub fn inner(&self) -> &L {
+        &self.layer
+    }
+
+    /// Mutably borrows the inner [`Layer`] wrapped by this `Filtered` layer.
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::info;
+    /// # use tracing_subscriber::{filter,fmt,reload,Registry,prelude::*};
+    /// # fn non_blocking<T: std::io::Write>(writer: T) -> (fn() -> std::io::Stdout) {
+    /// #   std::io::stdout
+    /// # }
+    /// # fn main() {
+    /// let filtered_layer = fmt::layer().with_writer(non_blocking(std::io::stderr())).with_filter(filter::LevelFilter::INFO);
+    /// let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
+    /// #
+    /// # // specifying the Registry type is required
+    /// # let _: &reload::Handle<filter::Filtered<fmt::Layer<Registry, _, _, fn() -> std::io::Stdout>,
+    /// # filter::LevelFilter, Registry>, _>
+    /// # = &reload_handle;
+    /// #
+    /// info!("This will be logged to stderr");
+    /// reload_handle.modify(|layer| *layer.inner_mut().writer_mut() = non_blocking(std::io::stdout()));
+    /// info!("This will be logged to stdout");
+    /// # }
+    /// ```
+    ///
+    /// [subscriber]: Subscribe
+    pub fn inner_mut(&mut self) -> &mut L {
+        &mut self.layer
+    }
 }
 
 impl<S, L, F> Layer<S> for Filtered<L, F, S>
