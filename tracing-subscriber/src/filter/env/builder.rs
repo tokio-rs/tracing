@@ -40,19 +40,6 @@ impl Builder {
     ///
     /// # Examples
     ///
-    /// If [`parse_lossy`] or [`from_env_lossy`] is called with _only_ invalid
-    /// filtering directives, the default directive is used instead:
-    ///
-    /// ```rust
-    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-    ///
-    /// let filter = EnvFilter::builder()
-    ///     .with_default_directive(LevelFilter::INFO.into())
-    ///     .parse_lossy("some_target=fake level,foo::bar=lolwut");
-    ///
-    /// assert_eq!(format!("{}", filter), "info");
-    /// ```
-    ///
     /// If [`parse`], [`parse_lossy`], [`from_env`], or [`from_env_lossy`] are
     /// called with an empty string or environment variable, the default
     /// directive is used instead:
@@ -68,6 +55,22 @@ impl Builder {
     /// assert_eq!(format!("{}", filter), "info");
     /// # Ok(()) }
     /// ```
+    ///
+    /// Note that the `lossy` variants ([`parse_lossy`] and [`from_env_lossy`])
+    /// will ignore any invalid directives. If all directives in a filter
+    /// string or environment variable are invalid, those methods will also use
+    /// the default directive:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// let filter = EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::INFO.into())
+    ///     .parse_lossy("some_target=fake level,foo::bar=lolwut");
+    ///
+    /// assert_eq!(format!("{}", filter), "info");
+    /// ```
+    ///
     ///
     /// If the string or environment variable contains valid filtering
     /// directives, the default directive is not used:
