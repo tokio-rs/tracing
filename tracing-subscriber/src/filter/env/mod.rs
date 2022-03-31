@@ -4,7 +4,8 @@
 // these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
-pub use self::{directive::Directive, field::BadName as BadFieldName};
+pub use self::{builder::Builder, directive::Directive, field::BadName as BadFieldName};
+mod builder;
 mod directive;
 mod field;
 
@@ -62,9 +63,26 @@ use tracing_core::{
 ///    and will match on any [`Span`] or [`Event`] that has a field with that name.
 ///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
-///    it will match _only_ on that value. Otherwise, this filter acts as a regex on
-///    the `std::fmt::Debug` output from the value.
+///    it will match _only_ on that value. Otherwise, this filter matches the
+///    [`std::fmt::Debug`] output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
+///
+/// When a field value directive (`[{<FIELD NAME>=<FIELD_VALUE>}]=...`) matches a
+/// value's [`std::fmt::Debug`] output (i.e., the field value in the directive
+/// is not a `bool`, `i64`, `u64`, or `f64` literal), the matched pattern may be
+/// interpreted as either a regular expression or as the precise expected
+/// output of the field's [`std::fmt::Debug`] implementation. By default, these
+/// filters are interpreted as regular expressions, but this can be disabled
+/// using the [`Builder::with_regex`] builder method to use precise matching
+/// instead.
+///
+/// When field value filters are interpreted as regular expressions, the
+/// [`regex-automata` crate's regular expression syntax][re-syntax] is
+/// supported.
+///
+/// **Note**: When filters are constructed from potentially untrusted inputs,
+/// [disabling regular expression matching](Builder::with_regex) is strongly
+/// recommended.
 ///
 /// ## Usage Notes
 ///
@@ -147,6 +165,20 @@ use tracing_core::{
 ///     .with(unfiltered_subscriber)
 ///     .init();
 /// ```
+/// # Constructing `EnvFilter`s
+///
+/// An `EnvFilter` is be constructed by parsing a string containing one or more
+/// directives. The [`EnvFilter::new`] constructor parses an `EnvFilter` from a
+/// string, ignoring any invalid directives, while [`EnvFilter::try_new`]
+/// returns an error if invalid directives are encountered. Similarly, the
+/// [`EnvFilter::from_env`] and [`EnvFilter::try_from_env`] constructors parse
+/// an `EnvFilter` from the value of the provided environment variable, with
+/// lossy and strict validation, respectively.
+///
+/// A [builder](EnvFilter::builder) interface is available to set additional
+/// configuration options prior to parsing an `EnvFilter`. See the [`Builder`
+/// type's documentation](Builder) for details on the options that can be
+/// configured using the builder.
 ///
 /// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
@@ -169,6 +201,7 @@ pub struct EnvFilter {
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
     scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
+    regex: bool,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -193,54 +226,175 @@ impl EnvFilter {
     ///
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
+    /// Returns a [builder] that can be used to configure a new [`EnvFilter`]
+    /// instance.
+    ///
+    /// The [`Builder`] type is used to set additional configurations, such as
+    /// [whether regular expressions are enabled](Builder::with_regex) or [the
+    /// default directive](Builder::with_default_directive) before parsing an
+    /// [`EnvFilter`] from a string or environment variable.
+    ///
+    /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
+    pub fn builder() -> Builder {
+        Builder::default()
+    }
+
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
     /// variable, ignoring any invalid filter directives.
+    ///
+    /// If the environment variable is empty or not set, or if it contains only
+    /// invalid directives, a default directive enabling the [`ERROR`] level is
+    /// added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .from_env_lossy()
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
     pub fn from_default_env() -> Self {
-        Self::from_env(Self::DEFAULT_ENV)
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .from_env_lossy()
     }
 
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, ignoring any invalid filter directives.
+    ///
+    /// If the environment variable is empty or not set, or if it contains only
+    /// invalid directives, a default directive enabling the [`ERROR`] level is
+    /// added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// # let env = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .with_env_var(env)
+    ///     .from_env_lossy()
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
-        env::var(env.as_ref()).map(Self::new).unwrap_or_default()
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .with_env_var(env.as_ref())
+            .from_env_lossy()
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// ignoring any that are invalid.
-    pub fn new<S: AsRef<str>>(dirs: S) -> Self {
-        let directives = dirs.as_ref().split(',').filter_map(|s| match s.parse() {
-            Ok(d) => Some(d),
-            Err(err) => {
-                eprintln!("ignoring `{}`: {}", s, err);
-                None
-            }
-        });
-        Self::from_directives(directives)
+    ///
+    /// If the string is empty or contains only invalid directives, a default
+    /// directive enabling the [`ERROR`] level is added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// # let directives = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .parse_lossy(directives)
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
+    pub fn new<S: AsRef<str>>(directives: S) -> Self {
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .parse_lossy(directives)
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
+    ///
+    /// If the string is empty, a default directive enabling the [`ERROR`] level
+    /// is added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::ParseError> {
+    /// # let directives = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .parse(directives)
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
     pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::ParseError> {
-        let directives = dirs
-            .as_ref()
-            .split(',')
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self::from_directives(directives))
+        Self::builder().parse(dirs)
     }
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
-    /// variable, or an error if the environment variable contains any invalid
-    /// filter directives.
+    /// variable, or an error if the environment variable is unset or contains
+    /// any invalid filter directives.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::EnvFilter;
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
+    /// EnvFilter::builder().try_from_env()
+    /// # }
+    /// ```
     pub fn try_from_default_env() -> Result<Self, FromEnvError> {
-        Self::try_from_env(Self::DEFAULT_ENV)
+        Self::builder().try_from_env()
     }
 
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, or an error if the environment variable is unset or contains
     /// any invalid filter directives.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::EnvFilter;
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
+    /// # let env = "";
+    /// EnvFilter::builder().with_env_var(env).try_from_env()
+    /// # }
+    /// ```
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
-        env::var(env.as_ref())?.parse().map_err(Into::into)
+        Self::builder().with_env_var(env.as_ref()).try_from_env()
     }
 
     /// Add a filtering directive to this `EnvFilter`.
@@ -262,7 +416,7 @@ impl EnvFilter {
     /// # Examples
     ///
     /// From [`LevelFilter`]:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     /// let mut filter = EnvFilter::from_default_env()
@@ -277,9 +431,9 @@ impl EnvFilter {
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(Level::INFO.into());
     /// ```
-    ////
+    ///
     /// Parsed from a string:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
     ///
@@ -290,7 +444,10 @@ impl EnvFilter {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn add_directive(mut self, directive: Directive) -> Self {
+    pub fn add_directive(mut self, mut directive: Directive) -> Self {
+        if !self.regex {
+            directive.deregexify();
+        }
         if let Some(stat) = directive.to_static() {
             self.statics.add(stat)
         } else {
@@ -298,116 +455,6 @@ impl EnvFilter {
             self.dynamics.add(directive);
         }
         self
-    }
-
-    fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
-        use tracing::level_filters::STATIC_MAX_LEVEL;
-        use tracing::Level;
-
-        let directives: Vec<_> = directives.into_iter().collect();
-
-        let disabled: Vec<_> = directives
-            .iter()
-            .filter(|directive| directive.level > STATIC_MAX_LEVEL)
-            .collect();
-
-        if !disabled.is_empty() {
-            #[cfg(feature = "ansi_term")]
-            use ansi_term::{Color, Style};
-            // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
-            // has no knowledge of any underlying subscriber or collector, which
-            // may or may not use a `MakeWriter`.
-            let warn = |msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("warning: {}", msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let bold = Style::new().bold();
-                    let mut warning = Color::Yellow.paint("warning");
-                    warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
-                };
-                eprintln!("{}", msg);
-            };
-            let ctx_prefixed = |prefix: &str, msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("{} {}", prefix, msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let mut equal = Color::Fixed(21).paint("="); // dark blue
-                    equal.style_ref_mut().is_bold = true;
-                    format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
-                };
-                eprintln!("{}", msg);
-            };
-            let ctx_help = |msg| ctx_prefixed("help:", msg);
-            let ctx_note = |msg| ctx_prefixed("note:", msg);
-            let ctx = |msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("note: {}", msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let mut pipe = Color::Fixed(21).paint("|");
-                    pipe.style_ref_mut().is_bold = true;
-                    format!(" {} {}", pipe, msg)
-                };
-                eprintln!("{}", msg);
-            };
-            warn("some trace filter directives would enable traces that are disabled statically");
-            for directive in disabled {
-                let target = if let Some(target) = &directive.target {
-                    format!("the `{}` target", target)
-                } else {
-                    "all targets".into()
-                };
-                let level = directive
-                    .level
-                    .into_level()
-                    .expect("=off would not have enabled any filters");
-                ctx(&format!(
-                    "`{}` would enable the {} level for {}",
-                    directive, level, target
-                ));
-            }
-            ctx_note(&format!("the static max level is `{}`", STATIC_MAX_LEVEL));
-            let help_msg = || {
-                let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
-                    Some(Level::TRACE) => unreachable!(
-                        "if the max level is trace, no static filtering features are enabled"
-                    ),
-                    Some(Level::DEBUG) => ("max_level_debug", Level::TRACE),
-                    Some(Level::INFO) => ("max_level_info", Level::DEBUG),
-                    Some(Level::WARN) => ("max_level_warn", Level::INFO),
-                    Some(Level::ERROR) => ("max_level_error", Level::WARN),
-                    None => return ("max_level_off", String::new()),
-                };
-                (feature, format!("{} ", filter))
-            };
-            let (feature, earlier_level) = help_msg();
-            ctx_help(&format!(
-                "to enable {}logging, remove the `{}` feature",
-                earlier_level, feature
-            ));
-        }
-
-        let (dynamics, mut statics) = Directive::make_tables(directives);
-        let has_dynamics = !dynamics.is_empty();
-
-        if statics.is_empty() && !has_dynamics {
-            statics.add(directive::StaticDirective::default());
-        }
-
-        Self {
-            statics,
-            dynamics,
-            has_dynamics,
-            by_id: RwLock::new(HashMap::new()),
-            by_cs: RwLock::new(HashMap::new()),
-            // TODO(eliza): maybe worth allocating capacity for `num_cpus`
-            // threads or something (assuming we're running in Tokio)? or
-            // `num_cpus * 2` or something?
-            scope: ThreadLocal::new(),
-        }
     }
 
     fn cares_about_span(&self, span: &span::Id) -> bool {
@@ -637,7 +684,7 @@ where
 
 impl Default for EnvFilter {
     fn default() -> Self {
-        Self::from_directives(std::iter::empty())
+        Builder::default().from_directives(std::iter::empty())
     }
 }
 
