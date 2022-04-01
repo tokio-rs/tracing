@@ -1,3 +1,58 @@
+# 0.3.10 (Apr 1, 2022)
+
+This release adds several new features, including a `Filter` implementation and
+new builder API for `EnvFilter`, support for using a `Vec<L> where L: Layer` as
+a `Layer`, and a number of smaller API improvements to make working with dynamic
+and reloadable layers easier.
+
+### Added
+
+- **registry**: Implement `Filter` for `EnvFilter`, allowing it to be used with
+  per-layer filtering ([#1983])
+- **registry**: `Filter::on_new_span`, `Filter::on_enter`,
+  `Filter::on_exit`, `Filter::on_close` and `Filter::on_record` callbacks to
+  allow `Filter`s to track span states internally ([#1973], [#2017], [#2031])
+- **registry**: `Filtered::filter` and `Filtered::filter_mut` accessors
+  ([#1959])
+- **registry**: `Filtered::inner` and `Filtered::inner_mut` accessors to borrow
+  the wrapped `Layer` ([#2034])
+- **layer**: Implement `Layer` for `Vec<L: Layer>`, to allow composing together
+  a dynamically sized list of `Layer`s ([#2027])
+- **layer**: `Layer::boxed` method to make type-erasing `Layer`s easier
+  ([#2026])
+- **fmt**: `fmt::Layer::writer` and `fmt::Layer::writer_mut` accessors ([#2034])
+- **fmt**: `fmt::Layer::set_ansi` method to allow changing the ANSI formatting
+  configuration at runtime ([#2034])
+- **env-filter**: `EnvFilter::builder` to configure a new `EnvFilter` prior to
+  parsing it ([#2035])
+- Several documentation fixes and improvements ([#1972], [#1971], [#2023],
+  [#2023])
+
+### Fixed
+
+- **fmt**: `fmt::Layer`'s auto traits no longer depend on the `Subscriber` type
+  parameter's auto traits ([#2025])
+- **env-filter**: Fixed missing help text when the `ansi` feature is disabled
+  ([#2029])
+
+Thanks to new contributors @TimoFreiberg and @wagenet, as well as @CAD97 for
+contributing to this release!
+
+[#1983]: https://github.com/tokio-rs/tracing/pull/1983
+[#1973]: https://github.com/tokio-rs/tracing/pull/1973
+[#2017]: https://github.com/tokio-rs/tracing/pull/2017
+[#2031]: https://github.com/tokio-rs/tracing/pull/2031
+[#1959]: https://github.com/tokio-rs/tracing/pull/1959
+[#2034]: https://github.com/tokio-rs/tracing/pull/2034
+[#2027]: https://github.com/tokio-rs/tracing/pull/2027
+[#2026]: https://github.com/tokio-rs/tracing/pull/2026
+[#2035]: https://github.com/tokio-rs/tracing/pull/2035
+[#1972]: https://github.com/tokio-rs/tracing/pull/1972
+[#1971]: https://github.com/tokio-rs/tracing/pull/1971
+[#2023]: https://github.com/tokio-rs/tracing/pull/2023
+[#2025]: https://github.com/tokio-rs/tracing/pull/2025
+[#2029]: https://github.com/tokio-rs/tracing/pull/2029
+
 # 0.3.9 (Feb 17, 2022)
 
 This release updates the minimum supported Rust version (MSRV) to 1.49.0, and
