@@ -1,3 +1,22 @@
+# 0.1.24 (April 1, 2022)
+
+This release fixes a bug where setting `NoSubscriber` as the local default would
+not disable the global default subscriber locally.
+
+### Fixed
+
+- Setting `NoSubscriber` as the local default now correctly disables the global
+  default subscriber ([#2001])
+- Fixed compilation warnings with the "std" feature disabled ([#2022])
+
+### Changed
+
+- Removed unnecessary use of `write!` and `format_args!` macros ([#1988])
+
+[#1988]: https://github.com/tokio-rs/tracing/pull/1988
+[#2001]: https://github.com/tokio-rs/tracing/pull/2001
+[#2022]: https://github.com/tokio-rs/tracing/pull/2022
+
 # 0.1.23 (March 8, 2022)
 
 ### Changed
