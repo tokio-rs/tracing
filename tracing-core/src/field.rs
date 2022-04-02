@@ -688,6 +688,14 @@ impl FieldSet {
     pub fn is_empty(&self) -> bool {
         self.names.is_empty()
     }
+
+    #[doc(hidden)]
+    pub fn slice(&self, range: core::ops::RangeFrom<usize>) -> FieldSet {
+        FieldSet {
+            names: &self.names[range],
+            callsite: self.callsite.clone(),
+        }
+    }
 }
 
 impl<'a> IntoIterator for &'a FieldSet {

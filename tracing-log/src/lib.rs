@@ -127,7 +127,7 @@
 )]
 use lazy_static::lazy_static;
 
-use std::{fmt, io};
+use std::{convert::TryInto, fmt, io};
 
 use tracing_core::{
     callsite::{self, Callsite},
@@ -152,6 +152,101 @@ pub use self::log_tracer::LogTracer;
 pub mod env_logger;
 
 pub use log;
+
+// ~~ @CAD97: BEGIN SMUGGLING HAX ~~
+macro_rules! magic_event_name {
+    () => {
+        // We use two 3 byte noncharacters to specify the magic string over 8 bytes
+        // This gives us around ~10 bits of uniqueness space and uses explicitly
+        // for internal use codepoints. http://www.unicode.org/faq/private_use.html
+        "[\u{FDFE}\u{FDDD}]"
+    };
+}
+
+/// The magic event name that specifies your event's metadata should be runtime
+/// polyfilled with non-`'static` data from the event's visited fields.
+pub const MAGIC_EVENT_NAME: &str = magic_event_name!();
+/// The magic runtime event metadata field for the name.
+pub const MAGIC_EVENT_FIELD_NAME: &str = concat!(magic_event_name!(), " name");
+/// The magic runtime event metadata field for the target.
+pub const MAGIC_EVENT_FIELD_TARGET: &str = concat!(magic_event_name!(), " target");
+/// The magic runtime event metadata field for the level.
+pub const MAGIC_EVENT_FIELD_LEVEL: &str = concat!(magic_event_name!(), " level");
+/// The magic runtime event metadata field for the file.
+pub const MAGIC_EVENT_FIELD_FILE: &str = concat!(magic_event_name!(), " file");
+/// The magic runtime event metadata field for the line.
+pub const MAGIC_EVENT_FIELD_LINE: &str = concat!(magic_event_name!(), " line");
+/// The magic runtime event metadata field for the module path.
+pub const MAGIC_EVENT_FIELD_MODULE_PATH: &str = concat!(magic_event_name!(), " module_path");
+
+#[derive(Default)]
+struct MagicFields {
+    name: Option<field::Field>,
+    target: Option<field::Field>,
+    level: Option<field::Field>,
+    file: Option<field::Field>,
+    line: Option<field::Field>,
+    module_path: Option<field::Field>,
+}
+
+impl MagicFields {
+    fn new(metadata: &Metadata<'_>) -> Self {
+        let fieldset = metadata.fields();
+        let mut fields = fieldset.iter().peekable();
+        let mut magic = Self::default();
+
+        let _: Option<()> = (|| {
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_NAME {
+                magic.name = fields.next();
+            }
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_TARGET {
+                magic.target = fields.next();
+            }
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_LEVEL {
+                magic.level = fields.next();
+            }
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_FILE {
+                magic.file = fields.next();
+            }
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_LINE {
+                magic.line = fields.next();
+            }
+            if fields.peek()?.name() == MAGIC_EVENT_FIELD_MODULE_PATH {
+                magic.module_path = fields.next();
+            }
+
+            Some(())
+        })();
+
+        magic
+    }
+
+    fn count(&self) -> usize {
+        self.name.is_some() as usize
+            + self.target.is_some() as usize
+            + self.level.is_some() as usize
+            + self.file.is_some() as usize
+            + self.line.is_some() as usize
+            + self.module_path.is_some() as usize
+    }
+}
+
+/// A runtime determined name for dynamic event metadata.
+/// The actual name itself must be `'static`.
+///
+/// In order for this to function, this *must* be captured
+/// by-Value as a `dyn Error +'static` (in order to downcast).
+#[derive(Debug)]
+pub struct RuntimeMetadataName(pub &'static str);
+
+// sneaky way to be able to downcast 🤫
+impl std::error::Error for RuntimeMetadataName {}
+impl fmt::Display for RuntimeMetadataName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)
+    }
+}
+// ~~ @CAD97: END SMUGGLING HAX ~~
 
 /// Format a log record as a trace event in the current span.
 pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
@@ -179,10 +274,12 @@ pub(crate) fn dispatch_record(record: &log::Record<'_>) {
         let file = log_file.as_ref().map(|s| s as &dyn field::Value);
         let line = log_line.as_ref().map(|s| s as &dyn field::Value);
 
+        let name: &(dyn std::error::Error) = &RuntimeMetadataName("log event");
         dispatch.event(&Event::new(
             meta,
             &meta.fields().value_set(&[
-                (&keys.message, Some(record.args() as &dyn field::Value)),
+                (&keys.name, Some(&name as &(dyn field::Value))),
+                (&keys.message, Some(record.args())),
                 (&keys.target, Some(&record.target())),
                 (&keys.module, module),
                 (&keys.file, file),
@@ -234,37 +331,41 @@ impl<'a> AsTrace for log::Metadata<'a> {
             None,
             None,
             None,
-            field::FieldSet::new(FIELD_NAMES, cs_id),
+            field::FieldSet::new(LOG_FIELD_NAMES, cs_id),
             Kind::EVENT,
         )
     }
 }
 
-struct Fields {
-    message: field::Field,
+struct LogFields {
+    name: field::Field,
     target: field::Field,
-    module: field::Field,
     file: field::Field,
     line: field::Field,
+    module: field::Field,
+    message: field::Field,
 }
 
-static FIELD_NAMES: &[&str] = &[
+static LOG_FIELD_NAMES: &[&str] = &[
+    MAGIC_EVENT_FIELD_NAME,
+    MAGIC_EVENT_FIELD_TARGET,
+    MAGIC_EVENT_FIELD_FILE,
+    MAGIC_EVENT_FIELD_LINE,
+    MAGIC_EVENT_FIELD_MODULE_PATH,
     "message",
-    "log.target",
-    "log.module_path",
-    "log.file",
-    "log.line",
 ];
 
-impl Fields {
+impl LogFields {
     fn new(cs: &'static dyn Callsite) -> Self {
         let fieldset = cs.metadata().fields();
+        let name = fieldset.field(MAGIC_EVENT_FIELD_NAME).unwrap();
+        let target = fieldset.field(MAGIC_EVENT_FIELD_TARGET).unwrap();
+        let file = fieldset.field(MAGIC_EVENT_FIELD_FILE).unwrap();
+        let line = fieldset.field(MAGIC_EVENT_FIELD_LINE).unwrap();
+        let module = fieldset.field(MAGIC_EVENT_FIELD_MODULE_PATH).unwrap();
         let message = fieldset.field("message").unwrap();
-        let target = fieldset.field("log.target").unwrap();
-        let module = fieldset.field("log.module_path").unwrap();
-        let file = fieldset.field("log.file").unwrap();
-        let line = fieldset.field("log.line").unwrap();
-        Fields {
+        LogFields {
+            name,
             message,
             target,
             module,
@@ -279,13 +380,13 @@ macro_rules! log_cs {
         struct $ty;
         static $cs: $ty = $ty;
         static $meta: Metadata<'static> = Metadata::new(
-            "log event",
+            magic_event_name!(),
             "log",
             $level,
             None,
             None,
             None,
-            field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            field::FieldSet::new(LOG_FIELD_NAMES, identify_callsite!(&$cs)),
             Kind::EVENT,
         );
 
@@ -320,14 +421,14 @@ log_cs!(
 );
 
 lazy_static! {
-    static ref TRACE_FIELDS: Fields = Fields::new(&TRACE_CS);
-    static ref DEBUG_FIELDS: Fields = Fields::new(&DEBUG_CS);
-    static ref INFO_FIELDS: Fields = Fields::new(&INFO_CS);
-    static ref WARN_FIELDS: Fields = Fields::new(&WARN_CS);
-    static ref ERROR_FIELDS: Fields = Fields::new(&ERROR_CS);
+    static ref TRACE_FIELDS: LogFields = LogFields::new(&TRACE_CS);
+    static ref DEBUG_FIELDS: LogFields = LogFields::new(&DEBUG_CS);
+    static ref INFO_FIELDS: LogFields = LogFields::new(&INFO_CS);
+    static ref WARN_FIELDS: LogFields = LogFields::new(&WARN_CS);
+    static ref ERROR_FIELDS: LogFields = LogFields::new(&ERROR_CS);
 }
 
-fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
+fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static LogFields) {
     match level {
         Level::TRACE => (&TRACE_CS, &*TRACE_FIELDS),
         Level::DEBUG => (&DEBUG_CS, &*DEBUG_FIELDS),
@@ -341,7 +442,7 @@ fn loglevel_to_cs(
     level: log::Level,
 ) -> (
     &'static dyn Callsite,
-    &'static Fields,
+    &'static LogFields,
     &'static Metadata<'static>,
 ) {
     match level {
@@ -366,7 +467,7 @@ impl<'a> AsTrace for log::Record<'a> {
             self.file(),
             self.line(),
             self.module_path(),
-            field::FieldSet::new(FIELD_NAMES, cs_id),
+            field::FieldSet::new(LOG_FIELD_NAMES, cs_id),
             Kind::EVENT,
         )
     }
@@ -436,23 +537,73 @@ impl AsLog for tracing_core::LevelFilter {
         }
     }
 }
+
 /// Extends log `Event`s to provide complete `Metadata`.
 ///
-/// In `tracing-log`, an `Event` produced by a log (through [`AsTrace`]) has an hard coded
-/// "log" target and no `file`, `line`, or `module_path` attributes. This happens because `Event`
-/// requires its `Metadata` to be `'static`, while [`log::Record`]s provide them with a generic
-/// lifetime.
+/// `Event` requires its `Metadata` to be `'static`, but sometimes you need to
+/// provide metadatata which is dynamic at runtime, such as [`log::Record`]'s,
+/// which is provided with a generic lifetime.
 ///
-/// However, these values are stored in the `Event`'s fields and
-/// the [`normalized_metadata`] method allows to build a new `Metadata`
-/// that only lives as long as its source `Event`, but provides complete
-/// data.
+/// In order to facilitate such, we allow metadata to set its name to the magic
+/// [`MAGIC_EVENT_NAME`]. Then, the use of this trait to normalize the event
+/// can recognize specially named fields and use them to override metadatata
+/// for the returned short-lived metadata.
 ///
-/// It can typically be used by collectors when processing an `Event`,
-/// to allow accessing its complete metadata in a consistent way,
-/// regardless of the source of its source.
+/// When procesing an event, you can use [`normalized_metadata`] to get the
+/// complete view of the metadata after normalization, without any magic fields
+/// used to encode the runtime metadata.
 ///
+/// # How to Provide Dynamic Metadata
+///
+/// The opt-in is to set your metadata's name to [`MAGIC_EVENT_NAME`]. Only
+/// events with this magic name are processed. (The name is constructed of valid
+/// UTF-8 [noncharacters], so it should never show up in interchange UTF-8.)
+///
+/// Then, the prefix of the metadata's field set is checked for the following
+/// magic fields, *in order*:
+///
+/// - [`MAGIC_EVENT_FIELD_NAME`]: If present, this indicates a new name to use
+///   for [`Metadata::name`]. Must be a [`RuntimeMetadataName`] captured as a
+///   `dyn 'static + Error` value (so that it can be downcast).
+///
+/// - [`MAGIC_EVENT_FIELD_TARGET`]: If present, this indicates a new target to
+///   use for [`Metadata::target`]. Must be captured as a `&str` value.
+///     <div class="example-wrap" style="display:inline-block">
+///     <pre class="ignore" style="white-space:normal;font:inherit;">
+///
+///     **Note**: Although it is possible to override the target, it is
+///     generally advisable to make the initial target as accurate as possible,
+///     as static filtering is done with the static metadata's target through
+///     [`register_callsite`].
+///     </pre></div>
+///
+/// - [`MAGIC_EVENT_FIELD_LEVEL`]: If present, this indicates a new level to use
+///   for [`Metadata::level`]. Must be captured as a `&str` value, which is
+///   parsed using [`str::parse`].
+///     <div class="example-wrap" style="display:inline-block">
+///     <pre class="ignore" style="white-space:normal;font:inherit;">
+///
+///     **Note**: Although it is possible to override the level, it is generally
+///     advisable not to, as static filtering is done with the static metadata's
+///     level through [`register_callsite`].
+///     </pre></div>
+///
+/// - [`MAGIC_EVENT_FIELD_FILE`]: If present, this indicates a new file to use
+///   for [`Metadata::file`]. Must be captured as a `&str` value.
+/// - [`MAGIC_EVENT_FIELD_LINE`]: If present, this indicates a new line to use
+///   for [`Metadata::line`]. Must be captured as a `u64` value.
+/// - [`MAGIC_EVENT_FIELD_MODULE_PATH`]: If present, this indicates a new
+///   module path to use for [`Metadata::module_path`]. Must be captured as a
+///   `&str` value.
+///
+/// Any remaining fields after the magic fields are processed (such as the
+/// common `message` field) are passed on through to the normalized metadata.
+/// Note, however, that magic fields ***must not*** be mixed with passthrough
+/// fields; only a contiguous prefix of magic fields are processed.
+///
+/// [noncharacters]: http://www.unicode.org/faq/private_use.html#nonchar1
 /// [`normalized_metadata`]: NormalizeEvent#normalized_metadata
+/// [`register_callsite`]: tracing_core::Collect::register_callsite
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes
@@ -460,86 +611,95 @@ pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// and `target`.
     /// Returns `None` is the `Event` is not issued from a `log`.
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
+
     /// Returns whether this `Event` represents a log (from the `log` crate)
+    #[deprecated]
     fn is_log(&self) -> bool;
 }
 
 impl<'a> crate::sealed::Sealed for Event<'a> {}
 
 impl<'a> NormalizeEvent<'a> for Event<'a> {
+    // ~~ @CAD97: BEGIN SMUGGLING HAX ~~
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
-        if self.is_log() {
-            let mut fields = LogVisitor::new_for(self, level_to_cs(*original.level()).1);
-            self.record(&mut fields);
+        if original.name() != magic_event_name!() {
+            return None;
+        }
 
-            Some(Metadata::new(
-                "log event",
-                fields.target.unwrap_or("log"),
-                *original.level(),
-                fields.file,
-                fields.line.map(|l| l as u32),
-                fields.module_path,
-                field::FieldSet::new(&["message"], original.callsite()),
-                Kind::EVENT,
-            ))
-        } else {
-            None
+        struct MagicVisitor<'a> {
+            name: &'static str,
+            target: &'a str,
+            level: Level,
+            file: Option<&'a str>,
+            line: Option<u32>,
+            module_path: Option<&'a str>,
+            fields: MagicFields,
+        }
+
+        let mut visitor = MagicVisitor {
+            name: original.name(),
+            target: original.target(),
+            level: *original.level(),
+            file: original.file(),
+            line: original.line(),
+            module_path: original.module_path(),
+            fields: MagicFields::new(original),
+        };
+
+        self.record(&mut visitor);
+        return Some(Metadata::new(
+            visitor.name,
+            visitor.target,
+            visitor.level,
+            visitor.file,
+            visitor.line,
+            visitor.module_path,
+            original.fields().slice(visitor.fields.count()..),
+            Kind::EVENT,
+        ));
+
+        impl Visit for MagicVisitor<'_> {
+            fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
+
+            fn record_u64(&mut self, field: &Field, value: u64) {
+                if Some(field) == self.fields.line.as_ref() {
+                    self.line = Some(value.try_into().unwrap_or(u32::MAX));
+                }
+            }
+
+            fn record_str(&mut self, field: &Field, value: &str) {
+                unsafe {
+                    // The `Visit` API erases the string slice's lifetime. However, we
+                    // know it is part of the `Event` struct with a lifetime of `'a`. If
+                    // (and only if!) this `MagicVisitor` was constructed with the same
+                    // lifetime parameter `'a` as the event in question, it's safe to
+                    // cast these string slices to the `'a` lifetime.
+                    if Some(field) == self.fields.target.as_ref() {
+                        self.target = &*(value as *const _);
+                    } else if Some(field) == self.fields.level.as_ref() {
+                        self.level = value.parse().unwrap_or(self.level);
+                    } else if Some(field) == self.fields.file.as_ref() {
+                        self.file = Some(&*(value as *const _));
+                    } else if Some(field) == self.fields.module_path.as_ref() {
+                        self.module_path = Some(&*(value as *const _));
+                    }
+                }
+            }
+
+            fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+                if Some(field) == self.fields.name.as_ref() {
+                    if let Some(value) = value.downcast_ref::<RuntimeMetadataName>() {
+                        self.name = value.0;
+                    }
+                }
+            }
         }
     }
+    // ~~ @CAD97: END SMUGGLING HAX ~~
 
     fn is_log(&self) -> bool {
         self.metadata().callsite() == identify_callsite!(level_to_cs(*self.metadata().level()).0)
-    }
-}
-
-struct LogVisitor<'a> {
-    target: Option<&'a str>,
-    module_path: Option<&'a str>,
-    file: Option<&'a str>,
-    line: Option<u64>,
-    fields: &'static Fields,
-}
-
-impl<'a> LogVisitor<'a> {
-    // We don't actually _use_ the provided event argument; it is simply to
-    // ensure that the `LogVisitor` does not outlive the event whose fields it
-    // is visiting, so that the reference casts in `record_str` are safe.
-    fn new_for(_event: &'a Event<'a>, fields: &'static Fields) -> Self {
-        Self {
-            target: None,
-            module_path: None,
-            file: None,
-            line: None,
-            fields,
-        }
-    }
-}
-
-impl<'a> Visit for LogVisitor<'a> {
-    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
-
-    fn record_u64(&mut self, field: &Field, value: u64) {
-        if field == &self.fields.line {
-            self.line = Some(value);
-        }
-    }
-
-    fn record_str(&mut self, field: &Field, value: &str) {
-        unsafe {
-            // The `Visit` API erases the string slice's lifetime. However, we
-            // know it is part of the `Event` struct with a lifetime of `'a`. If
-            // (and only if!) this `LogVisitor` was constructed with the same
-            // lifetime parameter `'a` as the event in question, it's safe to
-            // cast these string slices to the `'a` lifetime.
-            if field == &self.fields.file {
-                self.file = Some(&*(value as *const _));
-            } else if field == &self.fields.target {
-                self.target = Some(&*(value as *const _));
-            } else if field == &self.fields.module {
-                self.module_path = Some(&*(value as *const _));
-            }
-        }
     }
 }
 
