@@ -466,7 +466,7 @@ impl<'a> NormalizeEvent<'a> for Event<'a> {
     fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
         let original = self.metadata();
         if self.is_log() {
-            let mut fields = LogVisitor::new_for(self, level_to_cs(*original.level()).1);
+            let mut fields = LogVisitor::new(level_to_cs(*original.level()).1);
             self.record(&mut fields);
 
             Some(Metadata::new(
@@ -501,7 +501,7 @@ impl<'a> LogVisitor<'a> {
     // We don't actually _use_ the provided event argument; it is simply to
     // ensure that the `LogVisitor` does not outlive the event whose fields it
     // is visiting, so that the reference casts in `record_str` are safe.
-    fn new_for(_event: &'a Event<'a>, fields: &'static Fields) -> Self {
+    fn new(fields: &'static Fields) -> Self {
         Self {
             target: None,
             module_path: None,
@@ -512,7 +512,7 @@ impl<'a> LogVisitor<'a> {
     }
 }
 
-impl<'a> Visit<'_> for LogVisitor<'a> {
+impl<'a> Visit<'a> for LogVisitor<'a> {
     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
 
     fn record_u64(&mut self, field: &Field, value: u64) {
@@ -521,20 +521,13 @@ impl<'a> Visit<'_> for LogVisitor<'a> {
         }
     }
 
-    fn record_str(&mut self, field: &Field, value: &str) {
-        unsafe {
-            // The `Visit` API erases the string slice's lifetime. However, we
-            // know it is part of the `Event` struct with a lifetime of `'a`. If
-            // (and only if!) this `LogVisitor` was constructed with the same
-            // lifetime parameter `'a` as the event in question, it's safe to
-            // cast these string slices to the `'a` lifetime.
-            if field == &self.fields.file {
-                self.file = Some(&*(value as *const _));
-            } else if field == &self.fields.target {
-                self.target = Some(&*(value as *const _));
-            } else if field == &self.fields.module {
-                self.module_path = Some(&*(value as *const _));
-            }
+    fn record_str(&mut self, field: &Field, value: &'a str) {
+        if field == &self.fields.file {
+            self.file = Some(value);
+        } else if field == &self.fields.target {
+            self.target = Some(value);
+        } else if field == &self.fields.module {
+            self.module_path = Some(value);
         }
     }
 }
