@@ -563,7 +563,7 @@ impl ExpectedEvent {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata
-            .check(meta, format_args!("event \"{}\"", name), collector_name);
+            .check(&meta, format_args!("event \"{}\"", name), collector_name);
         assert!(
             meta.is_event(),
             "[{}] expected {}, but got {:?}",

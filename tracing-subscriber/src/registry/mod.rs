@@ -164,7 +164,7 @@ pub trait SpanData<'a> {
     fn id(&self) -> Id;
 
     /// Returns a reference to the span's `Metadata`.
-    fn metadata(&self) -> &'a Metadata<'a>;
+    fn metadata(&self) -> Metadata<'_>;
 
     /// Returns a reference to the ID
     fn parent(&self) -> Option<&Id>;
@@ -414,19 +414,19 @@ where
     }
 
     /// Returns a static reference to the span's metadata.
-    pub fn metadata(&self) -> &'a Metadata<'a> {
+    pub fn metadata(&self) -> Metadata<'_> {
         self.data.metadata()
     }
 
     /// Returns the span's name,
-    pub fn name(&self) -> &'a str {
+    pub fn name(&self) -> &str {
         self.data.metadata().name()
     }
 
     /// Returns a list of [fields] defined by the span.
     ///
     /// [fields]: tracing_core::field
-    pub fn fields(&self) -> &FieldSet {
+    pub fn fields(&self) -> FieldSet {
         self.data.metadata().fields()
     }
 
@@ -522,7 +522,7 @@ where
     /// {
     ///     fn on_enter(&self, id: &span::Id, ctx: Context<C>) {
     ///         let span = ctx.span(id).unwrap();
-    ///         let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+    ///         let scope = span.scope().map(|span| span.name().to_owned()).collect::<Vec<_>>();
     ///         println!("Entering span: {:?}", scope);
     ///     }
     /// }
@@ -554,7 +554,7 @@ where
     /// {
     ///     fn on_enter(&self, id: &span::Id, ctx: Context<C>) {
     ///         let span = ctx.span(id).unwrap();
-    ///         let scope = span.scope().from_root().map(|span| span.name()).collect::<Vec<_>>();
+    ///         let scope = span.scope().from_root().map(|span| span.name().to_owned()).collect::<Vec<_>>();
     ///         println!("Entering span: {:?}", scope);
     ///     }
     /// }

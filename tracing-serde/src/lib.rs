@@ -267,7 +267,7 @@ impl<'a> Serialize for SerializeMetadata<'a> {
         state.serialize_field("module_path", &self.0.module_path())?;
         state.serialize_field("file", &self.0.file())?;
         state.serialize_field("line", &self.0.line())?;
-        state.serialize_field("fields", &SerializeFieldSet(self.0.fields()))?;
+        state.serialize_field("fields", &SerializeFieldSet(&self.0.fields()))?;
         state.serialize_field("is_span", &self.0.is_span())?;
         state.serialize_field("is_event", &self.0.is_event())?;
         state.end()
@@ -284,7 +284,7 @@ impl<'a> Serialize for SerializeEvent<'a> {
         S: Serializer,
     {
         let mut serializer = serializer.serialize_struct("Event", 2)?;
-        serializer.serialize_field("metadata", &SerializeMetadata(self.0.metadata()))?;
+        serializer.serialize_field("metadata", &SerializeMetadata(&self.0.metadata()))?;
         let mut visitor = SerdeStructVisitor {
             serializer,
             state: Ok(()),
