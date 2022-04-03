@@ -59,7 +59,7 @@ use core::{
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    name: &'static str,
+    name: &'a str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
@@ -255,7 +255,7 @@ impl<'a> Metadata<'a> {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
     pub const fn new(
-        name: &'static str,
+        name: &'a str,
         target: &'a str,
         level: Level,
         file: Option<&'a str>,
@@ -287,7 +287,7 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'a str {
         self.name
     }
 
