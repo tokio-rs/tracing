@@ -369,7 +369,7 @@ where
     }
 }
 
-impl<S> Visit for SerdeMapVisitor<S>
+impl<S> Visit<'_> for SerdeMapVisitor<S>
 where
     S: SerializeMap,
 {
@@ -421,7 +421,7 @@ pub struct SerdeStructVisitor<S: SerializeStruct> {
     state: Result<(), S::Error>,
 }
 
-impl<S> Visit for SerdeStructVisitor<S>
+impl<S> Visit<'_> for SerdeStructVisitor<S>
 where
     S: SerializeStruct,
 {

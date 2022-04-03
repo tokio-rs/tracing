@@ -512,7 +512,7 @@ impl<'a> LogVisitor<'a> {
     }
 }
 
-impl<'a> Visit for LogVisitor<'a> {
+impl<'a> Visit<'_> for LogVisitor<'a> {
     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
 
     fn record_u64(&mut self, field: &Field, value: u64) {

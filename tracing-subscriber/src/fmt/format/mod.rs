@@ -128,7 +128,7 @@ use fmt::{Debug, Display};
 /// impl<C, N> FormatEvent<C, N> for MyFormatter
 /// where
 ///     C: Collect + for<'a> LookupSpan<'a>,
-///     N: for<'a> FormatFields<'a> + 'static,
+///     N: for<'visit, 'write> FormatFields<'visit, 'write> + 'static,
 /// {
 ///     fn format_event(
 ///         &self,
@@ -197,7 +197,7 @@ use fmt::{Debug, Display};
 pub trait FormatEvent<C, N>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Write a log message for `Event` in `Context` to the given [`Writer`].
     fn format_event(
@@ -212,7 +212,7 @@ impl<C, N> FormatEvent<C, N>
     for fn(ctx: &FmtContext<'_, C, N>, Writer<'_>, &Event<'_>) -> fmt::Result
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     fn format_event(
         &self,
@@ -231,9 +231,13 @@ where
 ///
 /// [set of fields]: RecordFields
 /// [`fmt::Subscriber`]: super::Subscriber
-pub trait FormatFields<'writer> {
+pub trait FormatFields<'visit, 'writer> {
     /// Format the provided `fields` to the provided [`Writer`], returning a result.
-    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result;
+    fn format_fields<R: RecordFields<'visit>>(
+        &self,
+        writer: Writer<'writer>,
+        fields: R,
+    ) -> fmt::Result;
 
     /// Record additional field(s) on an existing span.
     ///
@@ -243,7 +247,7 @@ pub trait FormatFields<'writer> {
     fn add_fields(
         &self,
         current: &'writer mut FormattedFields<Self>,
-        fields: &span::Record<'_>,
+        fields: &span::Record<'visit>,
     ) -> fmt::Result {
         if !current.fields.is_empty() {
             current.fields.push(' ');
@@ -913,7 +917,7 @@ impl<T> Format<Json, T> {
 impl<C, N, T> FormatEvent<C, N> for Format<Full, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -1028,7 +1032,7 @@ where
 impl<C, N, T> FormatEvent<C, N> for Format<Compact, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -1105,12 +1109,16 @@ where
 }
 
 // === impl FormatFields ===
-impl<'writer, M> FormatFields<'writer> for M
+impl<'visit, 'writer, M> FormatFields<'visit, 'writer> for M
 where
-    M: MakeOutput<Writer<'writer>, fmt::Result>,
-    M::Visitor: VisitFmt + VisitOutput<fmt::Result>,
+    M: MakeOutput<'visit, Writer<'writer>, fmt::Result>,
+    M::Visitor: VisitFmt<'visit> + VisitOutput<'visit, fmt::Result>,
 {
-    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
+    fn format_fields<R: RecordFields<'visit>>(
+        &self,
+        writer: Writer<'writer>,
+        fields: R,
+    ) -> fmt::Result {
         let mut v = self.make_visitor(writer);
         fields.record(&mut v);
         v.finish()
@@ -1151,7 +1159,7 @@ impl Default for DefaultFields {
     }
 }
 
-impl<'a> MakeVisitor<Writer<'a>> for DefaultFields {
+impl<'a> MakeVisitor<'_, Writer<'a>> for DefaultFields {
     type Visitor = DefaultVisitor<'a>;
 
     #[inline]
@@ -1186,7 +1194,7 @@ impl<'a> DefaultVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for DefaultVisitor<'a> {
+impl<'a> field::Visit<'_> for DefaultVisitor<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;
@@ -1247,13 +1255,13 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
+impl<'a> crate::field::VisitOutput<'_, fmt::Result> for DefaultVisitor<'a> {
     fn finish(self) -> fmt::Result {
         self.result
     }
 }
 
-impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
+impl<'a> crate::field::VisitFmt<'_> for DefaultVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut self.writer
     }
@@ -1422,13 +1430,13 @@ impl<F: LevelNames> fmt::Display for FmtLevel<F> {
 
 // === impl FieldFn ===
 
-impl<'a, F> MakeVisitor<Writer<'a>> for FieldFn<F>
+impl<'writer, F> MakeVisitor<'_, Writer<'writer>> for FieldFn<F>
 where
-    F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
+    F: Fn(&mut Writer<'writer>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
 {
-    type Visitor = FieldFnVisitor<'a, F>;
+    type Visitor = FieldFnVisitor<'writer, F>;
 
-    fn make_visitor(&self, writer: Writer<'a>) -> Self::Visitor {
+    fn make_visitor(&self, writer: Writer<'writer>) -> Self::Visitor {
         FieldFnVisitor {
             writer,
             f: self.0.clone(),
@@ -1437,7 +1445,7 @@ where
     }
 }
 
-impl<'a, F> Visit for FieldFnVisitor<'a, F>
+impl<'a, F> Visit<'_> for FieldFnVisitor<'a, F>
 where
     F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
@@ -1448,7 +1456,7 @@ where
     }
 }
 
-impl<'a, F> VisitOutput<fmt::Result> for FieldFnVisitor<'a, F>
+impl<'a, F> VisitOutput<'_, fmt::Result> for FieldFnVisitor<'a, F>
 where
     F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {
@@ -1457,7 +1465,7 @@ where
     }
 }
 
-impl<'a, F> VisitFmt for FieldFnVisitor<'a, F>
+impl<'a, F> VisitFmt<'_> for FieldFnVisitor<'a, F>
 where
     F: Fn(&mut Writer<'a>, &Field, &dyn fmt::Debug) -> fmt::Result,
 {

@@ -83,7 +83,7 @@ impl<C> Subscriber<C> {
 impl<C, N, E, W> Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     /// Sets the [event formatter][`FormatEvent`] that the subscriber will use to
@@ -339,7 +339,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
 
 impl<C, N, L, T, W> Subscriber<C, N, format::Format<L, T>, W>
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Use the given [`timer`] for span and event timestamps.
     ///
@@ -499,7 +499,7 @@ where
     /// Sets the subscriber being built to use a [less verbose formatter](format::Compact).
     pub fn compact(self) -> Subscriber<C, N, format::Format<format::Compact, T>, W>
     where
-        N: for<'writer> FormatFields<'writer> + 'static,
+        N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event.compact(),
@@ -611,7 +611,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// fields.
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<C, N2, E, W>
     where
-        N2: for<'writer> FormatFields<'writer> + 'static,
+        N2: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event,
@@ -642,7 +642,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// ```
     pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> Subscriber<C, N2, E, W>
     where
-        N2: for<'writer> FormatFields<'writer> + 'static,
+        N2: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event,
@@ -673,7 +673,7 @@ impl<C> Default for Subscriber<C> {
 impl<C, N, E, W> Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
@@ -767,7 +767,7 @@ macro_rules! with_event_from_span {
 impl<C, N, E, W> subscribe::Subscribe<C> for Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
@@ -983,12 +983,12 @@ impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
     }
 }
 
-impl<'cx, 'writer, C, N> FormatFields<'writer> for FmtContext<'cx, C, N>
+impl<'cx, 'visit, 'writer, C, N> FormatFields<'visit, 'writer> for FmtContext<'cx, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: FormatFields<'writer> + 'static,
+    N: FormatFields<'visit, 'writer> + 'static,
 {
-    fn format_fields<R: RecordFields>(
+    fn format_fields<R: RecordFields<'visit>>(
         &self,
         writer: format::Writer<'writer>,
         fields: R,
@@ -1000,7 +1000,7 @@ where
 impl<'a, C, N> FmtContext<'a, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'f, 'writer> FormatFields<'f, 'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
     ///

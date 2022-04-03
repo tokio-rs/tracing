@@ -138,7 +138,7 @@ pub(crate) struct MetricVisitor<'a> {
     pub(crate) meter: &'a Meter,
 }
 
-impl<'a> Visit for MetricVisitor<'a> {
+impl<'a> Visit<'_> for MetricVisitor<'a> {
     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
         // Do nothing
     }

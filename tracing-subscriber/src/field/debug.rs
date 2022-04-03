@@ -22,9 +22,9 @@ impl<V> Alt<V> {
     }
 }
 
-impl<T, V> MakeVisitor<T> for Alt<V>
+impl<'a, T, V> MakeVisitor<'a, T> for Alt<V>
 where
-    V: MakeVisitor<T>,
+    V: MakeVisitor<'a, T>,
 {
     type Visitor = Alt<V::Visitor>;
 
@@ -34,9 +34,9 @@ where
     }
 }
 
-impl<V> Visit for Alt<V>
+impl<'a, V> Visit<'a> for Alt<V>
 where
-    V: Visit,
+    V: Visit<'a>,
 {
     #[inline]
     fn record_f64(&mut self, field: &Field, value: f64) {
@@ -59,7 +59,7 @@ where
     }
 
     /// Visit a string value.
-    fn record_str(&mut self, field: &Field, value: &str) {
+    fn record_str(&mut self, field: &Field, value: &'a str) {
         self.0.record_str(field, value)
     }
 
@@ -74,9 +74,9 @@ where
     }
 }
 
-impl<V, O> VisitOutput<O> for Alt<V>
+impl<'a, V, O> VisitOutput<'a, O> for Alt<V>
 where
-    V: VisitOutput<O>,
+    V: VisitOutput<'a, O>,
 {
     #[inline]
     fn finish(self) -> O {
@@ -89,9 +89,9 @@ feature! {
     use super::VisitWrite;
     use std::io;
 
-    impl<V> VisitWrite for Alt<V>
+    impl<'a, V> VisitWrite<'a> for Alt<V>
     where
-        V: VisitWrite,
+        V: VisitWrite<'a>,
     {
         #[inline]
         fn writer(&mut self) -> &mut dyn io::Write {
@@ -100,9 +100,9 @@ feature! {
     }
 }
 
-impl<V> VisitFmt for Alt<V>
+impl<'a, V> VisitFmt<'a> for Alt<V>
 where
-    V: VisitFmt,
+    V: VisitFmt<'a>,
 {
     #[inline]
     fn writer(&mut self) -> &mut dyn fmt::Write {

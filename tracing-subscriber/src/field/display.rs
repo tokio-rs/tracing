@@ -24,9 +24,9 @@ impl<V> Messages<V> {
     }
 }
 
-impl<T, V> MakeVisitor<T> for Messages<V>
+impl<'a, T, V> MakeVisitor<'a, T> for Messages<V>
 where
-    V: MakeVisitor<T>,
+    V: MakeVisitor<'a, T>,
 {
     type Visitor = Messages<V::Visitor>;
 
@@ -36,9 +36,9 @@ where
     }
 }
 
-impl<V> Visit for Messages<V>
+impl<'a, V> Visit<'a> for Messages<V>
 where
-    V: Visit,
+    V: Visit<'a>,
 {
     #[inline]
     fn record_f64(&mut self, field: &Field, value: f64) {
@@ -61,7 +61,7 @@ where
     }
 
     /// Visit a string value.
-    fn record_str(&mut self, field: &Field, value: &str) {
+    fn record_str(&mut self, field: &Field, value: &'a str) {
         if field.name() == "message" {
             self.0.record_debug(field, &format_args!("{}", value))
         } else {
@@ -80,9 +80,9 @@ where
     }
 }
 
-impl<V, O> VisitOutput<O> for Messages<V>
+impl<'a, V, O> VisitOutput<'a, O> for Messages<V>
 where
-    V: VisitOutput<O>,
+    V: VisitOutput<'a, O>,
 {
     #[inline]
     fn finish(self) -> O {
@@ -95,9 +95,9 @@ feature! {
     use super::VisitWrite;
     use std::io;
 
-    impl<V> VisitWrite for Messages<V>
+    impl<'a, V> VisitWrite<'a> for Messages<V>
     where
-        V: VisitWrite,
+        V: VisitWrite<'a>,
     {
         #[inline]
         fn writer(&mut self) -> &mut dyn io::Write {
@@ -106,9 +106,9 @@ feature! {
     }
 }
 
-impl<V> VisitFmt for Messages<V>
+impl<'a, V> VisitFmt<'a> for Messages<V>
 where
-    V: VisitFmt,
+    V: VisitFmt<'a>,
 {
     #[inline]
     fn writer(&mut self) -> &mut dyn fmt::Write {

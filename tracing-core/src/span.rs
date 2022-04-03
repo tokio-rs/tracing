@@ -180,7 +180,7 @@ impl<'a> Attributes<'a> {
     /// [Visitor].
     ///
     /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.values.record(visitor)
     }
 
@@ -222,7 +222,7 @@ impl<'a> Record<'a> {
     /// Records all the fields in this `Record` with the provided [Visitor].
     ///
     /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.values.record(visitor)
     }
 

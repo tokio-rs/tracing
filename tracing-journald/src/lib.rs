@@ -284,7 +284,7 @@ impl SpanVisitor<'_> {
     }
 }
 
-impl Visit for SpanVisitor<'_> {
+impl Visit<'_> for SpanVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.put_span_prefix();
         put_field_length_encoded(self.buf, field.name(), |buf| {
@@ -323,7 +323,7 @@ impl<'a> EventVisitor<'a> {
     }
 }
 
-impl Visit for EventVisitor<'_> {
+impl Visit<'_> for EventVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {

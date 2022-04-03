@@ -83,7 +83,7 @@ impl<'a> Event<'a> {
     ///
     /// [visitor]: super::field::Visit
     #[inline]
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.fields.record(visitor);
     }
 

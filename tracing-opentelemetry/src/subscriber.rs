@@ -118,7 +118,7 @@ struct SpanEventVisitor<'a, 'b> {
     exception_config: ExceptionFieldConfig,
 }
 
-impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
+impl<'a, 'b> field::Visit<'_> for SpanEventVisitor<'a, 'b> {
     /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
@@ -294,7 +294,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for SpanAttributeVisitor<'a> {
+impl<'a> field::Visit<'_> for SpanAttributeVisitor<'a> {
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span

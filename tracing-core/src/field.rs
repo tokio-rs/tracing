@@ -124,7 +124,7 @@ pub struct Iter {
 ///     string: &'a mut String,
 /// }
 ///
-/// impl<'a> Visit for StringVisitor<'a> {
+/// impl<'a> Visit<'_> for StringVisitor<'a> {
 ///     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
 ///         write!(self.string, "{} = {:?}; ", field.name(), value).unwrap();
 ///     }
@@ -155,7 +155,7 @@ pub struct Iter {
 ///     sum: i64,
 /// }
 ///
-/// impl Visit for SumVisitor {
+/// impl Visit<'_> for SumVisitor {
 ///     fn record_i64(&mut self, _field: &Field, value: i64) {
 ///        self.sum += value;
 ///     }
@@ -188,7 +188,7 @@ pub struct Iter {
 /// [records an `Event`]: super::collect::Collect::event
 /// [set of `Value`s added to a `Span`]: super::collect::Collect::record
 /// [`Event`]: super::event::Event
-pub trait Visit {
+pub trait Visit<'a> {
     /// Visit a double-precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.record_debug(field, &value)
@@ -220,7 +220,7 @@ pub trait Visit {
     }
 
     /// Visit a string value.
-    fn record_str(&mut self, field: &Field, value: &str) {
+    fn record_str(&mut self, field: &Field, value: &'a str) {
         self.record_debug(field, &value)
     }
 
@@ -251,7 +251,7 @@ pub trait Visit {
 /// [visitor]: Visit
 pub trait Value: crate::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
-    fn record(&self, key: &Field, visitor: &mut dyn Visit);
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>);
 }
 
 /// A `Value` which serializes using `fmt::Display`.
@@ -285,19 +285,19 @@ where
 
 // ===== impl Visit =====
 
-impl<'a, 'b> Visit for fmt::DebugStruct<'a, 'b> {
+impl<'a, 'b> Visit<'_> for fmt::DebugStruct<'a, 'b> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.field(field.name(), value);
     }
 }
 
-impl<'a, 'b> Visit for fmt::DebugMap<'a, 'b> {
+impl<'a, 'b> Visit<'_> for fmt::DebugMap<'a, 'b> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.entry(&format_args!("{}", field), value);
     }
 }
 
-impl<F> Visit for F
+impl<F> Visit<'_> for F
 where
     F: FnMut(&Field, &dyn fmt::Debug),
 {
@@ -372,7 +372,11 @@ macro_rules! impl_one_value {
     (normal, $value_ty:tt, $op:expr, $record:ident) => {
         impl $crate::sealed::Sealed for $value_ty {}
         impl $crate::field::Value for $value_ty {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+            fn record(
+                &self,
+                key: &$crate::field::Field,
+                visitor: &mut dyn $crate::field::Visit<'_>,
+            ) {
                 visitor.$record(key, $op(*self))
             }
         }
@@ -387,7 +391,11 @@ macro_rules! impl_one_value {
         use num::*;
         impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
         impl $crate::field::Value for ty_to_nonzero!($value_ty) {
-            fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+            fn record(
+                &self,
+                key: &$crate::field::Field,
+                visitor: &mut dyn $crate::field::Visit<'_>,
+            ) {
                 visitor.$record(key, $op(self.get()))
             }
         }
@@ -422,7 +430,7 @@ impl_values! {
 
 impl<T: crate::sealed::Sealed> crate::sealed::Sealed for Wrapping<T> {}
 impl<T: crate::field::Value> crate::field::Value for Wrapping<T> {
-    fn record(&self, key: &crate::field::Field, visitor: &mut dyn crate::field::Visit) {
+    fn record<'a>(&'a self, key: &crate::field::Field, visitor: &mut dyn crate::field::Visit<'a>) {
         self.0.record(key, visitor)
     }
 }
@@ -430,7 +438,7 @@ impl<T: crate::field::Value> crate::field::Value for Wrapping<T> {
 impl crate::sealed::Sealed for str {}
 
 impl Value for str {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         visitor.record_str(key, self)
     }
 }
@@ -441,7 +449,7 @@ impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Value for dyn std::error::Error + 'static {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         visitor.record_error(key, self)
     }
 }
@@ -452,7 +460,7 @@ impl crate::sealed::Sealed for dyn std::error::Error + Send + 'static {}
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Value for dyn std::error::Error + Send + 'static {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         (self as &dyn std::error::Error).record(key, visitor)
     }
 }
@@ -463,7 +471,7 @@ impl crate::sealed::Sealed for dyn std::error::Error + Sync + 'static {}
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Value for dyn std::error::Error + Sync + 'static {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         (self as &dyn std::error::Error).record(key, visitor)
     }
 }
@@ -474,7 +482,7 @@ impl crate::sealed::Sealed for dyn std::error::Error + Send + Sync + 'static {}
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Value for dyn std::error::Error + Send + Sync + 'static {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         (self as &dyn std::error::Error).record(key, visitor)
     }
 }
@@ -485,7 +493,7 @@ impl<'a, T: ?Sized> Value for &'a T
 where
     T: Value + 'a,
 {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'visit>(&'visit self, key: &Field, visitor: &mut dyn Visit<'visit>) {
         (*self).record(key, visitor)
     }
 }
@@ -496,7 +504,7 @@ impl<'a, T: ?Sized> Value for &'a mut T
 where
     T: Value + 'a,
 {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'visit>(&'visit self, key: &Field, visitor: &mut dyn Visit<'visit>) {
         // Don't use `(*self).record(key, visitor)`, otherwise would
         // cause stack overflow due to `unconditional_recursion`.
         T::record(self, key, visitor)
@@ -506,7 +514,7 @@ where
 impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 
 impl<'a> Value for fmt::Arguments<'a> {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'visit>(&'visit self, key: &Field, visitor: &mut dyn Visit<'visit>) {
         visitor.record_debug(key, self)
     }
 }
@@ -521,7 +529,7 @@ where
     T: Value,
 {
     #[inline]
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         self.as_ref().record(key, visitor)
     }
 }
@@ -533,7 +541,7 @@ impl crate::sealed::Sealed for alloc::string::String {}
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl Value for alloc::string::String {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record<'a>(&'a self, key: &Field, visitor: &mut dyn Visit<'a>) {
         visitor.record_str(key, self.as_str())
     }
 }
@@ -581,7 +589,7 @@ impl<T> Value for DisplayValue<T>
 where
     T: fmt::Display,
 {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit<'_>) {
         visitor.record_debug(key, self)
     }
 }
@@ -606,7 +614,7 @@ impl<T: fmt::Debug> Value for DebugValue<T>
 where
     T: fmt::Debug,
 {
-    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit<'_>) {
         visitor.record_debug(key, &self.0)
     }
 }
@@ -620,7 +628,7 @@ impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
 impl crate::sealed::Sealed for Empty {}
 impl Value for Empty {
     #[inline]
-    fn record(&self, _: &Field, _: &mut dyn Visit) {}
+    fn record(&self, _: &Field, _: &mut dyn Visit<'_>) {}
 }
 
 // ===== impl Field =====
@@ -865,7 +873,7 @@ impl<'a> ValueSet<'a> {
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
     /// [visitor]: Visit
-    pub fn record(&self, visitor: &mut dyn Visit) {
+    pub fn record(&self, visitor: &mut dyn Visit<'a>) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
@@ -1060,7 +1068,7 @@ mod test {
         ];
 
         struct MyVisitor;
-        impl Visit for MyVisitor {
+        impl Visit<'_> for MyVisitor {
             fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
@@ -1079,7 +1087,7 @@ mod test {
         ];
 
         struct MyVisitor;
-        impl Visit for MyVisitor {
+        impl Visit<'_> for MyVisitor {
             fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
                 assert_eq!(field.name(), "bar")
             }

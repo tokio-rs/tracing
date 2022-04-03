@@ -1167,7 +1167,7 @@ pub mod log {
                 result: fmt::Result,
             }
 
-            impl Visit for LogVisitor<'_, '_> {
+            impl Visit<'_> for LogVisitor<'_, '_> {
                 fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
                     let res = if self.is_first {
                         self.is_first = false;
