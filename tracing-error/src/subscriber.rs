@@ -33,7 +33,7 @@ pub struct ErrorSubscriber<C, F = DefaultFields> {
 // so that we can downcast to something aware of them without knowing those
 // types at the callsite.
 pub(crate) struct WithContext(
-    fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
+    fn(&Dispatch, &span::Id, f: &mut dyn for<'a> FnMut(&'a Metadata<'a>, &str) -> bool),
 );
 
 impl<C, F> Subscribe<C> for ErrorSubscriber<C, F>
@@ -89,7 +89,7 @@ where
     fn get_context(
         dispatch: &Dispatch,
         id: &span::Id,
-        f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool,
+        f: &mut dyn for<'a> FnMut(&'a Metadata<'a>, &str) -> bool,
     ) {
         let collector = dispatch
             .downcast_ref::<C>()
@@ -115,7 +115,7 @@ impl WithContext {
         &self,
         dispatch: &Dispatch,
         id: &span::Id,
-        mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool,
+        mut f: impl for<'m> FnMut(&'m Metadata<'m>, &str) -> bool,
     ) {
         (self.0)(dispatch, id, &mut f)
     }

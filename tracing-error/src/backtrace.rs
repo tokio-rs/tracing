@@ -115,7 +115,7 @@ impl SpanTrace {
     ///
     /// [fields]: tracing::field
     /// [`Metadata`]: tracing::Metadata
-    pub fn with_spans(&self, f: impl FnMut(&'static Metadata<'static>, &str) -> bool) {
+    pub fn with_spans(&self, f: impl for<'a> FnMut(&'a Metadata<'a>, &str) -> bool) {
         self.span.with_collector(|(id, s)| {
             if let Some(getcx) = s.downcast_ref::<WithContext>() {
                 getcx.with_context(s, id, f);
