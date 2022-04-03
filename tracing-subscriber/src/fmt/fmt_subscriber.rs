@@ -883,7 +883,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
+    pub fn metadata(&self, id: &Id) -> Option<&'a Metadata<'a>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {

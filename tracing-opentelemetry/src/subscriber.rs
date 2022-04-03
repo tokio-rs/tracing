@@ -553,17 +553,7 @@ where
             #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
 
-            let target = Key::new("target");
-
-            #[cfg(feature = "tracing-log")]
-            let target = if normalized_meta.is_some() {
-                target.string(meta.target().to_owned())
-            } else {
-                target.string(event.metadata().target())
-            };
-
-            #[cfg(not(feature = "tracing-log"))]
-            let target = target.string(meta.target());
+            let target = Key::new("target").string(meta.target().to_owned());
 
             let mut otel_event = otel::Event::new(
                 String::new(),
@@ -590,8 +580,12 @@ where
                             meta.module_path().map(|s| Value::from(s.to_owned())),
                         ),
                         None => (
-                            event.metadata().file().map(Value::from),
-                            event.metadata().module_path().map(Value::from),
+                            event.metadata().file().map(String::from).map(Value::from),
+                            event
+                                .metadata()
+                                .module_path()
+                                .map(String::from)
+                                .map(Value::from),
                         ),
                     };
 

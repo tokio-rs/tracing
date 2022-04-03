@@ -164,7 +164,7 @@ pub trait SpanData<'a> {
     fn id(&self) -> Id;
 
     /// Returns a reference to the span's `Metadata`.
-    fn metadata(&self) -> &'static Metadata<'static>;
+    fn metadata(&self) -> &'a Metadata<'a>;
 
     /// Returns a reference to the ID
     fn parent(&self) -> Option<&Id>;
@@ -349,12 +349,12 @@ where
     }
 
     /// Returns a static reference to the span's metadata.
-    pub fn metadata(&self) -> &'static Metadata<'static> {
+    pub fn metadata(&self) -> &'a Metadata<'a> {
         self.data.metadata()
     }
 
     /// Returns the span's name,
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'a str {
         self.data.metadata().name()
     }
 
@@ -571,7 +571,7 @@ mod tests {
 
         #[derive(Default)]
         struct RecordingSubscriber {
-            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+            last_entered_scope: Arc<Mutex<Vec<String>>>,
         }
 
         impl<S> Subscribe<S> for RecordingSubscriber
@@ -580,7 +580,10 @@ mod tests {
         {
             fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
                 let span = ctx.span(id).unwrap();
-                let scope = span.scope().map(|span| span.name()).collect::<Vec<_>>();
+                let scope = span
+                    .scope()
+                    .map(|span| span.name().into())
+                    .collect::<Vec<_>>();
                 *self.last_entered_scope.lock().unwrap() = scope;
             }
         }
@@ -606,7 +609,7 @@ mod tests {
 
         #[derive(Default)]
         struct RecordingSubscriber {
-            last_entered_scope: Arc<Mutex<Vec<&'static str>>>,
+            last_entered_scope: Arc<Mutex<Vec<String>>>,
         }
 
         impl<S> Subscribe<S> for RecordingSubscriber
@@ -618,7 +621,7 @@ mod tests {
                 let scope = span
                     .scope()
                     .from_root()
-                    .map(|span| span.name())
+                    .map(|span| span.name().into())
                     .collect::<Vec<_>>();
                 *self.last_entered_scope.lock().unwrap() = scope;
             }

@@ -410,7 +410,7 @@ impl<'a> SpanData<'a> for Data<'a> {
         idx_to_id(self.inner.key())
     }
 
-    fn metadata(&self) -> &'static Metadata<'static> {
+    fn metadata(&self) -> &'a Metadata<'a> {
         (*self).inner.metadata
     }
 
@@ -581,8 +581,8 @@ mod tests {
 
     #[derive(Default)]
     struct CloseState {
-        open: HashMap<&'static str, Weak<()>>,
-        closed: Vec<(&'static str, Weak<()>)>,
+        open: HashMap<String, Weak<()>>,
+        closed: Vec<(String, Weak<()>)>,
     }
 
     struct SetRemoved(Arc<()>);
@@ -597,7 +597,7 @@ mod tests {
             let is_removed = Arc::new(());
             assert!(
                 lock.open
-                    .insert(span.name(), Arc::downgrade(&is_removed))
+                    .insert(span.name().into(), Arc::downgrade(&is_removed))
                     .is_none(),
                 "test subscriber saw multiple spans with the same name, the test is probably messed up"
             );
@@ -620,7 +620,7 @@ mod tests {
             if let Ok(mut lock) = self.inner.lock() {
                 if let Some(is_removed) = lock.open.remove(name) {
                     assert!(is_removed.upgrade().is_some());
-                    lock.closed.push((name, is_removed));
+                    lock.closed.push((name.into(), is_removed));
                 }
             }
         }
@@ -644,7 +644,7 @@ mod tests {
         }
 
         fn is_closed(&self, span: &str) -> bool {
-            self.closed.iter().any(|(name, _)| name == &span)
+            self.closed.iter().any(|(name, _)| name == span)
         }
     }
 
@@ -679,7 +679,7 @@ mod tests {
 
         fn assert_removed(&self, span: &str) {
             let lock = self.state.lock().unwrap();
-            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == span) {
                 Some((_, is_removed)) => is_removed,
                 None => panic!(
                     "expected {} to be removed from the registry, but it was not closed {}",
@@ -700,7 +700,7 @@ mod tests {
 
         fn assert_not_removed(&self, span: &str) {
             let lock = self.state.lock().unwrap();
-            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == span) {
                 Some((_, is_removed)) => is_removed,
                 None if lock.is_open(span) => return,
                 None => unreachable!(),
@@ -715,21 +715,16 @@ mod tests {
         #[allow(unused)] // may want this for future tests
         fn assert_last_closed(&self, span: Option<&str>) {
             let lock = self.state.lock().unwrap();
-            let last = lock.closed.last().map(|(span, _)| span);
-            assert_eq!(
-                last,
-                span.as_ref(),
-                "expected {:?} to have closed last",
-                span
-            );
+            let last = lock.closed.last().map(|(span, _)| &**span);
+            assert_eq!(last, span, "expected {:?} to have closed last", span);
         }
 
         fn assert_closed_in_order(&self, order: impl AsRef<[&'static str]>) {
             let lock = self.state.lock().unwrap();
             let order = order.as_ref();
-            for (i, name) in order.iter().enumerate() {
+            for (i, &name) in order.iter().enumerate() {
                 assert_eq!(
-                    lock.closed.get(i).map(|(span, _)| span),
+                    lock.closed.get(i).map(|(span, _)| &**span),
                     Some(name),
                     "expected close order: {:?}, actual: {:?}",
                     order,

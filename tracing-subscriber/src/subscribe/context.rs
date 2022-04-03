@@ -185,7 +185,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     #[inline]
-    pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
+    pub fn metadata(&self, id: &span::Id) -> Option<&'a Metadata<'a>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
@@ -208,7 +208,7 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'a, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
