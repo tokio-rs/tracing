@@ -1229,7 +1229,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             "message" => write!(self.writer, "{:?}", value),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => Ok(()),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => Ok(()),
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",

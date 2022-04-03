@@ -117,7 +117,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -132,7 +132,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -147,7 +147,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -162,7 +162,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             "message" => self.0.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name => {
                 self.0
                     .attributes
@@ -180,7 +180,7 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             "message" => self.0.name = format!("{:?}", value).into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name => {
                 self.0
                     .attributes

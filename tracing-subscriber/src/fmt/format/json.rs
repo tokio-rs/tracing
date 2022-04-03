@@ -492,7 +492,7 @@ impl<'a> field::Visit for JsonVisitor<'a> {
         match field.name() {
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
+            name if name.starts_with(tracing_log::MAGIC_EVENT_NAME) => (),
             name if name.starts_with("r#") => {
                 self.values
                     .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
