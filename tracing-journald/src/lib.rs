@@ -219,7 +219,7 @@ where
 
         writeln!(buf, "S{}_NAME", depth).unwrap();
         put_value(&mut buf, span.name().as_bytes());
-        put_metadata(&mut buf, span.metadata(), Some(depth));
+        put_metadata(&mut buf, &span.metadata(), Some(depth));
 
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
@@ -257,7 +257,7 @@ where
         }
 
         // Record event fields
-        put_metadata(&mut buf, event.metadata(), None);
+        put_metadata(&mut buf, &event.metadata(), None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });

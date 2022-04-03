@@ -95,8 +95,10 @@ impl<'a> Event<'a> {
     /// Returns [metadata] describing this `Event`.
     ///
     /// [metadata]: super::Metadata
-    pub fn metadata(&self) -> &'a Metadata<'a> {
+    pub fn metadata(&self) -> Metadata<'a> {
         self.metadata
+            .normalized(self)
+            .unwrap_or_else(|| self.metadata.clone())
     }
 
     /// Returns true if the new event should be a root.
@@ -130,5 +132,9 @@ impl<'a> Event<'a> {
 impl<'a> field::RecordFields<'a> for Event<'a> {
     fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         Event::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.fields.record_prenormal(visitor)
     }
 }

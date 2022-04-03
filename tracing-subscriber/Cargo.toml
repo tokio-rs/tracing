@@ -30,7 +30,7 @@ std = ["alloc", "tracing-core/std"]
 env-filter = ["matchers", "regex", "lazy_static", "tracing", "std", "thread_local"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "ansi_term"]
-registry = ["sharded-slab", "thread_local", "std"]
+registry = ["sharded-slab", "thread_local", "std", "once_cell"]
 json = ["tracing-serde", "serde", "serde_json"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
@@ -62,6 +62,7 @@ parking_lot = { version = ">= 0.7, <= 0.12", optional = true }
 # registry
 sharded-slab = { version = "0.1.0", optional = true }
 thread_local = { version = "1.1.4", optional = true }
+once_cell = { version = "1.10.0", optional = true }
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }

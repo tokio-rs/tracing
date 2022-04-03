@@ -140,7 +140,7 @@ where
     /// {
     ///     fn on_event(&self, event: &Event, ctx: Context<C>) {
     ///         let span = ctx.event_span(event);
-    ///         println!("Event in span: {:?}", span.map(|s| s.name()));
+    ///         println!("Event in span: {:?}", span.map(|s| s.name().to_owned()));
     ///     }
     /// }
     ///
@@ -178,19 +178,6 @@ where
             // TODO(eliza): this should handle parent IDs
             event.parent().and_then(|id| self.span(id))
         }
-    }
-
-    /// Returns metadata for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    #[inline]
-    pub fn metadata(&self, id: &span::Id) -> Option<&'a Metadata<'a>>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        let span = self.span(id)?;
-        Some(span.metadata())
     }
 
     /// Returns [stored data] for the span with the given `id`, if it exists.

@@ -291,6 +291,7 @@ pub(crate) mod spin;
 pub mod callsite;
 pub mod collect;
 pub mod dispatch;
+pub mod dynamic;
 pub mod event;
 pub mod field;
 pub mod metadata;

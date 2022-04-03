@@ -57,6 +57,7 @@ use core::{
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
 /// [callsite identifier]: super::callsite::Identifier
+#[derive(Clone)]
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: &'a str,
@@ -276,9 +277,32 @@ impl<'a> Metadata<'a> {
         }
     }
 
-    /// Returns the names of the fields on the described span or event.
-    pub fn fields(&self) -> &field::FieldSet {
+    /// Returns the kind of this callsite.
+    pub fn kind(&self) -> &Kind {
+        &self.kind
+    }
+
+    /// Returns the names of the fields on the described span or event,
+    /// excluding those used for [dynamic metadata][crate::dynamic].
+    pub fn fields(&self) -> field::FieldSet {
+        if self.is_dynamic() {
+            let magic = self.magic_fields();
+            self.fields.slice(magic.count()..)
+        } else {
+            self.fields.clone()
+        }
+    }
+
+    /// Returns the names of the fields on the described span or event,
+    /// *including* those used for [dynamic metadata][crate::dynamic].
+    pub fn fields_prenormal(&self) -> &field::FieldSet {
         &self.fields
+    }
+
+    /// Returns the names of the fields on the described span or event
+    /// used for [dynamic metadata][crate::dynamic].
+    pub(crate) fn magic_fields(&self) -> crate::dynamic::MagicFields {
+        crate::dynamic::MagicFields::new(&self.fields)
     }
 
     /// Returns the level of verbosity of the described span or event.

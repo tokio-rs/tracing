@@ -215,6 +215,10 @@ impl<'a> field::RecordFields<'a> for Attributes<'a> {
     fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         Attributes::record(self, visitor)
     }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.values.record_prenormal(visitor)
+    }
 }
 
 // ===== impl Record =====
@@ -246,6 +250,10 @@ impl<'a> Record<'a> {
 impl<'a> field::RecordFields<'a> for Record<'a> {
     fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         Record::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.values.record_prenormal(visitor)
     }
 }
 

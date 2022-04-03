@@ -12,7 +12,7 @@ use std::{
 use tracing_core::{
     field,
     span::{Attributes, Current, Id, Record},
-    Collect, Event, Metadata,
+    Collect, Event,
 };
 
 /// A [`Subscriber`] that logs formatted representations of `tracing` events.
@@ -635,7 +635,7 @@ macro_rules! with_event_from_span {
             (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
         )*];
         let vs = fs.value_set(&v);
-        let $event = Event::new_child_of($id, meta, &vs);
+        let $event = Event::new_child_of($id, &meta, &vs);
         $code
     };
 }
@@ -673,8 +673,8 @@ where
         if self.fmt_span.trace_new() {
             with_event_from_span!(id, span, "message" = "new", |event| {
                 drop(extensions);
-                drop(span);
                 self.on_event(&event, ctx);
+                drop(span);
             });
         }
     }
@@ -711,8 +711,8 @@ where
             if self.fmt_span.trace_enter() {
                 with_event_from_span!(id, span, "message" = "enter", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -731,8 +731,8 @@ where
             if self.fmt_span.trace_exit() {
                 with_event_from_span!(id, span, "message" = "exit", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -761,15 +761,15 @@ where
                     "time.idle" = t_idle,
                     |event| {
                         drop(extensions);
-                        drop(span);
                         self.on_event(&event, ctx);
+                        drop(span);
                     }
                 );
             } else {
                 with_event_from_span!(id, span, "message" = "close", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -805,7 +805,7 @@ where
                 )
                 .is_ok()
             {
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
+                let mut writer = self.make_writer.make_writer_for(&event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
             }
 
@@ -876,18 +876,6 @@ where
             }
         }
         Ok(())
-    }
-
-    /// Returns metadata for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    #[inline]
-    pub fn metadata(&self, id: &Id) -> Option<&'a Metadata<'a>>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.metadata(id)
     }
 
     /// Returns [stored data] for the span with the given `id`, if it exists.
@@ -1049,7 +1037,7 @@ mod test {
     use crate::Registry;
     use format::FmtSpan;
     use regex::Regex;
-    use tracing::collect::with_default;
+    use tracing::{collect::with_default, Metadata};
     use tracing_core::dispatch::Dispatch;
 
     #[test]

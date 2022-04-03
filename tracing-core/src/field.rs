@@ -70,6 +70,7 @@ pub struct Field {
 pub struct Empty;
 
 /// Describes the fields present on a span.
+#[derive(Clone)]
 pub struct FieldSet {
     /// The names of each field on the described span.
     names: &'static [&'static str],
@@ -254,8 +255,13 @@ pub trait Visit<'a> {
 /// [`span::Attributes`]: crate::span::Attributes
 /// [`span::Record`]: crate::span::Record
 pub trait RecordFields<'a> {
-    /// Record all the fields in `self` with the provided `visitor`.
+    /// Record all the fields in `self` with the provided `visitor`, excluding
+    /// those used for [dynamic metadata][crate::dynamic].
     fn record(&self, visitor: &mut dyn Visit<'a>);
+
+    /// Record all the fields in `self` with the provided `visitor`, *including*
+    /// those used for [dynamic metadata][crate::dynamic].
+    fn record_prenormal(&self, visitor: &mut dyn Visit<'a>);
 }
 
 /// A field value of an erased type.
@@ -330,6 +336,10 @@ where
 {
     fn record(&self, visitor: &mut dyn Visit<'a>) {
         F::record(*self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn Visit<'a>) {
+        F::record_prenormal(*self, visitor)
     }
 }
 
@@ -703,7 +713,17 @@ impl FieldSet {
     /// of those callsites are not equivalent.
     /// </pre></div>
     pub fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite() && field.i <= self.len()
+        if field.callsite() != self.callsite() {
+            return false;
+        }
+
+        // Example:
+        // Sliced Fieldset: [                 "carol", "david" ]
+        // Field, Unsliced: [ "alice", "bob", "carol", "david" ], 3
+        let slice_offset = field.fields.names.len() as isize - self.len() as isize;
+        let field_index_in_me = field.i as isize - slice_offset;
+
+        0 <= field_index_in_me && field_index_in_me <= self.len() as isize
     }
 
     /// Returns an iterator over the `Field`s in this `FieldSet`.
@@ -744,6 +764,22 @@ impl FieldSet {
     pub fn is_empty(&self) -> bool {
         self.names.is_empty()
     }
+
+    pub(crate) fn slice(&self, range: core::ops::RangeFrom<usize>) -> Self {
+        Self {
+            names: &self.names[range],
+            callsite: self.callsite.clone(),
+        }
+    }
+}
+
+impl IntoIterator for FieldSet {
+    type IntoIter = Iter;
+    type Item = Field;
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 impl<'a> IntoIterator for &'a FieldSet {
@@ -780,10 +816,7 @@ impl Iterator for Iter {
         let i = self.idxs.next()?;
         Some(Field {
             i,
-            fields: FieldSet {
-                names: self.fields.names,
-                callsite: self.fields.callsite(),
-            },
+            fields: self.fields.clone(),
         })
     }
 }
@@ -805,6 +838,17 @@ impl<'a> ValueSet<'a> {
     ///
     /// [visitor]: Visit
     pub fn record(&self, visitor: &mut dyn Visit<'a>) {
+        for (field, value) in self.values {
+            if !self.fields.contains(field) {
+                continue;
+            }
+            if let Some(value) = value {
+                value.record(field, visitor);
+            }
+        }
+    }
+
+    fn record_unsliced(&self, visitor: &mut dyn Visit<'a>) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
@@ -818,7 +862,7 @@ impl<'a> ValueSet<'a> {
 
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite()
+        self.fields.contains(field)
             && self
                 .values
                 .iter()
@@ -827,10 +871,9 @@ impl<'a> ValueSet<'a> {
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let my_callsite = self.callsite();
         self.values
             .iter()
-            .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+            .all(|(key, val)| val.is_none() || !self.fields.contains(key))
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
@@ -841,6 +884,10 @@ impl<'a> ValueSet<'a> {
 impl<'a> RecordFields<'a> for ValueSet<'a> {
     fn record(&self, visitor: &mut dyn Visit<'a>) {
         ValueSet::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn Visit<'a>) {
+        ValueSet::record_unsliced(self, visitor)
     }
 }
 
@@ -976,7 +1023,8 @@ mod test {
             (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
             (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
         ];
-        let valueset = TEST_META_2.fields().value_set(values);
+        let fields = TEST_META_2.fields();
+        let valueset = fields.value_set(values);
         assert!(valueset.is_empty())
     }
 

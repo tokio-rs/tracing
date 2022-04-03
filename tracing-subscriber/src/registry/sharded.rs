@@ -10,14 +10,21 @@ use crate::{
     },
     sync::RwLock,
 };
+use once_cell::sync::OnceCell;
 use std::{
     cell::{self, Cell, RefCell},
+    convert::TryInto,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
+    dynamic::{
+        MAGIC_FIELD_FILE, MAGIC_FIELD_LEVEL, MAGIC_FIELD_LINE, MAGIC_FIELD_MODULE_PATH,
+        MAGIC_FIELD_NAME, MAGIC_FIELD_TARGET,
+    },
+    field,
     span::{self, Current, Id},
-    Collect, Event, Interest, Metadata,
+    Collect, Event, Interest, Level, Metadata,
 };
 
 /// A shared, reusable store for spans.
@@ -123,11 +130,82 @@ pub struct Data<'a> {
 struct DataInner {
     filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
+    patch: MetadataPatch,
     parent: Option<Id>,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
     pub(crate) extensions: RwLock<ExtensionsInner>,
+}
+
+#[derive(Debug, Default)]
+struct MetadataPatch {
+    name: OnceCell<Box<str>>,
+    target: OnceCell<Box<str>>,
+    level: OnceCell<Level>,
+    file: OnceCell<Box<str>>,
+    line: OnceCell<u32>,
+    module: OnceCell<Box<str>>,
+}
+
+impl MetadataPatch {
+    fn normalize<'a: 'c, 'b: 'c, 'c>(&'a self, prepatch: &'b Metadata<'b>) -> Metadata<'c> {
+        Metadata::new(
+            self.name
+                .get()
+                .map(|s| &**s)
+                .unwrap_or_else(|| prepatch.name()),
+            self.target
+                .get()
+                .map(|s| &**s)
+                .unwrap_or_else(|| prepatch.target()),
+            *self.level.get().unwrap_or_else(|| prepatch.level()),
+            self.file.get().map(|s| &**s).or_else(|| prepatch.file()),
+            self.line.get().copied().or_else(|| prepatch.line()),
+            self.module
+                .get()
+                .map(|s| &**s)
+                .or_else(|| prepatch.module_path()),
+            prepatch.fields(),
+            prepatch.kind().clone(),
+        )
+    }
+}
+
+impl field::Visit<'_> for &MetadataPatch {
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        #[allow(clippy::single_match)]
+        match field.name() {
+            MAGIC_FIELD_LINE => {
+                self.line
+                    .get_or_init(|| value.try_into().unwrap_or(u32::MAX));
+            }
+            _ => {}
+        }
+    }
+
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        match field.name() {
+            MAGIC_FIELD_NAME => {
+                self.name.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_TARGET => {
+                self.target.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_LEVEL => {
+                self.level.get_or_try_init(|| value.parse::<Level>()).ok();
+            }
+            MAGIC_FIELD_FILE => {
+                self.file.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_MODULE_PATH => {
+                self.module.get_or_init(|| value.into());
+            }
+            _ => {}
+        }
+    }
+
+    fn record_debug(&mut self, _: &field::Field, _: &dyn core::fmt::Debug) {}
 }
 
 // === impl Registry ===
@@ -253,6 +331,7 @@ impl Collect for Registry {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
                 data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
+                data.record(attrs);
                 #[cfg(debug_assertions)]
                 {
                     if data.filter_map != FilterMap::default() {
@@ -270,8 +349,15 @@ impl Collect for Registry {
 
     /// This is intentionally not implemented, as recording fields
     /// on a span is the responsibility of subscribers atop of this registry.
+    //  ...but we do some fixing up of dynamically injected span metadata here.
+    //  See tracing_core::dynamic for an overview.
     #[inline]
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+    fn record(&self, id: &span::Id, record: &span::Record<'_>) {
+        let span = self
+            .get(id)
+            .unwrap_or_else(|| panic!("tried to record {:?}, but no span exists with that ID", id));
+        span.record(record);
+    }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
@@ -410,8 +496,8 @@ impl<'a> SpanData<'a> for Data<'a> {
         idx_to_id(self.inner.key())
     }
 
-    fn metadata(&self) -> &'a Metadata<'a> {
-        (*self).inner.metadata
+    fn metadata(&self) -> Metadata<'_> {
+        self.inner.metadata()
     }
 
     fn parent(&self) -> Option<&Id> {
@@ -472,6 +558,7 @@ impl Default for DataInner {
         Self {
             filter_map: FilterMap::default(),
             metadata: &NULL_METADATA,
+            patch: MetadataPatch::default(),
             parent: None,
             ref_count: AtomicUsize::new(0),
             extensions: RwLock::new(ExtensionsInner::new()),
@@ -516,6 +603,17 @@ impl Clear for DataInner {
             .clear();
 
         self.filter_map = FilterMap::default();
+        self.patch = MetadataPatch::default();
+    }
+}
+
+impl DataInner {
+    fn record<'a>(&self, record: impl field::RecordFields<'a>) {
+        record.record_prenormal(&mut &self.patch);
+    }
+
+    fn metadata(&self) -> Metadata<'_> {
+        self.patch.normalize(self.metadata)
     }
 }
 

@@ -549,7 +549,7 @@ where
             #[cfg(feature = "tracing-log")]
             let normalized_meta = event.normalized_metadata();
             #[cfg(feature = "tracing-log")]
-            let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+            let meta = normalized_meta.unwrap_or_else(|| event.metadata());
             #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
 
@@ -572,22 +572,8 @@ where
                 if self.event_location {
                     let builder_attrs = builder.attributes.get_or_insert(Vec::new());
 
-                    #[cfg(not(feature = "tracing-log"))]
-                    let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
-                    let (file, module) = match &normalized_meta {
-                        Some(meta) => (
-                            meta.file().map(|s| Value::from(s.to_owned())),
-                            meta.module_path().map(|s| Value::from(s.to_owned())),
-                        ),
-                        None => (
-                            event.metadata().file().map(String::from).map(Value::from),
-                            event
-                                .metadata()
-                                .module_path()
-                                .map(String::from)
-                                .map(Value::from),
-                        ),
-                    };
+                    let file = meta.file().map(String::from).map(Value::from);
+                    let module = meta.module_path().map(String::from).map(Value::from);
 
                     if let Some(file) = file {
                         builder_attrs.push(KeyValue::new("code.filepath", file));
