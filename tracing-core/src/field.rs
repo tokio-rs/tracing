@@ -242,6 +242,43 @@ pub trait Visit<'a> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug);
 }
 
+/// Types which can be recorded by a [visitor][Visit].
+///
+/// This allows code to be generic over types such as [`span::Attributes`],
+/// [`span::Record`], and [`Event`] which provide access to traced fields.
+///
+/// # Examples
+///
+/// ```rust
+/// use tracing_core::field::{Visit, RecordFields};
+/// # use tracing_core::field::Field;
+///
+/// struct MyVisitor {
+///     // ...
+/// }
+/// # impl MyVisitor { fn new() -> Self { Self{} } }
+/// impl Visit<'_> for MyVisitor {
+///     // ...
+/// # fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
+/// }
+///
+/// fn record_with_my_visitor<'a, R>(r: R)
+/// where
+///     R: RecordFields<'a>,
+/// {
+///     let mut visitor = MyVisitor::new();
+///     r.record(&mut visitor);
+/// }
+/// ```
+///
+/// [`Event`]: crate::event::Event
+/// [`span::Attributes`]: crate::span::Attributes
+/// [`span::Record`]: crate::span::Record
+pub trait RecordFields<'a> {
+    /// Record all the fields in `self` with the provided `visitor`.
+    fn record(&self, visitor: &mut dyn Visit<'a>);
+}
+
 /// A field value of an erased type.
 ///
 /// Implementors of `Value` may call the appropriate typed recording methods on
@@ -303,6 +340,17 @@ where
 {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         (self)(field, value)
+    }
+}
+
+// ===== impl RecordFields =====
+
+impl<'a, 'f, F> RecordFields<'a> for &'f F
+where
+    F: RecordFields<'a>,
+{
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
+        F::record(*self, visitor)
     }
 }
 
@@ -904,6 +952,12 @@ impl<'a> ValueSet<'a> {
 
     pub(crate) fn field_set(&self) -> &FieldSet {
         self.fields
+    }
+}
+
+impl<'a> RecordFields<'a> for ValueSet<'a> {
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
+        ValueSet::record(self, visitor)
     }
 }
 
