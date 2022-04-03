@@ -126,3 +126,9 @@ impl<'a> Event<'a> {
         }
     }
 }
+
+impl<'a> field::RecordFields<'a> for Event<'a> {
+    fn record(&self, visitor: &mut dyn field::Visit<'a>) {
+        Event::record(self, visitor)
+    }
+}

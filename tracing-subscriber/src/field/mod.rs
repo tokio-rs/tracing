@@ -3,11 +3,7 @@
 //! [fields]: tracing_core::field
 //! [field visitors]: tracing_core::field::Visit
 use core::{fmt, marker::PhantomData};
-pub use tracing_core::field::Visit;
-use tracing_core::{
-    span::{Attributes, Record},
-    Event,
-};
+pub use tracing_core::field::{RecordFields, Visit};
 pub mod debug;
 pub mod delimited;
 pub mod display;
@@ -50,45 +46,6 @@ pub trait VisitOutput<'a, Out>: Visit<'a> {
         fields.record(&mut self);
         self.finish()
     }
-}
-
-/// Extension trait implemented by types which can be recorded by a [visitor].
-///
-/// This allows writing code that is generic over `tracing_core`'s
-/// [`span::Attributes`][attr], [`span::Record`][rec], and [`Event`][event]
-/// types. These types all provide inherent `record` methods that allow a
-/// visitor to record their fields, but there is no common trait representing this.
-///
-/// With `RecordFields`, we can write code like this:
-/// ```
-/// use tracing_core::field::Visit;
-/// # use tracing_core::field::Field;
-/// use tracing_subscriber::field::RecordFields;
-///
-/// struct MyVisitor {
-///     // ...
-/// }
-/// # impl MyVisitor { fn new() -> Self { Self{} } }
-/// impl Visit<'_> for MyVisitor {
-///     // ...
-/// # fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
-/// }
-///
-/// fn record_with_my_visitor<'a, R>(r: R)
-/// where
-///     R: RecordFields<'a>,
-/// {
-///     let mut visitor = MyVisitor::new();
-///     r.record(&mut visitor);
-/// }
-/// ```
-/// [visitor]: tracing_core::field::Visit
-/// [attr]: tracing_core::span::Attributes
-/// [rec]: tracing_core::span::Record
-/// [event]: tracing_core::event::Event
-pub trait RecordFields<'a>: crate::sealed::Sealed<RecordFieldsMarker> {
-    /// Record all the fields in `self` with the provided `visitor`.
-    fn record(&self, visitor: &mut dyn Visit<'a>);
 }
 
 /// Extension trait implemented for all `MakeVisitor` implementations that
@@ -156,39 +113,6 @@ where
     }
 }
 
-// === impl RecordFields ===
-
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
-impl<'a> RecordFields<'a> for Event<'a> {
-    fn record(&self, visitor: &mut dyn Visit<'a>) {
-        Event::record(self, visitor)
-    }
-}
-
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
-impl<'a> RecordFields<'a> for Attributes<'a> {
-    fn record(&self, visitor: &mut dyn Visit<'a>) {
-        Attributes::record(self, visitor)
-    }
-}
-
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
-impl<'a> RecordFields<'a> for Record<'a> {
-    fn record(&self, visitor: &mut dyn Visit<'a>) {
-        Record::record(self, visitor)
-    }
-}
-
-impl<'a, 'f, F> crate::sealed::Sealed<RecordFieldsMarker> for &'f F where F: RecordFields<'a> {}
-impl<'a, 'f, F> RecordFields<'a> for &'f F
-where
-    F: RecordFields<'a>,
-{
-    fn record(&self, visitor: &mut dyn Visit<'a>) {
-        F::record(*self, visitor)
-    }
-}
-
 // === blanket impls ===
 
 impl<'a, T, V, F> MakeVisitor<'a, T> for F
@@ -246,6 +170,7 @@ pub(in crate::field) mod test_util {
         callsite::Callsite,
         field::{Field, Value},
         metadata::{Kind, Level, Metadata},
+        span::Attributes,
     };
 
     pub(crate) struct TestAttrs1;
