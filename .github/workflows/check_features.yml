@@ -63,7 +63,7 @@ jobs:
       # cargo-hack --feature-powerset with all features in the powerset, so
       # exclude some
       run: |
-        CARGO_HACK=(cargo hack check --feature-powerset --no-dev-deps)
+        CARGO_HACK=(cargo hack check --lib --tests --feature-powerset --no-dev-deps)
         case "${{ matrix.subcrate }}" in
           tracing)
             EXCLUDE_FEATURES=(
