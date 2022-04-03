@@ -39,7 +39,7 @@ pub(crate) struct WithContext(
 impl<C, F> Subscribe<C> for ErrorSubscriber<C, F>
 where
     C: Collect + for<'span> LookupSpan<'span>,
-    F: for<'writer> FormatFields<'writer> + 'static,
+    F: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
@@ -72,7 +72,7 @@ where
 
 impl<C, F> ErrorSubscriber<C, F>
 where
-    F: for<'writer> FormatFields<'writer> + 'static,
+    F: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     C: Collect + for<'span> LookupSpan<'span>,
 {
     /// Returns a new `ErrorSubscriber` with the provided [field formatter].

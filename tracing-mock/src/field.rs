@@ -175,7 +175,7 @@ pub struct CheckVisitor<'a> {
     collector_name: &'a str,
 }
 
-impl<'a> Visit for CheckVisitor<'a> {
+impl<'a> Visit<'_> for CheckVisitor<'a> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.expect
             .compare_or_panic(field.name(), &value, self.ctx, self.collector_name)
@@ -229,7 +229,7 @@ impl<'a> From<&'a dyn Value> for MockValue {
             value: Option<MockValue>,
         }
 
-        impl Visit for MockValueBuilder {
+        impl Visit<'_> for MockValueBuilder {
             fn record_f64(&mut self, _: &Field, value: f64) {
                 self.value = Some(MockValue::F64(value));
             }

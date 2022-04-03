@@ -23,9 +23,9 @@ pub mod display;
 /// `()` when no input is required to produce a visitor.
 ///
 /// [visitors]: tracing_core::field::Visit
-pub trait MakeVisitor<T> {
+pub trait MakeVisitor<'a, T> {
     /// The visitor type produced by this `MakeVisitor`.
-    type Visitor: Visit;
+    type Visitor: Visit<'a>;
 
     /// Make a new visitor for the provided `target`.
     fn make_visitor(&self, target: T) -> Self::Visitor;
@@ -34,7 +34,7 @@ pub trait MakeVisitor<T> {
 /// A [visitor] that produces output once it has visited a set of fields.
 ///
 /// [visitor]: tracing_core::field::Visit
-pub trait VisitOutput<Out>: Visit {
+pub trait VisitOutput<'a, Out>: Visit<'a> {
     /// Completes the visitor, returning any output.
     ///
     /// This is called once a full set of fields has been visited.
@@ -44,7 +44,7 @@ pub trait VisitOutput<Out>: Visit {
     /// once the fields have been visited.
     fn visit<R>(mut self, fields: &R) -> Out
     where
-        R: RecordFields,
+        R: RecordFields<'a>,
         Self: Sized,
     {
         fields.record(&mut self);
@@ -69,14 +69,14 @@ pub trait VisitOutput<Out>: Visit {
 ///     // ...
 /// }
 /// # impl MyVisitor { fn new() -> Self { Self{} } }
-/// impl Visit for MyVisitor {
+/// impl Visit<'_> for MyVisitor {
 ///     // ...
 /// # fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
 /// }
 ///
-/// fn record_with_my_visitor<R>(r: R)
+/// fn record_with_my_visitor<'a, R>(r: R)
 /// where
-///     R: RecordFields,
+///     R: RecordFields<'a>,
 /// {
 ///     let mut visitor = MyVisitor::new();
 ///     r.record(&mut visitor);
@@ -86,23 +86,23 @@ pub trait VisitOutput<Out>: Visit {
 /// [attr]: tracing_core::span::Attributes
 /// [rec]: tracing_core::span::Record
 /// [event]: tracing_core::event::Event
-pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
+pub trait RecordFields<'a>: crate::sealed::Sealed<RecordFieldsMarker> {
     /// Record all the fields in `self` with the provided `visitor`.
-    fn record(&self, visitor: &mut dyn Visit);
+    fn record(&self, visitor: &mut dyn Visit<'a>);
 }
 
 /// Extension trait implemented for all `MakeVisitor` implementations that
 /// produce a visitor implementing `VisitOutput`.
-pub trait MakeOutput<T, Out>
+pub trait MakeOutput<'a, T, Out>
 where
-    Self: MakeVisitor<T> + crate::sealed::Sealed<(T, Out)>,
-    Self::Visitor: VisitOutput<Out>,
+    Self: MakeVisitor<'a, T> + crate::sealed::Sealed<(T, Out)>,
+    Self::Visitor: VisitOutput<'a, Out>,
 {
     /// Visits all fields in `fields` with a new visitor constructed from
     /// `target`.
     fn visit_with<F>(&self, target: T, fields: &F) -> Out
     where
-        F: RecordFields,
+        F: RecordFields<'a>,
     {
         self.make_visitor(target).visit(fields)
     }
@@ -114,7 +114,7 @@ feature! {
 
     /// Extension trait implemented by visitors to indicate that they write to an
     /// `io::Write` instance, and allow access to that writer.
-    pub trait VisitWrite: VisitOutput<Result<(), io::Error>> {
+    pub trait VisitWrite<'a>: VisitOutput<'a, Result<(), io::Error>> {
         /// Returns the writer that this visitor writes to.
         fn writer(&mut self) -> &mut dyn io::Write;
     }
@@ -122,15 +122,15 @@ feature! {
 
 /// Extension trait implemented by visitors to indicate that they write to a
 /// `fmt::Write` instance, and allow access to that writer.
-pub trait VisitFmt: VisitOutput<fmt::Result> {
+pub trait VisitFmt<'a>: VisitOutput<'a, fmt::Result> {
     /// Returns the formatter that this visitor writes to.
     fn writer(&mut self) -> &mut dyn fmt::Write;
 }
 
 /// Extension trait providing `MakeVisitor` combinators.
-pub trait MakeExt<T>
+pub trait MakeExt<'a, T>
 where
-    Self: MakeVisitor<T> + Sized,
+    Self: MakeVisitor<'a, T> + Sized,
     Self: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
     /// Wraps `self` so that any `fmt::Debug` fields are recorded using the
@@ -150,7 +150,7 @@ where
     fn delimited<D>(self, delimiter: D) -> delimited::Delimited<D, Self>
     where
         D: AsRef<str> + Clone,
-        Self::Visitor: VisitFmt,
+        Self::Visitor: VisitFmt<'a>,
     {
         delimited::Delimited::new(delimiter, self)
     }
@@ -159,42 +159,42 @@ where
 // === impl RecordFields ===
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
-impl<'a> RecordFields for Event<'a> {
-    fn record(&self, visitor: &mut dyn Visit) {
+impl<'a> RecordFields<'a> for Event<'a> {
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
         Event::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
-impl<'a> RecordFields for Attributes<'a> {
-    fn record(&self, visitor: &mut dyn Visit) {
+impl<'a> RecordFields<'a> for Attributes<'a> {
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
         Attributes::record(self, visitor)
     }
 }
 
 impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
-impl<'a> RecordFields for Record<'a> {
-    fn record(&self, visitor: &mut dyn Visit) {
+impl<'a> RecordFields<'a> for Record<'a> {
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
         Record::record(self, visitor)
     }
 }
 
-impl<'a, F> crate::sealed::Sealed<RecordFieldsMarker> for &'a F where F: RecordFields {}
-impl<'a, F> RecordFields for &'a F
+impl<'a, 'f, F> crate::sealed::Sealed<RecordFieldsMarker> for &'f F where F: RecordFields<'a> {}
+impl<'a, 'f, F> RecordFields<'a> for &'f F
 where
-    F: RecordFields,
+    F: RecordFields<'a>,
 {
-    fn record(&self, visitor: &mut dyn Visit) {
+    fn record(&self, visitor: &mut dyn Visit<'a>) {
         F::record(*self, visitor)
     }
 }
 
 // === blanket impls ===
 
-impl<T, V, F> MakeVisitor<T> for F
+impl<'a, T, V, F> MakeVisitor<'a, T> for F
 where
     F: Fn(T) -> V,
-    V: Visit,
+    V: Visit<'a>,
 {
     type Visitor = V;
     fn make_visitor(&self, target: T) -> Self::Visitor {
@@ -202,25 +202,25 @@ where
     }
 }
 
-impl<T, Out, M> crate::sealed::Sealed<(T, Out)> for M
+impl<'a, T, Out, M> crate::sealed::Sealed<(T, Out)> for M
 where
-    M: MakeVisitor<T>,
-    M::Visitor: VisitOutput<Out>,
+    M: MakeVisitor<'a, T>,
+    M::Visitor: VisitOutput<'a, Out>,
 {
 }
 
-impl<T, Out, M> MakeOutput<T, Out> for M
+impl<'a, T, Out, M> MakeOutput<'a, T, Out> for M
 where
-    M: MakeVisitor<T>,
-    M::Visitor: VisitOutput<Out>,
+    M: MakeVisitor<'a, T>,
+    M::Visitor: VisitOutput<'a, Out>,
 {
 }
 
-impl<T, M> crate::sealed::Sealed<MakeExtMarker<T>> for M where M: MakeVisitor<T> + Sized {}
+impl<'a, T, M> crate::sealed::Sealed<MakeExtMarker<T>> for M where M: MakeVisitor<'a, T> + Sized {}
 
-impl<T, M> MakeExt<T> for M
+impl<'a, T, M> MakeExt<'a, T> for M
 where
-    M: MakeVisitor<T> + Sized,
+    M: MakeVisitor<'a, T> + Sized,
     M: crate::sealed::Sealed<MakeExtMarker<T>>,
 {
 }
@@ -339,25 +339,25 @@ pub(in crate::field) mod test_util {
         }
     }
 
-    impl<'a> Visit for DebugVisitor<'a> {
+    impl<'a> Visit<'_> for DebugVisitor<'a> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
             write!(self.writer, "{}={:?}", field, value).unwrap();
         }
     }
 
-    impl<'a> VisitOutput<fmt::Result> for DebugVisitor<'a> {
+    impl<'a> VisitOutput<'_, fmt::Result> for DebugVisitor<'a> {
         fn finish(self) -> fmt::Result {
             self.err
         }
     }
 
-    impl<'a> VisitFmt for DebugVisitor<'a> {
+    impl<'a> VisitFmt<'_> for DebugVisitor<'a> {
         fn writer(&mut self) -> &mut dyn fmt::Write {
             self.writer
         }
     }
 
-    impl<'a> MakeVisitor<&'a mut dyn fmt::Write> for MakeDebug {
+    impl<'a> MakeVisitor<'_, &'a mut dyn fmt::Write> for MakeDebug {
         type Visitor = DebugVisitor<'a>;
         fn make_visitor(&self, w: &'a mut dyn fmt::Write) -> DebugVisitor<'a> {
             DebugVisitor::new(w)

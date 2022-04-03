@@ -361,7 +361,7 @@ impl Default for Collector {
 
 impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
@@ -462,7 +462,7 @@ impl Default for CollectorBuilder {
 
 impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
@@ -509,7 +509,7 @@ where
 
 impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
@@ -523,7 +523,7 @@ where
 
 impl<N, L, T, F, W> CollectorBuilder<N, format::Format<L, T>, F, W>
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Use the given [`timer`] for log message timestamps.
     ///
@@ -695,7 +695,7 @@ where
     /// See [`format::Compact`].
     pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
     where
-        N: for<'writer> FormatFields<'writer> + 'static,
+        N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -722,7 +722,7 @@ where
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
     where
-        N: for<'writer> FormatFields<'writer> + 'static,
+        N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -810,7 +810,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// ```
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W>
     where
-        N2: for<'writer> FormatFields<'writer> + 'static,
+        N2: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -970,7 +970,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
-        N: for<'writer> FormatFields<'writer> + 'static,
+        N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
         W: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {

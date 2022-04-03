@@ -108,7 +108,7 @@ fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
 
 struct SpanEventVisitor<'a>(&'a mut otel::Event);
 
-impl<'a> field::Visit for SpanEventVisitor<'a> {
+impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
@@ -201,7 +201,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for SpanAttributeVisitor<'a> {
+impl<'a> field::Visit<'_> for SpanAttributeVisitor<'a> {
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span

@@ -100,12 +100,12 @@ struct SerializableContext<'a, 'b, Span, N>(
 )
 where
     Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static;
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static;
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
 where
     Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -130,12 +130,12 @@ struct SerializableSpan<'a, 'b, Span, N>(
 )
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static;
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static;
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -196,7 +196,7 @@ where
 impl<C, N, T> FormatEvent<C, N> for Format<Json, T>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -345,9 +345,13 @@ impl Default for JsonFields {
     }
 }
 
-impl<'a> FormatFields<'a> for JsonFields {
+impl<'visit, 'writer> FormatFields<'visit, 'writer> for JsonFields {
     /// Format the provided `fields` to the provided `writer`, returning a result.
-    fn format_fields<R: RecordFields>(&self, mut writer: Writer<'_>, fields: R) -> fmt::Result {
+    fn format_fields<R: RecordFields<'visit>>(
+        &self,
+        mut writer: Writer<'_>,
+        fields: R,
+    ) -> fmt::Result {
         let mut v = JsonVisitor::new(&mut writer);
         fields.record(&mut v);
         v.finish()
@@ -360,8 +364,8 @@ impl<'a> FormatFields<'a> for JsonFields {
     /// required, the default implementation of this method can be overridden.
     fn add_fields(
         &self,
-        current: &'a mut FormattedFields<Self>,
-        fields: &Record<'_>,
+        current: &'writer mut FormattedFields<Self>,
+        fields: &Record<'visit>,
     ) -> fmt::Result {
         if current.is_empty() {
             // If there are no previously recorded fields, we can just reuse the
@@ -430,13 +434,13 @@ impl<'a> JsonVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitFmt for JsonVisitor<'a> {
+impl<'a> crate::field::VisitFmt<'_> for JsonVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
+impl<'a> crate::field::VisitOutput<'_, fmt::Result> for JsonVisitor<'a> {
     fn finish(self) -> fmt::Result {
         let inner = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(self.writer));
@@ -457,7 +461,7 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for JsonVisitor<'a> {
+impl<'a> field::Visit<'_> for JsonVisitor<'a> {
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values
