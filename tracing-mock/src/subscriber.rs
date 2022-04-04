@@ -798,10 +798,10 @@ impl MockSubscriber {
         }
 
         if let Some(exp_level) = expected.level() {
-            let actual_level = actual.metadata().level();
+            let actual_level = *actual.metadata().level();
             assert_eq!(
                 actual_level,
-                &exp_level,
+                exp_level,
                 "\n[{}] expected {} a span at {:?}\n\
                  [{}] but it was at {:?} instead (span {} {:?})",
                 self.name,
@@ -985,7 +985,9 @@ where
                     "[{}] exited span {:?}, but the current span was {:?}",
                     self.name,
                     span.name(),
-                    curr.as_ref().and_then(|id| cx.span(id)).map(|s| s.name())
+                    curr.as_ref()
+                        .and_then(|id| cx.span(id))
+                        .map(|s| s.name().to_owned())
                 );
             }
             Some(ex) => ex.bad(&self.name, format_args!("exited span {:?}", span.name())),

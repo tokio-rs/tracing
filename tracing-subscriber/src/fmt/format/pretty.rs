@@ -11,9 +11,6 @@ use tracing_core::{
     Collect, Event, Level,
 };
 
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
-
 use nu_ansi_term::{Color, Style};
 
 /// An excessively pretty, human-readable event formatter.
@@ -178,11 +175,6 @@ where
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(&mut writer, "  ")?;
 
@@ -468,9 +460,6 @@ impl<'a> field::Visit<'_> for PrettyVisitor<'a> {
         let bold = self.bold();
         match field.name() {
             "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => self.result = Ok(()),
             name if name.starts_with("r#") => self.write_padded(&format_args!(
                 "{}{}{}: {:?}",
                 bold.prefix(),

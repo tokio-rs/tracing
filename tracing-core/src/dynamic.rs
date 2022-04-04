@@ -271,7 +271,6 @@ macro_rules! __tracing_core_ensure_safe_name {
     };
 }
 
-#[macro_export]
 /// Construct [`Metadata`] used for [dynamic resolution][crate::dynamic].
 ///
 /// # Examples
@@ -358,6 +357,7 @@ macro_rules! __tracing_core_ensure_safe_name {
 /// $($field:ident,)*
 /// # } => {}}
 /// ```
+#[macro_export]
 macro_rules! dynamic_metadata {
     // === base case ===
     {@{

@@ -123,18 +123,10 @@
     unused_parens,
     while_true
 )]
-use once_cell::sync::Lazy;
 
-use std::{fmt, io};
+use std::io;
 
-use tracing_core::{
-    callsite::{self, Callsite},
-    collect, dispatch,
-    field::{self, Field, Visit},
-    identify_callsite,
-    metadata::{Kind, Level},
-    Event, Metadata,
-};
+use tracing_core::{dispatch, dynamic_metadata, field, Event, Metadata};
 
 #[cfg(feature = "log-tracer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
@@ -167,7 +159,7 @@ pub(crate) fn dispatch_record(record: &log::Record<'_>) {
             return;
         }
 
-        let (_, keys, meta) = loglevel_to_cs(record.level());
+        let (keys, meta) = level_to_meta(record.level());
 
         let log_module = record.module_path();
         let log_file = record.file();
@@ -179,12 +171,15 @@ pub(crate) fn dispatch_record(record: &log::Record<'_>) {
 
         dispatch.event(&Event::new(
             meta,
+            // The use of the normalized field set here is critical; it's what
+            // allows the Event to know to skip over them unless asked for.
             &meta.fields().value_set(&[
-                (&keys.message, Some(record.args() as &dyn field::Value)),
+                (&keys.name, Some(&"log event" as &dyn field::Value)),
                 (&keys.target, Some(&record.target())),
-                (&keys.module, module),
                 (&keys.file, file),
                 (&keys.line, line),
+                (&keys.module, module),
+                (&keys.message, Some(record.args())),
             ]),
         ));
     });
@@ -224,128 +219,113 @@ impl<'a> crate::sealed::Sealed for log::Metadata<'a> {}
 impl<'a> AsTrace for log::Metadata<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        let cs_id = identify_callsite!(loglevel_to_cs(self.level()).0);
+        let dynamic = level_to_meta(self.level()).1;
         Metadata::new(
-            "log record",
+            "log event",
             self.target(),
             self.level().as_trace(),
             None,
             None,
             None,
-            field::FieldSet::new(FIELD_NAMES, cs_id),
-            Kind::EVENT,
+            dynamic.fields(),
+            dynamic.kind().clone(),
         )
     }
 }
 
 struct Fields {
-    message: field::Field,
+    name: field::Field,
     target: field::Field,
-    module: field::Field,
     file: field::Field,
     line: field::Field,
+    module: field::Field,
+    message: field::Field,
 }
-
-static FIELD_NAMES: &[&str] = &[
-    "message",
-    "log.target",
-    "log.module_path",
-    "log.file",
-    "log.line",
-];
 
 impl Fields {
-    fn new(cs: &'static dyn Callsite) -> Self {
-        let fieldset = cs.metadata().fields();
-        let message = fieldset.field("message").unwrap();
-        let target = fieldset.field("log.target").unwrap();
-        let module = fieldset.field("log.module_path").unwrap();
-        let file = fieldset.field("log.file").unwrap();
-        let line = fieldset.field("log.line").unwrap();
+    fn new(meta: &Metadata<'_>) -> Self {
+        let mut fields = meta.fields_prenormal().iter();
+        let name = fields.next().unwrap();
+        let target = fields.next().unwrap();
+        let _level = fields.next().unwrap();
+        let file = fields.next().unwrap();
+        let line = fields.next().unwrap();
+        let module = fields.next().unwrap();
+        let message = fields.next().unwrap();
+        assert!(fields.next().is_none());
         Fields {
-            message,
+            name,
             target,
-            module,
             file,
             line,
+            module,
+            message,
         }
     }
 }
 
-macro_rules! log_cs {
-    ($level:expr, $cs:ident, $meta:ident, $ty:ident) => {
-        struct $ty;
-        static $cs: $ty = $ty;
-        static $meta: Metadata<'static> = Metadata::new(
-            "log event",
-            "log",
-            $level,
-            None,
-            None,
-            None,
-            field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
-            Kind::EVENT,
-        );
-
-        impl callsite::Callsite for $ty {
-            fn set_interest(&self, _: collect::Interest) {}
-            fn metadata(&self) -> &'static Metadata<'static> {
-                &$meta
-            }
+fn level_to_meta(level: log::Level) -> (Fields, &'static Metadata<'static>) {
+    match level {
+        log::Level::Trace => {
+            let meta = dynamic_metadata! {
+                name,
+                target: "log",
+                level: tracing_core::Level::TRACE,
+                file,
+                line,
+                module,
+                message,
+            };
+            (Fields::new(meta), meta)
         }
-    };
-}
-
-log_cs!(
-    tracing_core::Level::TRACE,
-    TRACE_CS,
-    TRACE_META,
-    TraceCallsite
-);
-log_cs!(
-    tracing_core::Level::DEBUG,
-    DEBUG_CS,
-    DEBUG_META,
-    DebugCallsite
-);
-log_cs!(tracing_core::Level::INFO, INFO_CS, INFO_META, InfoCallsite);
-log_cs!(tracing_core::Level::WARN, WARN_CS, WARN_META, WarnCallsite);
-log_cs!(
-    tracing_core::Level::ERROR,
-    ERROR_CS,
-    ERROR_META,
-    ErrorCallsite
-);
-
-static TRACE_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&TRACE_CS));
-static DEBUG_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&DEBUG_CS));
-static INFO_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&INFO_CS));
-static WARN_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&WARN_CS));
-static ERROR_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&ERROR_CS));
-
-fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
-    match level {
-        Level::TRACE => (&TRACE_CS, &*TRACE_FIELDS),
-        Level::DEBUG => (&DEBUG_CS, &*DEBUG_FIELDS),
-        Level::INFO => (&INFO_CS, &*INFO_FIELDS),
-        Level::WARN => (&WARN_CS, &*WARN_FIELDS),
-        Level::ERROR => (&ERROR_CS, &*ERROR_FIELDS),
-    }
-}
-
-fn loglevel_to_cs(
-    level: log::Level,
-) -> (
-    &'static dyn Callsite,
-    &'static Fields,
-    &'static Metadata<'static>,
-) {
-    match level {
-        log::Level::Trace => (&TRACE_CS, &*TRACE_FIELDS, &TRACE_META),
-        log::Level::Debug => (&DEBUG_CS, &*DEBUG_FIELDS, &DEBUG_META),
-        log::Level::Info => (&INFO_CS, &*INFO_FIELDS, &INFO_META),
-        log::Level::Warn => (&WARN_CS, &*WARN_FIELDS, &WARN_META),
-        log::Level::Error => (&ERROR_CS, &*ERROR_FIELDS, &ERROR_META),
+        log::Level::Debug => {
+            let meta = dynamic_metadata! {
+                name,
+                target: "log",
+                level: tracing_core::Level::DEBUG,
+                file,
+                line,
+                module,
+                message,
+            };
+            (Fields::new(meta), meta)
+        }
+        log::Level::Info => {
+            let meta = dynamic_metadata! {
+                name,
+                target: "log",
+                level: tracing_core::Level::INFO,
+                file,
+                line,
+                module,
+                message,
+            };
+            (Fields::new(meta), meta)
+        }
+        log::Level::Warn => {
+            let meta = dynamic_metadata! {
+                name,
+                target: "log",
+                level: tracing_core::Level::WARN,
+                file,
+                line,
+                module,
+                message,
+            };
+            (Fields::new(meta), meta)
+        }
+        log::Level::Error => {
+            let meta = dynamic_metadata! {
+                name,
+                target: "log",
+                level: tracing_core::Level::ERROR,
+                file,
+                line,
+                module,
+                message,
+            };
+            (Fields::new(meta), meta)
+        }
     }
 }
 
@@ -354,16 +334,16 @@ impl<'a> crate::sealed::Sealed for log::Record<'a> {}
 impl<'a> AsTrace for log::Record<'a> {
     type Trace = Metadata<'a>;
     fn as_trace(&self) -> Self::Trace {
-        let cs_id = identify_callsite!(loglevel_to_cs(self.level()).0);
+        let dynamic = level_to_meta(self.level()).1;
         Metadata::new(
-            "log record",
+            "log event",
             self.target(),
             self.level().as_trace(),
             self.file(),
             self.line(),
             self.module_path(),
-            field::FieldSet::new(FIELD_NAMES, cs_id),
-            Kind::EVENT,
+            dynamic.fields(),
+            dynamic.kind().clone(),
         )
     }
 }
@@ -432,105 +412,6 @@ impl AsLog for tracing_core::LevelFilter {
         }
     }
 }
-/// Extends log `Event`s to provide complete `Metadata`.
-///
-/// In `tracing-log`, an `Event` produced by a log (through [`AsTrace`]) has an hard coded
-/// "log" target and no `file`, `line`, or `module_path` attributes. This happens because `Event`
-/// requires its `Metadata` to be `'static`, while [`log::Record`]s provide them with a generic
-/// lifetime.
-///
-/// However, these values are stored in the `Event`'s fields and
-/// the [`normalized_metadata`] method allows to build a new `Metadata`
-/// that only lives as long as its source `Event`, but provides complete
-/// data.
-///
-/// It can typically be used by collectors when processing an `Event`,
-/// to allow accessing its complete metadata in a consistent way,
-/// regardless of the source of its source.
-///
-/// [`normalized_metadata`]: NormalizeEvent#normalized_metadata
-pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
-    /// If this `Event` comes from a `log`, this method provides a new
-    /// normalized `Metadata` which has all available attributes
-    /// from the original log, including `file`, `line`, `module_path`
-    /// and `target`.
-    /// Returns `None` is the `Event` is not issued from a `log`.
-    fn normalized_metadata(&'a self) -> Option<Metadata<'a>>;
-    /// Returns whether this `Event` represents a log (from the `log` crate)
-    fn is_log(&self) -> bool;
-}
-
-impl<'a> crate::sealed::Sealed for Event<'a> {}
-
-impl<'a> NormalizeEvent<'a> for Event<'a> {
-    fn normalized_metadata(&'a self) -> Option<Metadata<'a>> {
-        let original = self.metadata();
-        if self.is_log() {
-            let mut fields = LogVisitor::new(level_to_cs(*original.level()).1);
-            self.record(&mut fields);
-
-            Some(Metadata::new(
-                "log event",
-                fields.target.unwrap_or("log"),
-                *original.level(),
-                fields.file,
-                fields.line.map(|l| l as u32),
-                fields.module_path,
-                field::FieldSet::new(&["message"], original.callsite()),
-                Kind::EVENT,
-            ))
-        } else {
-            None
-        }
-    }
-
-    fn is_log(&self) -> bool {
-        self.metadata().callsite() == identify_callsite!(level_to_cs(*self.metadata().level()).0)
-    }
-}
-
-struct LogVisitor<'a> {
-    target: Option<&'a str>,
-    module_path: Option<&'a str>,
-    file: Option<&'a str>,
-    line: Option<u64>,
-    fields: &'static Fields,
-}
-
-impl<'a> LogVisitor<'a> {
-    // We don't actually _use_ the provided event argument; it is simply to
-    // ensure that the `LogVisitor` does not outlive the event whose fields it
-    // is visiting, so that the reference casts in `record_str` are safe.
-    fn new(fields: &'static Fields) -> Self {
-        Self {
-            target: None,
-            module_path: None,
-            file: None,
-            line: None,
-            fields,
-        }
-    }
-}
-
-impl<'a> Visit<'a> for LogVisitor<'a> {
-    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
-
-    fn record_u64(&mut self, field: &Field, value: u64) {
-        if field == &self.fields.line {
-            self.line = Some(value);
-        }
-    }
-
-    fn record_str(&mut self, field: &Field, value: &'a str) {
-        if field == &self.fields.file {
-            self.file = Some(value);
-        } else if field == &self.fields.target {
-            self.target = Some(value);
-        } else if field == &self.fields.module {
-            self.module_path = Some(value);
-        }
-    }
-}
 
 mod sealed {
     pub trait Sealed {}
@@ -551,8 +432,7 @@ mod test {
             .build();
 
         let meta = record.as_trace();
-        let (cs, _keys, _) = loglevel_to_cs(record.level());
-        let cs_meta = cs.metadata();
+        let (_keys, cs_meta) = level_to_meta(record.level());
         assert_eq!(
             meta.callsite(),
             cs_meta.callsite(),

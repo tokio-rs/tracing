@@ -944,7 +944,7 @@ where
             } else if self.log_internal_errors {
                 let err_msg = format!("Unable to format the following event. Name: {}; Fields: {:?}\n",
                     event.metadata().name(), event.fields());
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
+                let mut writer = self.make_writer.make_writer_for(&event.metadata());
                 let res = io::Write::write_all(&mut writer, err_msg.as_bytes());
                 if let Err(e) = res {
                     eprintln!("[tracing-subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);

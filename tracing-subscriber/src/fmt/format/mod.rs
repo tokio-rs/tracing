@@ -42,9 +42,6 @@ use tracing_core::{
     span, Collect, Event, Level,
 };
 
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
-
 #[cfg(feature = "ansi")]
 use nu_ansi_term::{Color, Style};
 
@@ -926,11 +923,6 @@ where
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
         // if the `Format` struct *also* has an ANSI color configuration,
@@ -1041,11 +1033,6 @@ where
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
         self.format_timestamp(&mut writer)?;
@@ -1234,9 +1221,6 @@ impl<'a> field::Visit<'_> for DefaultVisitor<'a> {
         self.maybe_pad();
         self.result = match field.name() {
             "message" => write!(self.writer, "{:?}", value),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => Ok(()),
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
