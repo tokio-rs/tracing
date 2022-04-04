@@ -9,8 +9,6 @@ use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::subscribe::Context;
 use tracing_subscriber::Subscribe;
@@ -115,9 +113,6 @@ impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     fn record_bool(&mut self, field: &field::Field, value: bool) {
         match field.name() {
             "message" => self.0.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -130,9 +125,6 @@ impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     fn record_f64(&mut self, field: &field::Field, value: f64) {
         match field.name() {
             "message" => self.0.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -145,9 +137,6 @@ impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     fn record_i64(&mut self, field: &field::Field, value: i64) {
         match field.name() {
             "message" => self.0.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.0.attributes.push(KeyValue::new(name, value));
             }
@@ -160,9 +149,6 @@ impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
             "message" => self.0.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.0
                     .attributes
@@ -178,9 +164,6 @@ impl<'a> field::Visit<'_> for SpanEventVisitor<'a> {
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
             "message" => self.0.name = format!("{:?}", value).into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.0
                     .attributes
@@ -546,11 +529,6 @@ where
         if let Some(span) = ctx.lookup_current() {
             // Performing read operations before getting a write lock to avoid a deadlock
             // See https://github.com/tokio-rs/tracing/issues/763
-            #[cfg(feature = "tracing-log")]
-            let normalized_meta = event.normalized_metadata();
-            #[cfg(feature = "tracing-log")]
-            let meta = normalized_meta.unwrap_or_else(|| event.metadata());
-            #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
 
             let target = Key::new("target").string(meta.target().to_owned());

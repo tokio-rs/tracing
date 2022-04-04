@@ -2,10 +2,10 @@ use std::sync::{Arc, Mutex};
 use tracing::collect::with_default;
 use tracing_core::span::{Attributes, Record};
 use tracing_core::{span, Collect, Event, Level, LevelFilter, Metadata};
-use tracing_log::{LogTracer, NormalizeEvent};
+use tracing_log::LogTracer;
 
 struct State {
-    last_normalized_metadata: Mutex<(bool, Option<OwnedMetadata>)>,
+    last_normalized_metadata: Mutex<Option<OwnedMetadata>>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -16,6 +16,19 @@ struct OwnedMetadata {
     module_path: Option<String>,
     file: Option<String>,
     line: Option<u32>,
+}
+
+impl From<Metadata<'_>> for OwnedMetadata {
+    fn from(meta: Metadata<'_>) -> Self {
+        Self {
+            name: meta.name().to_string(),
+            target: meta.target().to_string(),
+            level: *meta.level(),
+            module_path: meta.module_path().map(String::from),
+            file: meta.file().map(String::from),
+            line: meta.line(),
+        }
+    }
 }
 
 struct TestSubscriber(Arc<State>);
@@ -40,17 +53,7 @@ impl Collect for TestSubscriber {
 
     fn event(&self, event: &Event<'_>) {
         dbg!(event);
-        *self.0.last_normalized_metadata.lock().unwrap() = (
-            event.is_log(),
-            event.normalized_metadata().map(|normalized| OwnedMetadata {
-                name: normalized.name().to_string(),
-                target: normalized.target().to_string(),
-                level: *normalized.level(),
-                module_path: normalized.module_path().map(String::from),
-                file: normalized.file().map(String::from),
-                line: normalized.line(),
-            }),
-        )
+        *self.0.last_normalized_metadata.lock().unwrap() = Some(event.metadata().into());
     }
 
     fn enter(&self, _span: &span::Id) {}
@@ -66,7 +69,7 @@ impl Collect for TestSubscriber {
 fn normalized_metadata() {
     LogTracer::init().unwrap();
     let me = Arc::new(State {
-        last_normalized_metadata: Mutex::new((false, None)),
+        last_normalized_metadata: Mutex::new(None),
     });
     let state = me.clone();
 
@@ -80,15 +83,14 @@ fn normalized_metadata() {
         log::logger().log(&log);
         last(
             &state,
-            true,
-            Some(OwnedMetadata {
+            &OwnedMetadata {
                 name: "log event".to_string(),
                 target: "".to_string(),
                 level: Level::INFO,
                 module_path: None,
                 file: None,
                 line: None,
-            }),
+            },
         );
 
         let log = log::Record::builder()
@@ -102,26 +104,36 @@ fn normalized_metadata() {
         log::logger().log(&log);
         last(
             &state,
-            true,
-            Some(OwnedMetadata {
+            &OwnedMetadata {
                 name: "log event".to_string(),
                 target: "log_tracer_target".to_string(),
                 level: Level::INFO,
                 module_path: Some("log_tracer".to_string()),
                 file: Some("server.rs".to_string()),
                 line: Some(144),
-            }),
+            },
         );
 
         tracing::info!("test with a tracing info");
-        last(&state, false, None);
+        let line = line!() - 1;
+        let file = file!();
+        last(
+            &state,
+            &OwnedMetadata {
+                name: format!("event {file}:{line}"),
+                target: module_path!().to_string(),
+                level: Level::INFO,
+                module_path: Some(module_path!().to_string()),
+                file: Some(file.to_string()),
+                line: Some(line),
+            },
+        );
     })
 }
 
-fn last(state: &State, should_be_log: bool, expected: Option<OwnedMetadata>) {
+fn last(state: &State, expected: &OwnedMetadata) {
     let lock = state.last_normalized_metadata.lock().unwrap();
-    let (is_log, metadata) = &*lock;
+    let metadata = &*lock;
     dbg!(&metadata);
-    assert_eq!(dbg!(*is_log), should_be_log);
-    assert_eq!(metadata.as_ref(), expected.as_ref());
+    assert_eq!(metadata.as_ref(), Some(expected));
 }

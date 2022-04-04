@@ -20,9 +20,6 @@ use tracing_core::{
 };
 use tracing_serde::AsSerde;
 
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
-
 /// Marker for [`Format`] that indicates that the newline-delimited JSON log
 /// format should be used.
 ///
@@ -211,11 +208,6 @@ where
         let mut timestamp = String::new();
         self.timer.format_time(&mut Writer::new(&mut timestamp))?;
 
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
         let mut visit = || {
@@ -494,9 +486,6 @@ impl<'a> field::Visit<'_> for JsonVisitor<'a> {
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         match field.name() {
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name if name.starts_with("r#") => {
                 self.values
                     .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
