@@ -920,4 +920,12 @@ mod tests {
             [span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
         );
     }
+
+    #[test]
+    fn parse_empty_string() {
+        // There is no corresponding test for [`Builder::parse_lossy`] as failed
+        // parsing does not produce any observable side effects. If this test fails
+        // check that [`Builder::parse_lossy`] is behaving correctly as well.
+        assert!(EnvFilter::builder().parse("").is_ok());
+    }
 }
