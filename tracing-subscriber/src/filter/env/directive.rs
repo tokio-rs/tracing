@@ -107,45 +107,19 @@ impl Directive {
             .collect();
         (Dynamics::from_iter(dyns), statics)
     }
-}
 
-impl Match for Directive {
-    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
-        // Does this directive have a target filter, and does it match the
-        // metadata's target?
-        if let Some(ref target) = self.target {
-            if !meta.target().starts_with(&target[..]) {
-                return false;
+    pub(super) fn deregexify(&mut self) {
+        for field in &mut self.fields {
+            field.value = match field.value.take() {
+                Some(field::ValueMatch::Pat(pat)) => {
+                    Some(field::ValueMatch::Debug(pat.into_debug_match()))
+                }
+                x => x,
             }
         }
-
-        // Do we have a name filter, and does it match the metadata's name?
-        // TODO(eliza): put name globbing here?
-        if let Some(ref name) = self.in_span {
-            if name != meta.name() {
-                return false;
-            }
-        }
-
-        // Does the metadata define all the fields that this directive cares about?
-        let fields = meta.fields();
-        for field in &self.fields {
-            if fields.field(&field.name).is_none() {
-                return false;
-            }
-        }
-
-        true
     }
 
-    fn level(&self) -> &LevelFilter {
-        &self.level
-    }
-}
-
-impl FromStr for Directive {
-    type Err = ParseError;
-    fn from_str(from: &str) -> Result<Self, Self::Err> {
+    pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
                 r"(?x)
@@ -214,7 +188,7 @@ impl FromStr for Directive {
                     .map(|c| {
                         FIELD_FILTER_RE
                             .find_iter(c.as_str())
-                            .map(|c| c.as_str().parse())
+                            .map(|c| field::Match::parse(c.as_str(), regex))
                             .collect::<Result<Vec<_>, _>>()
                     })
                     .unwrap_or_else(|| Ok(Vec::new()));
@@ -228,12 +202,54 @@ impl FromStr for Directive {
             // Setting the target without the level enables every level for that target
             .unwrap_or(LevelFilter::TRACE);
 
-        Ok(Directive {
+        Ok(Self {
             level,
             target,
             in_span,
             fields: fields?,
         })
+    }
+}
+
+impl Match for Directive {
+    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !meta.target().starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        // Do we have a name filter, and does it match the metadata's name?
+        // TODO(eliza): put name globbing here?
+        if let Some(ref name) = self.in_span {
+            if name != meta.name() {
+                return false;
+            }
+        }
+
+        // Does the metadata define all the fields that this directive cares about?
+        let actual_fields = meta.fields();
+        for expected_field in &self.fields {
+            // Does the actual field set (from the metadata) contain this field?
+            if actual_fields.field(&expected_field.name).is_none() {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn level(&self) -> &LevelFilter {
+        &self.level
+    }
+}
+
+impl FromStr for Directive {
+    type Err = ParseError;
+    fn from_str(from: &str) -> Result<Self, Self::Err> {
+        Directive::parse(from, true)
     }
 }
 
