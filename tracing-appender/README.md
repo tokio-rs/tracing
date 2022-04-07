@@ -44,7 +44,7 @@ that can be used with _or_ without the non-blocking writer.
 
 Add the following to your `Cargo.toml`:
 ```toml
-tracing-appender = "0.1"
+tracing-appender = "0.2"
 ```
 
 This crate can be used in a few ways to record spans/events:
