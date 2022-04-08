@@ -133,16 +133,17 @@ impl Builder {
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// *ignoring* any that are invalid.
     pub fn parse_lossy<S: AsRef<str>>(&self, dirs: S) -> EnvFilter {
-        let directives =
-            dirs.as_ref()
-                .split(',')
-                .filter_map(|s| match Directive::parse(s, self.regex) {
-                    Ok(d) => Some(d),
-                    Err(err) => {
-                        eprintln!("ignoring `{}`: {}", s, err);
-                        None
-                    }
-                });
+        let directives = dirs
+            .as_ref()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .filter_map(|s| match Directive::parse(s, self.regex) {
+                Ok(d) => Some(d),
+                Err(err) => {
+                    eprintln!("ignoring `{}`: {}", s, err);
+                    None
+                }
+            });
         self.from_directives(directives)
     }
 
@@ -155,6 +156,7 @@ impl Builder {
         }
         let directives = dirs
             .split(',')
+            .filter(|s| !s.is_empty())
             .map(|s| Directive::parse(s, self.regex))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self.from_directives(directives))
@@ -184,6 +186,10 @@ impl Builder {
     }
 
     // TODO(eliza): consider making this a public API?
+    // Clippy doesn't love this naming, because it suggests that `from_` methods
+    // should not take a `Self`...but in this case, it's the `EnvFilter` that is
+    // being constructed "from" the directives, rather than the builder itself.
+    #[allow(clippy::wrong_self_convention)]
     pub(super) fn from_directives(
         &self,
         directives: impl IntoIterator<Item = Directive>,
