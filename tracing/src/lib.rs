@@ -1005,7 +1005,7 @@ pub mod __macro_support {
         /// without warning.
         pub const fn new(meta: &'static Metadata<'static>) -> Self {
             Self {
-                interest: AtomicUsize::new(0xDEADFACED),
+                interest: AtomicUsize::new(0xDEAD),
                 meta,
                 registration: Once::new(),
             }
