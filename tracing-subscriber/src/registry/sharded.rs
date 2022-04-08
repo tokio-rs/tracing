@@ -373,7 +373,7 @@ impl<'a> LookupSpan<'a> for Registry {
 // === impl CloseGuard ===
 
 impl<'a> CloseGuard<'a> {
-    pub(crate) fn is_closing(&mut self) {
+    pub(crate) fn set_closing(&mut self) {
         self.is_closing = true;
     }
 }
