@@ -5,7 +5,7 @@ use std::process::Command;
 use std::time::Duration;
 
 use serde::Deserialize;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, info_span, warn};
 use tracing_journald::Subscriber;
 use tracing_subscriber::subscribe::CollectExt;
 use tracing_subscriber::Registry;
@@ -16,9 +16,13 @@ fn journalctl_version() -> std::io::Result<String> {
 }
 
 fn with_journald(f: impl FnOnce()) {
+    with_journald_subscriber(Subscriber::new().unwrap().with_field_prefix(None), f)
+}
+
+fn with_journald_subscriber(subscriber: Subscriber, f: impl FnOnce()) {
     match journalctl_version() {
         Ok(_) => {
-            let sub = Registry::default().with(Subscriber::new().unwrap().with_field_prefix(None));
+            let sub = Registry::default().with(subscriber);
             tracing::collect::with_default(sub, f);
         }
         Err(error) => eprintln!(
@@ -32,7 +36,26 @@ fn with_journald(f: impl FnOnce()) {
 #[serde(untagged)]
 enum Field {
     Text(String),
+    Array(Vec<String>),
     Binary(Vec<u8>),
+}
+
+impl Field {
+    fn as_array(&self) -> Option<&[String]> {
+        match self {
+            Field::Text(_) => None,
+            Field::Binary(_) => None,
+            Field::Array(v) => Some(v),
+        }
+    }
+
+    fn as_text(&self) -> Option<&str> {
+        match self {
+            Field::Text(v) => Some(v.as_str()),
+            Field::Binary(_) => None,
+            Field::Array(_) => None,
+        }
+    }
 }
 
 // Convenience impls to compare fields against strings and bytes with assert_eq!
@@ -41,6 +64,7 @@ impl PartialEq<&str> for Field {
         match self {
             Field::Text(s) => s == other,
             Field::Binary(_) => false,
+            Field::Array(_) => false,
         }
     }
 }
@@ -50,6 +74,17 @@ impl PartialEq<[u8]> for Field {
         match self {
             Field::Text(s) => s.as_bytes() == other,
             Field::Binary(data) => data == other,
+            Field::Array(_) => false,
+        }
+    }
+}
+
+impl PartialEq<Vec<&str>> for Field {
+    fn eq(&self, other: &Vec<&str>) -> bool {
+        match self {
+            Field::Text(_) => false,
+            Field::Binary(_) => false,
+            Field::Array(data) => data == other,
         }
     }
 }
@@ -180,5 +215,96 @@ fn large_message() {
             format!("Message: {}", large_string).as_str()
         );
         assert_eq!(message["PRIORITY"], "6");
+    });
+}
+
+#[test]
+fn simple_metadata() {
+    let sub = Subscriber::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_syslog_identifier("test_ident".to_string());
+    with_journald_subscriber(sub, || {
+        info!(test.name = "simple_metadata", "Hello World");
+
+        let message = retry_read_one_line_from_journal("simple_metadata");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+        assert_eq!(message["SYSLOG_IDENTIFIER"], "test_ident");
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+    });
+}
+
+#[test]
+fn span_metadata() {
+    with_journald(|| {
+        let s1 = info_span!("span1", span_field1 = "foo1");
+        let _g1 = s1.enter();
+
+        info!(test.name = "span_metadata", "Hello World");
+
+        let message = retry_read_one_line_from_journal("span_metadata");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+
+        assert_eq!(message["SPAN_FIELD1"].as_text(), Some("foo1"));
+        assert_eq!(message["SPAN_NAME"].as_text(), Some("span1"));
+
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+
+        assert!(message["SPAN_CODE_FILE"].as_text().is_some());
+        assert!(message["SPAN_CODE_LINE"].as_text().is_some());
+    });
+}
+
+#[test]
+fn multiple_spans_metadata() {
+    with_journald(|| {
+        let s1 = info_span!("span1", span_field1 = "foo1");
+        let _g1 = s1.enter();
+        let s2 = info_span!("span2", span_field1 = "foo2");
+        let _g2 = s2.enter();
+
+        info!(test.name = "multiple_spans_metadata", "Hello World");
+
+        let message = retry_read_one_line_from_journal("multiple_spans_metadata");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+
+        assert_eq!(message["SPAN_FIELD1"], vec!["foo1", "foo2"]);
+        assert_eq!(message["SPAN_NAME"], vec!["span1", "span2"]);
+
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+
+        assert!(message.contains_key("SPAN_CODE_FILE"));
+        assert_eq!(message["SPAN_CODE_LINE"].as_array().unwrap().len(), 2);
+    });
+}
+
+#[test]
+fn spans_field_collision() {
+    with_journald(|| {
+        let s1 = info_span!("span1", span_field = "foo1");
+        let _g1 = s1.enter();
+        let s2 = info_span!("span2", span_field = "foo2");
+        let _g2 = s2.enter();
+
+        info!(
+            test.name = "spans_field_collision",
+            span_field = "foo3",
+            "Hello World"
+        );
+
+        let message = retry_read_one_line_from_journal("spans_field_collision");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["SPAN_NAME"], vec!["span1", "span2"]);
+
+        assert_eq!(message["SPAN_FIELD"], vec!["foo1", "foo2", "foo3"]);
     });
 }
