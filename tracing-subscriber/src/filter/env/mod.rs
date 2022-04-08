@@ -11,7 +11,7 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    layer::{self, Context, Layer},
+    layer::{Context, Layer},
     sync::RwLock,
 };
 use directive::ParseError;
@@ -227,6 +227,8 @@ impl EnvFilter {
     /// [`EnvFilter::from_default_env`]: #method.from_default_env
     /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
+
+    // === constructors, etc ===
 
     /// Returns a [builder] that can be used to configure a new [`EnvFilter`]
     /// instance.
@@ -460,44 +462,19 @@ impl EnvFilter {
         self
     }
 
-    fn cares_about_span(&self, span: &span::Id) -> bool {
-        let spans = try_lock!(self.by_id.read(), else return false);
-        spans.contains_key(span)
-    }
+    // === filtering methods ===
 
-    fn base_interest(&self) -> Interest {
-        if self.has_dynamics {
-            Interest::sometimes()
-        } else {
-            Interest::never()
-        }
-    }
-
-    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.has_dynamics && metadata.is_span() {
-            // If this metadata describes a span, first, check if there is a
-            // dynamic filter that should be constructed for it. If so, it
-            // should always be enabled, since it influences filtering.
-            if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
-                by_cs.insert(metadata.callsite(), matcher);
-                return Interest::always();
-            }
-        }
-
-        // Otherwise, check if any of our static filters enable this metadata.
-        if self.statics.enabled(metadata) {
-            Interest::always()
-        } else {
-            self.base_interest()
-        }
-    }
-
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+    /// Returns `true` if this `EnvFilter` would enable the provided `metadata`
+    /// in the current context.
+    ///
+    /// This is equivalent to calling the [`Layer::enabled`] or
+    /// [`Filter::enabled`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn enabled<S>(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
-        // if not, we can avoid the thread local access + iterating over the
+        // if not, we can avoid the thread loca'l access + iterating over the
         // spans in the current scope.
         if self.has_dynamics && self.dynamics.max_level >= *level {
             if metadata.is_span() {
@@ -537,7 +514,15 @@ impl EnvFilter {
         false
     }
 
-    fn max_level_hint(&self) -> Option<LevelFilter> {
+    /// Returns an optional hint of the highest [verbosity level][level] that
+    /// this `EnvFilter` will enable.
+    ///
+    /// This is equivalent to calling the [`Layer::max_level_hint`] or
+    /// [`Filter::max_level_hint`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    ///
+    /// [level]: tracing_core::metadata::Level
+    pub fn max_level_hint(&self) -> Option<LevelFilter> {
         if self.dynamics.has_value_filters() {
             // If we perform any filtering on span field *values*, we will
             // enable *all* spans, because their field values are not known
@@ -550,7 +535,12 @@ impl EnvFilter {
         )
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id) {
+    /// Informs the filter that a new span was created.
+    ///
+    /// This is equivalent to calling the [`Layer::on_new_span`] or
+    /// [`Filter::on_new_span`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_new_span<S>(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -558,7 +548,12 @@ impl EnvFilter {
         }
     }
 
-    fn on_enter(&self, id: &span::Id) {
+    /// Informs the filter that the span with the provided `id` was entered.
+    ///
+    /// This is equivalent to calling the [`Layer::on_enter`] or
+    /// [`Filter::on_enter`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_enter<S>(&self, id: &span::Id, _: Context<'_, S>) {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -567,13 +562,23 @@ impl EnvFilter {
         }
     }
 
-    fn on_exit(&self, id: &span::Id) {
+    /// Informs the filter that the span with the provided `id` was exited.
+    ///
+    /// This is equivalent to calling the [`Layer::on_exit`] or
+    /// [`Filter::on_exit`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_exit<S>(&self, id: &span::Id, _: Context<'_, S>) {
         if self.cares_about_span(id) {
             self.scope.get_or_default().borrow_mut().pop();
         }
     }
 
-    fn on_close(&self, id: span::Id) {
+    /// Informs the filter that the span with the provided `id` was closed.
+    ///
+    /// This is equivalent to calling the [`Layer::on_close`] or
+    /// [`Filter::on_close`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_close<S>(&self, id: span::Id, _: Context<'_, S>) {
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -581,6 +586,39 @@ impl EnvFilter {
 
         let mut spans = try_lock!(self.by_id.write());
         spans.remove(&id);
+    }
+
+    fn cares_about_span(&self, span: &span::Id) -> bool {
+        let spans = try_lock!(self.by_id.read(), else return false);
+        spans.contains_key(span)
+    }
+
+    fn base_interest(&self) -> Interest {
+        if self.has_dynamics {
+            Interest::sometimes()
+        } else {
+            Interest::never()
+        }
+    }
+
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        if self.has_dynamics && metadata.is_span() {
+            // If this metadata describes a span, first, check if there is a
+            // dynamic filter that should be constructed for it. If so, it
+            // should always be enabled, since it influences filtering.
+            if let Some(matcher) = self.dynamics.matcher(metadata) {
+                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
+                by_cs.insert(metadata.callsite(), matcher);
+                return Interest::always();
+            }
+        }
+
+        // Otherwise, check if any of our static filters enable this metadata.
+        if self.statics.enabled(metadata) {
+            Interest::always()
+        } else {
+            self.base_interest()
+        }
     }
 }
 
@@ -596,13 +634,13 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
-        self.enabled(metadata)
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        self.enabled(metadata, ctx)
     }
 
     #[inline]
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
-        self.on_new_span(attrs, id)
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        self.on_new_span(attrs, id, ctx)
     }
 
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
@@ -612,28 +650,29 @@ impl<S: Subscriber> Layer<S> for EnvFilter {
     }
 
     #[inline]
-    fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
-        self.on_enter(id);
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        self.on_enter(id, ctx);
     }
 
     #[inline]
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
-        self.on_exit(id);
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        self.on_exit(id, ctx);
     }
 
     #[inline]
-    fn on_close(&self, id: span::Id, _: Context<'_, S>) {
-        self.on_close(id);
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        self.on_close(id, ctx);
     }
 }
 
 feature! {
     #![all(feature = "registry", feature = "std")]
+    use crate::layer::Filter;
 
-    impl<S> layer::Filter<S> for EnvFilter {
+    impl<S> Filter<S> for EnvFilter {
         #[inline]
-        fn enabled(&self, meta: &Metadata<'_>, _: &Context<'_, S>) -> bool {
-            self.enabled(meta)
+        fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+            self.enabled(meta, ctx.clone())
         }
 
         #[inline]
@@ -647,23 +686,23 @@ feature! {
         }
 
         #[inline]
-        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
-            self.on_new_span(attrs, id)
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+            self.on_new_span(attrs, id, ctx)
         }
 
         #[inline]
-        fn on_enter(&self, id: &span::Id, _: Context<'_, S>) {
-            self.on_enter(id);
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.on_enter(id, ctx);
         }
 
         #[inline]
-        fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
-            self.on_exit(id);
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.on_exit(id, ctx);
         }
 
         #[inline]
-        fn on_close(&self, id: span::Id, _: Context<'_, S>) {
-            self.on_close(id);
+        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+            self.on_close(id, ctx);
         }
     }
 }
