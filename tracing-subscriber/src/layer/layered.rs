@@ -152,7 +152,7 @@ where
             #[cfg(all(feature = "registry", feature = "std"))]
             {
                 if let Some(g) = guard.as_mut() {
-                    g.is_closing()
+                    g.set_closing()
                 };
             }
 

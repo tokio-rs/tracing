@@ -184,6 +184,10 @@ impl Builder {
     }
 
     // TODO(eliza): consider making this a public API?
+    // Clippy doesn't love this naming, because it suggests that `from_` methods
+    // should not take a `Self`...but in this case, it's the `EnvFilter` that is
+    // being constructed "from" the directives, rather than the builder itself.
+    #[allow(clippy::wrong_self_convention)]
     pub(super) fn from_directives(
         &self,
         directives: impl IntoIterator<Item = Directive>,
