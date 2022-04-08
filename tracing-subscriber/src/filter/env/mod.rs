@@ -585,6 +585,18 @@ impl EnvFilter {
         spans.remove(&id);
     }
 
+    /// Informs the filter that the span with the provided `id` recorded the
+    /// provided field `values`.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_record`] or
+    /// [`Filter::on_record`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope
+    pub fn on_record<C>(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            span.record_update(values);
+        }
+    }
+
     fn cares_about_span(&self, span: &span::Id) -> bool {
         let spans = try_lock!(self.by_id.read(), else return false);
         spans.contains_key(span)
@@ -640,10 +652,9 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
         self.on_new_span(attrs, id, ctx)
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            span.record_update(values);
-        }
+    #[inline]
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+        self.on_record(id, values, ctx);
     }
 
     #[inline]
@@ -685,6 +696,11 @@ feature! {
         #[inline]
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
             self.on_new_span(attrs, id, ctx)
+        }
+
+        #[inline]
+        fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+            self.on_record(id, values, ctx);
         }
 
         #[inline]
