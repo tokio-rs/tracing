@@ -189,3 +189,12 @@ fn span_name_filter_is_dynamic() {
 
     finished.assert_finished();
 }
+
+#[test]
+fn method_name_resolution() {
+    #[allow(unused_imports)]
+    use tracing_subscriber::subscribe::{Filter, Subscribe};
+
+    let filter = EnvFilter::new("hello_world=info");
+    filter.max_level_hint();
+}
