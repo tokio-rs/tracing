@@ -11,7 +11,7 @@ mod field;
 
 use crate::{
     filter::LevelFilter,
-    subscribe::{self, Context, Subscribe},
+    subscribe::{Context, Subscribe},
     sync::RwLock,
 };
 use directive::ParseError;
@@ -664,8 +664,9 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
 
 feature! {
     #![all(feature = "registry", feature = "std")]
+    use crate::subscribe::Filter;
 
-    impl<C> subscribe::Filter<C> for EnvFilter {
+    impl<C> Filter<C> for EnvFilter {
         #[inline]
         fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
             self.enabled(meta, ctx.clone())
