@@ -1,3 +1,24 @@
+# 0.3.11 (Apr 9, 2022)
+
+This is a bugfix release for the `Filter` implementation for `EnvFilter` added
+in [v0.3.10].
+
+### Fixed
+
+- **env-filter**: Added missing `Filter::on_record` callback to `EnvFilter`'s
+  `Filter` impl ([#2058])
+- **env-filter**: Fixed method resolution issues when calling `EnvFilter`
+  methods with both the `Filter` and `Layer` traits in scope ([#2057])
+- **env-filter**: Fixed `EnvFilter::builder().parse()` and other parsing methods
+  returning an error when parsing an empty string ([#2052])
+
+Thanks to new contributor @Ma124 for contributing to this release!
+
+[v0.3.10]: https://github.com/tokio-rs/tracing/releases/tag/tracing-subscriber-0.3.10
+[#2058]: https://github.com/tokio-rs/tracing/pull/2058
+[#2057]: https://github.com/tokio-rs/tracing/pull/2057
+[#2052]: https://github.com/tokio-rs/tracing/pull/2052
+
 # 0.3.10 (Apr 1, 2022)
 
 This release adds several new features, including a `Filter` implementation and
