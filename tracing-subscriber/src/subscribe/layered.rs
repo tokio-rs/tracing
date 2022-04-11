@@ -138,11 +138,19 @@ where
         self.subscriber.on_follows_from(span, follows, self.ctx());
     }
 
-    fn event(&self, event: &Event<'_>) {
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
         if self.subscriber.event_enabled(event, self.ctx()) {
-            self.inner.event(event);
-            self.subscriber.on_event(event, self.ctx());
+            // if the outer subscriber enables the event, ask the inner collector.
+            self.inner.event_enabled(event)
+        } else {
+            // otherwise, the event is disabled by this subscriber
+            false
         }
+    }
+
+    fn event(&self, event: &Event<'_>) {
+        self.inner.event(event);
+        self.subscriber.on_event(event, self.ctx());
     }
 
     fn enter(&self, span: &span::Id) {
@@ -285,10 +293,10 @@ where
     #[inline]
     fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
         if self.subscriber.event_enabled(event, ctx.clone()) {
-            // if the outer subscriber enables the event, ask the inner subscriber.
+            // if the outer subscriber enables the event, ask the inner collector.
             self.inner.event_enabled(event, ctx)
         } else {
-            // otherwise, the callsite is disabled by this subscriber
+            // otherwise, the event is disabled by this subscriber
             false
         }
     }
