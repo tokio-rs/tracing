@@ -702,6 +702,11 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
+    }
+
+    #[inline]
     fn event(&self, event: &Event<'_>) {
         self.as_ref().event(event)
     }
@@ -770,6 +775,11 @@ impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
     #[inline]
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
     }
 
     #[inline]
