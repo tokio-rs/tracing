@@ -268,7 +268,7 @@
 //! more convenient, but [`Box::new`] may be used as well.
 //!
 //! When the number of `Layer`s varies at runtime, note that a
-//! [`Vec<L> where L: `Layer`` also implements `Layer`][vec-impl]. This
+//! [`Vec<L> where L: Layer` also implements `Layer`][vec-impl]. This
 //! can be used to add a variable number of `Layer`s to a `Subscriber`:
 //!
 //! ```
@@ -370,6 +370,7 @@
 //!
 //! [option-impl]: Layer#impl-Layer<S>-for-Option<L>
 //! [box-impl]: Layer#impl-Layer%3CS%3E-for-Box%3Cdyn%20Layer%3CS%3E%20+%20Send%20+%20Sync%3E
+//! [vec-impl]: Layer#impl-Layer<S>-for-Vec<L>
 //! [prelude]: crate::prelude
 //!
 //! # Recording Traces
