@@ -684,15 +684,10 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state
-                    .default
-                    .replace(Some(new_dispatch))
-                    // if the scoped default was not set on this thread, set the
-                    // `prior` default to the global default to populate the
-                    // scoped default when unsetting *this* default
-                    .unwrap_or_else(|| get_global().cloned().unwrap_or_else(Dispatch::none))
+                state.default.replace(Some(new_dispatch))
             })
-            .ok();
+            .ok()
+            .flatten();
         EXISTS.store(true, Ordering::Release);
         DefaultGuard(prior)
     }
@@ -734,15 +729,13 @@ impl<'a> Drop for Entered<'a> {
 impl Drop for DefaultGuard {
     #[inline]
     fn drop(&mut self) {
-        if let Some(dispatch) = self.0.take() {
-            // Replace the dispatcher and then drop the old one outside
-            // of the thread-local context. Dropping the dispatch may
-            // lead to the drop of a subscriber which, in the process,
-            // could then also attempt to access the same thread local
-            // state -- causing a clash.
-            let prev = CURRENT_STATE.try_with(|state| state.default.replace(Some(dispatch)));
-            drop(prev)
-        }
+        // Replace the dispatcher and then drop the old one outside
+        // of the thread-local context. Dropping the dispatch may
+        // lead to the drop of a subscriber which, in the process,
+        // could then also attempt to access the same thread local
+        // state -- causing a clash.
+        let prev = CURRENT_STATE.try_with(|state| state.default.replace(self.0.take()));
+        drop(prev)
     }
 }
 
