@@ -1097,7 +1097,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`][super::field::Field] for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -1107,7 +1107,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`][super::field::Field] or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where

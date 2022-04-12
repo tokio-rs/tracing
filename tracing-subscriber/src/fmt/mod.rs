@@ -163,7 +163,7 @@
 //!
 //! ### Composing Layers
 //!
-//! Composing an [`EnvFilter`] `Layer` and a [format `Layer`](../fmt/struct.Layer.html):
+//! Composing an [`EnvFilter`] `Layer` and a [format `Layer`][super::fmt::Layer]:
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
@@ -721,7 +721,7 @@ where
 
     /// Sets the subscriber being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::fmt::format::Json]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(
@@ -742,7 +742,7 @@ where
 impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json subscriber being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::fmt::format::Json]
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -756,7 +756,7 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::fmt::format::Json]
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -770,7 +770,7 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::fmt::format::Json]
     pub fn with_span_list(
         self,
         display_span_list: bool,

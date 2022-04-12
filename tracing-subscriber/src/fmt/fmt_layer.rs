@@ -74,7 +74,7 @@ pub struct Layer<
 }
 
 impl<S> Layer<S> {
-    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
+    /// Returns a new [`Layer`][self::Layer] with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
@@ -466,7 +466,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    /// Sets the layer being built to use a [less verbose formatter][super::format::Compact].
     pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -495,7 +495,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the layer being built to use a [JSON formatter][super::format::Json].
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -531,7 +531,7 @@ where
 impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -546,7 +546,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -561,7 +561,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets whether or not the formatter will include a list (from root to leaf)
     /// of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn with_span_list(
         self,
         display_span_list: bool,
