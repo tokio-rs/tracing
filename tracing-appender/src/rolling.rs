@@ -17,10 +17,10 @@
 //! will be created daily
 //! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
-//! [minutely]: fn.minutely.html
-//! [hourly]: fn.hourly.html
-//! [daily]: fn.daily.html
-//! [never]: fn.never.html
+//! [minutely]: self::minutely
+//! [hourly]: self::hourly
+//! [daily]: self::daily
+//! [never]: self::never
 //!
 //! # Examples
 //!
@@ -126,10 +126,10 @@ impl RollingFileAppender {
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never()]
     ///
-    /// [minutely]: fn.minutely.html
-    /// [hourly]: fn.hourly.html
-    /// [daily]: fn.daily.html
-    /// [never]: fn.never.html
+    /// [minutely]: self::minutely
+    /// [hourly]: self::hourly
+    /// [daily]: self::daily
+    /// [never]: self::never
     ///
     /// # Examples
     /// ```rust

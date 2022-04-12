@@ -157,13 +157,13 @@
 //! }
 //! ```
 //!
-//! [`SpanTrace`]: struct.SpanTrace.html
-//! [`ErrorLayer`]: struct.ErrorLayer.html
-//! [`TracedError`]: struct.TracedError.html
-//! [`InstrumentResult`]: trait.InstrumentResult.html
-//! [`InstrumentError`]: trait.InstrumentError.html
-//! [`ExtractSpanTrace`]: trait.ExtractSpanTrace.html
-//! [`in_current_span()`]: trait.InstrumentResult.html#tymethod.in_current_span
+//! [`SpanTrace`]: self::SpanTrace
+//! [`ErrorLayer`]: self::ErrorLayer
+//! [`TracedError`]: self::TracedError
+//! [`InstrumentResult`]: self::InstrumentResult
+//! [`InstrumentError`]: self::InstrumentError
+//! [`ExtractSpanTrace`]: self::ExtractSpanTrace
+//! [`in_current_span()`]: self::InstrumentResult#tymethod.in_current_span
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html

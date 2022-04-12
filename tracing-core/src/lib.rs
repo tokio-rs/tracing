@@ -104,16 +104,16 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: span/struct.Id.html
-//! [`Event`]: event/struct.Event.html
-//! [`Subscriber`]: subscriber/trait.Subscriber.html
-//! [`Metadata`]: metadata/struct.Metadata.html
-//! [`Callsite`]: callsite/trait.Callsite.html
-//! [`Field`]: field/struct.Field.html
-//! [`FieldSet`]: field/struct.FieldSet.html
-//! [`Value`]: field/trait.Value.html
-//! [`ValueSet`]: field/struct.ValueSet.html
-//! [`Dispatch`]: dispatcher/struct.Dispatch.html
+//! [`span::Id`]: self::span::Id
+//! [`Event`]: self::event::Event
+//! [`Subscriber`]: self::subscriber::Subscriber
+//! [`Metadata`]: self::metadata::Metadata
+//! [`Callsite`]: self::callsite::Callsite
+//! [`Field`]: self::field::Field
+//! [`FieldSet`]: self::field::FieldSet
+//! [`Value`]: self::field::Value
+//! [`ValueSet`]: self::field::ValueSet
+//! [`Dispatch`]: self::dispatcher::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.22")]
@@ -175,9 +175,9 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: callsite/struct.Identifier.html
-/// [`Callsite`]: callsite/trait.Callsite.html
-/// [`Callsite::id`]: callsite/trait.Callsite.html#method.id
+/// [`Identifier`]: self::callsite::Identifier
+/// [`Callsite`]: self::callsite::Callsite
+/// [`Callsite::id`]: self::callsite::Callsite::id
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -214,8 +214,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: metadata/struct.Metadata.html
-/// [`Metadata::new`]: metadata/struct.Metadata.html#method.new
+/// [metadata]: self::metadata::Metadata
+/// [`Metadata::new`]: self::metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (

@@ -208,7 +208,7 @@ impl log::Log for LogTracer {
 impl Builder {
     /// Returns a new `Builder` to construct a [`LogTracer`].
     ///
-    /// [`LogTracer`]: struct.LogTracer.html
+    /// [`LogTracer`]: self::LogTracer
     pub fn new() -> Self {
         Self::default()
     }

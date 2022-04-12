@@ -191,7 +191,7 @@ pub use pretty::*;
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
 /// [`ansi_term`]: https://crates.io/crates/ansi_term
 /// [`owo-colors`]: https://crates.io/crates/owo-colors
-/// [default formatter]: Full
+/// [default formatter]: self::Full
 pub trait FormatEvent<S, N>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -227,8 +227,8 @@ where
 /// time a span or event with fields is recorded, the subscriber will format
 /// those fields with its associated `FormatFields` implementation.
 ///
-/// [set of fields]: ../field/trait.RecordFields.html
-/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+/// [set of fields]: super::field::RecordFields
+/// [`FmtSubscriber`]: super::fmt::Subscriber
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided [`Writer`], returning a result.
     fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result;
@@ -281,7 +281,7 @@ pub fn json() -> Format<Json> {
 /// Returns a [`FormatFields`] implementation that formats fields using the
 /// provided function or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: self::FormatFields
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut Writer<'_>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -313,14 +313,14 @@ pub struct Writer<'writer> {
 /// A [`FormatFields`] implementation that formats fields by calling a function
 /// or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: self::FormatFields
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 /// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`FieldFn`]: struct.FieldFn.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: super::super::field::Visit
+/// [`FieldFn`]: self::FieldFn
+/// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
     writer: Writer<'a>,
@@ -1157,7 +1157,7 @@ where
 
 /// The default [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: self::FormatFields
 #[derive(Debug)]
 pub struct DefaultFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -1179,7 +1179,7 @@ pub struct DefaultVisitor<'a> {
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: trait.FormatFields.html
+    /// [`FormatFields`]: self::FormatFields
     pub fn new() -> Self {
         Self { _private: () }
     }

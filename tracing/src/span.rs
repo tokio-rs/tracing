@@ -24,7 +24,7 @@
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
 //!
-//! [`target`]: ../struct.Metadata.html#method.target
+//! [`target`]: super::Metadata::target
 //!
 //! For example:
 //! ```rust
@@ -315,7 +315,7 @@
 //! [`entered`]: Span::entered()
 //! [`in_scope`]: Span::in_scope()
 //! [`follows_from`]: Span::follows_from()
-//! [guard]: Entered
+//! [guard]: self::Entered
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 
@@ -381,7 +381,7 @@ pub(crate) struct Inner {
 ///
 /// This is returned by the [`Span::enter`] function.
 ///
-/// [`Span::enter`]: ../struct.Span.html#method.enter
+/// [`Span::enter`]: super::Span::enter
 #[derive(Debug)]
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
@@ -429,10 +429,10 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::metadata
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
@@ -454,9 +454,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
@@ -478,9 +478,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         meta: &'static Metadata<'static>,
@@ -544,7 +544,7 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Subscriber`]: ../subscriber/trait.Subscriber.html#method.current
+    /// [considered by the `Subscriber`]: super::subscriber::Subscriber::current
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -714,7 +714,7 @@ impl Span {
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: #method.in_scope
     /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
-    /// [attr]: ../../attr.instrument.html
+    /// [attr]: super::super::instrument
     ///
     /// # Examples
     ///
@@ -1183,8 +1183,8 @@ impl Span {
     /// span.record("parting", &"you will be remembered");
     /// ```
     ///
-    /// [`field::Empty`]: ../field/struct.Empty.html
-    /// [`Metadata`]: ../struct.Metadata.html
+    /// [`field::Empty`]: super::field::Empty
+    /// [`Metadata`]: super::Metadata
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,

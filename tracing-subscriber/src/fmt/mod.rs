@@ -18,7 +18,7 @@
 //!
 //! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
-//! [msrv]: ../index.html#supported-rust-versions
+//! [msrv]: super#supported-rust-versions
 //!
 //! Add the following to your executable to initialize the default subscriber:
 //! ```rust
@@ -181,11 +181,11 @@
 //!     .init();
 //! ```
 //!
-//! [`EnvFilter`]: ../filter/struct.EnvFilter.html
+//! [`EnvFilter`]: super::filter::EnvFilter
 //! [`env_logger`]: https://docs.rs/env_logger/
-//! [`filter`]: ../filter/index.html
-//! [`SubscriberBuilder`]: ./struct.SubscriberBuilder.html
-//! [`FmtSubscriber`]: ./struct.Subscriber.html
+//! [`filter`]: super::filter
+//! [`SubscriberBuilder`]: self::SubscriberBuilder
+//! [`FmtSubscriber`]: self::Subscriber
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -312,8 +312,8 @@ pub struct SubscriberBuilder<
 /// })
 /// ```
 ///
-/// [formatting subscriber]: Subscriber
-/// [`SubscriberBuilder::default()`]: struct.SubscriberBuilder.html#method.default
+/// [formatting subscriber]: self::Subscriber
+/// [`SubscriberBuilder::default()`]: self::SubscriberBuilder::default
 /// [`init`]: SubscriberBuilder::init()
 /// [`try_init`]: SubscriberBuilder::try_init()
 /// [`finish`]: SubscriberBuilder::finish()
@@ -327,9 +327,9 @@ pub fn fmt() -> SubscriberBuilder {
 ///
 /// This is a shorthand for the equivalent [`Layer::default()`] function.
 ///
-/// [formatting layer]: Layer
+/// [formatting layer]: self::Layer
 /// [composed]: crate::layer
-/// [`Layer::default()`]: struct.Layer.html#method.default
+/// [`Layer::default()`]: self::Layer::default
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn layer<S>() -> Layer<S> {
     Layer::default()
@@ -342,7 +342,7 @@ impl Subscriber {
     /// This can be overridden with the [`SubscriberBuilder::with_max_level`] method.
     ///
     /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
-    /// [`SubscriberBuilder::with_max_level`]: struct.SubscriberBuilder.html#method.with_max_level
+    /// [`SubscriberBuilder::with_max_level`]: self::SubscriberBuilder::with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
     /// Returns a new `SubscriberBuilder` for configuring a format subscriber.
@@ -892,7 +892,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .try_init()?;
     /// # Ok(())}
     /// ```
-    /// [`EnvFilter`]: ../filter/struct.EnvFilter.html
+    /// [`EnvFilter`]: super::filter::EnvFilter
     /// [`with_max_level`]: #method.with_max_level
     #[cfg(feature = "env-filter")]
     #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
@@ -1029,7 +1029,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: self::writer::TestWriter
     pub fn with_test_writer(self) -> SubscriberBuilder<N, E, F, TestWriter> {
         SubscriberBuilder {
             filter: self.filter,

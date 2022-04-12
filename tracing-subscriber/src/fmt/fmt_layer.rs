@@ -56,7 +56,7 @@ use tracing_core::{
 /// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Layer`]: super::layer::Layer
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
 pub struct Layer<
@@ -187,7 +187,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
 
     /// Borrows the [writer] for this [`Layer`].
     ///
-    /// [writer]: MakeWriter
+    /// [writer]: self::MakeWriter
     pub fn writer(&self) -> &W {
         &self.make_writer
     }
@@ -218,7 +218,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// # }
     /// ```
     ///
-    /// [writer]: MakeWriter
+    /// [writer]: self::MakeWriter
     pub fn writer_mut(&mut self) -> &mut W {
         &mut self.make_writer
     }
@@ -256,7 +256,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: self::writer::TestWriter
     pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
         Layer {
             fmt_fields: self.fmt_fields,
@@ -660,7 +660,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/struct.Extensions.html
+/// [extensions]: super::registry::Extensions
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
@@ -984,7 +984,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: super::registry::SpanRef
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -1007,7 +1007,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: super::registry::SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where
@@ -1028,7 +1028,7 @@ where
     /// the event has an explicit parent span, this will return that span. If
     /// the event does not have a parent span, this will return `None`.
     ///
-    /// [stored data]: SpanRef
+    /// [stored data]: self::SpanRef
     pub fn parent_span(&self) -> Option<SpanRef<'_, S>> {
         self.ctx.event_span(self.event)
     }
@@ -1103,7 +1103,7 @@ where
     /// The event formatter may use the returned field formatter to format the
     /// fields of any events it records.
     ///
-    /// [field formatter]: FormatFields
+    /// [field formatter]: self::FormatFields
     pub fn field_format(&self) -> &N {
         self.fmt_fields
     }

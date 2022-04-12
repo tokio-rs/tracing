@@ -123,11 +123,11 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: struct.Subscriber.html
-//! [`with_default`]: fn.with_default.html
-//! [`set_global_default`]: fn.set_global_default.html
-//! [`get_default`]: fn.get_default.html
-//! [`Dispatch`]: struct.Dispatch.html
+//! [`Subscriber`]: self::Subscriber
+//! [`with_default`]: self::with_default
+//! [`set_global_default`]: self::set_global_default
+//! [`get_default`]: self::get_default
+//! [`Dispatch`]: self::Dispatch
 use crate::{
     callsite, span,
     subscriber::{self, NoSubscriber, Subscriber},
@@ -151,7 +151,7 @@ use crate::stdlib::{
 
 /// `Dispatch` trace data to a [`Subscriber`].
 ///
-/// [`Subscriber`]: trait.Subscriber.html
+/// [`Subscriber`]: self::Subscriber
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
@@ -213,10 +213,10 @@ pub struct DefaultGuard(Option<Dispatch>);
 ///     <code>set_global_default</code></a> instead.
 /// </pre>
 ///
-/// [span]: ../span/index.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: ../event/struct.Event.html
-/// [`set_global_default`]: ../fn.set_global_default.html
+/// [span]: super::span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Event`]: super::event::Event
+/// [`set_global_default`]: super::set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
@@ -237,7 +237,7 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 ///     <code>set_global_default</code></a> instead.
 /// </pre>
 ///
-/// [`set_global_default`]: ../fn.set_global_default.html
+/// [`set_global_default`]: super::set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the dispatcher."]
@@ -261,9 +261,9 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 ///     executables that depend on the library try to set the default later.
 /// </pre></div>
 ///
-/// [span]: ../span/index.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: ../event/struct.Event.html
+/// [span]: super::span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
     // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
     // `current`—now the prior value—has been returned in the `Ok()` branch.
@@ -319,7 +319,7 @@ impl error::Error for SetGlobalDefaultError {}
 /// called while inside of another `get_default`, that closure will be provided
 /// with `Dispatch::none` rather than the previously set dispatcher.
 ///
-/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+/// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(feature = "std")]
 pub fn get_default<T, F>(mut f: F) -> T
 where
@@ -342,7 +342,7 @@ where
 /// called while inside of another `get_default`, that closure will be provided
 /// with `Dispatch::none` rather than the previously set dispatcher.
 ///
-/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+/// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(feature = "std")]
 #[doc(hidden)]
 #[inline(never)]
@@ -357,7 +357,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
 
 /// Executes a closure with a reference to the current [dispatcher].
 ///
-/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+/// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(not(feature = "std"))]
 #[doc(hidden)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
@@ -367,7 +367,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
 
 /// Executes a closure with a reference to the current [dispatcher].
 ///
-/// [dispatcher]: ../dispatcher/struct.Dispatch.html
+/// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(not(feature = "std"))]
 pub fn get_default<T, F>(mut f: F) -> T
 where
@@ -406,7 +406,7 @@ impl Dispatch {
 
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
+    /// [`Subscriber`]: super::subscriber::Subscriber
     pub fn new<S>(subscriber: S) -> Self
     where
         S: Subscriber + Send + Sync + 'static,
@@ -428,8 +428,8 @@ impl Dispatch {
     /// This calls the [`register_callsite`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.register_callsite
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`register_callsite`]: super::subscriber::Subscriber::register_callsite
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
         self.subscriber.register_callsite(metadata)
@@ -442,9 +442,9 @@ impl Dispatch {
     /// This calls the [`max_level_hint`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [level]: ../struct.Level.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`register_callsite`]: ../subscriber/trait.Subscriber.html#method.max_level_hint
+    /// [level]: super::Level
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`register_callsite`]: super::subscriber::Subscriber::max_level_hint
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -457,9 +457,9 @@ impl Dispatch {
     /// This calls the [`new_span`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [ID]: ../span/struct.Id.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    /// [ID]: super::span::Id
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`new_span`]: super::subscriber::Subscriber::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
         self.subscriber.new_span(span)
@@ -470,8 +470,8 @@ impl Dispatch {
     /// This calls the [`record`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`record`]: ../subscriber/trait.Subscriber.html#method.record
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`record`]: super::subscriber::Subscriber::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
         self.subscriber.record(span, values)
@@ -483,8 +483,8 @@ impl Dispatch {
     /// This calls the [`record_follows_from`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`record_follows_from`]: ../subscriber/trait.Subscriber.html#method.record_follows_from
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`record_follows_from`]: super::subscriber::Subscriber::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.subscriber.record_follows_from(span, follows)
@@ -496,9 +496,9 @@ impl Dispatch {
     /// This calls the [`enabled`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [metadata]: ../metadata/struct.Metadata.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`enabled`]: ../subscriber/trait.Subscriber.html#method.enabled
+    /// [metadata]: super::metadata::Metadata
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`enabled`]: super::subscriber::Subscriber::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         self.subscriber.enabled(metadata)
@@ -509,9 +509,9 @@ impl Dispatch {
     /// This calls the [`event`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Event`]: ../event/struct.Event.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`event`]: ../subscriber/trait.Subscriber.html#method.event
+    /// [`Event`]: super::event::Event
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`event`]: super::subscriber::Subscriber::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         self.subscriber.event(event)
@@ -522,8 +522,8 @@ impl Dispatch {
     /// This calls the [`enter`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`enter`]: ../subscriber/trait.Subscriber.html#method.enter
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`enter`]: super::subscriber::Subscriber::enter
     pub fn enter(&self, span: &span::Id) {
         self.subscriber.enter(span);
     }
@@ -533,8 +533,8 @@ impl Dispatch {
     /// This calls the [`exit`] function on the [`Subscriber`] that this
     /// `Dispatch` forwards to.
     ///
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`exit`]: ../subscriber/trait.Subscriber.html#method.exit
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`exit`]: super::subscriber::Subscriber::exit
     pub fn exit(&self, span: &span::Id) {
         self.subscriber.exit(span);
     }
@@ -549,10 +549,10 @@ impl Dispatch {
     /// This calls the [`clone_span`] function on the `Subscriber` that this
     /// `Dispatch` forwards to.
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`clone_span`]: ../subscriber/trait.Subscriber.html#method.clone_span
-    /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    /// [span ID]: super::span::Id
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`clone_span`]: super::subscriber::Subscriber::clone_span
+    /// [`new_span`]: super::subscriber::Subscriber::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
         self.subscriber.clone_span(id)
@@ -575,10 +575,10 @@ impl Dispatch {
     ///     instead of this method.
     /// </pre>
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`drop_span`]: ../subscriber/trait.Subscriber.html#method.drop_span
-    /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    /// [span ID]: super::span::Id
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`drop_span`]: super::subscriber::Subscriber::drop_span
+    /// [`new_span`]: super::subscriber::Subscriber::new_span
     /// [`try_close`]: #method.try_close
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
@@ -598,10 +598,10 @@ impl Dispatch {
     /// This calls the [`try_close`] function on the [`Subscriber`] that this
     ///  `Dispatch` forwards to.
     ///
-    /// [span ID]: ../span/struct.Id.html
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [`try_close`]: ../subscriber/trait.Subscriber.html#method.try_close
-    /// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+    /// [span ID]: super::span::Id
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [`try_close`]: super::subscriber::Subscriber::try_close
+    /// [`new_span`]: super::subscriber::Subscriber::new_span
     pub fn try_close(&self, id: span::Id) -> bool {
         self.subscriber.try_close(id)
     }
@@ -611,7 +611,7 @@ impl Dispatch {
     /// This calls the [`current`] function on the `Subscriber` that this
     /// `Dispatch` forwards to.
     ///
-    /// [`current`]: ../subscriber/trait.Subscriber.html#method.current
+    /// [`current`]: super::subscriber::Subscriber::current
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber.current_span()
