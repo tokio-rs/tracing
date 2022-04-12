@@ -100,7 +100,7 @@
 //! [`record_value`]: Visit::record_value
 //! [`record_debug`]: Visit::record_debug
 //!
-//! [`Value`]: self::Value
+//! [`Value`]: Value
 //! [span]: super::span
 //! [`Event`]: super::event::Event
 //! [`Metadata`]: super::metadata::Metadata
@@ -109,8 +109,8 @@
 //! [`new_span`]: super::subscriber::Subscriber::new_span
 //! [`record`]: super::subscriber::Subscriber::record
 //! [`event`]:  super::subscriber::Subscriber::event
-//! [`Value::record`]: self::Value::record
-//! [`Visit`]: self::Visit
+//! [`Value::record`]: Value::record
+//! [`Visit`]: Visit
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
@@ -249,13 +249,13 @@ pub struct Iter {
 /// <code>std::error::Error</code> trait.
 /// </pre></div>
 ///
-/// [`Value`]: self::Value
-/// [recorded]: self::Value::record
+/// [`Value`]: Value
+/// [recorded]: Value::record
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [records an `Event`]: super::subscriber::Subscriber::event
 /// [set of `Value`s added to a `Span`]: super::subscriber::Subscriber::record
 /// [`Event`]: super::event::Event
-/// [`ValueSet`]: self::ValueSet
+/// [`ValueSet`]: ValueSet
 pub trait Visit {
     /// Visits an arbitrary type implementing the [`valuable`] crate's `Valuable` trait.
     ///
@@ -314,7 +314,7 @@ pub trait Visit {
 /// the [visitor] passed to their `record` method in order to indicate how
 /// their data should be recorded.
 ///
-/// [visitor]: self::Visit
+/// [visitor]: Visit
 pub trait Value: crate::sealed::Sealed {
     /// Visits this value with the given `Visitor`.
     fn record(&self, key: &Field, visitor: &mut dyn Visit);
@@ -881,7 +881,7 @@ impl<'a> ValueSet<'a> {
 
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
-    /// [visitor]: self::Visit
+    /// [visitor]: Visit
     pub fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {

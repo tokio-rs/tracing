@@ -65,12 +65,12 @@ use crate::stdlib::{
 ///   should override these functions together.
 ///
 /// [ID]: super::span::Id
-/// [`new_span`]: self::Subscriber::new_span
-/// [`register_callsite`]: self::Subscriber::register_callsite
-/// [`Interest`]: self::Interest
-/// [`enabled`]: self::Subscriber::enabled
-/// [`clone_span`]: self::Subscriber::clone_span
-/// [`try_close`]: self::Subscriber::try_close
+/// [`new_span`]: Subscriber::new_span
+/// [`register_callsite`]: Subscriber::register_callsite
+/// [`Interest`]: Interest
+/// [`enabled`]: Subscriber::enabled
+/// [`clone_span`]: Subscriber::clone_span
+/// [`try_close`]: Subscriber::try_close
 pub trait Subscriber: 'static {
     // === Span registry methods ==============================================
 
@@ -138,7 +138,7 @@ pub trait Subscriber: 'static {
     ///
     /// [filter]: #method.enabled
     /// [metadata]: super::metadata::Metadata
-    /// [`Interest`]: self::Interest
+    /// [`Interest`]: Interest
     /// [`enabled`]: #method.enabled
     /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
@@ -166,8 +166,8 @@ pub trait Subscriber: 'static {
     /// time that span or event occurs.
     ///
     /// [metadata]: super::metadata::Metadata
-    /// [interested]: self::Interest
-    /// [`Interest::sometimes`]: self::Interest::sometimes
+    /// [interested]: Interest
+    /// [`Interest::sometimes`]: Interest::sometimes
     /// [`register_callsite`]: #method.register_callsite
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
@@ -192,7 +192,7 @@ pub trait Subscriber: 'static {
     /// level changes.
     ///
     /// [level]: super::Level
-    /// [`Interest`]: self::Interest
+    /// [`Interest`]: Interest
     /// [rebuild]: super::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
@@ -345,7 +345,7 @@ pub trait Subscriber: 'static {
     /// what that means for the specified pointer.
     ///
     /// [span ID]: super::span::Id
-    /// [`try_close`]: self::Subscriber::try_close
+    /// [`try_close`]: Subscriber::try_close
     fn clone_span(&self, id: &span::Id) -> span::Id {
         id.clone()
     }
@@ -358,7 +358,7 @@ pub trait Subscriber: 'static {
     ///
     /// The default implementation of this function does nothing.
     ///
-    /// [`try_close`]: self::Subscriber::try_close
+    /// [`try_close`]: Subscriber::try_close
     #[deprecated(since = "0.1.2", note = "use `Subscriber::try_close` instead")]
     fn drop_span(&self, _id: span::Id) {}
 
@@ -396,8 +396,8 @@ pub trait Subscriber: 'static {
     /// was dropped due to a thread unwinding.
     ///
     /// [span ID]: super::span::Id
-    /// [`clone_span`]: self::Subscriber::clone_span
-    /// [`drop_span`]: self::Subscriber::drop_span
+    /// [`clone_span`]: Subscriber::clone_span
+    /// [`drop_span`]: Subscriber::drop_span
     fn try_close(&self, id: span::Id) -> bool {
         #[allow(deprecated)]
         self.drop_span(id);

@@ -55,7 +55,7 @@ use crate::stdlib::{
 /// [line number]: #method.line
 /// [module path]: #method.module
 /// [`Subscriber`]: super::subscriber::Subscriber
-/// [`id`]: self::Metadata::id
+/// [`id`]: Metadata::id
 /// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.

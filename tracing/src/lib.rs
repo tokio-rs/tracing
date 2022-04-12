@@ -434,13 +434,13 @@
 //! Specifying a formatted message in this manner does not allocate by default.
 //!
 //! [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
-//! [target]: self::Metadata::target
-//! [parent span]: self::span::Attributes::parent
-//! [determined contextually]: self::span::Attributes::is_contextual
+//! [target]: Metadata::target
+//! [parent span]: span::Attributes::parent
+//! [determined contextually]: span::Attributes::is_contextual
 //! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
 //! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
 //! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
-//! [`Empty`]: self::field::Empty
+//! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
 //!
@@ -454,19 +454,19 @@
 //! These are intended both as a shorthand, and for compatibility with the [`log`]
 //! crate (see the next section).
 //!
-//! [`span!`]: self::span!
-//! [`event!`]: self::event!
-//! [`trace!`]: self::trace!
-//! [`debug!`]: self::debug!
-//! [`info!`]: self::info!
-//! [`warn!`]: self::warn!
-//! [`error!`]: self::error!
-//! [`trace_span!`]: self::trace_span!
-//! [`debug_span!`]: self::debug_span!
-//! [`info_span!`]: self::info_span!
-//! [`warn_span!`]: self::warn_span!
-//! [`error_span!`]: self::error_span!
-//! [`Level`]: self::Level
+//! [`span!`]: span!
+//! [`event!`]: event!
+//! [`trace!`]: trace!
+//! [`debug!`]: debug!
+//! [`info!`]: info!
+//! [`warn!`]: warn!
+//! [`error!`]: error!
+//! [`trace_span!`]: trace_span!
+//! [`debug_span!`]: debug_span!
+//! [`info_span!`]: info_span!
+//! [`warn_span!`]: warn_span!
+//! [`error_span!`]: error_span!
+//! [`Level`]: Level
 //!
 //! ### For `log` Users
 //!
@@ -870,14 +870,14 @@
 //! [spans]: mod@span
 //! [`Span`]: span::Span
 //! [`in_scope`]: span::Span::in_scope
-//! [event]: self::Event
-//! [events]: self::Event
+//! [event]: Event
+//! [events]: Event
 //! [`Subscriber`]: subscriber::Subscriber
 //! [Subscriber::event]: subscriber::Subscriber::event
 //! [`enter`]: subscriber::Subscriber::enter
 //! [`exit`]: subscriber::Subscriber::exit
 //! [`enabled`]: subscriber::Subscriber::enabled
-//! [metadata]: self::Metadata
+//! [metadata]: Metadata
 //! [`field::display`]: field::display
 //! [`field::debug`]: field::debug
 //! [`set_global_default`]: subscriber::set_global_default
@@ -890,7 +890,7 @@
 //! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
-//! [static verbosity level]: self::level_filters#compile-time-filters
+//! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]

@@ -315,7 +315,7 @@
 //! [`entered`]: Span::entered()
 //! [`in_scope`]: Span::in_scope()
 //! [`follows_from`]: Span::follows_from()
-//! [guard]: self::Entered
+//! [guard]: Entered
 //! [parent]: #span-relationships
 pub use tracing_core::span::{Attributes, Id, Record};
 

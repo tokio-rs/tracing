@@ -208,7 +208,7 @@ impl log::Log for LogTracer {
 impl Builder {
     /// Returns a new `Builder` to construct a [`LogTracer`].
     ///
-    /// [`LogTracer`]: self::LogTracer
+    /// [`LogTracer`]: LogTracer
     pub fn new() -> Self {
         Self::default()
     }

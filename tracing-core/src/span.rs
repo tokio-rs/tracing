@@ -39,7 +39,7 @@ pub struct Record<'a> {
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
 /// [the `Subscriber` considers]: super::subscriber::Subscriber::current_span
-/// [`Id`]: self::Id
+/// [`Id`]: Id
 /// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {

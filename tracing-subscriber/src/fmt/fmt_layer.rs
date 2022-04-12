@@ -187,7 +187,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
 
     /// Borrows the [writer] for this [`Layer`].
     ///
-    /// [writer]: self::MakeWriter
+    /// [writer]: MakeWriter
     pub fn writer(&self) -> &W {
         &self.make_writer
     }
@@ -218,7 +218,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// # }
     /// ```
     ///
-    /// [writer]: self::MakeWriter
+    /// [writer]: MakeWriter
     pub fn writer_mut(&mut self) -> &mut W {
         &mut self.make_writer
     }
@@ -1028,7 +1028,7 @@ where
     /// the event has an explicit parent span, this will return that span. If
     /// the event does not have a parent span, this will return `None`.
     ///
-    /// [stored data]: self::SpanRef
+    /// [stored data]: SpanRef
     pub fn parent_span(&self) -> Option<SpanRef<'_, S>> {
         self.ctx.event_span(self.event)
     }
@@ -1103,7 +1103,7 @@ where
     /// The event formatter may use the returned field formatter to format the
     /// fields of any events it records.
     ///
-    /// [field formatter]: self::FormatFields
+    /// [field formatter]: FormatFields
     pub fn field_format(&self) -> &N {
         self.fmt_fields
     }

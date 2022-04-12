@@ -104,16 +104,16 @@
 //! long as doing so complies with this policy.
 //!
 //!
-//! [`span::Id`]: self::span::Id
-//! [`Event`]: self::event::Event
-//! [`Subscriber`]: self::subscriber::Subscriber
-//! [`Metadata`]: self::metadata::Metadata
-//! [`Callsite`]: self::callsite::Callsite
-//! [`Field`]: self::field::Field
-//! [`FieldSet`]: self::field::FieldSet
-//! [`Value`]: self::field::Value
-//! [`ValueSet`]: self::field::ValueSet
-//! [`Dispatch`]: self::dispatcher::Dispatch
+//! [`span::Id`]: span::Id
+//! [`Event`]: event::Event
+//! [`Subscriber`]: subscriber::Subscriber
+//! [`Metadata`]: metadata::Metadata
+//! [`Callsite`]: callsite::Callsite
+//! [`Field`]: field::Field
+//! [`FieldSet`]: field::FieldSet
+//! [`Value`]: field::Value
+//! [`ValueSet`]: field::ValueSet
+//! [`Dispatch`]: dispatcher::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
 #![doc(html_root_url = "https://docs.rs/tracing-core/0.1.22")]
@@ -174,8 +174,8 @@ extern crate alloc;
 /// # }
 /// ```
 ///
-/// [`Identifier`]: self::callsite::Identifier
-/// [`Callsite`]: self::callsite::Callsite
+/// [`Identifier`]: callsite::Identifier
+/// [`Callsite`]: callsite::Callsite
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {
@@ -212,8 +212,8 @@ macro_rules! identify_callsite {
 /// # }
 /// ```
 ///
-/// [metadata]: self::metadata::Metadata
-/// [`Metadata::new`]: self::metadata::Metadata::new
+/// [metadata]: metadata::Metadata
+/// [`Metadata::new`]: metadata::Metadata::new
 #[macro_export]
 macro_rules! metadata {
     (

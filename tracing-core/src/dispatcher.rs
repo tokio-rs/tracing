@@ -123,11 +123,11 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: self::Subscriber
-//! [`with_default`]: self::with_default
-//! [`set_global_default`]: self::set_global_default
-//! [`get_default`]: self::get_default
-//! [`Dispatch`]: self::Dispatch
+//! [`Subscriber`]: Subscriber
+//! [`with_default`]: with_default
+//! [`set_global_default`]: set_global_default
+//! [`get_default`]: get_default
+//! [`Dispatch`]: Dispatch
 use crate::{
     callsite, span,
     subscriber::{self, NoSubscriber, Subscriber},
@@ -151,7 +151,7 @@ use crate::stdlib::{
 
 /// `Dispatch` trace data to a [`Subscriber`].
 ///
-/// [`Subscriber`]: self::Subscriber
+/// [`Subscriber`]: Subscriber
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,

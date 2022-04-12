@@ -341,7 +341,7 @@ impl Default for Json {
 
 /// The JSON [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: self::FormatFields
+/// [`FormatFields`]: FormatFields
 #[derive(Debug)]
 pub struct JsonFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -352,7 +352,7 @@ pub struct JsonFields {
 impl JsonFields {
     /// Returns a new JSON [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: self::FormatFields
+    /// [`FormatFields`]: FormatFields
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -422,7 +422,7 @@ impl<'a> FormatFields<'a> for JsonFields {
 /// The [visitor] produced by [`JsonFields`]'s [`MakeVisitor`] implementation.
 ///
 /// [visitor]: crate::field::Visit
-/// [`JsonFields`]: self::JsonFields
+/// [`JsonFields`]: JsonFields
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
     values: BTreeMap<&'a str, serde_json::Value>,

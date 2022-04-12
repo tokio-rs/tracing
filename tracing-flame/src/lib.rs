@@ -91,8 +91,8 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
-//! [`FlameLayer`]: self::FlameLayer
-//! [`FlushGuard`]: self::FlushGuard
+//! [`FlameLayer`]: FlameLayer
+//! [`FlushGuard`]: FlushGuard
 //! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
 //!
 //! ## Supported Rust Versions
@@ -211,8 +211,8 @@ thread_local! {
 /// will flush the writer when it is dropped. If necessary, it can also be used to manually
 /// flush the writer.
 ///
-/// [`flush_on_drop`]: self::FlameLayer::flush_on_drop
-/// [`FlushGuard`]: self::FlushGuard
+/// [`flush_on_drop`]: FlameLayer::flush_on_drop
+/// [`FlushGuard`]: FlushGuard
 #[derive(Debug)]
 pub struct FlameLayer<S, W> {
     out: Arc<Mutex<W>>,

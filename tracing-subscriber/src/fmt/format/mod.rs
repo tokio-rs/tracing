@@ -191,7 +191,7 @@ pub use pretty::*;
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
 /// [`ansi_term`]: https://crates.io/crates/ansi_term
 /// [`owo-colors`]: https://crates.io/crates/owo-colors
-/// [default formatter]: self::Full
+/// [default formatter]: Full
 pub trait FormatEvent<S, N>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -281,7 +281,7 @@ pub fn json() -> Format<Json> {
 /// Returns a [`FormatFields`] implementation that formats fields using the
 /// provided function or closure.
 ///
-/// [`FormatFields`]: self::FormatFields
+/// [`FormatFields`]: FormatFields
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut Writer<'_>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -313,13 +313,13 @@ pub struct Writer<'writer> {
 /// A [`FormatFields`] implementation that formats fields by calling a function
 /// or closure.
 ///
-/// [`FormatFields`]: self::FormatFields
+/// [`FormatFields`]: FormatFields
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 /// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
 ///
 /// [visitor]: super::super::field::Visit
-/// [`FieldFn`]: self::FieldFn
+/// [`FieldFn`]: FieldFn
 /// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
@@ -1157,7 +1157,7 @@ where
 
 /// The default [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: self::FormatFields
+/// [`FormatFields`]: FormatFields
 #[derive(Debug)]
 pub struct DefaultFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -1179,7 +1179,7 @@ pub struct DefaultVisitor<'a> {
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: self::FormatFields
+    /// [`FormatFields`]: FormatFields
     pub fn new() -> Self {
         Self { _private: () }
     }

@@ -104,7 +104,7 @@ pub trait LookupSpan<'a> {
     /// capable of performing more sophisiticated queries.
     /// </pre>
     ///
-    /// [`SpanData`]: self::SpanData
+    /// [`SpanData`]: SpanData
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
@@ -116,8 +116,8 @@ pub trait LookupSpan<'a> {
     /// rather than the [`span_data`] method; while _implementors_ of this trait
     /// should only implement `span_data`.
     ///
-    /// [`SpanRef`]: self::SpanRef
-    /// [`SpanData`]: self::SpanData
+    /// [`SpanRef`]: SpanRef
+    /// [`SpanData`]: SpanData
     /// [`span_data`]: #method.span_data
     fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
@@ -208,8 +208,8 @@ pub trait SpanData<'a> {
 /// provides additional methods for querying the registry based on values from
 /// the span.
 ///
-/// [span data]: self::SpanData
-/// [registry]: self::LookupSpan
+/// [span data]: SpanData
+/// [registry]: LookupSpan
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,

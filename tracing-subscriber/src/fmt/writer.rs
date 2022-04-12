@@ -649,7 +649,7 @@ pub struct Tee<A, B> {
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`MutexGuard`]: https://doc.rust-lang.org/std/sync/struct.MutexGuard.html
 /// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
-/// [`MakeWriter`]: self::MakeWriter
+/// [`MakeWriter`]: MakeWriter
 #[derive(Debug)]
 pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 
@@ -734,7 +734,7 @@ impl<'a> MakeWriter<'a> for TestWriter {
 impl BoxMakeWriter {
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
-    /// [`MakeWriter`]: self::MakeWriter
+    /// [`MakeWriter`]: MakeWriter
     pub fn new<M>(make_writer: M) -> Self
     where
         M: for<'a> MakeWriter<'a> + Send + Sync + 'static,

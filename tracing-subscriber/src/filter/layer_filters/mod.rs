@@ -538,7 +538,7 @@ impl<L, F, S> Filtered<L, F, S> {
     /// # }
     /// ```
     ///
-    /// [subscriber]: self::Subscribe
+    /// [subscriber]: Subscribe
     pub fn inner_mut(&mut self) -> &mut L {
         &mut self.layer
     }

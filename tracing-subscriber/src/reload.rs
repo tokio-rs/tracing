@@ -52,7 +52,7 @@
 //! info!("This will be logged");
 //! ```
 //!
-//! [`Layer` type]: self::Layer
+//! [`Layer` type]: Layer
 //! [`Layer` trait]: super::layer::Layer
 use crate::layer;
 use crate::sync::RwLock;

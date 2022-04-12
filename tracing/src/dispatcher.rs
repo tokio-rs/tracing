@@ -123,10 +123,10 @@
 //! instrumentation.
 //!
 //! [`Subscriber`]: crate::Subscriber
-//! [`with_default`]: self::with_default
-//! [`set_global_default`]: self::set_global_default
-//! [`get_default`]: self::get_default
-//! [`Dispatch`]: self::Dispatch
+//! [`with_default`]: with_default
+//! [`set_global_default`]: set_global_default
+//! [`get_default`]: get_default
+//! [`Dispatch`]: Dispatch
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatcher::set_default;
