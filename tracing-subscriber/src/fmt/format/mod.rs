@@ -227,8 +227,8 @@ where
 /// time a span or event with fields is recorded, the subscriber will format
 /// those fields with its associated `FormatFields` implementation.
 ///
-/// [set of fields]: super::field::RecordFields
-/// [`FmtSubscriber`]: super::fmt::Subscriber
+/// [set of fields]: crate::field::RecordFields
+/// [`FmtSubscriber`]: super::Subscriber
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided [`Writer`], returning a result.
     fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result;

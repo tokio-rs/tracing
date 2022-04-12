@@ -639,7 +639,7 @@ impl LevelFilter {
     /// *enabled*.
     ///
     /// [`Level`]: super::Level
-    /// [`Subscriber`]: super::super::Subscriber
+    /// [`Subscriber`]: super::Subscriber
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {

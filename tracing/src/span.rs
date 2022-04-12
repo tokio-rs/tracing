@@ -429,7 +429,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: super::Metadata
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from
@@ -454,7 +454,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: super::Metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
@@ -478,7 +478,7 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: super::metadata
+    /// [metadata]: super::Metadata
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from
     pub fn child_of(
@@ -544,7 +544,8 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Subscriber`]: super::subscriber::Subscriber::current
+    /// [considered by the `Subscriber`]:
+    ///     super::subscriber::Subscriber::current_span
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -714,7 +715,7 @@ impl Span {
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: #method.in_scope
     /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
-    /// [attr]: super::super::instrument
+    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///

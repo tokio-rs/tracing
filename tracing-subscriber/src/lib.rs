@@ -152,7 +152,7 @@
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
 //! [`EnvFilter`]: self::filter::EnvFilter
-//! [`fmt`]: self::fmt
+//! [`fmt`]: mod@fmt
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`env_logger` crate]: https://crates.io/crates/env_logger

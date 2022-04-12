@@ -454,18 +454,18 @@
 //! These are intended both as a shorthand, and for compatibility with the [`log`]
 //! crate (see the next section).
 //!
-//! [`span!`]: self::span
-//! [`event!`]: self::event
-//! [`trace!`]: self::trace
-//! [`debug!`]: self::debug
-//! [`info!`]: self::info
-//! [`warn!`]: self::warn
-//! [`error!`]: self::error
-//! [`trace_span!`]: self::trace_span
-//! [`debug_span!`]: self::debug_span
-//! [`info_span!`]: self::info_span
-//! [`warn_span!`]: self::warn_span
-//! [`error_span!`]: self::error_span
+//! [`span!`]: self::span!
+//! [`event!`]: self::event!
+//! [`trace!`]: self::trace!
+//! [`debug!`]: self::debug!
+//! [`info!`]: self::info!
+//! [`warn!`]: self::warn!
+//! [`error!`]: self::error!
+//! [`trace_span!`]: self::trace_span!
+//! [`debug_span!`]: self::debug_span!
+//! [`info_span!`]: self::info_span!
+//! [`warn_span!`]: self::warn_span!
+//! [`error_span!`]: self::error_span!
 //! [`Level`]: self::Level
 //!
 //! ### For `log` Users

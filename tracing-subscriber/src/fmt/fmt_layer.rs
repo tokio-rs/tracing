@@ -256,7 +256,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: self::writer::TestWriter
+    /// [`TestWriter`]: super::writer::TestWriter
     pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
         Layer {
             fmt_fields: self.fmt_fields,
@@ -660,7 +660,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: super::registry::Extensions
+/// [extensions]: crate::registry::Extensions
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
@@ -984,7 +984,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -1007,7 +1007,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where

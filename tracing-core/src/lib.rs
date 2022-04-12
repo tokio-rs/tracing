@@ -150,8 +150,7 @@ extern crate alloc;
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
-/// This may be used in contexts, such as static initializers, where the
-/// [`Callsite::id`] function is not currently usable.
+/// This may be used in contexts such as static initializers.
 ///
 /// For example:
 /// ```rust
@@ -177,7 +176,6 @@ extern crate alloc;
 ///
 /// [`Identifier`]: self::callsite::Identifier
 /// [`Callsite`]: self::callsite::Callsite
-/// [`Callsite::id`]: self::callsite::Callsite::id
 #[macro_export]
 macro_rules! identify_callsite {
     ($callsite:expr) => {

@@ -25,10 +25,10 @@ use crate::{filter::FilterId, registry::Registry};
 /// }
 /// ```
 ///
-/// [`Layer`]: super::layer::Layer
+/// [`Layer`]: super::Layer
 /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
-/// [stored data]: super::registry::SpanRef
-/// [`LookupSpan`]: super::registry::LookupSpan
+/// [stored data]: crate::registry::SpanRef
+/// [`LookupSpan`]: crate::registry::LookupSpan
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
@@ -206,7 +206,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
@@ -251,7 +251,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
     where
@@ -333,7 +333,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -360,7 +360,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: super::registry::SpanRef
+    /// [stored data]: crate::registry::SpanRef
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,

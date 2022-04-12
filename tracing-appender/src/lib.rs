@@ -88,7 +88,7 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [non_blocking]: self::non_blocking
+//! [non_blocking]: mod@self::non_blocking
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
 //! [guard]: self::non_blocking::WorkerGuard
 //! [rolling]: self::rolling
@@ -166,7 +166,7 @@ pub(crate) mod sync;
 ///
 /// See the [`non_blocking` module's docs][non_blocking]'s for more details.
 ///
-/// [non_blocking]: self::non_blocking
+/// [non_blocking]: mod@self::non_blocking
 ///
 /// # Examples
 ///

@@ -122,7 +122,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: self::Subscriber
+//! [`Subscriber`]: crate::Subscriber
 //! [`with_default`]: self::with_default
 //! [`set_global_default`]: self::set_global_default
 //! [`get_default`]: self::get_default

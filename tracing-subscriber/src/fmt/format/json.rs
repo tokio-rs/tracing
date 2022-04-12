@@ -421,9 +421,9 @@ impl<'a> FormatFields<'a> for JsonFields {
 
 /// The [visitor] produced by [`JsonFields`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: super::super::field::Visit
+/// [visitor]: crate::field::Visit
 /// [`JsonFields`]: self::JsonFields
-/// [`MakeVisitor`]: super::super::field::MakeVisitor
+/// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
     values: BTreeMap<&'a str, serde_json::Value>,
     writer: &'a mut dyn Write,

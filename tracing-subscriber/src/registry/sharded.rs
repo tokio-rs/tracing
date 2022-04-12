@@ -103,7 +103,7 @@ pub struct Registry {
 /// be stored in the [extensions] typemap.
 ///
 /// [`Registry`]: self::Registry
-/// [`Layer`s]: super::layer::Layer
+/// [`Layer`s]: crate::layer::Layer
 /// [extensions]: self::Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]

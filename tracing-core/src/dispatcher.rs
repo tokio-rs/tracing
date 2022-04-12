@@ -611,7 +611,7 @@ impl Dispatch {
     /// This calls the [`current`] function on the `Subscriber` that this
     /// `Dispatch` forwards to.
     ///
-    /// [`current`]: super::subscriber::Subscriber::current
+    /// [`current`]: super::subscriber::Subscriber::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
         self.subscriber.current_span()

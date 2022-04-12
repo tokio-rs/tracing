@@ -793,7 +793,7 @@ where
     /// with `Layer`s.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Context`]: super::Context
+    /// [`Context`]: Context
     /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
     /// [`Layer::register_callsite`]: #method.register_callsite
     /// [`on_event`]: #method.on_event
