@@ -1138,8 +1138,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
 ///
 /// [`LogTracer`]:
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
-/// [`RUST_LOG` environment variable]:
-///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
+/// [`RUST_LOG` environment variable]: crate::filter::EnvFilter::DEFAULT_ENV
 pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let builder = Subscriber::builder();
 
@@ -1195,8 +1194,7 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 /// Panics if the initialization was unsuccessful, likely because a
 /// global subscriber was already installed by another call to `try_init`.
 ///
-/// [`RUST_LOG` environment variable]:
-///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
+/// [`RUST_LOG` environment variable]: crate::filter::EnvFilter::DEFAULT_ENV
 pub fn init() {
     try_init().expect("Unable to install global subscriber")
 }
