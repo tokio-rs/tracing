@@ -1,3 +1,27 @@
+# 0.1.25 (April 12, 2022)
+
+This release adds additional `Value` implementations for `std::error::Error`
+trait objects with auto trait bounds (`Send` and `Sync`), as Rust will not
+auto-coerce trait objects. Additionally, it fixes a bug when setting scoped
+dispatchers that was introduced in the previous release ([v0.1.24]).
+
+### Added
+
+- `Value` implementations for `dyn Error + Send + 'static`, `dyn Error + Send +
+  Sync + 'static`, `dyn Error + Sync + 'static` ([#2066])
+
+### Fixed
+
+- Failure to use the global default dispatcher if a thread has set a scoped
+  default prior to setting the global default, and unset the scoped default
+  after setting the global default ([#2065])
+
+Thanks to @lilyball for contributing to this release!
+
+[v0.1.24]: https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.24
+[#2066]: https://github.com/tokio-rs/tracing/pull/2066
+[#2065]: https://github.com/tokio-rs/tracing/pull/2065
+
 # 0.1.24 (April 1, 2022)
 
 This release fixes a bug where setting `NoSubscriber` as the local default would
