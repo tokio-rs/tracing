@@ -19,5 +19,4 @@ fn async_block_is_send() {
     })
 }
 
-
 fn assert_send<F: Future + Send>(_f: F) {}
