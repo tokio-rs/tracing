@@ -1,4 +1,8 @@
-use std::future::{self, Future};
+// These tests reproduce the following issues:
+// - https://github.com/tokio-rs/tracing/issues/1487
+// - https://github.com/tokio-rs/tracing/issues/1793
+
+use core::future::{self, Future};
 #[test]
 fn async_fn_is_send() {
     async fn some_async_fn() {
