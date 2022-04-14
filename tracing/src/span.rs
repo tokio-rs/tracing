@@ -570,7 +570,11 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            span.log(
+                target,
+                level_to_log!(*meta.level()),
+                format_args!("++ {}{}", meta.name(), crate::log::LogValueSet(attrs.values())),
+            );
         }}
 
         span
@@ -1220,7 +1224,11 @@ impl Span {
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(
+                    target,
+                    level_to_log!(*_meta.level()),
+                    format_args!("{}{}", _meta.name(), crate::log::LogValueSet(values)),
+                );
             }}
         }
 
@@ -1580,38 +1588,6 @@ const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 ///
 /// Trivially safe, as `PhantomNotSend` doesn't have any API.
 unsafe impl Sync for PhantomNotSend {}
-
-#[cfg(feature = "log")]
-struct FmtValues<'a>(&'a Record<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
-
-#[cfg(feature = "log")]
-struct FmtAttrs<'a>(&'a Attributes<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
 
 #[cfg(test)]
 mod test {

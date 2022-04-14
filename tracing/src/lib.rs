@@ -941,10 +941,6 @@
     while_true
 )]
 
-#[cfg(feature = "log")]
-#[doc(hidden)]
-pub use log;
-
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
 #[allow(unused_imports)]
@@ -1096,25 +1092,62 @@ pub mod __macro_support {
             &self,
             logger: &'static dyn log::Log,
             log_meta: log::Metadata<'_>,
-            values: &tracing_core::ValueSet<'_>,
+            values: &tracing_core::field::ValueSet<'_>,
         ) {
-            use tracing_core::field::{Field, ValueSet, Visit};
+            let meta = self.metadata();
+            logger.log(
+                &crate::log::Record::builder()
+                    .file(meta.file())
+                    .module_path(meta.module_path())
+                    .line(meta.line())
+                    .metadata(log_meta)
+                    .args(format_args!("{}", crate::log::LogValueSet(values)))
+                    .build(),
+            );
+        }
+    }
 
-            /// Utility to format [`ValueSet`] for logging.
-            struct LogValueSet<'a>(&'a ValueSet<'a>);
+    impl Callsite for MacroCallsite {
+        fn set_interest(&self, interest: Interest) {
+            let interest = match () {
+                _ if interest.is_never() => 0,
+                _ if interest.is_always() => 2,
+                _ => 1,
+            };
+            self.interest.store(interest, Ordering::SeqCst);
+        }
 
-            impl<'a> fmt::Display for LogValueSet<'a> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    let mut visit = LogVisitor {
-                        f,
-                        is_first: true,
-                        result: Ok(()),
-                    };
-                    self.0.record(&mut visit);
-                    visit.result
-                }
-            }
+        #[inline(always)]
+        fn metadata(&self) -> &Metadata<'static> {
+            self.meta
+        }
+    }
 
+    impl fmt::Debug for MacroCallsite {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("MacroCallsite")
+                .field("interest", &self.interest)
+                .field("meta", &self.meta)
+                .field("register", &self.register)
+                .field("registration", &self.registration)
+                .finish()
+        }
+    }
+}
+
+#[cfg(feature = "log")]
+#[doc(hidden)]
+pub mod log {
+    use core::fmt;
+    pub use log::*;
+    use tracing_core::field::{Field, ValueSet, Visit};
+
+    /// Utility to format [`ValueSet`]s for logging.
+    pub(crate) struct LogValueSet<'a>(pub(crate) &'a ValueSet<'a>);
+
+    impl<'a> fmt::Display for LogValueSet<'a> {
+        #[inline]
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             struct LogVisitor<'a, 'b> {
                 f: &'a mut fmt::Formatter<'b>,
                 is_first: bool,
@@ -1147,43 +1180,13 @@ pub mod __macro_support {
                 }
             }
 
-            let meta = self.metadata();
-            logger.log(
-                &log::Record::builder()
-                    .file(meta.file())
-                    .module_path(meta.module_path())
-                    .line(meta.line())
-                    .metadata(log_meta)
-                    .args(format_args!("{}", LogValueSet(values)))
-                    .build(),
-            );
-        }
-    }
-
-    impl Callsite for MacroCallsite {
-        fn set_interest(&self, interest: Interest) {
-            let interest = match () {
-                _ if interest.is_never() => 0,
-                _ if interest.is_always() => 2,
-                _ => 1,
+            let mut visit = LogVisitor {
+                f,
+                is_first: true,
+                result: Ok(()),
             };
-            self.interest.store(interest, Ordering::SeqCst);
-        }
-
-        #[inline(always)]
-        fn metadata(&self) -> &Metadata<'static> {
-            self.meta
-        }
-    }
-
-    impl fmt::Debug for MacroCallsite {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_struct("MacroCallsite")
-                .field("interest", &self.interest)
-                .field("meta", &self.meta)
-                .field("register", &self.register)
-                .field("registration", &self.registration)
-                .finish()
+            self.0.record(&mut visit);
+            visit.result
         }
     }
 }
