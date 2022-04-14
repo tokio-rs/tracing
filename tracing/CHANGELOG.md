@@ -1,3 +1,22 @@
+# 0.1.34 (April 14, 2022)
+
+This release includes bug fixes for the "log" support feature and for the use of
+both scoped and global default dispatchers in the same program.
+
+### Fixed
+
+- Failure to use the global default dispatcher when a thread sets a local
+  default dispatcher before the global default is set ([#2065])
+- **log**: Compilation errors due to `async` block/fn futures becoming `!Send`
+  when the "log" feature flag is enabled ([#2073])
+- Broken links in documentation ([#2068])
+
+Thanks to @ben0x539 for contributing to this release!
+
+[#2065]: https://github.com/tokio-rs/tracing/pull/2065
+[#2073]: https://github.com/tokio-rs/tracing/pull/2073
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+
 # 0.1.33 (April 9, 2022)
 
 This release adds new `span_enabled!` and `event_enabled!` variants of the
