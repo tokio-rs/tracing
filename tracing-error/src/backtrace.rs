@@ -54,11 +54,11 @@ use tracing::{Metadata, Span};
 /// be used to visit each span in the trace, formatting them in order.
 ///
 /// [`tracing`]: https://docs.rs/tracing
-/// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
+/// [`Backtrace`]: std::backtrace::Backtrace
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [parents]: https://docs.rs/tracing/latest/tracing/span/index.html#span-relationships
 /// [fields]: https://docs.rs/tracing/latest/tracing/field/index.html
-/// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
+/// [futures]: std::future::Future
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
 /// [`with_spans`]: SpanTrace::with_spans()
 #[derive(Clone)]

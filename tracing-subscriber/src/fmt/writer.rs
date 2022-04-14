@@ -1,6 +1,6 @@
 //! Abstractions for creating [`io::Write`] instances.
 //!
-//! [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [`io::Write`]: std::io::Write
 use std::{
     fmt,
     io::{self, Write},
@@ -96,7 +96,7 @@ use tracing_core::Metadata;
 pub trait MakeWriter<'a> {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
-    /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+    /// [`io::Write`]: std::io::Write
     /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
@@ -505,9 +505,9 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
 /// [`fmt::Layer`]: super::Layer
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
-/// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
-/// [`io::stderr`]: https://doc.rust-lang.org/std/io/fn.stderr.html
-/// [`print!`]: https://doc.rust-lang.org/std/macro.print.html
+/// [`io::stdout`]: std::io::stdout
+/// [`io::stderr`]: std::io::stderr
+/// [`print!`]: std::print!
 #[derive(Default, Debug)]
 pub struct TestWriter {
     _p: (),
@@ -646,9 +646,9 @@ pub struct Tee<A, B> {
 /// requires the `Writer` type to implement [`io::Write`], it's necessary to add
 /// a newtype that forwards the trait implementation.
 ///
-/// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-/// [`MutexGuard`]: https://doc.rust-lang.org/std/sync/struct.MutexGuard.html
-/// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
+/// [`io::Write`]: std::io::Write
+/// [`MutexGuard`]: std::sync::MutexGuard
+/// [`Mutex`]: std::sync::Mutex
 #[derive(Debug)]
 pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 

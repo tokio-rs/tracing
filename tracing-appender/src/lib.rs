@@ -89,7 +89,7 @@
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
 //! [non_blocking]: mod@non_blocking
-//! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
+//! [write]: std::io::Write
 //! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 //! [rolling_struct]: rolling::RollingFileAppender

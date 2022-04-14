@@ -163,7 +163,7 @@
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 //! [`tracing`]: https://docs.rs/tracing
-//! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+//! [`std::error::Error`]: std::error::Error
 //!
 //! ## Supported Rust Versions
 //!
