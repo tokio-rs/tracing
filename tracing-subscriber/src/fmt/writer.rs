@@ -97,7 +97,7 @@ pub trait MakeWriter<'a> {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
     /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
-    /// [`make_writer`]: #tymethod.make_writer
+    /// [`make_writer`]: MakeWriter::make_writer
     type Writer: io::Write;
 
     /// Returns an instance of [`Writer`].
@@ -109,7 +109,7 @@ pub trait MakeWriter<'a> {
     /// creating a [`io::Write`] instance is expensive, be sure to cache it when implementing
     /// [`MakeWriter`] to improve performance.
     ///
-    /// [`Writer`]: #associatedtype.Writer
+    /// [`Writer`]: MakeWriter::Writer
     /// [`fmt::Layer`]: crate::fmt::Layer
     /// [`fmt::Subscriber`]: crate::fmt::Subscriber
     /// [`io::Write`]: std::io::Write
@@ -649,7 +649,6 @@ pub struct Tee<A, B> {
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`MutexGuard`]: https://doc.rust-lang.org/std/sync/struct.MutexGuard.html
 /// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
-/// [`MakeWriter`]: MakeWriter
 #[derive(Debug)]
 pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 
@@ -734,7 +733,6 @@ impl<'a> MakeWriter<'a> for TestWriter {
 impl BoxMakeWriter {
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
-    /// [`MakeWriter`]: MakeWriter
     pub fn new<M>(make_writer: M) -> Self
     where
         M: for<'a> MakeWriter<'a> + Send + Sync + 'static,

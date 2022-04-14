@@ -67,7 +67,6 @@ use crate::stdlib::{
 /// [ID]: super::span::Id
 /// [`new_span`]: Subscriber::new_span
 /// [`register_callsite`]: Subscriber::register_callsite
-/// [`Interest`]: Interest
 /// [`enabled`]: Subscriber::enabled
 /// [`clone_span`]: Subscriber::clone_span
 /// [`try_close`]: Subscriber::try_close
@@ -136,10 +135,9 @@ pub trait Subscriber: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another subscriber expressed interest in it.
     ///
-    /// [filter]: #method.enabled
+    /// [filter]: Subscriber::enabled()
     /// [metadata]: super::metadata::Metadata
-    /// [`Interest`]: Interest
-    /// [`enabled`]: #method.enabled
+    /// [`enabled`]: Subscriber::enabled()
     /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
@@ -168,7 +166,7 @@ pub trait Subscriber: 'static {
     /// [metadata]: super::metadata::Metadata
     /// [interested]: Interest
     /// [`Interest::sometimes`]: Interest::sometimes
-    /// [`register_callsite`]: #method.register_callsite
+    /// [`register_callsite`]: Subscriber::register_callsite()
     fn enabled(&self, metadata: &Metadata<'_>) -> bool;
 
     /// Returns the highest [verbosity level][level] that this `Subscriber` will
@@ -192,7 +190,6 @@ pub trait Subscriber: 'static {
     /// level changes.
     ///
     /// [level]: super::Level
-    /// [`Interest`]: Interest
     /// [rebuild]: super::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None

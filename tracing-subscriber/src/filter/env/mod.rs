@@ -224,8 +224,8 @@ impl EnvFilter {
     /// `RUST_LOG` is the default environment variable used by
     /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`EnvFilter::from_default_env`]: #method.from_default_env
-    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
+    /// [`EnvFilter::from_default_env`]: EnvFilter::from_default_env()
+    /// [`EnvFilter::try_from_default_env`]: EnvFilter::try_from_default_env()
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     // === constructors, etc ===

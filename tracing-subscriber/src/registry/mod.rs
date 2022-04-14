@@ -104,7 +104,6 @@ pub trait LookupSpan<'a> {
     /// capable of performing more sophisiticated queries.
     /// </pre>
     ///
-    /// [`SpanData`]: SpanData
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
@@ -116,9 +115,7 @@ pub trait LookupSpan<'a> {
     /// rather than the [`span_data`] method; while _implementors_ of this trait
     /// should only implement `span_data`.
     ///
-    /// [`SpanRef`]: SpanRef
-    /// [`SpanData`]: SpanData
-    /// [`span_data`]: #method.span_data
+    /// [`span_data`]: LookupSpan::span_data()
     fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
         Self: Sized,

@@ -713,7 +713,7 @@ impl Span {
     ///   ```
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-    /// [`Span::in_scope`]: #method.in_scope
+    /// [`Span::in_scope`]: Span::in_scope()
     /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
     /// [attr]: macro@crate::instrument
     ///
@@ -1230,7 +1230,7 @@ impl Span {
     ///
     /// See also [`is_none`].
     ///
-    /// [`is_none`]: #method.is_none
+    /// [`is_none`]: Span::is_none()
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
@@ -1244,8 +1244,8 @@ impl Span {
     /// rather than constructed by `Span::none`, this method will return
     /// `false`, while `is_disabled` will return `true`.
     ///
-    /// [`Span::none`]: #method.none
-    /// [`is_disabled`]: #method.is_disabled
+    /// [`Span::none`]: Span::none()
+    /// [`is_disabled`]: Span::is_disabled()
     #[inline]
     pub fn is_none(&self) -> bool {
         self.is_disabled() && self.meta.is_none()

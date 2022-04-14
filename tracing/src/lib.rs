@@ -466,7 +466,6 @@
 //! [`info_span!`]: info_span!
 //! [`warn_span!`]: warn_span!
 //! [`error_span!`]: error_span!
-//! [`Level`]: Level
 //!
 //! ### For `log` Users
 //!

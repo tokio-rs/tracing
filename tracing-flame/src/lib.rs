@@ -91,8 +91,6 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing
 //! [`inferno`]: https://docs.rs/inferno
-//! [`FlameLayer`]: FlameLayer
-//! [`FlushGuard`]: FlushGuard
 //! [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
 //!
 //! ## Supported Rust Versions
@@ -212,7 +210,6 @@ thread_local! {
 /// flush the writer.
 ///
 /// [`flush_on_drop`]: FlameLayer::flush_on_drop
-/// [`FlushGuard`]: FlushGuard
 #[derive(Debug)]
 pub struct FlameLayer<S, W> {
     out: Arc<Mutex<W>>,

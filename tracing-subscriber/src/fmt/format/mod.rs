@@ -281,7 +281,6 @@ pub fn json() -> Format<Json> {
 /// Returns a [`FormatFields`] implementation that formats fields using the
 /// provided function or closure.
 ///
-/// [`FormatFields`]: FormatFields
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut Writer<'_>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -313,13 +312,11 @@ pub struct Writer<'writer> {
 /// A [`FormatFields`] implementation that formats fields by calling a function
 /// or closure.
 ///
-/// [`FormatFields`]: FormatFields
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 /// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
 ///
 /// [visitor]: super::super::field::Visit
-/// [`FieldFn`]: FieldFn
 /// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
@@ -664,8 +661,6 @@ impl<F, T> Format<F, T> {
     ///
     /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
-    ///
-    /// [`Format::flatten_event`]: #method.flatten_event
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
@@ -1157,7 +1152,6 @@ where
 
 /// The default [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: FormatFields
 #[derive(Debug)]
 pub struct DefaultFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -1179,7 +1173,6 @@ pub struct DefaultVisitor<'a> {
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: FormatFields
     pub fn new() -> Self {
         Self { _private: () }
     }

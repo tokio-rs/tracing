@@ -753,11 +753,11 @@ where
     /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
     /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
     /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
-    /// [`self.enabled`]: #method.enabled
-    /// [`Layer::enabled`]: #method.enabled
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
+    /// [`self.enabled`]: Layer::enabled()
+    /// [`Layer::enabled`]: Layer::enabled()
+    /// [`on_event`]: Layer::on_event()
+    /// [`on_enter`]: Layer::on_enter()
+    /// [`on_exit`]: Layer::on_exit()
     /// [the trait-level documentation]: #filtering-with-layers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata, Context::none()) {
@@ -793,12 +793,11 @@ where
     /// with `Layer`s.
     ///
     /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Context`]: Context
     /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
-    /// [`Layer::register_callsite`]: #method.register_callsite
-    /// [`on_event`]: #method.on_event
-    /// [`on_enter`]: #method.on_enter
-    /// [`on_exit`]: #method.on_exit
+    /// [`Layer::register_callsite`]: Layer::register_callsite()
+    /// [`on_event`]: Layer::on_event()
+    /// [`on_enter`]: Layer::on_enter()
+    /// [`on_exit`]: Layer::on_exit()
     /// [the trait-level documentation]: #filtering-with-layers
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
         let _ = (metadata, ctx);

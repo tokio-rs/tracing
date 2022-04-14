@@ -157,12 +157,6 @@
 //! }
 //! ```
 //!
-//! [`SpanTrace`]: SpanTrace
-//! [`ErrorLayer`]: ErrorLayer
-//! [`TracedError`]: TracedError
-//! [`InstrumentResult`]: InstrumentResult
-//! [`InstrumentError`]: InstrumentError
-//! [`ExtractSpanTrace`]: ExtractSpanTrace
 //! [`in_current_span()`]: InstrumentResult#tymethod.in_current_span
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 //! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html

@@ -184,7 +184,6 @@
 //! [`EnvFilter`]: super::filter::EnvFilter
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: super::filter
-//! [`SubscriberBuilder`]: SubscriberBuilder
 //! [`FmtSubscriber`]: Subscriber
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
@@ -598,7 +597,7 @@ where
     /// `Layer`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [time]: SubscriberBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         SubscriberBuilder {
             inner: self.inner.with_span_events(kind),
@@ -893,7 +892,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// # Ok(())}
     /// ```
     /// [`EnvFilter`]: super::filter::EnvFilter
-    /// [`with_max_level`]: #method.with_max_level
+    /// [`with_max_level`]: SubscriberBuilder::with_max_level()
     #[cfg(feature = "env-filter")]
     #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
     pub fn with_env_filter(

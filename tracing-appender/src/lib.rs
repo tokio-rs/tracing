@@ -91,7 +91,6 @@
 //! [non_blocking]: mod@non_blocking
 //! [write]: https://doc.rust-lang.org/std/io/trait.Write.html
 //! [guard]: non_blocking::WorkerGuard
-//! [rolling]: rolling
 //! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 //! [rolling_struct]: rolling::RollingFileAppender
 //! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html

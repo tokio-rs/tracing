@@ -101,7 +101,7 @@ where
     ///
     /// [register]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.register_callsite
     /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
-    /// [`Context::enabled`]: #method.enabled
+    /// [`Context::enabled`]: Context::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         if let Some(subscriber) = self.subscriber {

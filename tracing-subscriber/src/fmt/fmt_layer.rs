@@ -393,7 +393,7 @@ where
     /// `Layer`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [time]: Layer::without_time()
     pub fn with_span_events(self, kind: FmtSpan) -> Self {
         Layer {
             fmt_span: self.fmt_span.with_kind(kind),
@@ -510,7 +510,7 @@ where
     /// - [`Layer::flatten_event`] can be used to enable flattening event fields into the root
     /// object.
     ///
-    /// [`Layer::flatten_event`]: #method.flatten_event
+    /// [`Layer::flatten_event`]: Layer::flatten_event()
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
