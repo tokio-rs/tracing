@@ -24,7 +24,7 @@
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
 //!
-//! [`target`]: ../struct.Metadata.html#method.target
+//! [`target`]: super::Metadata::target
 //!
 //! For example:
 //! ```rust
@@ -381,7 +381,7 @@ pub(crate) struct Inner {
 ///
 /// This is returned by the [`Span::enter`] function.
 ///
-/// [`Span::enter`]: ../struct.Span.html#method.enter
+/// [`Span::enter`]: super::Span::enter
 #[derive(Debug)]
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
@@ -429,10 +429,10 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
@@ -454,9 +454,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
@@ -478,9 +478,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         meta: &'static Metadata<'static>,
@@ -544,7 +544,8 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Subscriber`]: ../subscriber/trait.Subscriber.html#method.current
+    /// [considered by the `Subscriber`]:
+    ///     super::subscriber::Subscriber::current_span
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -714,7 +715,7 @@ impl Span {
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: #method.in_scope
     /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
-    /// [attr]: ../../attr.instrument.html
+    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///
@@ -1096,7 +1097,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`][super::field::Field] for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -1106,7 +1107,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`][super::field::Field] or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where
@@ -1183,8 +1184,8 @@ impl Span {
     /// span.record("parting", &"you will be remembered");
     /// ```
     ///
-    /// [`field::Empty`]: ../field/struct.Empty.html
-    /// [`Metadata`]: ../struct.Metadata.html
+    /// [`field::Empty`]: super::field::Empty
+    /// [`Metadata`]: super::Metadata
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,

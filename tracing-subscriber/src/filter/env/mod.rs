@@ -415,7 +415,7 @@ impl EnvFilter {
     /// and events as a previous filter, but sets a different level for those
     /// spans and events, the previous directive is overwritten.
     ///
-    /// [`LevelFilter`]: ../filter/struct.LevelFilter.html
+    /// [`LevelFilter`]: super::LevelFilter
     /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
     ///
     /// # Examples

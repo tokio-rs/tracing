@@ -41,7 +41,7 @@ impl<D, V> Delimited<D, V> {
     /// Returns a new [`MakeVisitor`] implementation that wraps `inner` so that
     /// it will format each visited field separated by the provided `delimiter`.
     ///
-    /// [`MakeVisitor`]: ../trait.MakeVisitor.html
+    /// [`MakeVisitor`]: super::MakeVisitor
     pub fn new(delimiter: D, inner: V) -> Self {
         Self { delimiter, inner }
     }

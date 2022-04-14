@@ -87,9 +87,9 @@ feature! {
 /// implement this trait; if they do, any [`Layer`]s wrapping them can look up
 /// metadata via the [`Context`] type's [`span()`] method.
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`Context`]: ../layer/struct.Context.html
-/// [`span()`]: ../layer/struct.Context.html#method.span
+/// [`Layer`]: super::layer::Layer
+/// [`Context`]: super::layer::Context
+/// [`span()`]: super::layer::Context::span
 pub trait LookupSpan<'a> {
     /// The type of span data stored in this registry.
     type Data: SpanData<'a>;
@@ -104,7 +104,7 @@ pub trait LookupSpan<'a> {
     /// capable of performing more sophisiticated queries.
     /// </pre>
     ///
-    /// [`SpanData`]: trait.SpanData.html
+    /// [`SpanData`]: SpanData
     fn span_data(&'a self, id: &Id) -> Option<Self::Data>;
 
     /// Returns a [`SpanRef`] for the span with the given `Id`, if it exists.
@@ -116,8 +116,8 @@ pub trait LookupSpan<'a> {
     /// rather than the [`span_data`] method; while _implementors_ of this trait
     /// should only implement `span_data`.
     ///
-    /// [`SpanRef`]: struct.SpanRef.html
-    /// [`SpanData`]: trait.SpanData.html
+    /// [`SpanRef`]: SpanRef
+    /// [`SpanData`]: SpanData
     /// [`span_data`]: #method.span_data
     fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
     where
@@ -208,8 +208,8 @@ pub trait SpanData<'a> {
 /// provides additional methods for querying the registry based on values from
 /// the span.
 ///
-/// [span data]: trait.SpanData.html
-/// [registry]: trait.LookupSpan.html
+/// [span data]: SpanData
+/// [registry]: LookupSpan
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,

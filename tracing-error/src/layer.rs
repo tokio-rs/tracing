@@ -16,7 +16,7 @@ use tracing_subscriber::{
 /// provided, the [default format] is used instead.
 ///
 /// [`Layer`]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/layer/trait.Layer.html
-/// [`SpanTrace`]: ../struct.SpanTrace.html
+/// [`SpanTrace`]: super::SpanTrace
 /// [field formatter]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/fmt/trait.FormatFields.html
 /// [default format]: https://docs.rs/tracing-subscriber/0.3/tracing_subscriber/fmt/format/struct.DefaultFields.html
 pub struct ErrorLayer<S, F = DefaultFields> {

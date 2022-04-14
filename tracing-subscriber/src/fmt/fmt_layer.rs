@@ -56,7 +56,7 @@ use tracing_core::{
 /// # tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
+/// [`Layer`]: super::layer::Layer
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
 pub struct Layer<
@@ -74,7 +74,7 @@ pub struct Layer<
 }
 
 impl<S> Layer<S> {
-    /// Returns a new [`Layer`](struct.Layer.html) with the default configuration.
+    /// Returns a new [`Layer`][self::Layer] with the default configuration.
     pub fn new() -> Self {
         Self::default()
     }
@@ -256,7 +256,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// ```
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
-    /// [`TestWriter`]: writer/struct.TestWriter.html
+    /// [`TestWriter`]: super::writer::TestWriter
     pub fn with_test_writer(self) -> Layer<S, N, E, TestWriter> {
         Layer {
             fmt_fields: self.fmt_fields,
@@ -466,7 +466,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [less verbose formatter](../fmt/format/struct.Compact.html).
+    /// Sets the layer being built to use a [less verbose formatter][super::format::Compact].
     pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -495,7 +495,7 @@ where
         }
     }
 
-    /// Sets the layer being built to use a [JSON formatter](../fmt/format/struct.Json.html).
+    /// Sets the layer being built to use a [JSON formatter][super::format::Json].
     ///
     /// The full format includes fields from all entered spans.
     ///
@@ -531,7 +531,7 @@ where
 impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -546,7 +546,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -561,7 +561,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     /// Sets whether or not the formatter will include a list (from root to leaf)
     /// of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][super::format::Json]
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -660,7 +660,7 @@ where
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
 ///
-/// [extensions]: ../registry/struct.Extensions.html
+/// [extensions]: crate::registry::Extensions
 #[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
@@ -984,7 +984,7 @@ where
     /// If this returns `None`, then no span exists for that ID (either it has
     /// closed or the ID is invalid).
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn span(&self, id: &Id) -> Option<SpanRef<'_, S>>
     where
@@ -1007,7 +1007,7 @@ where
     ///
     /// If this returns `None`, then we are not currently within a span.
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<SpanRef<'_, S>>
     where

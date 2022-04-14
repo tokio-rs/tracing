@@ -10,8 +10,8 @@ use crate::{field, Metadata};
 /// the [`new_span`] trait method. See the documentation for that method for
 /// more information on span ID generation.
 ///
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`new_span`]: ../subscriber/trait.Subscriber.html#method.new_span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`new_span`]: super::subscriber::Subscriber::new_span
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(NonZeroU64);
 
@@ -38,9 +38,9 @@ pub struct Record<'a> {
 /// - "none", indicating that the current context is known to not be in a span,
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
-/// [the `Subscriber` considers]: ../subscriber/trait.Subscriber.html#method.current_span
-/// [`Id`]: struct.Id.html
-/// [`Metadata`]: ../metadata/struct.Metadata.html
+/// [the `Subscriber` considers]: super::subscriber::Subscriber::current_span
+/// [`Id`]: Id
+/// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {
     inner: CurrentInner,
@@ -179,7 +179,7 @@ impl<'a> Attributes<'a> {
     /// Records all the fields in this set of `Attributes` with the provided
     /// [Visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.values.record(visitor)
     }
@@ -221,7 +221,7 @@ impl<'a> Record<'a> {
 
     /// Records all the fields in this `Record` with the provided [Visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.values.record(visitor)
     }

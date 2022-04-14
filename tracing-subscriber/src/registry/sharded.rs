@@ -102,9 +102,9 @@ pub struct Registry {
 /// [`Layer`s], such as formatted fields, metrics, or distributed traces should
 /// be stored in the [extensions] typemap.
 ///
-/// [`Registry`]: struct.Registry.html
-/// [`Layer`s]: ../layer/trait.Layer.html
-/// [extensions]: struct.Extensions.html
+/// [`Registry`]: Registry
+/// [`Layer`s]: crate::layer::Layer
+/// [extensions]: Extensions
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
@@ -173,7 +173,7 @@ fn id_to_idx(id: &Id) -> usize {
 ///    greater than 0, `CloseGuard` decrements the counter by one and
 ///    _does not_ remove the span from the [`Registry`].
 ///
-/// [`Registry`]: ./struct.Registry.html
+/// [`Registry`]: Registry
 pub(crate) struct CloseGuard<'a> {
     id: Id,
     registry: &'a Registry,
@@ -189,7 +189,7 @@ impl Registry {
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
     ///
-    /// [`CloseGuard`]: ./struct.CloseGuard.html
+    /// [`CloseGuard`]: CloseGuard
     pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
         CLOSE_COUNT.with(|count| {
             let c = count.get();
@@ -216,7 +216,7 @@ thread_local! {
     /// track how many layers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    /// [`CloseGuard`]: ./struct.CloseGuard.html
+    /// [`CloseGuard`]: CloseGuard
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 

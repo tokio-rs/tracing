@@ -227,8 +227,8 @@ where
 /// time a span or event with fields is recorded, the subscriber will format
 /// those fields with its associated `FormatFields` implementation.
 ///
-/// [set of fields]: ../field/trait.RecordFields.html
-/// [`FmtSubscriber`]: ../fmt/struct.Subscriber.html
+/// [set of fields]: crate::field::RecordFields
+/// [`FmtSubscriber`]: super::Subscriber
 pub trait FormatFields<'writer> {
     /// Format the provided `fields` to the provided [`Writer`], returning a result.
     fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result;
@@ -281,7 +281,7 @@ pub fn json() -> Format<Json> {
 /// Returns a [`FormatFields`] implementation that formats fields using the
 /// provided function or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: FormatFields
 pub fn debug_fn<F>(f: F) -> FieldFn<F>
 where
     F: Fn(&mut Writer<'_>, &Field, &dyn fmt::Debug) -> fmt::Result + Clone,
@@ -313,14 +313,14 @@ pub struct Writer<'writer> {
 /// A [`FormatFields`] implementation that formats fields by calling a function
 /// or closure.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: FormatFields
 #[derive(Debug, Clone)]
 pub struct FieldFn<F>(F);
 /// The [visitor] produced by [`FieldFn`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`FieldFn`]: struct.FieldFn.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: super::super::field::Visit
+/// [`FieldFn`]: FieldFn
+/// [`MakeVisitor`]: super::super::field::MakeVisitor
 pub struct FieldFnVisitor<'a, F> {
     f: F,
     writer: Writer<'a>,
@@ -855,7 +855,7 @@ impl<T> Format<Json, T> {
     /// ```ignore,json
     /// {"timestamp":"Feb 20 11:28:15.096","level":"INFO","target":"mycrate", "message":"some message", "key": "value"}
     /// ```
-    /// See [`Json`](../format/struct.Json.html).
+    /// See [`Json`][super::format::Json].
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
@@ -866,7 +866,7 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will include the current span in
     /// formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][Json]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json, T> {
@@ -877,7 +877,7 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will include a list (from root to
     /// leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`][Json]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json, T> {
@@ -1157,7 +1157,7 @@ where
 
 /// The default [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
+/// [`FormatFields`]: FormatFields
 #[derive(Debug)]
 pub struct DefaultFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -1179,7 +1179,7 @@ pub struct DefaultVisitor<'a> {
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: trait.FormatFields.html
+    /// [`FormatFields`]: FormatFields
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -1569,7 +1569,7 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 
 /// Configures what points in the span lifecycle are logged as events.
 ///
-/// See also [`with_span_events`](../struct.SubscriberBuilder.html#method.with_span_events).
+/// See also [`with_span_events`](super::SubscriberBuilder.html::with_span_events).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);
 

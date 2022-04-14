@@ -17,8 +17,8 @@ use crate::{field, Metadata};
 ///   associated with an event should be in the event's fields rather than in
 ///   the textual message, as the fields are more structured.
 ///
-/// [span]: ../span
-/// [fields]: ../field
+/// [span]: super::span
+/// [fields]: super::field
 #[derive(Debug)]
 pub struct Event<'a> {
     fields: &'a field::ValueSet<'a>,
@@ -81,7 +81,7 @@ impl<'a> Event<'a> {
 
     /// Visits all the fields on this `Event` with the specified [visitor].
     ///
-    /// [visitor]: ../field/trait.Visit.html
+    /// [visitor]: super::field::Visit
     #[inline]
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.fields.record(visitor);
@@ -94,7 +94,7 @@ impl<'a> Event<'a> {
 
     /// Returns [metadata] describing this `Event`.
     ///
-    /// [metadata]: ../struct.Metadata.html
+    /// [metadata]: super::Metadata
     pub fn metadata(&self) -> &'static Metadata<'static> {
         self.metadata
     }

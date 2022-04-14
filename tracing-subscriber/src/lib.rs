@@ -151,8 +151,8 @@
 //!
 //! [`tracing`]: https://docs.rs/tracing/latest/tracing/
 //! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [`EnvFilter`]: filter/struct.EnvFilter.html
-//! [`fmt`]: fmt/index.html
+//! [`EnvFilter`]: filter::EnvFilter
+//! [`fmt`]: mod@fmt
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`env_logger` crate]: https://crates.io/crates/env_logger

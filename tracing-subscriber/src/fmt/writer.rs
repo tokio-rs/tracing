@@ -501,8 +501,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
 ///
-/// [`fmt::Subscriber`]: ../struct.Subscriber.html
-/// [`fmt::Layer`]: ../struct.Layer.html
+/// [`fmt::Subscriber`]: super::Subscriber
+/// [`fmt::Layer`]: super::Layer
 /// [capturing]: https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
 /// [nocapture]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
 /// [`io::stdout`]: https://doc.rust-lang.org/std/io/fn.stdout.html
@@ -649,7 +649,7 @@ pub struct Tee<A, B> {
 /// [`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`MutexGuard`]: https://doc.rust-lang.org/std/sync/struct.MutexGuard.html
 /// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
-/// [`MakeWriter`]: trait.MakeWriter.html
+/// [`MakeWriter`]: MakeWriter
 #[derive(Debug)]
 pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 
@@ -734,7 +734,7 @@ impl<'a> MakeWriter<'a> for TestWriter {
 impl BoxMakeWriter {
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
-    /// [`MakeWriter`]: trait.MakeWriter.html
+    /// [`MakeWriter`]: MakeWriter
     pub fn new<M>(make_writer: M) -> Self
     where
         M: for<'a> MakeWriter<'a> + Send + Sync + 'static,

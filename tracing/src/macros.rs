@@ -3,7 +3,7 @@
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -138,10 +138,10 @@ macro_rules! span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -219,10 +219,10 @@ macro_rules! trace_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -300,10 +300,10 @@ macro_rules! debug_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -381,10 +381,10 @@ macro_rules! info_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -461,10 +461,10 @@ macro_rules! warn_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -543,7 +543,7 @@ macro_rules! error_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1049,8 +1049,8 @@ macro_rules! enabled {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1249,8 +1249,8 @@ macro_rules! trace {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1450,8 +1450,8 @@ macro_rules! debug {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1662,8 +1662,8 @@ macro_rules! info {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1867,8 +1867,8 @@ macro_rules! warn {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
