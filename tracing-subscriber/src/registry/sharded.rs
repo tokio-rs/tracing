@@ -75,16 +75,16 @@ use tracing_core::{
 /// the distributed tracing system. These IDs can be associated with
 /// `tracing` spans using [fields] and/or [stored span data].
 ///
-/// [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
-/// [slab]: https://docs.rs/crate/sharded-slab/
+/// [span IDs]: tracing_core::span::Id
+/// [slab]: sharded_slab
 /// [`Layer`]: crate::Layer
 /// [added]: crate::layer::Layer#composing-layers
 /// [extensions]: super::Extensions
 /// [closed]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
-/// [considered closed]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.try_close
+/// [considered closed]: tracing_core::subscriber::Subscriber::try_close()
 /// [`Span`]: https://docs.rs/tracing/latest/tracing/span/struct.Span.html
 /// [ot]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#spancontext
-/// [fields]: https://docs.rs/tracing-core/latest/tracing-core/field/index.html
+/// [fields]: tracing_core::field
 /// [stored span data]: crate::registry::SpanData::extensions_mut
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
@@ -114,10 +114,11 @@ pub struct Data<'a> {
 
 /// Stored data associated with a span.
 ///
-/// This type is pooled using `sharded_slab::Pool`; when a span is dropped, the
-/// `DataInner` entry at that span's slab index is cleared in place and reused
-/// by a future span. Thus, the `Default` and `sharded_slab::Clear`
-/// implementations for this type are load-bearing.
+/// This type is pooled using [`sharded_slab::Pool`]; when a span is
+/// dropped, the `DataInner` entry at that span's slab index is cleared
+/// in place and reused by a future span. Thus, the `Default` and
+/// [`sharded_slab::Clear`] implementations for this type are
+/// load-bearing.
 #[derive(Debug)]
 struct DataInner {
     filter_map: FilterMap,

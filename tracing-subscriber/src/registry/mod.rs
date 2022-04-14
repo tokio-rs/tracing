@@ -55,8 +55,7 @@
 //! require the root subscriber to be a registry.
 //!
 //! [`Layer`]: crate::layer::Layer
-//! [`Subscriber`]:
-//!     https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Subscriber`]: tracing_core::Subscriber
 //! [ctx]: crate::layer::Context
 //! [lookup]: crate::layer::Context::span()
 use tracing_core::{field::FieldSet, span::Id, Metadata};
@@ -357,7 +356,7 @@ where
 
     /// Returns a list of [fields] defined by the span.
     ///
-    /// [fields]: https://docs.rs/tracing-core/latest/tracing_core/field/index.html
+    /// [fields]: tracing_core::field
     pub fn fields(&self) -> &FieldSet {
         self.data.metadata().fields()
     }

@@ -149,8 +149,8 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Subscriber`]: tracing_core::subscriber::Subscriber
+//! [`tracing`]: https://docs.rs/tracing/latest/tracing
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`fmt`]: mod@fmt
 //! [`tracing-log`]: https://crates.io/crates/tracing-log

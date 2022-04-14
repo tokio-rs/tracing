@@ -8,9 +8,9 @@
 //! `tracing` events as `log` records, the ["log" and "log-always" feature
 //! flags][flags] on the `tracing` crate should be used instead.
 //!
-//! [`log`]: https://docs.rs/log/0.4.8/log/index.html
+//! [`log`]: log
 //! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
-//! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
+//! [`log::Record`]:log::Record
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![deprecated(
     since = "0.1.1",

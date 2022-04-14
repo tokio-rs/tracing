@@ -416,7 +416,7 @@ impl EnvFilter {
     /// spans and events, the previous directive is overwritten.
     ///
     /// [`LevelFilter`]: super::LevelFilter
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///

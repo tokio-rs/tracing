@@ -91,9 +91,9 @@
 //! [non_blocking]: mod@non_blocking
 //! [write]: std::io::Write
 //! [guard]: non_blocking::WorkerGuard
-//! [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+//! [make_writer]: tracing_subscriber::fmt::MakeWriter
 //! [rolling_struct]: rolling::RollingFileAppender
-//! [fmt_subscriber]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
+//! [fmt_subscriber]: tracing_subscriber::fmt::Subscriber
 //!
 //! ## Non-Blocking Rolling File Appender
 //!

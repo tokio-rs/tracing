@@ -629,15 +629,15 @@
 //! # Ok(()) }
 //! ```
 //!
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
-//! [span IDs]: https://docs.rs/tracing-core/latest/tracing_core/span/struct.Id.html
+//! [`Subscriber`]: tracing_core::subscriber::Subscriber
+//! [span IDs]: tracing_core::span::Id
 //! [the current span]: Context::current_span
 //! [`register_callsite`]: Layer::register_callsite
 //! [`enabled`]: Layer::enabled
 //! [`on_enter`]: Layer::on_enter
 //! [`Layer::register_callsite`]: Layer::register_callsite
 //! [`Layer::enabled`]: Layer::enabled
-//! [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
+//! [`Interest::never()`]: tracing_core::subscriber::Interest::never()
 //! [`Filtered`]: crate::filter::Filtered
 //! [`filter`]: crate::filter
 //! [`Targets`]: crate::filter::Targets
@@ -749,10 +749,10 @@ where
     /// globally enable or disable those callsites, it should always return
     /// [`Interest::always()`].
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Subscriber::register_callsite`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.register_callsite
-    /// [`Interest::never()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.never
-    /// [`Interest::always()`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/struct.Interest.html#method.always
+    /// [`Interest`]: tracing_core::Interest
+    /// [`Subscriber::register_callsite`]: tracing_core::Subscriber::register_callsite()
+    /// [`Interest::never()`]: tracing_core::subscriber::Interest::never()
+    /// [`Interest::always()`]: tracing_core::subscriber::Interest::always()
     /// [`self.enabled`]: Layer::enabled()
     /// [`Layer::enabled`]: Layer::enabled()
     /// [`on_event`]: Layer::on_event()
@@ -792,8 +792,8 @@ where
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
     ///
-    /// [`Interest`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Interest.html
-    /// [`Subscriber::enabled`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html#method.enabled
+    /// [`Interest`]: tracing_core::Interest
+    /// [`Subscriber::enabled`]: tracing_core::Subscriber::enabled()
     /// [`Layer::register_callsite`]: Layer::register_callsite()
     /// [`on_event`]: Layer::on_event()
     /// [`on_enter`]: Layer::on_enter()
@@ -996,7 +996,7 @@ where
     ///     .with_subscriber(MySubscriber::new());
     ///```
     ///
-    /// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+    /// [`Subscriber`]: tracing_core::Subscriber
     fn with_subscriber(mut self, mut inner: S) -> Layered<Self, S>
     where
         Self: Sized,

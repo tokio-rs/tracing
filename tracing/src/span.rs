@@ -714,7 +714,7 @@ impl Span {
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: Span::in_scope()
-    /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
+    /// [instrument]: crate::Instrument
     /// [attr]: macro@crate::instrument
     ///
     /// # Examples
