@@ -570,10 +570,11 @@ impl Span {
             } else {
                 meta.target()
             };
+            let values = attrs.values();
             span.log(
                 target,
                 level_to_log!(*meta.level()),
-                format_args!("++ {}{}", meta.name(), crate::log::LogValueSet(attrs.values())),
+                format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
             );
         }}
 
@@ -1039,7 +1040,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {};", _meta.name()));
             }
         }}
     }
@@ -1056,7 +1057,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {};", _meta.name()));
             }
         }}
     }
@@ -1227,7 +1228,7 @@ impl Span {
                 self.log(
                     target,
                     level_to_log!(*_meta.level()),
-                    format_args!("{}{}", _meta.name(), crate::log::LogValueSet(values)),
+                    format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
                 );
             }}
         }
@@ -1333,7 +1334,7 @@ impl Span {
                                 .module_path(meta.module_path())
                                 .file(meta.file())
                                 .line(meta.line())
-                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .args(format_args!("{} span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
                     } else {
@@ -1454,7 +1455,7 @@ impl Drop for Span {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", meta.name()),
+                    format_args!("-- {};", meta.name()),
                 );
             }
         }}

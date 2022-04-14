@@ -1101,7 +1101,13 @@ pub mod __macro_support {
                     .module_path(meta.module_path())
                     .line(meta.line())
                     .metadata(log_meta)
-                    .args(format_args!("{}", crate::log::LogValueSet(values)))
+                    .args(format_args!(
+                        "{}",
+                        crate::log::LogValueSet {
+                            values,
+                            is_first: true
+                        }
+                    ))
                     .build(),
             );
         }
@@ -1143,7 +1149,10 @@ pub mod log {
     use tracing_core::field::{Field, ValueSet, Visit};
 
     /// Utility to format [`ValueSet`]s for logging.
-    pub(crate) struct LogValueSet<'a>(pub(crate) &'a ValueSet<'a>);
+    pub(crate) struct LogValueSet<'a> {
+        pub(crate) values: &'a ValueSet<'a>,
+        pub(crate) is_first: bool,
+    }
 
     impl<'a> fmt::Display for LogValueSet<'a> {
         #[inline]
@@ -1182,10 +1191,10 @@ pub mod log {
 
             let mut visit = LogVisitor {
                 f,
-                is_first: true,
+                is_first: self.is_first,
                 result: Ok(()),
             };
-            self.0.record(&mut visit);
+            self.values.record(&mut visit);
             visit.result
         }
     }
