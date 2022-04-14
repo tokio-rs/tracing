@@ -63,6 +63,7 @@ impl Test {
         Test { state }
     }
 
+    #[track_caller]
     pub fn assert_logged(&self, expected: &str) {
         let last = match self.state.last_log.lock().unwrap().take() {
             Some(last) => last,
@@ -75,6 +76,7 @@ impl Test {
         assert_eq!(last.as_str().trim(), expected);
     }
 
+    #[track_caller]
     pub fn assert_not_logged(&self) {
         if let Some(last) = self.state.last_log.lock().unwrap().take() {
             panic!(

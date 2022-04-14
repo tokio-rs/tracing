@@ -580,7 +580,12 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            let values = attrs.values();
+            span.log(
+                target,
+                level_to_log!(*meta.level()),
+                format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
+            );
         }}
 
         span
@@ -1034,7 +1039,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {};", _meta.name()));
             }
         }}
     }
@@ -1051,7 +1056,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {};", _meta.name()));
             }
         }}
     }
@@ -1218,7 +1223,11 @@ impl Span {
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(
+                    target,
+                    level_to_log!(*_meta.level()),
+                    format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
+                );
             }}
         }
 
@@ -1332,7 +1341,7 @@ impl Span {
                                 .module_path(meta.module_path())
                                 .file(meta.file())
                                 .line(meta.line())
-                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .args(format_args!("{} span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
                     } else {
@@ -1459,7 +1468,7 @@ impl Drop for Span {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", meta.name()),
+                    format_args!("-- {};", meta.name()),
                 );
             }
         }}
@@ -1593,38 +1602,6 @@ const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 ///
 /// Trivially safe, as `PhantomNotSend` doesn't have any API.
 unsafe impl Sync for PhantomNotSend {}
-
-#[cfg(feature = "log")]
-struct FmtValues<'a>(&'a Record<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
-
-#[cfg(feature = "log")]
-struct FmtAttrs<'a>(&'a Attributes<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
 
 #[cfg(test)]
 mod test {
