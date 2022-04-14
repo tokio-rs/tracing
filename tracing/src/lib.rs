@@ -1090,6 +1090,25 @@ pub mod __macro_support {
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::none()
         }
+
+        #[cfg(feature = "log")]
+        pub fn log(
+            &self,
+            logger: &'static dyn log::Log,
+            log_meta: log::Metadata<'_>,
+            values: &ValueSet<'_>,
+        ) {
+            let meta = self.metadata();
+            logger.log(
+                &log::Record::builder()
+                    .file(meta.file())
+                    .module_path(meta.module_path())
+                    .line(meta.line())
+                    .metadata(log_meta)
+                    .args(format_args!("{}", LogValueSet(values)))
+                    .build(),
+            );
+        }
     }
 
     impl Callsite for MacroCallsite {

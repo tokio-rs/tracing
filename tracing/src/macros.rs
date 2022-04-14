@@ -605,8 +605,8 @@ macro_rules! event {
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
-                    target: $target,
                     $lvl,
+                    CALLSITE,
                     &value_set
                 );
                 let meta = CALLSITE.metadata();
@@ -619,8 +619,8 @@ macro_rules! event {
             })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
-                target: $target,
                 $lvl,
+                CALLSITE,
                 &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
         }
@@ -667,15 +667,15 @@ macro_rules! event {
                     &value_set
                 );
                 $crate::__tracing_log!(
-                    target: $target,
                     $lvl,
+                    CALLSITE,
                     &value_set
                 );
             })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
-                target: $target,
                 $lvl,
+                CALLSITE,
                 &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
         }
@@ -2413,31 +2413,25 @@ macro_rules! __tracing_stringify {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $value_set:expr ) => {};
+    ($level:expr, $callsite:expr, $value_set:expr) => {};
 }
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $value_set:expr ) => {
+    ($level:expr, $callsite:expr, $value_set:expr) => {
         $crate::if_log_enabled! { $level, {
             use $crate::log;
             let level = $crate::level_to_log!($level);
             if level <= log::max_level() {
                 let log_meta = log::Metadata::builder()
                     .level(level)
-                    .target($target)
+                    .target(CALLSITE.metadata().target())
                     .build();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
-                    logger.log(&log::Record::builder()
-                        .file(Some(file!()))
-                        .module_path(Some(module_path!()))
-                        .line(Some(line!()))
-                        .metadata(log_meta)
-                        .args(format_args!("{}", $crate::__macro_support::LogValueSet($value_set)))
-                        .build());
+                    $callsite.log(logger, log_meta, $value_set)
                 }
             }
         }}
