@@ -63,7 +63,7 @@ fn log_with_trace() {
     test.assert_logged("-- foo; span=1");
 
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
-    test.assert_logged("++ foo; bar=3 baz=false; span=2");
+    test.assert_logged("++ foo; bar=3 baz=false span=2");
 
     drop(foo);
     test.assert_logged("-- foo; span=2");
