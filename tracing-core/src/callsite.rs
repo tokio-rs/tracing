@@ -35,9 +35,21 @@ pub trait Callsite: Sync {
     /// [metadata]: ../metadata/struct.Metadata.html
     fn metadata(&self) -> &Metadata<'_>;
 
+    /// This method is an *internal implementation detail* of `tracing-core`. It
+    /// is *not* intended to be called or overridden from downstream code.
+    ///
+    /// The `Private` type can only be constructed from within `tracing-core`.
+    /// Because this method takes a `Private` as an argument, it cannot be
+    /// called from (safe) code external to `tracing-core`. Because it must
+    /// *return* a `Private`, the only valid implementation possible outside of
+    /// `tracing-core` would have to always unconditionally panic.
+    ///
+    /// THIS IS BY DESIGN. There is currently no valid reason for code outside
+    /// of `tracing-core` to override this method.
     // TODO(eliza): this could be used to implement a public downcasting API
     // for `&dyn Callsite`s in the future.
     #[doc(hidden)]
+    #[inline]
     fn private_type_id(&self, _: private::Private<()>) -> private::Private<TypeId>
     where
         Self: 'static,
