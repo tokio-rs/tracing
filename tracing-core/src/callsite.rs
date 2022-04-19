@@ -1,6 +1,7 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
 use crate::stdlib::{
+    any::TypeId,
     fmt,
     hash::{Hash, Hasher},
     ptr,
@@ -33,6 +34,16 @@ pub trait Callsite: Sync {
     ///
     /// [metadata]: ../metadata/struct.Metadata.html
     fn metadata(&self) -> &Metadata<'_>;
+
+    // TODO(eliza): this could be used to implement a public downcasting API
+    // for `&dyn Callsite`s in the future.
+    #[doc(hidden)]
+    fn private_type_id(&self, _: private::Private<()>) -> private::Private<TypeId>
+    where
+        Self: 'static,
+    {
+        private::Private(TypeId::of::<Self>())
+    }
 }
 
 /// Uniquely identifies a [`Callsite`]
@@ -93,9 +104,20 @@ pub fn rebuild_interest_cache() {
 pub fn register(callsite: &'static dyn Callsite) {
     rebuild_callsite_interest(callsite, &DISPATCHERS.rebuilder());
 
-    // TODO(eliza): if we wanted to be *really* cute we could also add some kind
-    // of downcasting to `Callsite` and use `push_default` here, too, if we are
-    // registering a default callsite...
+    // Is this a `DefaultCallsite`? If so, use the fancy linked list!
+    if callsite.private_type_id(private::Private(())).0 == TypeId::of::<DefaultCallsite>() {
+        let callsite = unsafe {
+            // Safety: the pointer cast is safe because the type id of the
+            // provided callsite matches that of the target type for the cast
+            // (`DefaultCallsite`). Because user implementations of `Callsite`
+            // cannot override `private_type_id`, we can trust that the callsite
+            // is not lying about its type ID.
+            &*(callsite as *const dyn Callsite as *const DefaultCallsite)
+        };
+        CALLSITES.push_default(callsite);
+        return;
+    }
+
     CALLSITES.push_dyn(callsite);
 }
 
@@ -132,7 +154,11 @@ impl DefaultCallsite {
     ///
     /// If the callsite is already registered, this does nothing. When using
     /// [`DefaultCallsite`], this method should be preferred over
-    /// [`tracing_core::callsite::register`].
+    /// [`tracing_core::callsite::register`], as it ensures that the callsite is
+    /// only registered a single time.
+    ///
+    /// Other callsite implementations will generally ensure that
+    /// callsites are not re-registered through another mechanism.
     #[inline(never)]
     // This only happens once (or if the cached interest value was corrupted).
     #[cold]
@@ -310,6 +336,12 @@ fn rebuild_callsite_interest(
 
     let interest = interest.unwrap_or_else(Interest::never);
     callsite.set_interest(interest)
+}
+
+mod private {
+    /// Don't call this function, it's private.
+    #[allow(missing_debug_implementations)]
+    pub struct Private<T>(pub(crate) T);
 }
 
 #[cfg(feature = "std")]
