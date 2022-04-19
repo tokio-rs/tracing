@@ -1,3 +1,25 @@
+# 0.1.26 (April 14, 2022)
+
+This release adds a `Value` implementation for `Box<T: Value>` to allow
+recording boxed values more conveniently. In particular, this should improve
+the ergonomics of the implementations for `dyn std::error::Error` trait objects,
+including those added in [v0.1.25]. 
+
+### Added
+
+- `Value` implementation for `Box<T> where T: Value` ([#2071])
+
+### Fixed
+
+- Broken documentation links ([#2068])
+
+Thanks to new contributor @ben0x539 for contributing to this release!
+
+
+[v0.1.25]: https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.25
+[#2071]: https://github.com/tokio-rs/tracing/pull/2071
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+
 # 0.1.25 (April 12, 2022)
 
 This release adds additional `Value` implementations for `std::error::Error`
