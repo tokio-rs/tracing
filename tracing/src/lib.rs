@@ -998,7 +998,7 @@ pub mod __macro_support {
     /// without warning.
     #[inline]
     #[cfg(feature = "log")]
-    pub fn __disabled_span(meta: &Metadata<'static>) -> crate::Span {
+    pub fn __disabled_span(meta: &'static Metadata<'static>) -> crate::Span {
         crate::Span::new_disabled(meta)
     }
 
@@ -1010,7 +1010,7 @@ pub mod __macro_support {
     /// without warning.
     #[inline]
     #[cfg(not(feature = "log"))]
-    pub fn __disabled_span(_: &Metadata<'static>) -> crate::Span {
+    pub fn __disabled_span(_: &'static Metadata<'static>) -> crate::Span {
         crate::Span::none()
     }
 
