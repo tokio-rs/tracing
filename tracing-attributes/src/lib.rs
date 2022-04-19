@@ -501,7 +501,7 @@ mod expand;
 /// [`INFO`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.INFO
 /// [empty field]: https://docs.rs/tracing/latest/tracing/field/struct.Empty.html
 /// [field syntax]: https://docs.rs/tracing/latest/tracing/#recording-fields
-/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+/// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,

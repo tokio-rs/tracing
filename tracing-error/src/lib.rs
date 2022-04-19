@@ -157,19 +157,12 @@
 //! }
 //! ```
 //!
-//! [`SpanTrace`]: SpanTrace
-//! [`ErrorLayer`]: ErrorLayer
-//! [`TracedError`]: TracedError
-//! [`InstrumentResult`]: InstrumentResult
-//! [`InstrumentError`]: InstrumentError
-//! [`ExtractSpanTrace`]: ExtractSpanTrace
 //! [`in_current_span()`]: InstrumentResult#tymethod.in_current_span
-//! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [events]: https://docs.rs/tracing/latest/tracing/struct.Event.html
-//! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
-//! [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
-//! [`tracing`]: https://docs.rs/tracing
-//! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+//! [span]: mod@tracing::span
+//! [events]: tracing::Event
+//! [`Subscriber`]: tracing::Subscriber
+//! [subscriber layer]: tracing_subscriber::layer::Layer
+//! [`tracing`]: tracing
 //!
 //! ## Supported Rust Versions
 //!

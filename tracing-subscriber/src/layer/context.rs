@@ -26,7 +26,7 @@ use crate::{filter::FilterId, registry::Registry};
 /// ```
 ///
 /// [`Layer`]: super::Layer
-/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+/// [`Subscriber`]: tracing_core::Subscriber
 /// [stored data]: crate::registry::SpanRef
 /// [`LookupSpan`]: crate::registry::LookupSpan
 #[derive(Debug)]
@@ -99,9 +99,9 @@ where
     ///   check whether the event would be enabled. This allows `Layer`s to
     ///   elide constructing the event if it would not be recorded.
     ///
-    /// [register]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.register_callsite
-    /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
-    /// [`Context::enabled`]: #method.enabled
+    /// [register]: tracing_core::subscriber::Subscriber::register_callsite()
+    /// [`enabled`]: tracing_core::subscriber::Subscriber::enabled()
+    /// [`Context::enabled`]: Context::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         if let Some(subscriber) = self.subscriber {

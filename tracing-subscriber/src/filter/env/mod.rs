@@ -224,8 +224,8 @@ impl EnvFilter {
     /// `RUST_LOG` is the default environment variable used by
     /// [`EnvFilter::from_default_env`] and [`EnvFilter::try_from_default_env`].
     ///
-    /// [`EnvFilter::from_default_env`]: #method.from_default_env
-    /// [`EnvFilter::try_from_default_env`]: #method.try_from_default_env
+    /// [`EnvFilter::from_default_env`]: EnvFilter::from_default_env()
+    /// [`EnvFilter::try_from_default_env`]: EnvFilter::try_from_default_env()
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
     // === constructors, etc ===
@@ -416,7 +416,7 @@ impl EnvFilter {
     /// spans and events, the previous directive is overwritten.
     ///
     /// [`LevelFilter`]: super::LevelFilter
-    /// [`Level`]: https://docs.rs/tracing-core/latest/tracing_core/struct.Level.html
+    /// [`Level`]: tracing_core::Level
     ///
     /// # Examples
     ///

@@ -19,10 +19,10 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///    documentation</a> for more details.
 /// </pre></div>
 ///
-/// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
-/// [UTC time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
-/// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-/// [`time` crate]: https://docs.rs/time/0.3/time/
+/// [local time]: time::OffsetDateTime::now_local
+/// [UTC time]:     time::OffsetDateTime::now_utc
+/// [formatter]:    time::formatting::Formattable
+/// [`time` crate]: time
 #[derive(Clone, Debug)]
 #[cfg_attr(
     docsrs,
@@ -37,10 +37,10 @@ pub struct LocalTime<F> {
 ///
 /// To format the current [local time] instead, use the [`LocalTime`] type.
 ///
-/// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
-/// [UTC time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
-/// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-/// [`time` crate]: https://docs.rs/time/0.3/time/
+/// [local time]: time::OffsetDateTime::now_local
+/// [UTC time]:     time::OffsetDateTime::now_utc
+/// [formatter]:    time::formatting::Formattable
+/// [`time` crate]: time
 #[cfg_attr(docsrs, doc(cfg(feature = "time")))]
 #[derive(Clone, Debug)]
 pub struct UtcTime<F> {
@@ -55,8 +55,8 @@ pub struct UtcTime<F> {
 /// handle any errors. However, this also means the offset cannot change while the program is
 /// running (the offset will not change across DST changes).
 ///
-/// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-/// [`time` crate]: https://docs.rs/time/0.3/time/
+/// [formatter]: time::formatting::Formattable
+/// [`time` crate]: time
 #[derive(Clone, Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "time")))]
 pub struct OffsetTime<F> {
@@ -81,7 +81,7 @@ impl LocalTime<well_known::Rfc3339> {
     /// # drop(collector);
     /// ```
     ///
-    /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
+    /// [local time]: time::OffsetDateTime::now_local
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
     pub fn rfc_3339() -> Self {
@@ -163,12 +163,12 @@ impl<F: Formattable> LocalTime<F> {
     /// # drop(collector);
     /// ```
     ///
-    /// [local time]: https://docs.rs/time/latest/time/struct.OffsetDateTime.html#method.now_local
-    /// [`time` crate]: https://docs.rs/time/0.3/time/
-    /// [`Formattable`]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-    /// [well-known formats]: https://docs.rs/time/0.3/time/format_description/well_known/index.html
-    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
-    /// [`time::format_description::parse`]: https://docs.rs/time/0.3/time/format_description/fn.parse.html
+    /// [local time]: time::OffsetDateTime::now_local()
+    /// [`time` crate]: time
+    /// [`Formattable`]: time::formatting::Formattable
+    /// [well-known formats]: time::format_description::well_known
+    /// [`format_description!`]: time::macros::format_description!
+    /// [`time::format_description::parse`]: time::format_description::parse()
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(format: F) -> Self {
         Self { format }
@@ -212,7 +212,7 @@ impl UtcTime<well_known::Rfc3339> {
     /// # drop(collector);
     /// ```
     ///
-    /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
+    /// [local time]: time::OffsetDateTime::now_utc
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
     pub fn rfc_3339() -> Self {
@@ -280,12 +280,12 @@ impl<F: Formattable> UtcTime<F> {
     /// # drop(collector);
     /// ```
     ///
-    /// [UTC time]: https://docs.rs/time/latest/time/struct.OffsetDateTime.html#method.now_utc
-    /// [`time` crate]: https://docs.rs/time/0.3/time/
-    /// [`Formattable`]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-    /// [well-known formats]: https://docs.rs/time/0.3/time/format_description/well_known/index.html
-    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
-    /// [`time::format_description::parse`]: https://docs.rs/time/0.3/time/format_description/fn.parse.html
+    /// [UTC time]: time::OffsetDateTime::now_utc()
+    /// [`time` crate]: time
+    /// [`Formattable`]: time::formatting::Formattable
+    /// [well-known formats]: time::format_description::well_known
+    /// [`format_description!`]: time::macros::format_description!
+    /// [`time::format_description::parse`]: time::format_description::parse
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(format: F) -> Self {
         Self { format }
@@ -357,7 +357,7 @@ impl OffsetTime<well_known::Rfc3339> {
     /// }
     /// ```
     ///
-    /// [local time offset]: https://docs.rs/time/0.3/time/struct.UtcOffset.html#method.current_local_offset
+    /// [local time offset]: time::UtcOffset::current_local_offset
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
     pub fn local_rfc_3339() -> Result<Self, time::error::IndeterminateOffset> {
@@ -435,13 +435,13 @@ impl<F: time::formatting::Formattable> OffsetTime<F> {
     /// # drop(collector);
     /// ```
     ///
-    /// [`time` crate]: https://docs.rs/time/0.3/time/
-    /// [timezone offset]: https://docs.rs/time/latest/time/struct.UtcOffset.html
-    /// [`Formattable`]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
-    /// [local offset]: https://docs.rs/time/0.3.5/time/struct.UtcOffset.html#method.current_local_offset
-    /// [well-known formats]: https://docs.rs/time/0.3/time/format_description/well_known/index.html
-    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
-    /// [`time::format_description::parse`]: https://docs.rs/time/0.3/time/format_description/fn.parse.html
+    /// [`time` crate]: time
+    /// [timezone offset]: time::UtcOffset
+    /// [`Formattable`]: time::formatting::Formattable
+    /// [local offset]: time::UtcOffset::current_local_offset()
+    /// [well-known formats]: time::format_description::well_known
+    /// [`format_description!`]: time::macros::format_description
+    /// [`time::format_description::parse`]: time::format_description::parse
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(offset: time::UtcOffset, format: F) -> Self {
         Self { offset, format }

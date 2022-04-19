@@ -8,10 +8,9 @@
 //! `tracing` events as `log` records, the ["log" and "log-always" feature
 //! flags][flags] on the `tracing` crate should be used instead.
 //!
-//! [`log`]: https://docs.rs/log/0.4.8/log/index.html
+//! [`log`]: log
 //! [`Subscriber`]: https://docs.rs/tracing/0.1.7/tracing/subscriber/trait.Subscriber.html
-//! [`TraceLogger`]: TraceLogger
-//! [`log::Record`]: https://docs.rs/log/0.4.8/log/struct.Record.html
+//! [`log::Record`]:log::Record
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![deprecated(
     since = "0.1.1",
@@ -53,7 +52,6 @@ thread_local! {
 }
 /// Configures and constructs a [`TraceLogger`].
 ///
-/// [`TraceLogger`]: TraceLogger
 #[derive(Debug)]
 pub struct Builder {
     log_span_closes: bool,
@@ -95,7 +93,6 @@ impl Builder {
     /// Configures whether or not the [`TraceLogger`] being constructed will log
     /// when a span closes.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_span_closes(self, log_span_closes: bool) -> Self {
         Self {
             log_span_closes,
@@ -106,7 +103,6 @@ impl Builder {
     /// Configures whether or not the [`TraceLogger`] being constructed will
     /// include the fields of parent spans when formatting events.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_parent_fields(self, parent_fields: bool) -> Self {
         Self {
             parent_fields,
@@ -120,7 +116,6 @@ impl Builder {
     /// If this is set to false, fields from the current span will still be
     /// recorded as context, but the actual entry will not create a log record.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_span_entry(self, log_enters: bool) -> Self {
         Self { log_enters, ..self }
     }
@@ -128,7 +123,6 @@ impl Builder {
     /// Configures whether or not the [`TraceLogger`] being constructed will log
     /// when a span is exited.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_span_exits(self, log_exits: bool) -> Self {
         Self { log_exits, ..self }
     }
@@ -136,7 +130,6 @@ impl Builder {
     /// Configures whether or not the [`TraceLogger`] being constructed will
     /// include span IDs when formatting log output.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_ids(self, log_ids: bool) -> Self {
         Self { log_ids, ..self }
     }
@@ -144,14 +137,12 @@ impl Builder {
     /// Configures whether or not the [`TraceLogger`] being constructed will
     /// include the names of parent spans as context when formatting events.
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn with_parent_names(self, log_parent: bool) -> Self {
         Self { log_parent, ..self }
     }
 
     /// Complete the builder, returning a configured [`TraceLogger`].
     ///
-    /// [`TraceLogger`]: TraceLogger
     pub fn finish(self) -> TraceLogger {
         TraceLogger::from_builder(self)
     }

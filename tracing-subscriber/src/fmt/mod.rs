@@ -184,7 +184,6 @@
 //! [`EnvFilter`]: super::filter::EnvFilter
 //! [`env_logger`]: https://docs.rs/env_logger/
 //! [`filter`]: super::filter
-//! [`SubscriberBuilder`]: SubscriberBuilder
 //! [`FmtSubscriber`]: Subscriber
 //! [`Subscriber`]:
 //!     https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
@@ -341,7 +340,7 @@ impl Subscriber {
     ///
     /// This can be overridden with the [`SubscriberBuilder::with_max_level`] method.
     ///
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: tracing_core::Level
     /// [`SubscriberBuilder::with_max_level`]: SubscriberBuilder::with_max_level
     pub const DEFAULT_MAX_LEVEL: LevelFilter = LevelFilter::INFO;
 
@@ -598,7 +597,7 @@ where
     /// `Layer`s added to this subscriber.
     ///
     /// [lifecycle]: https://docs.rs/tracing/latest/tracing/span/index.html#the-span-lifecycle
-    /// [time]: #method.without_time
+    /// [time]: SubscriberBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         SubscriberBuilder {
             inner: self.inner.with_span_events(kind),
@@ -669,7 +668,7 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
@@ -683,7 +682,7 @@ where
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
@@ -893,7 +892,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     /// # Ok(())}
     /// ```
     /// [`EnvFilter`]: super::filter::EnvFilter
-    /// [`with_max_level`]: #method.with_max_level
+    /// [`with_max_level`]: SubscriberBuilder::with_max_level()
     #[cfg(feature = "env-filter")]
     #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
     pub fn with_env_filter(
@@ -936,7 +935,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
     ///     .with_max_level(LevelFilter::OFF)
     ///     .finish();
     /// ```
-    /// [verbosity level]: https://docs.rs/tracing-core/0.1.5/tracing_core/struct.Level.html
+    /// [verbosity level]: tracing_core::Level
     /// [`EnvFilter`]: struct@crate::filter::EnvFilter
     /// [`with_env_filter`]: fn@Self::with_env_filter
     pub fn with_max_level(

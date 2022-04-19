@@ -93,16 +93,8 @@
 //!
 //! [`init`]: LogTracer::init
 //! [`init_with_filter`]: LogTracer::init_with_filter
-//! [`AsTrace`]: AsTrace
-//! [`AsLog`]: AsLog
-//! [`LogTracer`]: LogTracer
-//! [`TraceLogger`]: TraceLogger
-//! [`env_logger`]: env_logger
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
-//! [`log::Record`]: https://docs.rs/log/latest/log/struct.Record.html
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
@@ -488,8 +480,6 @@ impl AsLog for tracing_core::LevelFilter {
 /// regardless of the source of its source.
 ///
 /// [`normalized_metadata`]: NormalizeEvent#normalized_metadata
-/// [`AsTrace`]: AsTrace
-/// [`log::Record`]: https://docs.rs/log/0.4.7/log/struct.Record.html
 pub trait NormalizeEvent<'a>: crate::sealed::Sealed {
     /// If this `Event` comes from a `log`, this method provides a new
     /// normalized `Metadata` which has all available attributes

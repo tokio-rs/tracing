@@ -123,11 +123,6 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
-//! [`Subscriber`]: Subscriber
-//! [`with_default`]: with_default
-//! [`set_global_default`]: set_global_default
-//! [`get_default`]: get_default
-//! [`Dispatch`]: Dispatch
 use crate::{
     callsite, span,
     subscriber::{self, NoSubscriber, Subscriber},
@@ -151,7 +146,6 @@ use crate::stdlib::{
 
 /// `Dispatch` trace data to a [`Subscriber`].
 ///
-/// [`Subscriber`]: Subscriber
 #[derive(Clone)]
 pub struct Dispatch {
     subscriber: Arc<dyn Subscriber + Send + Sync>,
@@ -579,7 +573,7 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`drop_span`]: super::subscriber::Subscriber::drop_span
     /// [`new_span`]: super::subscriber::Subscriber::new_span
-    /// [`try_close`]: #method.try_close
+    /// [`try_close`]: Entered::try_close()
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {

@@ -149,8 +149,8 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-//! [`tracing`]: https://docs.rs/tracing/latest/tracing/
-//! [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html
+//! [`Subscriber`]: tracing_core::subscriber::Subscriber
+//! [`tracing`]: https://docs.rs/tracing/latest/tracing
 //! [`EnvFilter`]: filter::EnvFilter
 //! [`fmt`]: mod@fmt
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
@@ -158,8 +158,8 @@
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
 //! [`parking_lot`]: https://crates.io/crates/parking_lot
 //! [`time` crate]: https://crates.io/crates/time
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
-//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
+//! [`libstd`]: std
+//! [`liballoc`]: alloc
 #![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.3.11")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

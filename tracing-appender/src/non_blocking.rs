@@ -78,7 +78,6 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 /// terminates abruptly (such as through an uncaught `panic` or a `std::process::exit`), some spans
 /// or events may not be written.
 ///
-/// [`NonBlocking`]: NonBlocking
 /// Since spans/events and events recorded near a crash are often necessary for diagnosing the failure,
 /// `WorkerGuard` provides a mechanism to ensure that _all_ buffered logs are flushed to their output.
 /// `WorkerGuard` should be assigned in the `main` function or whatever the entrypoint of the program is.
@@ -121,8 +120,8 @@ pub struct WorkerGuard {
 /// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
 /// or with any other subscriber/layer implementation that uses the `MakeWriter` trait.
 ///
-/// [make_writer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-/// [fmt]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/index.html
+/// [make_writer]: tracing_subscriber::fmt::MakeWriter
+/// [fmt]: mod@tracing_subscriber::fmt
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: ErrorCounter,

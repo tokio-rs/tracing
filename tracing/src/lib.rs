@@ -437,9 +437,9 @@
 //! [target]: Metadata::target
 //! [parent span]: span::Attributes::parent
 //! [determined contextually]: span::Attributes::is_contextual
-//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
-//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
-//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
+//! [`fmt::Debug`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
+//! [fmt]: std::fmt#usage
 //! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
@@ -466,7 +466,6 @@
 //! [`info_span!`]: info_span!
 //! [`warn_span!`]: warn_span!
 //! [`error_span!`]: error_span!
-//! [`Level`]: Level
 //!
 //! ### For `log` Users
 //!
