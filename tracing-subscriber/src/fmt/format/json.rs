@@ -80,9 +80,9 @@ use tracing_log::NormalizeEvent;
 /// **Note**: This is an experimental feature. [Unstable features][unstable]
 /// must be enabled in order to use `valuable` support.
 ///
-/// [`Json::flatten_event`]: #method.flatten_event
-/// [`Json::with_current_span`]: #method.with_current_span
-/// [`Json::with_span_list`]: #method.with_span_list
+/// [`Json::flatten_event`]: Json::flatten_event()
+/// [`Json::with_current_span`]: Json::with_current_span()
+/// [`Json::with_span_list`]: Json::with_span_list()
 /// [`valuable`]: https://crates.io/crates/valuable
 /// [unstable]: crate#unstable-features
 /// [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
@@ -341,7 +341,6 @@ impl Default for Json {
 
 /// The JSON [`FormatFields`] implementation.
 ///
-/// [`FormatFields`]: trait.FormatFields.html
 #[derive(Debug)]
 pub struct JsonFields {
     // reserve the ability to add fields to this without causing a breaking
@@ -352,7 +351,6 @@ pub struct JsonFields {
 impl JsonFields {
     /// Returns a new JSON [`FormatFields`] implementation.
     ///
-    /// [`FormatFields`]: trait.FormatFields.html
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -421,9 +419,8 @@ impl<'a> FormatFields<'a> for JsonFields {
 
 /// The [visitor] produced by [`JsonFields`]'s [`MakeVisitor`] implementation.
 ///
-/// [visitor]: ../../field/trait.Visit.html
-/// [`JsonFields`]: struct.JsonFields.html
-/// [`MakeVisitor`]: ../../field/trait.MakeVisitor.html
+/// [visitor]: crate::field::Visit
+/// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
     values: BTreeMap<&'a str, serde_json::Value>,
     writer: &'a mut dyn Write,

@@ -45,18 +45,18 @@ use crate::stdlib::{
 ///     correspond to the same callsite.
 /// </pre>
 ///
-/// [span]: ../span/index.html
-/// [event]: ../event/index.html
-/// [name]: #method.name
-/// [target]: #method.target
-/// [fields]: #method.fields
-/// [verbosity level]: #method.level
-/// [file name]: #method.file
-/// [line number]: #method.line
-/// [module path]: #method.module
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`id`]: struct.Metadata.html#method.id
-/// [callsite identifier]: ../callsite/struct.Identifier.html
+/// [span]: super::span
+/// [event]: super::event
+/// [name]: Metadata::name()
+/// [target]: Metadata::target()
+/// [fields]: Metadata::fields()
+/// [verbosity level]: Metadata::level()
+/// [file name]: Metadata::file()
+/// [line number]: Metadata::line()
+/// [module path]: Metadata::module_path()
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`id`]: Metadata::id
+/// [callsite identifier]: super::callsite::Identifier
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: &'static str,
@@ -604,8 +604,7 @@ impl LevelFilter {
     /// Returns the most verbose [`Level`] that this filter accepts, or `None`
     /// if it is [`OFF`].
     ///
-    /// [`Level`]: ../struct.Level.html
-    /// [`OFF`]: #associatedconstant.OFF
+    /// [`OFF`]: LevelFilter::OFF
     pub const fn into_level(self) -> Option<Level> {
         self.0
     }
@@ -638,8 +637,8 @@ impl LevelFilter {
     /// *disabled*, but **should not** be used for determining if something is
     /// *enabled*.
     ///
-    /// [`Level`]: ../struct.Level.html
-    /// [`Subscriber`]: ../../trait.Subscriber.html
+    /// [`Level`]: super::Level
+    /// [`Subscriber`]: super::Subscriber
     #[inline(always)]
     pub fn current() -> Self {
         match MAX_LEVEL.load(Ordering::Relaxed) {

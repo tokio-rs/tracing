@@ -25,10 +25,10 @@ use crate::{filter::FilterId, registry::Registry};
 /// }
 /// ```
 ///
-/// [`Layer`]: ../layer/trait.Layer.html
-/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
-/// [stored data]: ../registry/struct.SpanRef.html
-/// [`LookupSpan`]: "../registry/trait.LookupSpan.html
+/// [`Layer`]: super::Layer
+/// [`Subscriber`]: tracing_core::Subscriber
+/// [stored data]: crate::registry::SpanRef
+/// [`LookupSpan`]: crate::registry::LookupSpan
 #[derive(Debug)]
 pub struct Context<'a, S> {
     subscriber: Option<&'a S>,
@@ -99,9 +99,9 @@ where
     ///   check whether the event would be enabled. This allows `Layer`s to
     ///   elide constructing the event if it would not be recorded.
     ///
-    /// [register]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.register_callsite
-    /// [`enabled`]: https://docs.rs/tracing-core/latest/tracing_core/subscriber/trait.Subscriber.html#method.enabled
-    /// [`Context::enabled`]: #method.enabled
+    /// [register]: tracing_core::subscriber::Subscriber::register_callsite()
+    /// [`enabled`]: tracing_core::subscriber::Subscriber::enabled()
+    /// [`Context::enabled`]: Context::enabled()
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
         if let Some(subscriber) = self.subscriber {
@@ -206,7 +206,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, S>>
     where
@@ -251,7 +251,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     #[inline]
     pub fn lookup_current(&self) -> Option<registry::SpanRef<'_, S>>
     where
@@ -333,7 +333,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     pub fn span_scope(&self, id: &span::Id) -> Option<registry::Scope<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,
@@ -360,7 +360,7 @@ where
     ///     declaration</a> for details.
     /// </pre>
     ///
-    /// [stored data]: ../registry/struct.SpanRef.html
+    /// [stored data]: crate::registry::SpanRef
     pub fn event_scope(&self, event: &Event<'_>) -> Option<registry::Scope<'_, S>>
     where
         S: for<'lookup> LookupSpan<'lookup>,

@@ -52,8 +52,8 @@
 //! info!("This will be logged");
 //! ```
 //!
-//! [`Layer` type]: struct.Layer.html
-//! [`Layer` trait]: ../layer/trait.Layer.html
+//! [`Layer` type]: Layer
+//! [`Layer` trait]: super::layer::Layer
 use crate::layer;
 use crate::sync::RwLock;
 

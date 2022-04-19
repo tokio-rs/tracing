@@ -18,7 +18,7 @@ use core::{any::TypeId, cmp, fmt, marker::PhantomData};
 /// [`Layer`]s.
 ///
 /// [`Layer`]: crate::Layer
-/// [`Subscriber`]: https://docs.rs/tracing-core/latest/tracing_core/trait.Subscriber.html
+/// [`Subscriber`]: tracing_core::Subscriber
 #[derive(Clone)]
 pub struct Layered<L, I, S = I> {
     /// The layer.

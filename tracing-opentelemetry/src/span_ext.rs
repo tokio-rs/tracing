@@ -4,7 +4,7 @@ use opentelemetry::{trace::SpanContext, Context, KeyValue};
 /// Utility functions to allow tracing [`Span`]s to accept and return
 /// [OpenTelemetry] [`Context`]s.
 ///
-/// [`Span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
+/// [`Span`]: tracing::Span
 /// [OpenTelemetry]: https://opentelemetry.io
 /// [`Context`]: opentelemetry::Context
 pub trait OpenTelemetrySpanExt {

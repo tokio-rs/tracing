@@ -36,7 +36,7 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: https://docs.rs/tracing/latest/tracing/span/index.html
-//! [instrument]: attr.instrument.html
+//! [instrument]: macro@self::instrument
 //!
 //! ## Supported Rust Versions
 //!
@@ -501,7 +501,7 @@ mod expand;
 /// [`INFO`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.INFO
 /// [empty field]: https://docs.rs/tracing/latest/tracing/field/struct.Empty.html
 /// [field syntax]: https://docs.rs/tracing/latest/tracing/#recording-fields
-/// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+/// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,

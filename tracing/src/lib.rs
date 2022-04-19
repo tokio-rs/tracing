@@ -434,13 +434,13 @@
 //! Specifying a formatted message in this manner does not allocate by default.
 //!
 //! [struct initializers]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-the-field-init-shorthand-when-variables-and-fields-have-the-same-name
-//! [target]: struct.Metadata.html#method.target
-//! [parent span]: span/struct.Attributes.html#method.parent
-//! [determined contextually]: span/struct.Attributes.html#method.is_contextual
-//! [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
-//! [`fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
-//! [fmt]: https://doc.rust-lang.org/std/fmt/#usage
-//! [`Empty`]: field/struct.Empty.html
+//! [target]: Metadata::target
+//! [parent span]: span::Attributes::parent
+//! [determined contextually]: span::Attributes::is_contextual
+//! [`fmt::Debug`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
+//! [fmt]: std::fmt#usage
+//! [`Empty`]: field::Empty
 //!
 //! ### Shorthand Macros
 //!
@@ -454,19 +454,18 @@
 //! These are intended both as a shorthand, and for compatibility with the [`log`]
 //! crate (see the next section).
 //!
-//! [`span!`]: macro.span.html
-//! [`event!`]: macro.event.html
-//! [`trace!`]: macro.trace.html
-//! [`debug!`]: macro.debug.html
-//! [`info!`]: macro.info.html
-//! [`warn!`]: macro.warn.html
-//! [`error!`]: macro.error.html
-//! [`trace_span!`]: macro.trace_span.html
-//! [`debug_span!`]: macro.debug_span.html
-//! [`info_span!`]: macro.info_span.html
-//! [`warn_span!`]: macro.warn_span.html
-//! [`error_span!`]: macro.error_span.html
-//! [`Level`]: struct.Level.html
+//! [`span!`]: span!
+//! [`event!`]: event!
+//! [`trace!`]: trace!
+//! [`debug!`]: debug!
+//! [`info!`]: info!
+//! [`warn!`]: warn!
+//! [`error!`]: error!
+//! [`trace_span!`]: trace_span!
+//! [`debug_span!`]: debug_span!
+//! [`info_span!`]: info_span!
+//! [`warn_span!`]: warn_span!
+//! [`error_span!`]: error_span!
 //!
 //! ### For `log` Users
 //!
@@ -812,7 +811,7 @@
 //!
 //!   ```toml
 //!   [dependencies]
-//!   tracing = { version = "0.1.33", default-features = false }
+//!   tracing = { version = "0.1.34", default-features = false }
 //!   ```
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
@@ -890,12 +889,12 @@
 //! [`tracing-appender`]: https://crates.io/crates/tracing-appender
 //! [`env_logger`]: https://crates.io/crates/env_logger
 //! [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
-//! [static verbosity level]: level_filters/index.html#compile-time-filters
+//! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 //! [flags]: #crate-feature-flags
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
-#![doc(html_root_url = "https://docs.rs/tracing/0.1.33")]
+#![doc(html_root_url = "https://docs.rs/tracing/0.1.34")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -925,10 +924,6 @@
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
-
-#[cfg(feature = "log")]
-#[doc(hidden)]
-pub use log;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -994,6 +989,7 @@ pub mod __macro_support {
     pub fn __is_enabled(meta: &Metadata<'static>, interest: Interest) -> bool {
         interest.is_always() || crate::dispatcher::get_default(|default| default.enabled(meta))
     }
+
     /// /!\ WARNING: This is *not* a stable API! /!\
     /// This function, and all code contained in the `__macro_support` module, is
     /// a *private* API of `tracing`. It is exposed publicly because it is used
@@ -1018,65 +1014,92 @@ pub mod __macro_support {
         crate::Span::none()
     }
 
-    #[cfg(feature = "log")]
-    use tracing_core::field::{Field, ValueSet, Visit};
-
-    /// Utility to format [`ValueSet`] for logging, used by macro-generated code.
-    ///
     /// /!\ WARNING: This is *not* a stable API! /!\
-    /// This type, and all code contained in the `__macro_support` module, is
+    /// This function, and all code contained in the `__macro_support` module, is
     /// a *private* API of `tracing`. It is exposed publicly because it is used
     /// by the `tracing` macros, but it is not part of the stable versioned API.
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
     #[cfg(feature = "log")]
-    #[allow(missing_debug_implementations)]
-    pub struct LogValueSet<'a>(pub &'a ValueSet<'a>);
+    pub fn __tracing_log(
+        meta: &Metadata<'static>,
+        logger: &'static dyn log::Log,
+        log_meta: log::Metadata<'_>,
+        values: &tracing_core::field::ValueSet<'_>,
+    ) {
+        logger.log(
+            &crate::log::Record::builder()
+                .file(meta.file())
+                .module_path(meta.module_path())
+                .line(meta.line())
+                .metadata(log_meta)
+                .args(format_args!(
+                    "{}",
+                    crate::log::LogValueSet {
+                        values,
+                        is_first: true
+                    }
+                ))
+                .build(),
+        );
+    }
+}
 
-    #[cfg(feature = "log")]
+#[cfg(feature = "log")]
+#[doc(hidden)]
+pub mod log {
+    use core::fmt;
+    pub use log::*;
+    use tracing_core::field::{Field, ValueSet, Visit};
+
+    /// Utility to format [`ValueSet`]s for logging.
+    pub(crate) struct LogValueSet<'a> {
+        pub(crate) values: &'a ValueSet<'a>,
+        pub(crate) is_first: bool,
+    }
+
     impl<'a> fmt::Display for LogValueSet<'a> {
+        #[inline]
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            struct LogVisitor<'a, 'b> {
+                f: &'a mut fmt::Formatter<'b>,
+                is_first: bool,
+                result: fmt::Result,
+            }
+
+            impl Visit for LogVisitor<'_, '_> {
+                fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+                    let res = if self.is_first {
+                        self.is_first = false;
+                        if field.name() == "message" {
+                            write!(self.f, "{:?}", value)
+                        } else {
+                            write!(self.f, "{}={:?}", field.name(), value)
+                        }
+                    } else {
+                        write!(self.f, " {}={:?}", field.name(), value)
+                    };
+                    if let Err(err) = res {
+                        self.result = self.result.and(Err(err));
+                    }
+                }
+
+                fn record_str(&mut self, field: &Field, value: &str) {
+                    if field.name() == "message" {
+                        self.record_debug(field, &format_args!("{}", value))
+                    } else {
+                        self.record_debug(field, &value)
+                    }
+                }
+            }
+
             let mut visit = LogVisitor {
                 f,
-                is_first: true,
+                is_first: self.is_first,
                 result: Ok(()),
             };
-            self.0.record(&mut visit);
+            self.values.record(&mut visit);
             visit.result
-        }
-    }
-
-    #[cfg(feature = "log")]
-    struct LogVisitor<'a, 'b> {
-        f: &'a mut fmt::Formatter<'b>,
-        is_first: bool,
-        result: fmt::Result,
-    }
-
-    #[cfg(feature = "log")]
-    impl Visit for LogVisitor<'_, '_> {
-        fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-            let res = if self.is_first {
-                self.is_first = false;
-                if field.name() == "message" {
-                    write!(self.f, "{:?}", value)
-                } else {
-                    write!(self.f, "{}={:?}", field.name(), value)
-                }
-            } else {
-                write!(self.f, " {}={:?}", field.name(), value)
-            };
-            if let Err(err) = res {
-                self.result = self.result.and(Err(err));
-            }
-        }
-
-        fn record_str(&mut self, field: &Field, value: &str) {
-            if field.name() == "message" {
-                self.record_debug(field, &format_args!("{}", value))
-            } else {
-                self.record_debug(field, &value)
-            }
         }
     }
 }

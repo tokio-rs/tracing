@@ -12,9 +12,9 @@ pub use tracing_core::dispatcher::DefaultGuard;
 /// executing, new spans or events are dispatched to the subscriber that
 /// tagged that span, instead.
 ///
-/// [`Span`]: ../span/struct.Span.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: :../event/struct.Event.html
+/// [`Span`]: super::span::Span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Event`]: super::event::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, S>(subscriber: S, f: impl FnOnce() -> T) -> T
@@ -33,9 +33,9 @@ where
 /// Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 /// executables try to set them later.
 ///
-/// [span]: ../span/index.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: ../event/struct.Event.html
+/// [span]: super::span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Event`]: super::event::Event
 pub fn set_global_default<S>(subscriber: S) -> Result<(), SetGlobalDefaultError>
 where
     S: Subscriber + Send + Sync + 'static,
@@ -51,10 +51,10 @@ where
 /// executing, new spans or events are dispatched to the subscriber that
 /// tagged that span, instead.
 ///
-/// [`Span`]: ../span/struct.Span.html
-/// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-/// [`Event`]: :../event/struct.Event.html
-/// [`DefaultGuard`]: ../dispatcher/struct.DefaultGuard.html
+/// [`Span`]: super::span::Span
+/// [`Subscriber`]: super::subscriber::Subscriber
+/// [`Event`]: super::event::Event
+/// [`DefaultGuard`]: super::dispatcher::DefaultGuard
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the subscriber."]

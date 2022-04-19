@@ -24,7 +24,7 @@
 //! - A string literal providing the span's name.
 //! - Finally, between zero and 32 arbitrary key/value fields.
 //!
-//! [`target`]: ../struct.Metadata.html#method.target
+//! [`target`]: super::Metadata::target
 //!
 //! For example:
 //! ```rust
@@ -381,7 +381,7 @@ pub(crate) struct Inner {
 ///
 /// This is returned by the [`Span::enter`] function.
 ///
-/// [`Span::enter`]: ../struct.Span.html#method.enter
+/// [`Span::enter`]: super::Span::enter
 #[derive(Debug)]
 #[must_use = "once a span has been entered, it should be exited"]
 pub struct Entered<'a> {
@@ -429,10 +429,10 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [`Subscriber`]: ../subscriber/trait.Subscriber.html
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [`Subscriber`]: super::subscriber::Subscriber
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_with(meta, values, dispatch))
     }
@@ -454,9 +454,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn new_root(meta: &'static Metadata<'static>, values: &field::ValueSet<'_>) -> Span {
         dispatcher::get_default(|dispatch| Self::new_root_with(meta, values, dispatch))
     }
@@ -478,9 +478,9 @@ impl Span {
     /// After the span is constructed, [field values] and/or [`follows_from`]
     /// annotations may be added to it.
     ///
-    /// [metadata]: ../metadata
-    /// [field values]: ../field/struct.ValueSet.html
-    /// [`follows_from`]: ../struct.Span.html#method.follows_from
+    /// [metadata]: super::Metadata
+    /// [field values]: super::field::ValueSet
+    /// [`follows_from`]: super::Span::follows_from
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         meta: &'static Metadata<'static>,
@@ -544,7 +544,8 @@ impl Span {
     /// that the thread from which this function is called is not currently
     /// inside a span, the returned span will be disabled.
     ///
-    /// [considered by the `Subscriber`]: ../subscriber/trait.Subscriber.html#method.current
+    /// [considered by the `Subscriber`]:
+    ///     super::subscriber::Subscriber::current_span
     pub fn current() -> Span {
         dispatcher::get_default(|dispatch| {
             if let Some((id, meta)) = dispatch.current_span().into_inner() {
@@ -579,7 +580,12 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            let values = attrs.values();
+            span.log(
+                target,
+                level_to_log!(*meta.level()),
+                format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
+            );
         }}
 
         span
@@ -712,9 +718,9 @@ impl Span {
     ///   ```
     ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-    /// [`Span::in_scope`]: #method.in_scope
-    /// [instrument]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html
-    /// [attr]: ../../attr.instrument.html
+    /// [`Span::in_scope`]: Span::in_scope()
+    /// [instrument]: crate::Instrument
+    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///
@@ -1033,7 +1039,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {};", _meta.name()));
             }
         }}
     }
@@ -1050,7 +1056,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {};", _meta.name()));
             }
         }}
     }
@@ -1096,7 +1102,7 @@ impl Span {
         f()
     }
 
-    /// Returns a [`Field`](../field/struct.Field.html) for the field with the
+    /// Returns a [`Field`][super::field::Field] for the field with the
     /// given `name`, if one exists,
     pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
     where
@@ -1106,7 +1112,7 @@ impl Span {
     }
 
     /// Returns true if this `Span` has a field for the given
-    /// [`Field`](../field/struct.Field.html) or field name.
+    /// [`Field`][super::field::Field] or field name.
     #[inline]
     pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
     where
@@ -1183,8 +1189,8 @@ impl Span {
     /// span.record("parting", &"you will be remembered");
     /// ```
     ///
-    /// [`field::Empty`]: ../field/struct.Empty.html
-    /// [`Metadata`]: ../struct.Metadata.html
+    /// [`field::Empty`]: super::field::Empty
+    /// [`Metadata`]: super::Metadata
     pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
     where
         Q: field::AsField,
@@ -1217,7 +1223,11 @@ impl Span {
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(
+                    target,
+                    level_to_log!(*_meta.level()),
+                    format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
+                );
             }}
         }
 
@@ -1229,7 +1239,7 @@ impl Span {
     ///
     /// See also [`is_none`].
     ///
-    /// [`is_none`]: #method.is_none
+    /// [`is_none`]: Span::is_none()
     #[inline]
     pub fn is_disabled(&self) -> bool {
         self.inner.is_none()
@@ -1243,8 +1253,8 @@ impl Span {
     /// rather than constructed by `Span::none`, this method will return
     /// `false`, while `is_disabled` will return `true`.
     ///
-    /// [`Span::none`]: #method.none
-    /// [`is_disabled`]: #method.is_disabled
+    /// [`Span::none`]: Span::none()
+    /// [`is_disabled`]: Span::is_disabled()
     #[inline]
     pub fn is_none(&self) -> bool {
         self.is_disabled() && self.meta.is_none()
@@ -1331,7 +1341,7 @@ impl Span {
                                 .module_path(meta.module_path())
                                 .file(meta.file())
                                 .line(meta.line())
-                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .args(format_args!("{} span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
                     } else {
@@ -1458,7 +1468,7 @@ impl Drop for Span {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", meta.name()),
+                    format_args!("-- {};", meta.name()),
                 );
             }
         }}
@@ -1592,38 +1602,6 @@ const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 ///
 /// Trivially safe, as `PhantomNotSend` doesn't have any API.
 unsafe impl Sync for PhantomNotSend {}
-
-#[cfg(feature = "log")]
-struct FmtValues<'a>(&'a Record<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
-
-#[cfg(feature = "log")]
-struct FmtAttrs<'a>(&'a Attributes<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
 
 #[cfg(test)]
 mod test {

@@ -1,6 +1,6 @@
 //! A rolling file appender.
 //!
-//! Creates a new log file at a fixed frequency as defined by [`Rotation`](struct.Rotation.html).
+//! Creates a new log file at a fixed frequency as defined by [`Rotation`][self::Rotation].
 //! Logs will be written to this file for the duration of the period and will automatically roll over
 //! to the newly created log file once the time period has elapsed.
 //!
@@ -17,10 +17,6 @@
 //! will be created daily
 //! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
-//! [minutely]: fn.minutely.html
-//! [hourly]: fn.hourly.html
-//! [daily]: fn.daily.html
-//! [never]: fn.never.html
 //!
 //! # Examples
 //!
@@ -114,7 +110,7 @@ impl RollingFileAppender {
     /// Creates a new `RollingFileAppender`.
     ///
     /// A `RollingFileAppender` will have a fixed rotation whose frequency is
-    /// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+    /// defined by [`Rotation`][self::Rotation]. The `directory` and
     /// `file_name_prefix` arguments determine the location and file name's _prefix_
     /// of the log file. `RollingFileAppender` will automatically append the current date
     /// and hour (UTC format) to the file name.
@@ -126,10 +122,6 @@ impl RollingFileAppender {
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never()]
     ///
-    /// [minutely]: fn.minutely.html
-    /// [hourly]: fn.hourly.html
-    /// [daily]: fn.daily.html
-    /// [never]: fn.never.html
     ///
     /// # Examples
     /// ```rust
@@ -284,7 +276,7 @@ pub fn hourly(
 /// a non-blocking, daily file appender.
 ///
 /// A `RollingFileAppender` has a fixed rotation whose frequency is
-/// defined by [`Rotation`](struct.Rotation.html). The `directory` and
+/// defined by [`Rotation`][self::Rotation]. The `directory` and
 /// `file_name_prefix` arguments determine the location and file name's _prefix_
 /// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
 ///

@@ -26,8 +26,8 @@
 //! * `otel.status_code`: Set the span status code to one of the supported OpenTelemetry [span status codes].
 //! * `otel.status_message`: Set the span status message.
 //!
-//! [span kinds]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.SpanKind.html
-//! [span status codes]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.StatusCode.html
+//! [span kinds]: opentelemetry::trace::SpanKind
+//! [span status codes]: opentelemetry::trace::StatusCode
 //!
 //! ### Semantic Conventions
 //!

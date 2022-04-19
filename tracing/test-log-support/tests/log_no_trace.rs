@@ -20,18 +20,18 @@ fn test_always_log() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_logged("foo");
+    test.assert_logged("foo;");
 
     foo.in_scope(|| {
-        test.assert_logged("-> foo");
+        test.assert_logged("-> foo;");
 
         trace!({foo = 3, bar = 4}, "hello {};", "san francisco");
         test.assert_logged("hello san francisco; foo=3 bar=4");
     });
-    test.assert_logged("<- foo");
+    test.assert_logged("<- foo;");
 
     drop(foo);
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo;");
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");

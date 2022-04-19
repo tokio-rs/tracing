@@ -3,7 +3,7 @@
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -138,10 +138,10 @@ macro_rules! span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -219,10 +219,10 @@ macro_rules! trace_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -300,10 +300,10 @@ macro_rules! debug_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -381,10 +381,10 @@ macro_rules! info_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -461,10 +461,10 @@ macro_rules! warn_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
-/// [attributes]: index.html#configuring-attributes
-/// [Fields]: index.html#recording-fields
-/// [`span!`]: macro.span.html
+/// [lib]: crate#using-the-macros
+/// [attributes]: crate#configuring-attributes
+/// [Fields]: crate#recording-fields
+/// [`span!`]: crate::span!
 ///
 /// # Examples
 ///
@@ -543,7 +543,7 @@ macro_rules! error_span {
 /// See [the top-level documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [lib]: index.html#using-the-macros
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -604,8 +604,8 @@ macro_rules! event {
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
-                    target: $target,
                     $lvl,
+                    CALLSITE,
                     &value_set
                 );
                 let meta = CALLSITE.metadata();
@@ -618,8 +618,8 @@ macro_rules! event {
             })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
-                target: $target,
                 $lvl,
+                CALLSITE,
                 &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
         }
@@ -666,15 +666,15 @@ macro_rules! event {
                     &value_set
                 );
                 $crate::__tracing_log!(
-                    target: $target,
                     $lvl,
+                    CALLSITE,
                     &value_set
                 );
             })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
-                target: $target,
                 $lvl,
+                CALLSITE,
                 &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
             );
         }
@@ -1049,8 +1049,8 @@ macro_rules! enabled {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1249,8 +1249,8 @@ macro_rules! trace {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1450,8 +1450,8 @@ macro_rules! debug {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1662,8 +1662,8 @@ macro_rules! info {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -1867,8 +1867,8 @@ macro_rules! warn {
 /// documentation][lib] for details on the syntax accepted by
 /// this macro.
 ///
-/// [`event!`]: macro.event.html
-/// [lib]: index.html#using-the-macros
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
 ///
 /// # Examples
 ///
@@ -2414,31 +2414,26 @@ macro_rules! __tracing_stringify {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $value_set:expr ) => {};
+    ($level:expr, $callsite:expr, $value_set:expr) => {};
 }
 
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_log {
-    (target: $target:expr, $level:expr, $value_set:expr ) => {
+    ($level:expr, $callsite:expr, $value_set:expr) => {
         $crate::if_log_enabled! { $level, {
             use $crate::log;
             let level = $crate::level_to_log!($level);
             if level <= log::max_level() {
+                let meta = $callsite.metadata();
                 let log_meta = log::Metadata::builder()
                     .level(level)
-                    .target($target)
+                    .target(meta.target())
                     .build();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
-                    logger.log(&log::Record::builder()
-                        .file(Some(file!()))
-                        .module_path(Some(module_path!()))
-                        .line(Some(line!()))
-                        .metadata(log_meta)
-                        .args(format_args!("{}", $crate::__macro_support::LogValueSet($value_set)))
-                        .build());
+                    $crate::__macro_support::__tracing_log(meta, logger, log_meta, $value_set)
                 }
             }
         }}

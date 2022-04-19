@@ -93,7 +93,7 @@ impl LogTracer {
     /// # }
     /// ```
     ///
-    /// [`init`]: #method.init
+    /// [`init`]: LogTracer::init()
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
         Self {
@@ -109,7 +109,7 @@ impl LogTracer {
     /// The [`builder`] function can be used to customize the `LogTracer` before
     /// initializing it.
     ///
-    /// [`builder`]: #method.builder
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init_with_filter(level: log::LevelFilter) -> Result<(), SetLoggerError> {
@@ -143,8 +143,8 @@ impl LogTracer {
     /// If you know in advance you want to filter some log levels,
     /// use [`builder`] or [`init_with_filter`] instead.
     ///
-    /// [`init_with_filter`]: #method.init_with_filter
-    /// [`builder`]: #method.builder
+    /// [`init_with_filter`]: LogTracer::init_with_filter()
+    /// [`builder`]: LogTracer::builder()
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn init() -> Result<(), SetLoggerError> {
@@ -208,7 +208,6 @@ impl log::Log for LogTracer {
 impl Builder {
     /// Returns a new `Builder` to construct a [`LogTracer`].
     ///
-    /// [`LogTracer`]: struct.LogTracer.html
     pub fn new() -> Self {
         Self::default()
     }
