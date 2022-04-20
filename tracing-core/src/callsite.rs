@@ -6,7 +6,7 @@ use crate::stdlib::{
     hash::{Hash, Hasher},
     ptr,
     sync::{
-        atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicPtr, AtomicU8, Ordering},
         Mutex,
     },
     vec::Vec,
@@ -79,10 +79,10 @@ pub struct Identifier(
 /// A default [`Callsite`] implementation.
 #[derive(Debug)]
 pub struct DefaultCallsite {
-    interest: AtomicUsize,
+    interest: AtomicU8,
+    registration: AtomicU8,
     meta: &'static Metadata<'static>,
     next: AtomicPtr<Self>,
-    registration: Once,
 }
 
 /// Clear and reregister interest on every [`Callsite`]
@@ -151,13 +151,21 @@ struct Callsites {
 // === impl DefaultCallsite ===
 
 impl DefaultCallsite {
+    const UNREGISTERED: u8 = 0;
+    const REGISTERING: u8 = 1;
+    const REGISTERED: u8 = 2;
+
+    const INTEREST_NEVER: u8 = 0;
+    const INTEREST_SOMETIMES: u8 = 1;
+    const INTEREST_ALWAYS: u8 = 2;
+
     /// Returns a new `DefaultCallsite` with the specified `Metadata`.
     pub const fn new(meta: &'static Metadata<'static>) -> Self {
         Self {
-            interest: AtomicUsize::new(0xDEADFACED),
+            interest: AtomicU8::new(0xFF),
             meta,
             next: AtomicPtr::new(ptr::null_mut()),
-            registration: Once::new(),
+            registration: AtomicU8::new(Self::UNREGISTERED),
         }
     }
 
@@ -174,13 +182,37 @@ impl DefaultCallsite {
     // This only happens once (or if the cached interest value was corrupted).
     #[cold]
     pub fn register(&'static self) -> Interest {
-        self.registration.call_once(|| {
-            rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
-            CALLSITES.push_default(self);
-        });
+        // Attempt to advance the registration state to `REGISTERING`...
+        match self.registration.compare_exchange(
+            Self::UNREGISTERED,
+            Self::REGISTERING,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => {
+                // Okay, we advanced the state, try to register the callsite.
+                rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
+                CALLSITES.push_default(self);
+                self.registration.store(Self::REGISTERED, Ordering::Release);
+            }
+            // Great, the callsite is already registered! Just load its
+            // previous cached interest.
+            Err(Self::REGISTERED) => {}
+            // Someone else is registering...
+            Err(_state) => {
+                debug_assert_eq!(
+                    _state,
+                    Self::REGISTERING,
+                    "weird callsite registration state"
+                );
+                // Just hit `enabled` this time.
+                return Interest::sometimes();
+            }
+        }
+
         match self.interest.load(Ordering::Relaxed) {
-            0 => Interest::never(),
-            2 => Interest::always(),
+            Self::INTEREST_NEVER => Interest::never(),
+            Self::INTEREST_ALWAYS => Interest::always(),
             _ => Interest::sometimes(),
         }
     }
@@ -190,9 +222,9 @@ impl DefaultCallsite {
     #[inline]
     pub fn interest(&'static self) -> Interest {
         match self.interest.load(Ordering::Relaxed) {
-            0 => Interest::never(),
-            1 => Interest::sometimes(),
-            2 => Interest::always(),
+            Self::INTEREST_NEVER => Interest::never(),
+            Self::INTEREST_SOMETIMES => Interest::sometimes(),
+            Self::INTEREST_ALWAYS => Interest::always(),
             _ => self.register(),
         }
     }
@@ -201,9 +233,9 @@ impl DefaultCallsite {
 impl Callsite for DefaultCallsite {
     fn set_interest(&self, interest: Interest) {
         let interest = match () {
-            _ if interest.is_never() => 0,
-            _ if interest.is_always() => 2,
-            _ => 1,
+            _ if interest.is_never() => Self::INTEREST_NEVER,
+            _ if interest.is_always() => Self::INTEREST_ALWAYS,
+            _ => Self::INTEREST_SOMETIMES,
         };
         self.interest.store(interest, Ordering::SeqCst);
     }
