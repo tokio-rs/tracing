@@ -15,7 +15,6 @@ use crate::{
     dispatcher::Dispatch,
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
-    Once,
 };
 
 use self::dispatchers::Dispatchers;
