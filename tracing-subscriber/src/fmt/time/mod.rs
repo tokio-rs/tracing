@@ -116,6 +116,18 @@ impl From<Instant> for Uptime {
     }
 }
 
+impl<T> FormatTime for Option<T>
+where
+    T: FormatTime,
+{
+    fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
+        match self {
+            Some(t) => t.format_time(w),
+            None => Ok(()),
+        }
+    }
+}
+
 impl FormatTime for SystemTime {
     fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
         write!(
