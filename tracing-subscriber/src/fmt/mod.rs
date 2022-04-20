@@ -560,10 +560,10 @@ where
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
         CollectorBuilder {
             filter: self.filter,
-            inner: self.inner.with_timestamp(false),
+            inner: self.inner.without_time(),
         }
     }
 

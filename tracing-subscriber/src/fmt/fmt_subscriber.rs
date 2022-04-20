@@ -295,11 +295,14 @@ where
     }
 
     /// Do not emit timestamps with spans and event.
-    pub fn without_time(self) -> Subscriber<C, N, format::Format<L, T>, W> {
+    pub fn without_time(self) -> Subscriber<C, N, format::Format<L, ()>, W> {
         Subscriber {
-            fmt_event: self.fmt_event.with_timestamp(false),
+            fmt_event: self.fmt_event.without_time(),
             fmt_span: self.fmt_span.with_timestamp(false),
-            ..self
+            fmt_fields: self.fmt_fields,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            _inner: self._inner,
         }
     }
 

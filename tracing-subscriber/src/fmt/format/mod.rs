@@ -716,8 +716,19 @@ impl<F, T> Format<F, T> {
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> Format<F, T> {
-        self.with_timestamp(false)
+    pub fn without_time(self) -> Format<F, ()> {
+        Format {
+            format: self.format,
+            timer: Some(()),
+            display_timestamp: false,
+            ansi: self.ansi,
+            display_target: self.display_target,
+            display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
+        }
     }
 
     /// Enable timestamps for log messages using the [`timer`] field in [`Self`].
