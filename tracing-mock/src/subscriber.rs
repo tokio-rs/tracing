@@ -198,7 +198,9 @@ where
             Interest::never()
         }
     }
+
     fn max_level_hint(&self) -> Option<LevelFilter> {
+        println!("[{}] max_level_hint ->  {:?}", self.name, self.max_level);
         self.max_level
     }
 

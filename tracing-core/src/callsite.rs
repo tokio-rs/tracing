@@ -420,10 +420,9 @@ mod dispatchers {
 #[cfg(not(feature = "std"))]
 mod dispatchers {
     use crate::dispatcher;
-    use core::marker::PhantomData;
 
     pub(super) struct Dispatchers(());
-    pub(super) struct Rebuilder<'a>(PhantomData<&'a ()>);
+    pub(super) struct Rebuilder<'a>(Option<&'a dispatcher::Dispatch>);
 
     impl Dispatchers {
         pub(super) const fn new() -> Self {
@@ -431,20 +430,32 @@ mod dispatchers {
         }
 
         pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
-            Rebuilder(PhantomData)
+            Rebuilder(None)
         }
 
-        pub(super) fn register_dispatch(&self, _: &dispatcher::Dispatch) -> Rebuilder<'_> {
+        pub(super) fn register_dispatch<'dispatch>(
+            &self,
+            dispatch: &'dispatch dispatcher::Dispatch,
+        ) -> Rebuilder<'dispatch> {
             // nop; on no_std, there can only ever be one dispatcher
-            Rebuilder(PhantomData)
+            Rebuilder(Some(dispatch))
         }
     }
 
     impl Rebuilder<'_> {
-        #[inline(always)]
+        #[inline]
         pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
-            // on no_std, there can only ever be one dispatcher
-            dispatcher::get_default(f)
+            if let Some(dispatch) = self.0 {
+                // we are rebuilding the interest cache because a new dispatcher
+                // is about to be set. on `no_std`, this should only happen
+                // once, because the new dispatcher will be the global default.
+                f(dispatch)
+            } else {
+                // otherwise, we are rebuilding the cache because the subscriber
+                // configuration changed, so use the global default.
+                // on no_std, there can only ever be one dispatcher
+                dispatcher::get_default(f)
+            }
         }
     }
 }
