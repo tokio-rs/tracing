@@ -1,3 +1,26 @@
+# 0.3.0 (April 21, 2022)
+
+This is a breaking release which changes the format in which span fields
+are output to `journald`. Previously, span field names were prefixed with the
+depth of the span in the current trace tree. However, these prefixes are
+unnecessary, as `journald` has built in support for duplicated field names.
+
+See PR [#1986] for details on this change.
+
+## Changed
+
+- Removed span field prefixes ([#1986])
+- Renamed `S{num}_NAME` fields to `SPAN_NAME` ([#1986])
+
+### Fixed
+
+- Fixed broken links in documentation ([#2077])
+
+Thanks to @wiktorsikora and @ben0x539 for contributing to this release!
+
+[#1986]: https://github.com/tokio-rs/tracing/pull/1986
+[#2077]: https://github.com/tokio-rs/tracing/pull/2077
+
 # 0.2.4 (March 17, 2022)
 
 ### Fixed
