@@ -1,3 +1,29 @@
+# 0.1.3 (April 21st, 2022)
+
+### Added
+
+- **log-tracer**: Added `LogTracer::with_interest_cache` to enable a limited
+ form of per-record `Interest` caching for `log` records ([#1636])
+
+### Changed
+
+- Updated minimum supported Rust version (MSRV) to Rust 1.49.0 ([#1913])
+
+### Fixed
+
+- **log-tracer**: Fixed `LogTracer` not honoring `tracing` max level filters
+  ([#1543])
+- Broken links in documentation ([#2068], [#2077])
+
+Thanks to @Millione, @teozkr, @koute, @Folyd, and @ben0x539 for contributing to
+this release!
+
+[#1636]: https://github.com/tokio-rs/tracing/pulls/1636
+[#1913]: https://github.com/tokio-rs/tracing/pulls/1913
+[#1543]: https://github.com/tokio-rs/tracing/pulls/1543
+[#2068]: https://github.com/tokio-rs/tracing/pulls/2068
+[#2077]: https://github.com/tokio-rs/tracing/pulls/2077
+
 # 0.1.2 (February 19th, 2020)
 
 ### Added
