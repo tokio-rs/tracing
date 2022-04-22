@@ -1,5 +1,85 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
+//!
+//! # What Are Callsites?
+//!
+//! Every span or event in `tracing` is associated with a [`Callsite`]. A
+//! callsite is a small `static` value that is responsible for the following:
+//!
+//! * Storing the span or event's [`Metadata`],
+//! * Uniquely [identifying](Identifier) the span or event definition,
+//! * Caching the collector's [`Interest`][^1] in that span or event, to avoid
+//!   re-evaluating filters,
+//! * Storing a [`Registration`] that allows the callsite to be part of a global
+//!   list of all callsites in the program.
+//!
+//! # Registering Callsites
+//!
+//! When a span or event is recorded for the first time, its callsite
+//! [`register`]s itself with the global clalsite registry. Registering a
+//! callsite calls the [`Collect::register_callsite`][`register_callsite`]
+//! method with that callsite's [`Metadata`] on every currently active
+//! collector. This serves two primary purposes: informing collectors of the
+//! callsite's existence, and performing static filtering.
+//!
+//! ## Callsite Existence
+//!
+//! If a [`Collect`] implementation wishes to allocate storage for each
+//! unique span/event location in the program, or pre-compute some value
+//! that will be used to record that span or event in the future, it can
+//! do so in its [`register_callsite`] method.
+//!
+//! ## Performing Static Filtering
+//!
+//! The [`register_callsite`] method returns an [`Interest`] value,
+//! which indicates that the collector either [always] wishes to record
+//! that span or event, [sometimes] wishes to record it based on a
+//! dynamic filter evaluation, or [never] wishes to record it.
+//!
+//! When registering a new callsite, the [`Interest`]s returned by every
+//! currently active collector are combined, and the result is stored at
+//! each callsite. This way, when the span or event occurs in the
+//! future, the cached [`Interest`] value can be checked to efficiently
+//! to determine if the span or event should be recorded, without
+//! needing to perform expensive filtering (i.e. calling the
+//! [`Collect::enabled`] method every time a span or event occurs).
+//!
+//! ### Rebuilding Cached Interest
+//!
+//! When a new [`Dispatch`] is created (i.e. a new collector becomes
+//! active), any previously cached [`Interest`] values are re-evaluated
+//! for all callsites in the program. This way, if the new collector
+//! will enable a callsite that was not previously enabled, the
+//! [`Interest`] in that callsite is updated. Similarly, when a
+//! collector is dropped, the interest cache is also re-evaluated, so
+//! that any callsites enabled only by that collector are disabled.
+//!
+//! In addition, the [`rebuild_interest_cache`] function in this module can be
+//! used to manually invalidate all cached interest and re-register those
+//! callsites. This function is useful in situations where a collector's
+//! interest can change, but it does so relatively infrequently. The collector
+//! may wish for its interest to be cached most of the time, and return
+//! [`Interest::always`][always] or [`Interest::never`][never] in its
+//! [`register_callsite`] method, so that its [`Collect::enabled`] method
+//! doesn't need to be evaluated every time a span or event is recorded.
+//! However, when the configuration changes, the collector can call
+//! [`rebuild_interest_cache`] to re-evaluate the entire interest cache with its
+//! new configuration. This is a relatively costly operation, but if the
+//! configuration changes infrequently, it may be more efficient than calling
+//! [`Collect::enabled`] frequently.
+//!
+//! [^1]: Returned by the [`Collect::register_callsite`][`register_callsite`]
+//!     method.
+//!
+//! [`Metadata`]: crate::metadata::Metadata
+//! [`Interest`]: crate::collect::Interest
+//! [`Collect`]: crate::collect::Collect
+//! [`register_callsite`]: crate::collect::Collect::register_callsite
+//! [`Collect::enabled`]: crate::collect::Collect::enabled
+//! [always]: crate::collect::Interest::always
+//! [sometimes]: crate::collect::Interest::sometimes
+//! [never]: crate::collect::Interest::never
+//! [`Dispatch`]: crate::dispatch::Dispatch
 use crate::{
     collect::Interest,
     dispatch::{self, Dispatch},
