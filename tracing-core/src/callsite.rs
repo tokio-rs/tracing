@@ -98,10 +98,17 @@ type Callsites = LinkedList;
 ///
 /// These functions are only intended to be called by the callsite registry, which
 /// correctly handles determining the common interest between all collectors.
+///
+/// See the [module-level documentation](crate::callsite) for details on
+/// callsites.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
+    /// See the [documentation on callsite interest caching][cache-docs] for
+    /// details.
+    ///
     /// [`Interest`]: super::collect::Interest
+    /// [cache-docs]: crate::callsite#performing-static-filtering
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -134,8 +141,12 @@ pub struct Identifier(
 /// Every [`Callsite`] implementation must provide a `&'static Registration`
 /// when calling [`register`] to add itself to the global callsite registry.
 ///
+/// See [the documentation on callsite registration][registry-docs] for details
+/// on how callsites are registered.
+///
 /// [`Callsite`]: crate::callsite::Callsite
 /// [`register`]: crate::callsite::register
+/// [registry-docs]: crate::callsite#registering-callsites
 pub struct Registration<T = &'static dyn Callsite> {
     callsite: T,
     next: AtomicPtr<Registration<T>>,
@@ -179,21 +190,31 @@ mod inner {
     /// implementation at runtime, then it **must** call this function after that
     /// value changes, in order for the change to be reflected.
     ///
+    /// See the [documentation on callsite interest caching][cache-docs] for
+    /// additional information on this functipn's usage.
+    ///
     /// [`max_level_hint`]: crate::collect::Collect::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
     /// [`enabled`]: crate::collect::Collect::enabled
     /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
     /// [`Collect`]: crate::collect::Collect
+    /// [cache-docs]: crate::callsite#rebuilding-cached-interest
     pub fn rebuild_interest_cache() {
         let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
         rebuild_interest(callsites, &mut dispatchers);
     }
 
-    /// Register a new `Callsite` with the global registry.
+    /// Register a new [`Callsite`] with the global registry.
     ///
     /// This should be called once per callsite after the callsite has been
     /// constructed.
+    ///
+    /// See the [documentation on callsite registration][reg-docs] for details
+    /// on the global callsite registry.
+    ///
+    /// [`Callsite`]: crate::callsite::Callsite
+    /// [reg-docs]: crate::callsite#registering-callsites
     pub fn register(registration: &'static Registration) {
         let dispatchers = REGISTRY.dispatchers.read().unwrap();
         rebuild_callsite_interest(&dispatchers, registration.callsite);
@@ -276,20 +297,30 @@ mod inner {
     /// implementation at runtime, then it **must** call this function after that
     /// value changes, in order for the change to be reflected.
     ///
+    /// See the [documentation on callsite interest caching][cache-docs] for
+    /// additional information on this functipn's usage.
+    ///
     /// [`max_level_hint`]: crate::collector::Collector::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
     /// [`enabled`]: crate::collector::Collector::enabled
     /// [`Interest::sometimes()`]: crate::collect::Interest::sometimes
     /// [collector]: crate::collect::Collect
     /// [`Collect`]: crate::collect::Collect
+    /// [cache-docs]: crate::callsite#rebuilding-cached-interest
     pub fn rebuild_interest_cache() {
         register_dispatch(dispatch::get_global());
     }
 
-    /// Register a new `Callsite` with the global registry.
+    /// Register a new [`Callsite`] with the global registry.
     ///
     /// This should be called once per callsite after the callsite has been
     /// constructed.
+    ///
+    /// See the [documentation on callsite registration][reg-docs] for details
+    /// on the global callsite registry.
+    ///
+    /// [`Callsite`]: crate::callsite::Callsite
+    /// [reg-docs]: crate::callsite#registering-callsites
     pub fn register(registration: &'static Registration) {
         rebuild_callsite_interest(dispatch::get_global(), registration.callsite);
         REGISTRY.push(registration);
