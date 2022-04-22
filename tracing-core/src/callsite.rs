@@ -16,7 +16,7 @@
 //! # Registering Callsites
 //!
 //! When a span or event is recorded for the first time, its callsite
-//! [`register`]s itself with the global clalsite registry. Registering a
+//! [`register`]s itself with the global callsite registry. Registering a
 //! callsite calls the [`Collect::register_callsite`][`register_callsite`]
 //! method with that callsite's [`Metadata`] on every currently active
 //! collector. This serves two primary purposes: informing collectors of the
@@ -39,7 +39,7 @@
 //! When registering a new callsite, the [`Interest`]s returned by every
 //! currently active collector are combined, and the result is stored at
 //! each callsite. This way, when the span or event occurs in the
-//! future, the cached [`Interest`] value can be checked to efficiently
+//! future, the cached [`Interest`] value can be checked efficiently
 //! to determine if the span or event should be recorded, without
 //! needing to perform expensive filtering (i.e. calling the
 //! [`Collect::enabled`] method every time a span or event occurs).
@@ -191,7 +191,7 @@ mod inner {
     /// value changes, in order for the change to be reflected.
     ///
     /// See the [documentation on callsite interest caching][cache-docs] for
-    /// additional information on this functipn's usage.
+    /// additional information on this function's usage.
     ///
     /// [`max_level_hint`]: crate::collect::Collect::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
@@ -298,7 +298,7 @@ mod inner {
     /// value changes, in order for the change to be reflected.
     ///
     /// See the [documentation on callsite interest caching][cache-docs] for
-    /// additional information on this functipn's usage.
+    /// additional information on this function's usage.
     ///
     /// [`max_level_hint`]: crate::collector::Collector::max_level_hint
     /// [`Callsite`]: crate::callsite::Callsite
