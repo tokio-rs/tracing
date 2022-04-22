@@ -56,6 +56,10 @@ use crate::stdlib::{
 ///   Additionally, subscribers which wish to perform a behaviour once for each
 ///   callsite, such as allocating storage for data related to that callsite,
 ///   can perform it in `register_callsite`.
+///
+///   See also the [documentation on the callsite registry][cs-reg] for details
+///   on [`register_callsite`].
+///
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
@@ -70,10 +74,11 @@ use crate::stdlib::{
 /// [`enabled`]: Subscriber::enabled
 /// [`clone_span`]: Subscriber::clone_span
 /// [`try_close`]: Subscriber::try_close
+/// [cs-reg]: crate::callsite#registering-callsites
 pub trait Subscriber: 'static {
     // === Span registry methods ==============================================
 
-    /// Registers a new callsite with this subscriber, returning whether or not
+    /// Registers a new [callsite] with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite.
     ///
     /// By default, this function assumes that the subscriber's [filter]
@@ -127,6 +132,9 @@ pub trait Subscriber: 'static {
     /// return `Interest::Never`, as a new subscriber may be added that _is_
     /// interested.
     ///
+    /// See the [documentation on the callsite registry][cs-reg] for more
+    /// details on how and when the `register_callsite` method is called.
+    ///
     /// # Notes
     /// This function may be called again when a new subscriber is created or
     /// when the registry is invalidated.
@@ -135,10 +143,12 @@ pub trait Subscriber: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another subscriber expressed interest in it.
     ///
-    /// [filter]: Subscriber::enabled()
+    /// [callsite]: crate::callsite
+    /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
     /// [`enabled`]: Subscriber::enabled()
     /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
+    /// [cs-reg]: crate::callsite#registering-callsites
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()

@@ -1,5 +1,85 @@
 //! Callsites represent the source locations from which spans or events
 //! originate.
+//!
+//! # What Are Callsites?
+//!
+//! Every span or event in `tracing` is associated with a [`Callsite`]. A
+//! callsite is a small `static` value that is responsible for the following:
+//!
+//! * Storing the span or event's [`Metadata`],
+//! * Uniquely [identifying](Identifier) the span or event definition,
+//! * Caching the subscriber's [`Interest`][^1] in that span or event, to avoid
+//!   re-evaluating filters,
+//! * Storing a [`Registration`] that allows the callsite to be part of a global
+//!   list of all callsites in the program.
+//!
+//! # Registering Callsites
+//!
+//! When a span or event is recorded for the first time, its callsite
+//! [`register`]s itself with the global callsite registry. Registering a
+//! callsite calls the [`Subscriber::register_callsite`][`register_callsite`]
+//! method with that callsite's [`Metadata`] on every currently active
+//! subscriber. This serves two primary purposes: informing subscribers of the
+//! callsite's existence, and performing static filtering.
+//!
+//! ## Callsite Existence
+//!
+//! If a [`Subscriber`] implementation wishes to allocate storage for each
+//! unique span/event location in the program, or pre-compute some value
+//! that will be used to record that span or event in the future, it can
+//! do so in its [`register_callsite`] method.
+//!
+//! ## Performing Static Filtering
+//!
+//! The [`register_callsite`] method returns an [`Interest`] value,
+//! which indicates that the subscriber either [always] wishes to record
+//! that span or event, [sometimes] wishes to record it based on a
+//! dynamic filter evaluation, or [never] wishes to record it.
+//!
+//! When registering a new callsite, the [`Interest`]s returned by every
+//! currently active subscriber are combined, and the result is stored at
+//! each callsite. This way, when the span or event occurs in the
+//! future, the cached [`Interest`] value can be checked efficiently
+//! to determine if the span or event should be recorded, without
+//! needing to perform expensive filtering (i.e. calling the
+//! [`Subscriber::enabled`] method every time a span or event occurs).
+//!
+//! ### Rebuilding Cached Interest
+//!
+//! When a new [`Dispatch`] is created (i.e. a new subscriber becomes
+//! active), any previously cached [`Interest`] values are re-evaluated
+//! for all callsites in the program. This way, if the new subscriber
+//! will enable a callsite that was not previously enabled, the
+//! [`Interest`] in that callsite is updated. Similarly, when a
+//! subscriber is dropped, the interest cache is also re-evaluated, so
+//! that any callsites enabled only by that subscriber are disabled.
+//!
+//! In addition, the [`rebuild_interest_cache`] function in this module can be
+//! used to manually invalidate all cached interest and re-register those
+//! callsites. This function is useful in situations where a subscriber's
+//! interest can change, but it does so relatively infrequently. The subscriber
+//! may wish for its interest to be cached most of the time, and return
+//! [`Interest::always`][always] or [`Interest::never`][never] in its
+//! [`register_callsite`] method, so that its [`Subscriber::enabled`] method
+//! doesn't need to be evaluated every time a span or event is recorded.
+//! However, when the configuration changes, the subscriber can call
+//! [`rebuild_interest_cache`] to re-evaluate the entire interest cache with its
+//! new configuration. This is a relatively costly operation, but if the
+//! configuration changes infrequently, it may be more efficient than calling
+//! [`Subscriber::enabled`] frequently.
+//!
+//! [^1]: Returned by the [`Subscriber::register_callsite`][`register_callsite`]
+//!     method.
+//!
+//! [`Metadata`]: crate::metadata::Metadata
+//! [`Interest`]: crate::subscriber::Interest
+//! [`Subscriber`]: crate::subscriber::Subscriber
+//! [`register_callsite`]: crate::subscriber::Subscriber::register_callsite
+//! [`Subscriber::enabled`]: crate::subscriber::Subscriber::enabled
+//! [always]: crate::subscriber::Interest::always
+//! [sometimes]: crate::subscriber::Interest::sometimes
+//! [never]: crate::subscriber::Interest::never
+//! [`Dispatch`]: crate::dispatch::Dispatch
 use crate::stdlib::{
     any::TypeId,
     fmt,
@@ -23,10 +103,17 @@ use self::dispatchers::Dispatchers;
 ///
 /// These functions are only intended to be called by the callsite registry, which
 /// correctly handles determining the common interest between all subscribers.
+///
+/// See the [module-level documentation](crate::callsite) for details on
+/// callsites.
 pub trait Callsite: Sync {
     /// Sets the [`Interest`] for this callsite.
     ///
+    /// See the [documentation on callsite interest caching][cache-docs] for
+    /// details.
+    ///
     /// [`Interest`]: super::subscriber::Interest
+    /// [cache-docs]: crate::callsite#performing-static-filtering
     fn set_interest(&self, interest: Interest);
 
     /// Returns the [metadata] associated with the callsite.
@@ -98,19 +185,29 @@ pub struct DefaultCallsite {
 /// implementation at runtime, then it **must** call this function after that
 /// value changes, in order for the change to be reflected.
 ///
+/// See the [documentation on callsite interest caching][cache-docs] for
+/// additional information on this function's usage.
+///
 /// [`max_level_hint`]: super::subscriber::Subscriber::max_level_hint
 /// [`Callsite`]: super::callsite::Callsite
 /// [`enabled`]: super::subscriber::Subscriber#tymethod.enabled
 /// [`Interest::sometimes()`]: super::subscriber::Interest::sometimes
 /// [`Subscriber`]: super::subscriber::Subscriber
+/// [cache-docs]: crate::callsite#rebuilding-cached-interest
 pub fn rebuild_interest_cache() {
     CALLSITES.rebuild_interest(DISPATCHERS.rebuilder());
 }
 
-/// Register a new `Callsite` with the global registry.
+/// Register a new [`Callsite`] with the global registry.
 ///
 /// This should be called once per callsite after the callsite has been
 /// constructed.
+///
+/// See the [documentation on callsite registration][reg-docs] for details
+/// on the global callsite registry.
+///
+/// [`Callsite`]: crate::callsite::Callsite
+/// [reg-docs]: crate::callsite#registering-callsites
 pub fn register(callsite: &'static dyn Callsite) {
     rebuild_callsite_interest(callsite, &DISPATCHERS.rebuilder());
 
@@ -177,6 +274,12 @@ impl DefaultCallsite {
     ///
     /// Other callsite implementations will generally ensure that
     /// callsites are not re-registered through another mechanism.
+    ///
+    /// See the [documentation on callsite registration][reg-docs] for details
+    /// on the global callsite registry.
+    ///
+    /// [`Callsite`]: crate::callsite::Callsite
+    /// [reg-docs]: crate::callsite#registering-callsites
     #[inline(never)]
     // This only happens once (or if the cached interest value was corrupted).
     #[cold]
