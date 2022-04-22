@@ -134,7 +134,7 @@ use crate::stdlib::{
     fmt,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Weak,
+        Arc,
     },
 };
 
@@ -142,6 +142,7 @@ use crate::stdlib::{
 use crate::stdlib::{
     cell::{Cell, RefCell, RefMut},
     error,
+    sync::Weak,
 };
 
 /// `Dispatch` trace data to a [`Subscriber`].
@@ -387,6 +388,7 @@ fn get_global() -> Option<&'static Dispatch> {
     }
 }
 
+#[cfg(feature = "std")]
 pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
 
 impl Dispatch {
@@ -412,6 +414,7 @@ impl Dispatch {
         me
     }
 
+    #[cfg(feature = "std")]
     pub(crate) fn registrar(&self) -> Registrar {
         Registrar(Arc::downgrade(&self.subscriber))
     }
@@ -651,14 +654,8 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl Registrar {
-    pub(crate) fn try_register(
-        &self,
-        metadata: &'static Metadata<'static>,
-    ) -> Option<subscriber::Interest> {
-        self.0.upgrade().map(|s| s.register_callsite(metadata))
-    }
-
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
         self.0.upgrade().map(|subscriber| Dispatch { subscriber })
     }
