@@ -141,6 +141,7 @@ pub trait Collect: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another collector expressed interest in it.
     ///
+    /// [callsite]: crate::callsite
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
     /// [`enabled`]: Self::enabled
