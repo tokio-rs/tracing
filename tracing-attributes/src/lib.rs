@@ -176,6 +176,14 @@ mod expand;
 ///     fn my_method(&self) {}
 /// }
 /// ```
+/// Specifying `follows_from` relationships:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = causes)]
+/// pub fn my_function(causes: &[tracing::Id]) {
+///     // ...
+/// }
+/// ```
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///

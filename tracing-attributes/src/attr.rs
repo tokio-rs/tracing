@@ -12,6 +12,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) name: Option<LitStr>,
     target: Option<LitStr>,
     pub(crate) parent: Option<Expr>,
+    pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
     pub(crate) err_mode: Option<FormatMode>,
@@ -129,6 +130,12 @@ impl Parse for InstrumentArgs {
                 }
                 let parent = input.parse::<ExprArg<kw::parent>>()?;
                 args.parent = Some(parent.value);
+            } else if lookahead.peek(kw::follows_from) {
+                if args.target.is_some() {
+                    return Err(input.error("expected only a single `follows_from` argument"));
+                }
+                let follows_from = input.parse::<ExprArg<kw::follows_from>>()?;
+                args.follows_from = Some(follows_from.value);
             } else if lookahead.peek(kw::level) {
                 if args.level.is_some() {
                     return Err(input.error("expected only a single `level` argument"));
@@ -385,6 +392,7 @@ mod kw {
     syn::custom_keyword!(level);
     syn::custom_keyword!(target);
     syn::custom_keyword!(parent);
+    syn::custom_keyword!(follows_from);
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
