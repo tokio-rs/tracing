@@ -135,6 +135,8 @@ fn gen_block<B: ToTokens>(
 
         let target = args.target();
 
+        let parent = args.parent.iter();
+
         // filter out skipped fields
         let quoted_fields: Vec<_> = param_names
             .iter()
@@ -182,6 +184,7 @@ fn gen_block<B: ToTokens>(
 
         quote!(tracing::span!(
             target: #target,
+            #(parent: #parent,)*
             #level,
             #span_name,
             #(#quoted_fields,)*
