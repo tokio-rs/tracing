@@ -40,8 +40,8 @@ fn default_parent_test() {
                 .with_explicit_parent(None),
         )
         .enter(child.clone())
-        .exit(child.clone())
-        .exit(contextual_parent.clone())
+        .exit(child)
+        .exit(contextual_parent)
         .done()
         .run_with_handle();
 
@@ -73,7 +73,6 @@ fn explicit_parent_test() {
         )
         .new_span(
             explicit_parent
-                .clone()
                 .with_contextual_parent(None)
                 .with_explicit_parent(None),
         )
@@ -85,8 +84,8 @@ fn explicit_parent_test() {
                 .with_explicit_parent(Some("explicit_parent")),
         )
         .enter(child.clone())
-        .exit(child.clone())
-        .exit(contextual_parent.clone())
+        .exit(child)
+        .exit(contextual_parent)
         .done()
         .run_with_handle();
 
