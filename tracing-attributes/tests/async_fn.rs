@@ -1,5 +1,6 @@
 use tracing_mock::*;
 
+use std::convert::Infallible;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
@@ -49,6 +50,22 @@ async fn repro_1613(var: bool) {
 async fn repro_1613_2() {
     // hello world
     // else
+}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1831
+#[instrument]
+#[deny(unused_braces)]
+fn repro_1831() -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async move {})
+}
+
+// This replicates the pattern used to implement async trait methods on nightly using the
+// `type_alias_impl_trait` feature
+#[instrument(ret, err)]
+#[deny(unused_braces)]
+#[allow(clippy::manual_async_fn)]
+fn repro_1831_2() -> impl Future<Output = Result<(), Infallible>> {
+    async { Ok(()) }
 }
 
 #[test]
