@@ -217,7 +217,7 @@ fn gen_block<B: ToTokens>(
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    match async move { #block }.await {
+                    match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
                             #ret_event;
@@ -232,7 +232,7 @@ fn gen_block<B: ToTokens>(
             ),
             (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
-                    match async move { #block }.await {
+                    match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
@@ -244,13 +244,13 @@ fn gen_block<B: ToTokens>(
             ),
             (None, Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    let x = async move { #block }.await;
+                    let x = async move #block.await;
                     #ret_event;
                     x
                 }
             ),
             (None, None) => quote_spanned!(block.span()=>
-                async move { #block }
+                async move #block
             ),
         };
 
