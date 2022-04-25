@@ -161,6 +161,21 @@ mod expand;
 ///     // ...
 /// }
 /// ```
+/// ```
+/// # use tracing_attributes::instrument;
+/// // A struct which owns a span handle.
+/// struct MyStruct
+/// {
+///     span: tracing::Span
+/// }
+///
+/// impl MyStruct
+/// {
+///     // Use the struct's `span` field as the parent span
+///     #[instrument(parent = &self.span, skip(self))]
+///     fn my_method(&self) {}
+/// }
+/// ```
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///
