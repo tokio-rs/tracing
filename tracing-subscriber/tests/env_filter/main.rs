@@ -9,8 +9,40 @@ mod per_layer;
 use tracing::{self, subscriber::with_default, Level};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
+    layer::Layered,
     prelude::*,
 };
+
+#[test]
+fn more_specific_dynamic_directives_override_static_directives() {
+    let filter: EnvFilter = "info,my_target[my_span]=warn".parse().unwrap();
+    let (subscriber, handle) = subscriber::mock()
+        // .event(
+        //     event::mock()
+        //         .at_level(Level::INFO)
+        //         .in_scope(vec![span::named("my_span")]),
+        // )
+        .enter(span::mock().at_level(Level::INFO))
+        .event(
+            event::mock()
+                .at_level(Level::WARN)
+                .in_scope(vec![span::named("my_span")]),
+        )
+        .exit(span::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+
+    let subscriber: Layered<_, _> = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        // tracing::info!("should be logged");
+        let _info = tracing::info_span!(target: "my_target", "my_span").entered();
+        tracing::info!("should be ignored");
+        tracing::warn!("should be logged");
+    });
+
+    handle.assert_finished();
+}
 
 #[test]
 fn level_filter_event() {

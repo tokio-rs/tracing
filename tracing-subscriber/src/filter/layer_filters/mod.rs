@@ -565,6 +565,7 @@ where
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
+        println!("Filtered::register_callsite, interest: {interest:?}");
 
         // If the filter didn't disable the callsite, allow the inner layer to
         // register it — since `register_callsite` is also used for purposes
@@ -589,6 +590,7 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
+        println!("Inside Filtered::enabled");
         let cx = cx.with_filter(self.id());
         let enabled = self.filter.enabled(metadata, &cx);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));

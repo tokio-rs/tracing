@@ -75,6 +75,7 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        println!("in impl subscriber for layered enabled");
         if self.layer.enabled(metadata, self.ctx()) {
             // if the outer layer enables the callsite metadata, ask the subscriber.
             self.inner.enabled(metadata)
@@ -219,6 +220,7 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
+        println!("in impl layer for layered enabled");
         if self.layer.enabled(metadata, ctx.clone()) {
             // if the outer subscriber enables the callsite metadata, ask the inner layer.
             self.inner.enabled(metadata, ctx)
