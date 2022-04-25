@@ -153,6 +153,14 @@ mod expand;
 ///     // ...
 /// }
 /// ```
+/// Overriding the generated span's parent:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(parent = None)]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// ```
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///
