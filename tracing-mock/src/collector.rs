@@ -23,6 +23,10 @@ use tracing::{
 #[derive(Debug, Eq, PartialEq)]
 pub enum Expect {
     Event(MockEvent),
+    FollowsFrom {
+        consequence: MockSpan,
+        cause: MockSpan,
+    },
     Enter(MockSpan),
     Exit(MockSpan),
     CloneSpan(MockSpan),
@@ -95,6 +99,12 @@ where
 
     pub fn enter(mut self, span: MockSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
+        self
+    }
+
+    pub fn follows_from(mut self, consequence: MockSpan, cause: MockSpan) -> Self {
+        self.expected
+            .push_back(Expect::FollowsFrom { consequence, cause });
         self
     }
 
@@ -249,8 +259,37 @@ where
         }
     }
 
-    fn record_follows_from(&self, _span: &Id, _follows: &Id) {
-        // TODO: it should be possible to expect spans to follow from other spans
+    fn record_follows_from(&self, consequence_id: &Id, cause_id: &Id) {
+        let spans = self.spans.lock().unwrap();
+        if let Some(consequence_span) = spans.get(consequence_id) {
+            if let Some(cause_span) = spans.get(cause_id) {
+                println!(
+                    "[{}] record_follows_from: {} (id={:?}) follows {} (id={:?})",
+                    self.name, consequence_span.name, consequence_id, cause_span.name, cause_id,
+                );
+                match self.expected.lock().unwrap().pop_front() {
+                    None => {}
+                    Some(Expect::FollowsFrom {
+                        consequence: ref expected_consequence,
+                        cause: ref expected_cause,
+                    }) => {
+                        if let Some(name) = expected_consequence.name() {
+                            assert_eq!(name, consequence_span.name);
+                        }
+                        if let Some(name) = expected_cause.name() {
+                            assert_eq!(name, cause_span.name);
+                        }
+                    }
+                    Some(ex) => ex.bad(
+                        &self.name,
+                        format_args!(
+                            "consequence {:?} followed cause {:?}",
+                            consequence_span.name, cause_span.name
+                        ),
+                    ),
+                }
+            }
+        };
     }
 
     fn new_span(&self, span: &Attributes<'_>) -> Id {
@@ -453,6 +492,10 @@ impl Expect {
             Expect::Event(e) => panic!(
                 "\n[{}] expected event {}\n[{}] but instead {}",
                 name, e, name, what,
+            ),
+            Expect::FollowsFrom { consequence, cause } => panic!(
+                "\n[{}] expected consequence {} to follow cause {} but instead {}",
+                name, consequence, cause, what,
             ),
             Expect::Enter(e) => panic!(
                 "\n[{}] expected to enter {}\n[{}] but instead {}",

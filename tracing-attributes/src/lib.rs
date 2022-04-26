@@ -176,6 +176,24 @@ mod expand;
 ///     fn my_method(&self) {}
 /// }
 /// ```
+/// Specifying [`follows_from`] relationships:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = causes)]
+/// pub fn my_function(causes: &[tracing::Id]) {
+///     // ...
+/// }
+/// ```
+/// Any expression of type `impl IntoIterator<Item = impl Into<Option<Id>>>`
+/// may be provided to `follows_from`; e.g.:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = [cause])]
+/// pub fn my_function(cause: &tracing::span::EnteredSpan) {
+///     // ...
+/// }
+/// ```
+///
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///
@@ -325,6 +343,7 @@ mod expand;
 /// (or maybe you can just bump `async-trait`).
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
