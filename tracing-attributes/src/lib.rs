@@ -184,6 +184,16 @@ mod expand;
 ///     // ...
 /// }
 /// ```
+/// Any expression of type `impl IntoIterator<Item = impl Into<Option<Id>>>`
+/// may be provided to `follows_from`; e.g.:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = [cause])]
+/// pub fn my_function(cause: &tracing::span::EnteredSpan) {
+///     // ...
+/// }
+/// ```
+///
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///
