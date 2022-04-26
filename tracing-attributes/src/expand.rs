@@ -88,6 +88,13 @@ fn gen_block<B: ToTokens>(
 
     let level = args.level();
 
+    let follows_from = args.follows_from.iter();
+    let follows_from = quote! {
+        #(for cause in #follows_from {
+            __tracing_attr_span.follows_from(cause);
+        })*
+    };
+
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
@@ -261,6 +268,7 @@ fn gen_block<B: ToTokens>(
             let __tracing_attr_span = #span;
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
+                #follows_from
                 tracing::Instrument::instrument(
                     __tracing_instrument_future,
                     __tracing_attr_span
@@ -287,6 +295,7 @@ fn gen_block<B: ToTokens>(
         let __tracing_attr_guard;
         if tracing::level_enabled!(#level) {
             __tracing_attr_span = #span;
+            #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
     );
