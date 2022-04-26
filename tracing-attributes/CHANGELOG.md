@@ -1,3 +1,31 @@
+# 0.1.21 (April 26, 2022)
+
+This release adds support for setting explicit parent and follows-from spans
+in the `#[instrument]` attribute.
+
+### Added
+
+- `#[instrument(follows_from = ...)]` argument for setting one or more
+  follows-from span ([#2093])
+- `#[instrument(parent = ...)]` argument for overriding the generated span's
+  parent ([#2091])
+
+### Fixed
+
+- Extra braces around `async` blocks in expanded code (causes a Clippy warning)
+  ([#2090])
+- Broken documentation links ([#2068], [#2077])
+
+Thanks to @jarrodldavis, @ben0x539, and new contributor @jswrenn for
+contributing to this release!
+
+
+[#2093]: https://github.com/tokio-rs/tracing/pull/2093
+[#2091]: https://github.com/tokio-rs/tracing/pull/2091
+[#2090]: https://github.com/tokio-rs/tracing/pull/2090
+[#2077]: https://github.com/tokio-rs/tracing/pull/2077
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+
 # 0.1.20 (March 8, 2022)
 
 ### Fixed
