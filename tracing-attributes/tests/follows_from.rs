@@ -1,4 +1,4 @@
-use tracing::{collect::with_default, Id, Level};
+use tracing::{collect::with_default, Id, Level, Span};
 use tracing_attributes::instrument;
 use tracing_mock::*;
 
@@ -7,6 +7,9 @@ fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<Id>>
 
 #[instrument(follows_from = causes, skip(causes))]
 async fn with_follows_from_async(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
+
+#[instrument(follows_from = [&Span::current()])]
+fn follows_from_current() {}
 
 #[test]
 fn follows_from_sync_test() {
@@ -67,6 +70,29 @@ fn follows_from_async_test() {
 
             with_follows_from_async(&[cause_a, cause_b, cause_c]).await
         })
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn follows_from_current_test() {
+    let cause = span::mock().named("cause");
+    let consequence = span::mock().named("follows_from_current");
+
+    let (collector, handle) = collector::mock()
+        .new_span(cause.clone())
+        .enter(cause.clone())
+        .new_span(consequence.clone())
+        .follows_from(consequence.clone(), cause.clone())
+        .enter(consequence.clone())
+        .exit(consequence)
+        .exit(cause)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        tracing::span!(Level::TRACE, "cause").in_scope(follows_from_current)
     });
 
     handle.assert_finished();
