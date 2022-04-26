@@ -176,7 +176,7 @@ mod expand;
 ///     fn my_method(&self) {}
 /// }
 /// ```
-/// Specifying `follows_from` relationships:
+/// Specifying [`follows_from`] relationships:
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(follows_from = causes)]
@@ -343,6 +343,7 @@ mod expand;
 /// (or maybe you can just bump `async-trait`).
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
