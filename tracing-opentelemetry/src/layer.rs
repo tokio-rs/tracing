@@ -602,8 +602,6 @@ where
                 }
 
                 if self.event_location {
-                    let builder_attrs = builder.attributes.get_or_insert(Vec::new());
-
                     #[cfg(not(feature = "tracing-log"))]
                     let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
                     let (file, module) = match &normalized_meta {
@@ -618,13 +616,19 @@ where
                     };
 
                     if let Some(file) = file {
-                        builder_attrs.push(KeyValue::new("code.filepath", file));
+                        otel_event
+                            .attributes
+                            .push(KeyValue::new("code.filepath", file));
                     }
                     if let Some(module) = module {
-                        builder_attrs.push(KeyValue::new("code.namespace", module));
+                        otel_event
+                            .attributes
+                            .push(KeyValue::new("code.namespace", module));
                     }
                     if let Some(line) = meta.line() {
-                        builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+                        otel_event
+                            .attributes
+                            .push(KeyValue::new("code.lineno", line as i64));
                     }
                 }
 
