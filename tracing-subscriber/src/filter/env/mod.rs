@@ -626,14 +626,23 @@ impl EnvFilter {
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.has_dynamics && metadata.is_span() {
-            // If this metadata describes a span, first, check if there is a
-            // dynamic filter that should be constructed for it. If so, it
-            // should always be enabled, since it influences filtering.
-            if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
-                by_cs.insert(metadata.callsite(), matcher);
-                return Interest::always();
+        if self.has_dynamics {
+            if metadata.is_span() {
+                // If this metadata describes a span, first, check if there is a
+                // dynamic filter that should be constructed for it. If so, it
+                // should always be enabled, since it influences filtering.
+                if let Some(matcher) = self.dynamics.matcher(metadata) {
+                    let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
+                    by_cs.insert(metadata.callsite(), matcher);
+                    return Interest::always();
+                }
+            } else if self
+                .dynamics
+                .directives()
+                .any(|directive| directive.level < *metadata.level())
+            {
+                // Any dynamic could turn this metadata off
+                return Interest::sometimes();
             }
         }
 

@@ -26,10 +26,11 @@ fn more_specific_dynamic_directives_override_static_directives() {
         .with(layer.with_filter(filter))
         .set_default();
 
-    // tracing::info!("should be logged");
-    let _info = tracing::info_span!(target: "my_target", "my_span").entered();
-    tracing::info!(target: "my_target", "should be ignored");
-    tracing::warn!(target: "my_target", "should be logged");
+    {
+        let _info = tracing::info_span!(target: "my_target", "my_span").entered();
+        tracing::info!(target: "my_target", "should be ignored");
+        tracing::warn!(target: "my_target", "should be logged");
+    }
 
     handle.assert_finished();
 }
