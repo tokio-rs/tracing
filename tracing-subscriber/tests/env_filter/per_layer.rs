@@ -7,11 +7,6 @@ use super::*;
 fn more_specific_dynamic_directives_override_static_directives() {
     let filter: EnvFilter = "info,my_target[my_span]=warn".parse().unwrap();
     let (layer, handle) = layer::mock()
-        // .event(
-        //     event::mock()
-        //         .at_level(Level::INFO)
-        //         .in_scope(vec![span::named("my_span")]),
-        // )
         .enter(span::mock().at_level(Level::INFO))
         .event(
             event::mock()

@@ -472,14 +472,11 @@ impl EnvFilter {
     /// traits, but it does not require the trait to be in scope.
     pub fn enabled<S>(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         let level = metadata.level();
-        println!("entering enabled");
 
         // is it possible for a dynamic filter directive to enable this event?
         // if not, we can avoid the thread loca'l access + iterating over the
         // spans in the current scope.
-        if self.has_dynamics
-        /* && self.dynamics.max_level >= *level */
-        {
+        if self.has_dynamics {
             if metadata.is_span() {
                 // If the metadata is a span, see if we care about its callsite.
                 let enabled_by_cs = self
@@ -489,17 +486,14 @@ impl EnvFilter {
                     .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
                     .unwrap_or(false);
                 if enabled_by_cs {
-                    println!("enabled by cs (wat)");
                     return true;
                 }
             }
 
             let enabled_by_scope = {
                 let scope = self.scope.get_or_default().borrow();
-                dbg!(&scope);
                 for filter in &*scope {
                     if filter >= level {
-                        println!("filter {filter:?} enabled this");
                         return true;
                     }
                 }
@@ -510,11 +504,9 @@ impl EnvFilter {
                 false
             };
             if enabled_by_scope {
-                println!("enabled_by_scope was true");
                 return true;
             }
         }
-        println!("dynamics didn't decide this");
 
         // is it possible for a static filter directive to enable this event?
         if self.statics.max_level >= *level {
