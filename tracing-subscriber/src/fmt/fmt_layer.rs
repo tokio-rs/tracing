@@ -896,6 +896,8 @@ where
             {
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let _ = io::Write::write_all(&mut writer, buf.as_bytes());
+            } else {
+                eprintln!("[tracing-subscriber] Unable to format the following event: {:?}", event);
             }
 
             buf.clear();
