@@ -615,6 +615,19 @@ where
         }
     }
 
+     /// Whether to write errors to the Writer, or ignore them.
+     ///
+     /// An error in this case refers to errors which may occur within the
+     /// Subscriber implementation itself, or in code that it depends on.
+     ///
+     /// It does not refer to traces set to the level of Error.
+    pub fn with_silence_errors(self, silence_errors: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_silence_errors(silence_errors),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's target is displayed.
     pub fn with_target(
         self,
