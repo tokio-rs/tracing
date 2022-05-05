@@ -38,7 +38,7 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 local-time = ["time/local-offset"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.22" }
+tracing-core = { path = "../tracing-core", version = "0.1.22", default-features = false }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1", default-features = false }
