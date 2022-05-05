@@ -25,7 +25,7 @@ rust-version = "1.49.0"
 [features]
 
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
-alloc = []
+alloc = ["tracing-core/alloc"]
 std = ["alloc", "tracing-core/std"]
 env-filter = ["matchers", "regex", "lazy_static", "tracing", "std", "thread_local"]
 fmt = ["registry", "std"]
@@ -37,7 +37,7 @@ json = ["tracing-serde", "serde", "serde_json"]
 local-time = ["time/local-offset"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.2" }
+tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 
 # only required by the `env-filter` feature
 tracing = { optional = true, path = "../tracing", version = "0.2", default-features = false }
