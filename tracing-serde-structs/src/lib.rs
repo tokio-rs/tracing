@@ -235,6 +235,46 @@ pub enum SerializeFieldSet<'a> {
     De(Vec<&'a str>),
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SerializeValueSet<'a> {
+    #[serde(borrow)]
+    values: Vec<SerializeVisit<'a>>,
+    fields: SerializeFieldSet<'a>,
+}
+
+impl<'a> tracing_core::field::Visit for SerializeValueSet<'a> {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        self.values.push(SerializeVisit {
+            field: SerializeField { name: field.name() },
+            record: todo!(),
+        })
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        todo!()
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        todo!()
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        todo!()
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        todo!()
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        todo!()
+    }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_debug(field, &tracing_core::field::DisplayValue(value))
+    }
+}
+
 impl<'a> Serialize for SerializeFieldSet<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -272,27 +312,50 @@ pub struct SerializeMetadata<'a> {
     is_event: bool,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SerializeVisit<'a> {
+    #[serde(borrow)]
+    field: SerializeField<'a>,
+    record: Option<SerializeVisitRecord<'a>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum SerializeVisitRecord<'a> {
+    Debug(&'a str),
+    F64(f64),
+    I64(i64),
+    U64(u64),
+    Bool(bool),
+    Str(&'a str),
+    // TODO: `std` only?
+    Error(&'a str),
+}
+
 // ------------------------------------ LINE OF WORK ------------------------------------
 
-/// Implements `serde::Serialize` to write `Event` data to a serializer.
-#[derive(Debug)]
-pub struct SerializeEvent<'a>(&'a Event<'a>);
-
-impl<'a> Serialize for SerializeEvent<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut serializer = serializer.serialize_struct("Event", 2)?;
-        serializer.serialize_field("metadata", &self.0.metadata().as_serde())?;
-        let mut visitor = SerdeStructVisitor {
-            serializer,
-            state: Ok(()),
-        };
-        self.0.record(&mut visitor);
-        visitor.finish()
-    }
+#[derive(Serialize, Deserialize)]
+pub struct SerializeEvent<'a> {
+    #[serde(borrow)]
+    fields: SerializeValueSet<'a>,
+    metadata: SerializeMetadata<'a>,
+    parent: Option<SerializeId>,
 }
+
+// impl<'a> Serialize for SerializeEvent<'a> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let mut serializer = serializer.serialize_struct("Event", 2)?;
+//         serializer.serialize_field("metadata", &self.0.metadata().as_serde())?;
+//         let mut visitor = SerdeStructVisitor {
+//             serializer,
+//             state: Ok(()),
+//         };
+//         self.0.record(&mut visitor);
+//         visitor.finish()
+//     }
+// }
 
 /// Implements `serde::Serialize` to write `Attributes` data to a serializer.
 #[derive(Debug)]
@@ -505,7 +568,11 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     type Serializable = SerializeEvent<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
-        SerializeEvent(self)
+        SerializeEvent {
+            fields: todo!(),
+            metadata: self.metadata().as_serde(),
+            parent: self.parent().map(|p| p.as_serde()),
+        }
     }
 }
 
