@@ -33,10 +33,10 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 ## Overview
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This crate provides a layer
-that connects spans from multiple systems into a trace and emits them to
-[OpenTelemetry]-compatible distributed tracing systems for processing and
-visualization.
+structured, event-based diagnostic information. This crate provides a
+subscriber that connects spans from multiple systems into a trace and
+emits them to [OpenTelemetry]-compatible distributed tracing systems
+for processing and visualization.
 
 The crate provides the following types:
 
@@ -59,14 +59,14 @@ The crate provides the following types:
 ### Basic Usage
 
 ```rust
-use opentelemetry::exporter::trace::stdout;
+use opentelemetry::sdk::export::trace::stdout;
 use tracing::{error, span};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
 
 fn main() {
     // Install a new OpenTelemetry trace pipeline
-    let (tracer, _uninstall) = stdout::new_pipeline().install();
+    let tracer = stdout::new_pipeline().install_simple();
 
     // Create a tracing layer with the configured tracer
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
