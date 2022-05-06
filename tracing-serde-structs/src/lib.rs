@@ -312,20 +312,10 @@ impl<'a> Serialize for DebugRecord<'a> {
     {
         match self {
             DebugRecord::Ser(args) => {
-                serializer.serialize_newtype_variant(
-                    "DebugRecord",
-                    1,
-                    "De",
-                    args
-                )
+                args.serialize(serializer)
             }
             DebugRecord::De(msg) => {
-                serializer.serialize_newtype_variant(
-                    "DebugRecord",
-                    1,
-                    "De",
-                    msg
-                )
+                msg.serialize(serializer)
             }
         }
     }
@@ -473,7 +463,7 @@ impl<'a> Serialize for SerializeRecordFields<'a> {
                 let mut ctr = VisitCounter { ct: 0 };
                 serf.record(&mut ctr);
                 let items = ctr.ct;
-
+                println!("&&&{}&&&", items);
                 let serializer = serializer.serialize_seq(Some(items))?;
                 let mut ssv = SerdeSeqVisitor::new(serializer);
                 serf.record(&mut ssv);
