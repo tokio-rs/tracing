@@ -174,10 +174,10 @@
 
 use core::fmt;
 use core::num::NonZeroU64;
-use std::fmt::Arguments;
+use core::fmt::Arguments;
 
 use serde::{
-    ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
+    ser::{SerializeMap, SerializeSeq, SerializeStruct, Serializer},
     Serialize,
     Deserialize,
 };
@@ -227,7 +227,7 @@ pub struct SerializeField<'a> {
     name: &'a str,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(from = "Vec<&'a str>")]
 pub enum SerializeFieldSet<'a> {
     Ser(&'a FieldSet),
@@ -241,14 +241,17 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
     where
         S: Serializer,
     {
-        if let SerializeFieldSet::Ser(sfs) = self {
-            let mut seq = serializer.serialize_seq(Some(sfs.len()))?;
-            for element in sfs.iter() {
-                seq.serialize_element(element.name())?;
+        match self {
+            SerializeFieldSet::Ser(sfs) => {
+                let mut seq = serializer.serialize_seq(Some(sfs.len()))?;
+                for element in sfs.iter() {
+                    seq.serialize_element(element.name())?;
+                }
+                seq.end()
             }
-            seq.end()
-        } else {
-            todo!()
+            SerializeFieldSet::De(dfs) => {
+                dfs.serialize(serializer)
+            },
         }
     }
 }
@@ -259,7 +262,7 @@ impl<'a> From<Vec<&'a str>> for SerializeFieldSet<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeMetadata<'a> {
     name: &'a str,
     target: &'a str,
@@ -272,14 +275,14 @@ pub struct SerializeMetadata<'a> {
     is_event: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeserEventRecord<'a> {
     #[serde(borrow)]
     field: SerializeField<'a>,
     record: RecordValueSetItem<'a>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum RecordValueSetItem<'a> {
     Debug(DebugRecord<'a>),
     Str(&'a str),
@@ -289,7 +292,7 @@ pub enum RecordValueSetItem<'a> {
     Bool(bool),
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(from = "&'a str")]
 pub enum DebugRecord<'a> {
     Ser(&'a Arguments<'a>),
@@ -330,7 +333,7 @@ impl<'a> Serialize for DebugRecord<'a> {
 
 
 /// Implements `serde::Serialize` to write `Attributes` data to a serializer.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeAttributes<'a> {
     #[serde(borrow)]
     metadata: SerializeMetadata<'a>,
@@ -382,120 +385,143 @@ where
         // If previous fields serialized successfully, continue serializing,
         // otherwise, short-circuit and do nothing.
         if self.state.is_ok() {
-            // self.state = self.serializer.serialize_element(&DeserEventRecord {
-            //     field: SerializeField { name: field.name() },
-            //     record: DeserRecordValueSetItem::Bool(value),
-            // })
-            todo!()
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::Bool(value),
+            })
         }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if self.state.is_ok() {
-            // let res = || {
-            //     let mut serializer = self.serializer.serialize_struct("DeserEventRecord", 2)?;
-            //     serializer.serialize_field("field", &SerializeField { name: field.name() })?;
-            //     // serializer.serialize_field("record", value)
-            //     let mut serializer = serializer.serialize_tuple_variant("record", 0, "Debug", 1)?;
-            //     serializer.serialize_field(&format_args!("{:?}", value))
-            // };
-            // self.state = res();
-            todo!()
-
-            // self.state = self.serializer.serialize_element(&DeserEventRecord {
-            //     field: SerializeField { name: field.name() },
-            //     record: Some(DeserRecordValueSetItem::Debug(&format_args!("{:?}", value))),
-            // })
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::Debug(DebugRecord::Ser(&format_args!("{:?}", value))),
+            })
         }
     }
 
-    // fn record_u64(&mut self, field: &Field, value: u64) {
-    //     // if self.state.is_ok() {
-    //     //     self.state = self.serializer.serialize_entry(field.name(), &value)
-    //     // }
-    // }
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::U64(value),
+            })
+        }
+    }
 
-    // fn record_i64(&mut self, field: &Field, value: i64) {
-    //     // if self.state.is_ok() {
-    //     //     self.state = self.serializer.serialize_entry(field.name(), &value)
-    //     // }
-    // }
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::I64(value),
+            })
+        }
+    }
 
-    // fn record_f64(&mut self, field: &Field, value: f64) {
-    //     if self.state.is_ok() {
-    //         self.state = self.serializer.serialize_entry(field.name(), &value)
-    //     }
-    // }
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::F64(value),
+            })
+        }
+    }
 
-    // fn record_str(&mut self, field: &Field, value: &str) {
-    //     if self.state.is_ok() {
-    //         self.state = self.serializer.serialize_entry(field.name(), &value)
-    //     }
-    // }
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_element(&DeserEventRecord {
+                field: SerializeField { name: field.name() },
+                record: RecordValueSetItem::Str(value),
+            })
+        }
+    }
 }
 
 // ------------------------------------ LINE OF WORK ------------------------------------
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(from = "Vec<DeserEventRecord<'a>>")]
-pub enum SerializeEventRecordFields<'a> {
+pub enum SerializeRecordFields<'a> {
     #[serde(borrow)]
     Ser(&'a Event<'a>),
     De(Vec<DeserEventRecord<'a>>),
 }
 
-impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeEventRecordFields<'a> {
+impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeRecordFields<'a> {
     fn from(other: Vec<DeserEventRecord<'a>>) -> Self {
         Self::De(other)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeEvent<'a> {
     #[serde(borrow)]
-    fields: SerializeEventRecordFields<'a>,
+    fields: SerializeRecordFields<'a>,
     metadata: SerializeMetadata<'a>,
     parent: Option<SerializeId>,
 }
 
-impl<'a> Serialize for SerializeEventRecordFields<'a> {
+impl<'a> Serialize for SerializeRecordFields<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        if let SerializeEventRecordFields::Ser(serf) = self {
-            let mut ctr = VisitCounter { ct: 0 };
-            serf.record(&mut ctr);
-            let items = ctr.ct;
-            let mut serializer = serializer.serialize_seq(Some(items));
-            todo!()
-        } else {
-            todo!()
+        match self {
+            SerializeRecordFields::Ser(serf) => {
+                // TODO: Can we *not* visit all data twice? I dunno!
+                let mut ctr = VisitCounter { ct: 0 };
+                serf.record(&mut ctr);
+                let items = ctr.ct;
+
+                let serializer = serializer.serialize_seq(Some(items))?;
+                let mut ssv = SerdeSeqVisitor::new(serializer);
+                serf.record(&mut ssv);
+                ssv.finish()
+            }
+            SerializeRecordFields::De(derf) => {
+                derf.serialize(serializer)
+            }
         }
-        // let mut serializer = serializer.serialize_struct("Event", 2)?;
-        // serializer.serialize_field("metadata", &self.0.metadata().as_serde())?;
-        // let mut visitor = SerdeStructVisitor {
-        //     serializer,
-        //     state: Ok(()),
-        // };
-        // self.0.record(&mut visitor);
-        // visitor.finish()
     }
 }
 
 /// Implements `serde::Serialize` to write `Record` data to a serializer.
-#[derive(Debug)]
-pub struct SerializeRecord<'a>(&'a Record<'a>);
+#[derive(Debug, Deserialize)]
+#[serde(from = "Vec<DeserEventRecord<'a>>")]
+pub enum SerializeRecord<'a> {
+    #[serde(borrow)]
+    Ser(&'a Record<'a>),
+    De(Vec<DeserEventRecord<'a>>),
+}
+
+impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeRecord<'a> {
+    fn from(other: Vec<DeserEventRecord<'a>>) -> Self {
+        Self::De(other)
+    }
+}
 
 impl<'a> Serialize for SerializeRecord<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let serializer = serializer.serialize_map(None)?;
-        let mut visitor = SerdeMapVisitor::new(serializer);
-        self.0.record(&mut visitor);
-        visitor.finish()
+        match self {
+            SerializeRecord::Ser(serf) => {
+                // TODO: Can we *not* visit all data twice? I dunno!
+                let mut ctr = VisitCounter { ct: 0 };
+                serf.record(&mut ctr);
+                let items = ctr.ct;
+
+                let serializer = serializer.serialize_seq(Some(items))?;
+                let mut ssv = SerdeSeqVisitor::new(serializer);
+                serf.record(&mut ssv);
+                ssv.finish()
+            }
+            SerializeRecord::De(derf) => {
+                derf.serialize(serializer)
+            }
+        }
     }
 }
 
@@ -683,7 +709,7 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
 
     fn as_serde(&'a self) -> Self::Serializable {
         SerializeEvent {
-            fields: SerializeEventRecordFields::Ser(self),
+            fields: SerializeRecordFields::Ser(self),
             metadata: self.metadata().as_serde(),
             parent: self.parent().map(|p| p.as_serde()),
         }
@@ -716,7 +742,7 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     type Serializable = SerializeRecord<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
-        SerializeRecord(self)
+        SerializeRecord::Ser(self)
     }
 }
 
