@@ -66,7 +66,7 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 /// use tracing_subscriber::fmt::writer::MakeWriterExt;
 ///
 /// // Log all events to a rolling log file.
-/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
+/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs").expect("Unable to create hourly appender");
 
 /// // Log `INFO` and above to stdout.
 /// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
@@ -490,9 +490,7 @@ impl Inner {
 
         let filename = rotation.join_date(log_filename_prefix, &now);
         let next_date = rotation.next_date(&now);
-        let writer = RwLock::new(
-            create_writer(log_directory, &filename)?,
-        );
+        let writer = RwLock::new(create_writer(log_directory, &filename)?);
 
         let inner = Inner {
             log_directory: log_directory.to_string(),
@@ -707,7 +705,8 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) =
-            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer");
+            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer")
+                .expect("Unable to create inner rolling appender");
 
         let clock = Arc::new(Mutex::new(now));
         let now = {
