@@ -484,14 +484,14 @@ impl Inner {
         rotation: Rotation,
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
-    ) -> (Self, RwLock<File>) {
+    ) -> io::Result<(Self, RwLock<File>)> {
         let log_directory = directory.as_ref().to_str().unwrap();
         let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
 
         let filename = rotation.join_date(log_filename_prefix, &now);
         let next_date = rotation.next_date(&now);
         let writer = RwLock::new(
-            create_writer(log_directory, &filename).expect("failed to create appender"),
+            create_writer(log_directory, &filename)?,
         );
 
         let inner = Inner {
@@ -504,7 +504,7 @@ impl Inner {
             ),
             rotation,
         };
-        (inner, writer)
+        Ok((inner, writer))
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
