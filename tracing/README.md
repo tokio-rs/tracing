@@ -47,7 +47,7 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.49+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -210,9 +210,8 @@ conflicts when executables try to set the default later.
 
 If you are instrumenting code that make use of
 [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html)
-or async/await, be sure to use the
-[`tracing-futures`](https://docs.rs/tracing-futures) crate. This is needed
-because the following example _will not_ work:
+or async/await, avoid using the `Span::enter` method. The following example
+_will not_ work:
 
 ```rust
 async {
@@ -376,6 +375,8 @@ maintained by the `tokio` project. These include:
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
   framework for validating the behavior of `tracing` spans.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+- [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -401,6 +402,10 @@ please let us know! We'd love to add your project to the list!
 [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
+[`tracing-loki`]: https://crates.io/crates/tracing-loki
+[Grafana Loki]: https://grafana.com/oss/loki/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -418,7 +423,7 @@ undergoing active development. They may be less stable than `tracing` and
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

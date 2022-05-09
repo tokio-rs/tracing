@@ -214,7 +214,7 @@ pub trait Visit {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        self.record_debug(field, &format_args!("{}", value))
+        self.record_debug(field, &DisplayValue(value))
     }
 
     /// Visit a value implementing `fmt::Debug`.
@@ -423,6 +423,39 @@ impl Value for dyn std::error::Error + 'static {
     }
 }
 
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Send + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Send + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        (self as &dyn std::error::Error).record(key, visitor)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Sync + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Sync + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        (self as &dyn std::error::Error).record(key, visitor)
+    }
+}
+
+#[cfg(feature = "std")]
+impl crate::sealed::Sealed for dyn std::error::Error + Send + Sync + 'static {}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl Value for dyn std::error::Error + Send + Sync + 'static {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        (self as &dyn std::error::Error).record(key, visitor)
+    }
+}
+
 impl<'a, T: ?Sized> crate::sealed::Sealed for &'a T where T: Value + crate::sealed::Sealed + 'a {}
 
 impl<'a, T: ?Sized> Value for &'a T
@@ -452,6 +485,21 @@ impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
 impl<'a> Value for fmt::Arguments<'a> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<T: ?Sized> crate::sealed::Sealed for alloc::boxed::Box<T> where T: Value {}
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+impl<T: ?Sized> Value for alloc::boxed::Box<T>
+where
+    T: Value,
+{
+    #[inline]
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        self.as_ref().record(key, visitor)
     }
 }
 
@@ -499,19 +547,19 @@ where
     T: fmt::Display,
 {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_debug(key, &format_args!("{}", self.0))
+        visitor.record_debug(key, self)
     }
 }
 
 impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        fmt::Display::fmt(self, f)
     }
 }
 
 impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        self.0.fmt(f)
     }
 }
 
@@ -530,7 +578,7 @@ where
 
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
+        self.0.fmt(f)
     }
 }
 
@@ -747,8 +795,8 @@ impl<'a> ValueSet<'a> {
 
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
-    /// [visitor]: super::Visit
-    pub(crate) fn record(&self, visitor: &mut dyn Visit) {
+    /// [visitor]: Visit
+    pub fn record(&self, visitor: &mut dyn Visit) {
         let my_callsite = self.callsite();
         for (field, value) in self.values {
             if field.callsite() != my_callsite {
@@ -987,5 +1035,25 @@ mod test {
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, String::from("123"));
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn record_error() {
+        let fields = TEST_META_1.fields();
+        let err: Box<dyn std::error::Error + Send + Sync + 'static> =
+            std::io::Error::new(std::io::ErrorKind::Other, "lol").into();
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&err as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&Empty as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use core::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, format!("{}", err));
     }
 }

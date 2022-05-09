@@ -24,7 +24,7 @@ categories = [
 ]
 keywords = ["logging", "tracing", "profiling"]
 edition = "2018"
-rust-version = "1.42.0"
+rust-version = "1.49.0"
 
 [features]
 default = ["std"]
@@ -35,7 +35,7 @@ std = ["lazy_static", "alloc"]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-lazy_static = { version = "1", optional = true }
+lazy_static = { version = "1.0.2", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

@@ -3,6 +3,7 @@ use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
 use crate::{
+    filter::{FilterId, FilterMap, FilterState},
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupSpan, SpanData,
@@ -10,7 +11,7 @@ use crate::{
     sync::RwLock,
 };
 use std::{
-    cell::{Cell, RefCell},
+    cell::{self, Cell, RefCell},
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
@@ -85,11 +86,13 @@ use tracing_core::{
 /// [ot]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#spancontext
 /// [fields]: https://docs.rs/tracing-core/latest/tracing-core/field/index.html
 /// [stored span data]: crate::registry::SpanData::extensions_mut
-#[derive(Debug)]
+#[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
+#[derive(Debug)]
 pub struct Registry {
     spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
+    next_filter_id: u8,
 }
 
 /// Span data stored in a [`Registry`].
@@ -101,6 +104,9 @@ pub struct Registry {
 ///
 /// [`Subscriber`s]: crate::Subscribe
 /// [extensions]: Extensions
+/// [`Registry`]: struct.Registry.html
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
 pub struct Data<'a> {
     /// Immutable reference to the pooled `DataInner` entry.
@@ -115,6 +121,7 @@ pub struct Data<'a> {
 /// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
+    filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
@@ -130,6 +137,7 @@ impl Default for Registry {
         Self {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
+            next_filter_id: 0,
         }
     }
 }
@@ -191,6 +199,14 @@ impl Registry {
             is_closing: false,
         }
     }
+
+    pub(crate) fn has_per_subscriber_filters(&self) -> bool {
+        self.next_filter_id > 0
+    }
+
+    pub(crate) fn span_stack(&self) -> cell::Ref<'_, SpanStack> {
+        self.current_spans.get_or_default().borrow()
+    }
 }
 
 thread_local! {
@@ -203,10 +219,17 @@ thread_local! {
 
 impl Collect for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        if self.has_per_subscriber_filters() {
+            return FilterState::take_interest().unwrap_or_else(Interest::always);
+        }
+
         Interest::always()
     }
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
+        if self.has_per_subscriber_filters() {
+            return FilterState::event_enabled();
+        }
         true
     }
 
@@ -229,6 +252,14 @@ impl Collect for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
+                data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
+                #[cfg(debug_assertions)]
+                {
+                    if data.filter_map != FilterMap::default() {
+                        debug_assert!(self.has_per_subscriber_filters());
+                    }
+                }
+
                 let refs = data.ref_count.get_mut();
                 debug_assert_eq!(*refs, 0);
                 *refs = 1;
@@ -331,12 +362,18 @@ impl<'a> LookupSpan<'a> for Registry {
         let inner = self.get(id)?;
         Some(Data { inner })
     }
+
+    fn register_filter(&mut self) -> FilterId {
+        let id = FilterId::new(self.next_filter_id);
+        self.next_filter_id += 1;
+        id
+    }
 }
 
 // === impl CloseGuard ===
 
 impl<'a> CloseGuard<'a> {
-    pub(crate) fn is_closing(&mut self) {
+    pub(crate) fn set_closing(&mut self) {
         self.is_closing = true;
     }
 }
@@ -388,6 +425,11 @@ impl<'a> SpanData<'a> for Data<'a> {
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
         ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
     }
+
+    #[inline]
+    fn is_enabled_for(&self, filter: FilterId) -> bool {
+        self.inner.filter_map.is_enabled(filter)
+    }
 }
 
 // === impl DataInner ===
@@ -428,6 +470,7 @@ impl Default for DataInner {
         };
 
         Self {
+            filter_map: FilterMap::default(),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -471,6 +514,8 @@ impl Clear for DataInner {
                 l.into_inner()
             })
             .clear();
+
+        self.filter_map = FilterMap::default();
     }
 }
 
@@ -488,6 +533,10 @@ mod tests {
         span::{Attributes, Id},
         Collect,
     };
+
+    #[derive(Debug)]
+    struct DoesNothing;
+    impl<C: Collect> Subscribe<C> for DoesNothing {}
 
     struct AssertionSubscriber;
     impl<C> Subscribe<C> for AssertionSubscriber

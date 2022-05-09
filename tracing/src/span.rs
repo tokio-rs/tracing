@@ -182,26 +182,27 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # use futures::{Future, Poll, Async};
+//! # use std::future::Future;
+//! # use std::task::{Context, Poll};
+//! # use std::pin::Pin;
 //! struct MyFuture {
 //!    // data
 //!    span: tracing::Span,
 //! }
 //!
 //! impl Future for MyFuture {
-//!     type Item = ();
-//!     type Error = ();
+//!     type Output = ();
 //!
-//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//!     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
 //!         let _enter = self.span.enter();
 //!         // Do actual future work...
-//! # Ok(Async::Ready(()))
+//! # Poll::Ready(())
 //!     }
 //! }
 //! ```
 //!
 //! If this future was spawned on an executor, it might yield one or more times
-//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
+//! before `poll` returns [`Poll::Ready`]. If the future were to yield, then
 //! the executor would move on to poll the next future, which may _also_ enter
 //! an associated span or series of spans. Therefore, it is valid for a span to
 //! be entered repeatedly before it completes. Only the time when that span or
@@ -283,6 +284,7 @@
 //! [fields]: super::field
 //! [Metadata]: super::Metadata
 //! [verbosity level]: super::Level
+//! [`Poll::Ready`]: std::task::Poll::Ready
 //! [`span!`]: super::span!
 //! [`trace_span!`]: super::trace_span!
 //! [`debug_span!`]: super::debug_span!
@@ -568,7 +570,12 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            let values = attrs.values();
+            span.log(
+                target,
+                level_to_log!(*meta.level()),
+                format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
+            );
         }}
 
         span
@@ -603,9 +610,13 @@ impl Span {
     /// async fn my_async_function() {
     ///     let span = info_span!("my_async_function");
     ///
-    ///     // THIS WILL RESULT IN INCORRECT TRACES
+    ///     // WARNING: This span will remain entered until this
+    ///     // guard is dropped...
     ///     let _enter = span.enter();
-    ///     some_other_async_function().await;
+    ///     // ...but the `await` keyword may yield, causing the
+    ///     // runtime to switch to another task, while remaining in
+    ///     // this span!
+    ///     some_other_async_function().await
     ///
     ///     // ...
     /// }
@@ -768,7 +779,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn enter(&self) -> Entered<'_> {
         self.do_enter();
         Entered {
@@ -882,7 +893,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
         EnteredSpan {
@@ -1021,7 +1032,7 @@ impl Span {
         self
     }
 
-    #[inline]
+    #[inline(always)]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
@@ -1029,7 +1040,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {};", _meta.name()));
             }
         }}
     }
@@ -1038,7 +1049,7 @@ impl Span {
     //
     // Running this behaviour on drop rather than with an explicit function
     // call means that spans may still be exited when unwinding.
-    #[inline]
+    #[inline(always)]
     fn do_exit(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.exit(&inner.id);
@@ -1046,7 +1057,7 @@ impl Span {
 
         if_log_enabled! { crate::Level::TRACE, {
             if let Some(_meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {};", _meta.name()));
             }
         }}
     }
@@ -1214,7 +1225,11 @@ impl Span {
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(
+                    target,
+                    level_to_log!(*_meta.level()),
+                    format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
+                );
             }}
         }
 
@@ -1319,7 +1334,7 @@ impl Span {
                                 .module_path(meta.module_path())
                                 .file(meta.file())
                                 .line(meta.line())
-                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .args(format_args!("{} span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
                     } else {
@@ -1425,6 +1440,7 @@ impl<'a> From<&'a EnteredSpan> for Option<Id> {
 }
 
 impl Drop for Span {
+    #[inline(always)]
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
@@ -1434,15 +1450,15 @@ impl Drop for Span {
             collector.try_close(id.clone());
         }
 
-        if let Some(_meta) = self.meta {
-            if_log_enabled! { crate::Level::TRACE, {
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(meta) = self.meta {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", _meta.name()),
+                    format_args!("-- {};", meta.name()),
                 );
-            }}
-        }
+            }
+        }}
     }
 }
 
@@ -1534,14 +1550,14 @@ impl Deref for EnteredSpan {
 }
 
 impl<'a> Drop for Entered<'a> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
 }
 
 impl Drop for EnteredSpan {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
@@ -1573,38 +1589,6 @@ const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 ///
 /// Trivially safe, as `PhantomNotSend` doesn't have any API.
 unsafe impl Sync for PhantomNotSend {}
-
-#[cfg(feature = "log")]
-struct FmtValues<'a>(&'a Record<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
-
-#[cfg(feature = "log")]
-struct FmtAttrs<'a>(&'a Attributes<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
 
 #[cfg(test)]
 mod test {

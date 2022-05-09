@@ -1,8 +1,6 @@
-mod support;
-use support::*;
-
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
+use tracing_mock::*;
 
 #[instrument]
 fn default_target() {}

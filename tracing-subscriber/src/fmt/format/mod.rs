@@ -1,4 +1,33 @@
 //! Formatters for logging `tracing` events.
+//!
+//! This module provides several formatter implementations, as well as utilities
+//! for implementing custom formatters.
+//!
+//! # Formatters
+//! This module provides a number of formatter implementations:
+//!
+//! * [`Full`]: The default formatter. This emits human-readable,
+//!   single-line logs for each event that occurs, with the current span context
+//!   displayed before the formatted representation of the event. See
+//!   [here](Full#example-output) for sample output.
+//!
+//! * [`Compact`]: A variant of the default formatter, optimized for
+//!   short line lengths. Fields from the current span context are appended to
+//!   the fields of the formatted event, and span names are not shown; the
+//!   verbosity level is abbreviated to a single character. See
+//!   [here](Compact#example-output) for sample output.
+//!
+//! * [`Pretty`]: Emits excessively pretty, multi-line logs, optimized
+//!   for human readability. This is primarily intended to be used in local
+//!   development and debugging, or for command-line applications, where
+//!   automated analysis and compact storage of logs is less of a priority than
+//!   readability and visual appeal. See [here](Pretty#example-output)
+//!   for sample output.
+//!
+//! * [`Json`]: Outputs newline-delimited JSON logs. This is intended
+//!   for production use with systems where structured logs are consumed as JSON
+//!   by analysis and viewing tools. The JSON output is not optimized for human
+//!   readability. See [here](Json#example-output) for sample output.
 use super::time::{FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
@@ -299,15 +328,67 @@ pub struct FieldFnVisitor<'a, F> {
     writer: Writer<'a>,
     result: fmt::Result,
 }
-/// Marker for `Format` that indicates that the compact log format should be used.
+/// Marker for [`Format`] that indicates that the compact log format should be used.
 ///
-/// The compact format only includes the fields from the most recently entered span.
+/// The compact format includes fields from all currently entered spans, after
+/// the event's fields. Span fields are ordered (but not grouped) grouped by
+/// span, and span names are  not shown.A more compact representation of the
+/// event's [`Level`](tracing::Level) is used, and additional information, such
+/// as the event's target, is disabled by default (but can be enabled
+/// explicitly).
+///
+/// # Example Output
+///
+/// <pre><font color="#4E9A06"><b>:;</b></font> <font color="#4E9A06">cargo</font> run --example fmt-compact
+/// <font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 0.08s
+/// <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-compact`
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579731Z </font><font color="#4E9A06">i</font> preparing to shave yaks <i>number_of_yaks</i><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579802Z </font><font color="#4E9A06">i</font> shaving yaks <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579836Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579861Z </font><font color="#75507B">.</font> yak shaved successfully <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579887Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=1 </font><i>shaved</i><font color="#AAAAAA">=true </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579904Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=1 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579926Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579941Z </font><font color="#75507B">.</font> yak shaved successfully <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579959Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=2 </font><i>shaved</i><font color="#AAAAAA">=true </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579973Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=2 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.579994Z </font><font color="#75507B">.</font> hello! I&apos;m gonna shave a yak <i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot; </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580013Z </font><font color="#C4A000">!</font> could not locate yak <font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3 </font><font color="#AAAAAA"><i>yak</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580032Z </font><font color="#3465A4">:</font> <i>yak</i><font color="#AAAAAA">=3 </font><i>shaved</i><font color="#AAAAAA">=false </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580050Z </font><font color="#CC0000">X</font> failed to shave yak <i>yak</i><font color="#AAAAAA">=3 </font><i>error</i><font color="#AAAAAA">=missing yak </font><i>error.sources</i><font color="#AAAAAA">=[out of space, out of cash] </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580067Z </font><font color="#75507B">.</font> <i>yaks_shaved</i><font color="#AAAAAA">=2 </font><font color="#AAAAAA"><i>yaks</i></font><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:43:54.580085Z </font><font color="#4E9A06">i</font> yak shaving completed <i>all_yaks_shaved</i><font color="#AAAAAA">=false</font>
+/// </pre>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Compact;
 
-/// Marker for `Format` that indicates that the verbose log format should be used.
+/// Marker for [`Format`] that indicates that the default log format should be used.
 ///
-/// The full format includes fields from all entered spans.
+/// This formatter shows the span context before printing event data. Spans are
+/// displayed including their names and fields.
+///
+/// # Example Output
+///
+/// <pre><font color="#4E9A06"><b>:;</b></font> <font color="#4E9A06">cargo</font> run --example fmt
+/// <font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 0.08s
+/// <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt`
+/// <font color="#AAAAAA">2022-02-15T18:40:14.289898Z </font><font color="#4E9A06"> INFO</font> fmt: preparing to shave yaks <i>number_of_yaks</i><font color="#AAAAAA">=3</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.289974Z </font><font color="#4E9A06"> INFO</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: shaving yaks</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290011Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=1</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290038Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=1</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: yak shaved successfully</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290070Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=1 </font><i>shaved</i><font color="#AAAAAA">=true</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290089Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=1</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290114Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=2</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290134Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=2</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: yak shaved successfully</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290157Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=2 </font><i>shaved</i><font color="#AAAAAA">=true</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290174Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290198Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: hello! I&apos;m gonna shave a yak </font><i>excitement</i><font color="#AAAAAA">=&quot;yay!&quot;</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290222Z </font><font color="#C4A000"> WARN</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">:</font><b>shave{</b><i>yak</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: could not locate yak</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290247Z </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: yak_events: </font><i>yak</i><font color="#AAAAAA">=3 </font><i>shaved</i><font color="#AAAAAA">=false</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290268Z </font><font color="#CC0000">ERROR</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: failed to shave yak </font><i>yak</i><font color="#AAAAAA">=3 </font><i>error</i><font color="#AAAAAA">=missing yak </font><i>error.sources</i><font color="#AAAAAA">=[out of space, out of cash]</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290287Z </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b><i>yaks</i><font color="#AAAAAA">=3</font><b>}</b><font color="#AAAAAA">: fmt::yak_shave: </font><i>yaks_shaved</i><font color="#AAAAAA">=2</font>
+/// <font color="#AAAAAA">2022-02-15T18:40:14.290309Z </font><font color="#4E9A06"> INFO</font> fmt: yak shaving completed. <i>all_yaks_shaved</i><font color="#AAAAAA">=false</font>
+/// </pre>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Full;
 
@@ -316,8 +397,11 @@ pub struct Full;
 /// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
 ///
 /// The default logging format, [`Full`] includes all fields in each event and its containing
-/// spans. The [`Compact`] logging format includes only the fields from the most-recently-entered
-/// span.
+/// spans. The [`Compact`] logging format is intended to produce shorter log
+/// lines; it displays each event's fields, along with fields from the current
+/// span context, but other information is abbreviated. The [`Pretty`] logging
+/// format is an extra-verbose, multi-line human-readable logging format
+/// intended for use in development.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
@@ -328,6 +412,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_level: bool,
     pub(crate) display_thread_id: bool,
     pub(crate) display_thread_name: bool,
+    pub(crate) display_filename: bool,
+    pub(crate) display_line_number: bool,
 }
 
 // === impl Writer ===
@@ -504,6 +590,8 @@ impl Default for Format<Full, SystemTime> {
             display_level: true,
             display_thread_id: false,
             display_thread_name: false,
+            display_filename: false,
+            display_line_number: false,
         }
     }
 }
@@ -522,6 +610,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -559,6 +649,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: true,
+            display_line_number: true,
         }
     }
 
@@ -589,6 +681,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -616,6 +710,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -630,6 +726,8 @@ impl<F, T> Format<F, T> {
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
         }
     }
 
@@ -677,6 +775,38 @@ impl<F, T> Format<F, T> {
             display_thread_name,
             ..self
         }
+    }
+
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(self, display_filename: bool) -> Format<F, T> {
+        Format {
+            display_filename,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(self, display_line_number: bool) -> Format<F, T> {
+        Format {
+            display_line_number,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the source code location from which an event
+    /// originated is displayed.
+    ///
+    /// This is equivalent to calling [`Format::with_file`] and
+    /// [`Format::with_line_number`] with the same value.
+    pub fn with_source_location(self, display_location: bool) -> Self {
+        self.with_line_number(display_location)
+            .with_file(display_location)
     }
 
     fn format_level(&self, level: Level, writer: &mut Writer<'_>) -> fmt::Result
@@ -862,6 +992,34 @@ where
             )?;
         }
 
+        let line_number = if self.display_line_number {
+            meta.line()
+        } else {
+            None
+        };
+
+        if self.display_filename {
+            if let Some(filename) = meta.file() {
+                write!(
+                    writer,
+                    "{}{}{}",
+                    dimmed.paint(filename),
+                    dimmed.paint(":"),
+                    if line_number.is_some() { "" } else { " " }
+                )?;
+            }
+        }
+
+        if let Some(line_number) = line_number {
+            write!(
+                writer,
+                "{}{}:{} ",
+                dimmed.prefix(),
+                line_number,
+                dimmed.suffix()
+            )?;
+        }
+
         ctx.format_fields(writer.by_ref(), event)?;
         writeln!(writer)
     }
@@ -907,24 +1065,34 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
+        let bold = writer.bold();
+        let dimmed = writer.dimmed();
         if self.display_target {
-            write!(
-                writer,
-                "{}{}",
-                writer.bold().paint(meta.target()),
-                writer.dimmed().paint(":")
-            )?;
+            write!(writer, "{}{}", bold.paint(meta.target()), dimmed.paint(":"))?;
+        }
+
+        if self.display_filename {
+            if let Some(filename) = meta.file() {
+                write!(writer, "{}{}", bold.paint(filename), dimmed.paint(":"))?;
+            }
+        }
+
+        if self.display_line_number {
+            if let Some(line_number) = meta.line() {
+                write!(
+                    writer,
+                    "{}{}{}{}",
+                    bold.prefix(),
+                    line_number,
+                    bold.suffix(),
+                    dimmed.paint(":")
+                )?;
+            }
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        let dimmed = writer.dimmed();
-        for span in ctx
-            .event_scope()
-            .into_iter()
-            .map(Scope::from_root)
-            .flatten()
-        {
+        for span in ctx.event_scope().into_iter().flat_map(Scope::from_root) {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
@@ -1115,8 +1283,17 @@ impl Style {
     fn new() -> Self {
         Style
     }
+
     fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
         d
+    }
+
+    fn prefix(&self) -> impl fmt::Display {
+        ""
+    }
+
+    fn suffix(&self) -> impl fmt::Display {
+        ""
     }
 }
 
@@ -1466,9 +1643,9 @@ pub(super) mod test {
     };
 
     use super::{FmtSpan, TimingDisplay, Writer};
-    use std::fmt;
-
     use regex::Regex;
+    use std::fmt;
+    use std::path::Path;
 
     pub(crate) struct MockTime;
     impl FormatTime for MockTime {
@@ -1538,6 +1715,66 @@ pub(super) mod test {
             .with_timer(MockTime);
         let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
 
+        assert_info_hello(subscriber, make_writer, expected);
+    }
+
+    #[test]
+    fn with_line_number_and_file_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_file(true)
+            .with_line_number(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let expected = Regex::new(&format!(
+            "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
+            current_path()
+                // if we're on Windows, the path might contain backslashes, which
+                // have to be escpaed before compiling the regex.
+                .replace('\\', "\\\\")
+        ))
+        .unwrap();
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        let res = make_writer.get_string();
+        assert!(expected.is_match(&res));
+    }
+
+    #[test]
+    fn with_line_number() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_line_number(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let expected =
+            Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$")
+                .unwrap();
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+        let res = make_writer.get_string();
+        assert!(expected.is_match(&res));
+    }
+
+    #[test]
+    fn with_filename() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_file(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let expected = &format!(
+            "fake time tracing_subscriber::fmt::format::test: {}: hello\n",
+            current_path(),
+        );
         assert_info_hello(subscriber, make_writer, expected);
     }
 
@@ -1696,5 +1933,17 @@ pub(super) mod test {
         assert!(!f.contains(FmtSpan::ENTER));
         assert!(!f.contains(FmtSpan::EXIT));
         assert!(f.contains(FmtSpan::CLOSE));
+    }
+
+    /// Returns the test's module path.
+    fn current_path() -> String {
+        Path::new("tracing-subscriber")
+            .join("src")
+            .join("fmt")
+            .join("format")
+            .join("mod.rs")
+            .to_str()
+            .expect("path must not contain invalid unicode")
+            .to_owned()
     }
 }

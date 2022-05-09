@@ -36,7 +36,7 @@ allows events and spans to be recorded in a non-blocking manner through a
 dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] 
 that can be used with _or_ without the non-blocking writer.
 
-*Compiler support: [requires `rustc` 1.51+][msrv]*
+*Compiler support: [requires `rustc` 1.53+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -44,7 +44,7 @@ that can be used with _or_ without the non-blocking writer.
 
 Add the following to your `Cargo.toml`:
 ```toml
-tracing-appender = "0.1"
+tracing-appender = "0.2"
 ```
 
 This crate can be used in a few ways to record spans/events:
@@ -112,7 +112,7 @@ a [`std::io::Write`][write]:
 
 ```rust
 fn main() {
-    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::Stdout);
+    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
     tracing_subscriber::fmt()
         .with_writer(non_blocking)
         .init();
@@ -146,7 +146,7 @@ fn main() {
 ## Supported Rust Versions
 
 `tracing-appender` is built against the latest stable release. The minimum supported
-version is 1.51. The current `tracing-appender` version is not guaranteed to build on
+version is 1.53. The current `tracing-appender` version is not guaranteed to build on
 Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

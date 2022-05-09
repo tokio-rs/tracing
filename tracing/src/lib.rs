@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -415,7 +415,7 @@
 //! ```
 //! # use tracing::{event, Level};
 //! # fn main() {
-//! let question = "the answer to the ultimate question of life, the universe, and everything";
+//! let question = "the ultimate question of life, the universe, and everything";
 //! let answer = 42;
 //! // records an event with the following fields:
 //! // - `question.answer` with the value 42,
@@ -802,6 +802,10 @@
 //!  - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 //!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
 //!    framework for validating the behavior of `tracing` spans.
+//!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+//!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
+//!    grouping together logs from the same spans during writing.
+//!  - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -833,6 +837,11 @@
 //! [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 //! [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 //! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
+//! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+//! [Sentry]: https://sentry.io/welcome/
+//! [`tracing-forest`]: https://crates.io/crates/tracing-forest
+//! [`tracing-loki`]: https://crates.io/crates/tracing-loki
+//! [Grafana Loki]: https://grafana.com/oss/loki/
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
@@ -865,7 +874,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -931,10 +940,6 @@
     unused_parens,
     while_true
 )]
-
-#[cfg(feature = "log")]
-#[doc(hidden)]
-pub use log;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -1081,6 +1086,31 @@ pub mod __macro_support {
         pub fn disabled_span(&self) -> crate::Span {
             crate::Span::none()
         }
+
+        #[cfg(feature = "log")]
+        pub fn log(
+            &self,
+            logger: &'static dyn log::Log,
+            log_meta: log::Metadata<'_>,
+            values: &tracing_core::field::ValueSet<'_>,
+        ) {
+            let meta = self.metadata();
+            logger.log(
+                &crate::log::Record::builder()
+                    .file(meta.file())
+                    .module_path(meta.module_path())
+                    .line(meta.line())
+                    .metadata(log_meta)
+                    .args(format_args!(
+                        "{}",
+                        crate::log::LogValueSet {
+                            values,
+                            is_first: true
+                        }
+                    ))
+                    .build(),
+            );
+        }
     }
 
     impl Callsite for MacroCallsite {
@@ -1107,6 +1137,65 @@ pub mod __macro_support {
                 .field("register", &self.register)
                 .field("registration", &self.registration)
                 .finish()
+        }
+    }
+}
+
+#[cfg(feature = "log")]
+#[doc(hidden)]
+pub mod log {
+    use core::fmt;
+    pub use log::*;
+    use tracing_core::field::{Field, ValueSet, Visit};
+
+    /// Utility to format [`ValueSet`]s for logging.
+    pub(crate) struct LogValueSet<'a> {
+        pub(crate) values: &'a ValueSet<'a>,
+        pub(crate) is_first: bool,
+    }
+
+    impl<'a> fmt::Display for LogValueSet<'a> {
+        #[inline]
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            struct LogVisitor<'a, 'b> {
+                f: &'a mut fmt::Formatter<'b>,
+                is_first: bool,
+                result: fmt::Result,
+            }
+
+            impl Visit for LogVisitor<'_, '_> {
+                fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+                    let res = if self.is_first {
+                        self.is_first = false;
+                        if field.name() == "message" {
+                            write!(self.f, "{:?}", value)
+                        } else {
+                            write!(self.f, "{}={:?}", field.name(), value)
+                        }
+                    } else {
+                        write!(self.f, " {}={:?}", field.name(), value)
+                    };
+                    if let Err(err) = res {
+                        self.result = self.result.and(Err(err));
+                    }
+                }
+
+                fn record_str(&mut self, field: &Field, value: &str) {
+                    if field.name() == "message" {
+                        self.record_debug(field, &format_args!("{}", value))
+                    } else {
+                        self.record_debug(field, &value)
+                    }
+                }
+            }
+
+            let mut visit = LogVisitor {
+                f,
+                is_first: self.is_first,
+                result: Ok(()),
+            };
+            self.values.record(&mut visit);
+            visit.result
         }
     }
 }

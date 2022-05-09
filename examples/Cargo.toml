@@ -3,7 +3,7 @@ name = "tracing-examples"
 version = "0.0.0"
 publish = false
 edition = "2018"
-rust-version = "1.42.0"
+rust-version = "1.49.0"
 
 [features]
 default = []
@@ -48,12 +48,12 @@ humantime = "2.0"
 log = "0.4"
 
 # inferno example
-inferno = "0.10.0"
+inferno = "0.11.0"
 tempfile = "3"
 
 # opentelemetry example
-opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.15"
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.16"
 
 # fmt examples
 snafu = "0.6.10"

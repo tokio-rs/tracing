@@ -89,8 +89,8 @@ pub struct Metadata<'a> {
 }
 
 /// Indicates whether the callsite is a span or event.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Kind(KindInner);
+#[derive(Clone, Eq, PartialEq)]
+pub struct Kind(u8);
 
 /// Describes the level of verbosity of a span or event.
 ///
@@ -369,27 +369,78 @@ impl<'a> fmt::Debug for Metadata<'a> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum KindInner {
-    Event,
-    Span,
-}
-
 impl Kind {
+    const EVENT_BIT: u8 = 1 << 0;
+    const SPAN_BIT: u8 = 1 << 1;
+    const HINT_BIT: u8 = 1 << 2;
+
     /// `Event` callsite
-    pub const EVENT: Kind = Kind(KindInner::Event);
+    pub const EVENT: Kind = Kind(Self::EVENT_BIT);
 
     /// `Span` callsite
-    pub const SPAN: Kind = Kind(KindInner::Span);
+    pub const SPAN: Kind = Kind(Self::SPAN_BIT);
+
+    /// `enabled!` callsite. [`Collect`][`crate::collect::Collect`]s can assume
+    /// this `Kind` means they will never recieve a
+    /// full event with this [`Metadata`].
+    pub const HINT: Kind = Kind(Self::HINT_BIT);
 
     /// Return true if the callsite kind is `Span`
     pub fn is_span(&self) -> bool {
-        matches!(self, Kind(KindInner::Span))
+        self.0 & Self::SPAN_BIT == Self::SPAN_BIT
     }
 
     /// Return true if the callsite kind is `Event`
     pub fn is_event(&self) -> bool {
-        matches!(self, Kind(KindInner::Event))
+        self.0 & Self::EVENT_BIT == Self::EVENT_BIT
+    }
+
+    /// Return true if the callsite kind is `Hint`
+    pub fn is_hint(&self) -> bool {
+        self.0 & Self::HINT_BIT == Self::HINT_BIT
+    }
+
+    /// Sets that this `Kind` is a [hint](Self::HINT).
+    ///
+    /// This can be called on [`SPAN`](Self::SPAN) and [`EVENT`](Self::EVENT)
+    /// kinds to construct a hint callsite that also counts as a span or event.
+    pub const fn hint(self) -> Self {
+        Self(self.0 | Self::HINT_BIT)
+    }
+}
+
+impl fmt::Debug for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Kind(")?;
+        let mut has_bits = false;
+        let mut write_bit = |name: &str| {
+            if has_bits {
+                f.write_str(" | ")?;
+            }
+            f.write_str(name)?;
+            has_bits = true;
+            Ok(())
+        };
+
+        if self.is_event() {
+            write_bit("EVENT")?;
+        }
+
+        if self.is_span() {
+            write_bit("SPAN")?;
+        }
+
+        if self.is_hint() {
+            write_bit("HINT")?;
+        }
+
+        // if none of the expected bits were set, something is messed up, so
+        // just print the bits for debugging purposes
+        if !has_bits {
+            write!(f, "{:#b}", self.0)?;
+        }
+
+        f.write_str(")")
     }
 }
 

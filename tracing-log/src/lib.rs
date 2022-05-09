@@ -16,7 +16,7 @@
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -76,7 +76,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
