@@ -15,7 +15,7 @@
 //! will be created hourly
 //! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
 //! will be created daily
-//! - [`Rotation::never()`][never]: This will result in log file located at `some_directory/log_file_name`
+//! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
 //!
 //! # Examples
@@ -26,32 +26,85 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::inner::InnerAppender;
-use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
-use std::fmt::Debug;
-use std::io;
-use std::path::Path;
+use crate::sync::{RwLock, RwLockReadGuard};
+use std::{
+    fmt::{self, Debug},
+    fs::{self, File, OpenOptions},
+    io::{self, Write},
+    path::Path,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+use time::{format_description, Duration, OffsetDateTime, Time};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
-/// `RollingFileAppender` implements [`std:io::Write` trait][write] and will block on write operations.
-/// It may be used with [`NonBlocking`][non-blocking] to perform writes without
-/// blocking the current thread.
+/// `RollingFileAppender` implements the [`std:io::Write` trait][write] and will
+/// block on write operations. It may be used with [`NonBlocking`] to perform
+/// writes without blocking the current thread.
+///
+/// Additionally, `RollingFileAppender` also implements the [`MakeWriter`]
+/// trait from `tracing-appender`, so it may also be used
+/// directly, without [`NonBlocking`].
 ///
 /// [write]: std::io::Write
-/// [non-blocking]: super::non_blocking::NonBlocking
+/// [`NonBlocking`]: super::non_blocking::NonBlocking
 ///
 /// # Examples
 ///
+/// Rolling a log file once every hour:
+///
 /// ```rust
 /// # fn docs() {
-/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
+/// let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix");
 /// # }
 /// ```
-#[derive(Debug)]
+///
+/// Combining a `RollingFileAppender` with another [`MakeWriter`] implementation:
+///
+/// ```rust
+/// # fn docs() {
+/// use tracing_subscriber::fmt::writer::MakeWriterExt;
+///
+/// // Log all events to a rolling log file.
+/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
+
+/// // Log `INFO` and above to stdout.
+/// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
+///
+/// tracing_subscriber::fmt()
+///     // Combine the stdout and log file `MakeWriter`s into one
+///     // `MakeWriter` that writes to both
+///     .with_writer(stdout.and(logfile))
+///     .init();
+/// # }
+/// ```
+///
+/// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 pub struct RollingFileAppender {
-    inner: InnerAppender,
+    state: Inner,
+    writer: RwLock<File>,
+    #[cfg(test)]
+    now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
 }
+
+/// A [writer] that writes to a rolling log file.
+///
+/// This is returned by the [`MakeWriter`] implementation for [`RollingFileAppender`].
+///
+/// [writer]: std::io::Write
+/// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
+#[derive(Debug)]
+pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
+
+#[derive(Debug)]
+struct Inner {
+    log_directory: String,
+    log_filename_prefix: String,
+    rotation: Rotation,
+    next_date: AtomicUsize,
+}
+
+// === impl RollingFileAppender ===
 
 impl RollingFileAppender {
     /// Creates a new `RollingFileAppender`.
@@ -67,7 +120,7 @@ impl RollingFileAppender {
     /// - [`Rotation::minutely()`][minutely],
     /// - [`Rotation::hourly()`][hourly],
     /// - [`Rotation::daily()`][daily],
-    /// - [`Rotation::never()`][never]
+    /// - [`Rotation::never()`][never()]
     ///
     ///
     /// # Examples
@@ -82,25 +135,68 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
-        RollingFileAppender {
-            inner: InnerAppender::new(
-                directory.as_ref(),
-                file_name_prefix.as_ref(),
-                rotation,
-                Utc::now(),
-            )
-            .expect("Failed to create appender"),
+        let now = OffsetDateTime::now_utc();
+        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
+        Self {
+            state,
+            writer,
+            #[cfg(test)]
+            now: Box::new(OffsetDateTime::now_utc),
         }
+    }
+
+    #[inline]
+    fn now(&self) -> OffsetDateTime {
+        #[cfg(test)]
+        return (self.now)();
+
+        #[cfg(not(test))]
+        OffsetDateTime::now_utc()
     }
 }
 
 impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        let now = self.now();
+        let writer = self.writer.get_mut();
+        if let Some(current_time) = self.state.should_rollover(now) {
+            let _did_cas = self.state.advance_date(now, current_time);
+            debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
+            self.state.refresh_writer(now, writer);
+        }
+        writer.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
+        self.writer.get_mut().flush()
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
+    type Writer = RollingWriter<'a>;
+    fn make_writer(&'a self) -> Self::Writer {
+        let now = self.now();
+
+        // Should we try to roll over the log file?
+        if let Some(current_time) = self.state.should_rollover(now) {
+            // Did we get the right to lock the file? If not, another thread
+            // did it and we can just make a writer.
+            if self.state.advance_date(now, current_time) {
+                self.state.refresh_writer(now, &mut *self.writer.write());
+            }
+        }
+        RollingWriter(self.writer.read())
+    }
+}
+
+impl fmt::Debug for RollingFileAppender {
+    // This manual impl is required because of the `now` field (only present
+    // with `cfg(test)`), which is not `Debug`...
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RollingFileAppender")
+            .field("state", &self.state)
+            .field("writer", &self.writer)
+            .finish()
     }
 }
 
@@ -297,45 +393,179 @@ impl Rotation {
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
-    pub(crate) fn next_date(&self, current_date: &DateTime<Utc>) -> DateTime<Utc> {
+    pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
-            Rotation::MINUTELY => *current_date + chrono::Duration::minutes(1),
-            Rotation::HOURLY => *current_date + chrono::Duration::hours(1),
-            Rotation::DAILY => *current_date + chrono::Duration::days(1),
-            Rotation::NEVER => Utc.ymd(9999, 1, 1).and_hms(1, 0, 0),
+            Rotation::MINUTELY => *current_date + Duration::minutes(1),
+            Rotation::HOURLY => *current_date + Duration::hours(1),
+            Rotation::DAILY => *current_date + Duration::days(1),
+            Rotation::NEVER => return None,
         };
-        self.round_date(&unrounded_next_date)
+        Some(self.round_date(&unrounded_next_date))
     }
 
-    pub(crate) fn round_date(&self, date: &DateTime<Utc>) -> DateTime<Utc> {
+    // note that this method will panic if passed a `Rotation::NEVER`.
+    pub(crate) fn round_date(&self, date: &OffsetDateTime) -> OffsetDateTime {
         match *self {
-            Rotation::MINUTELY => Utc.ymd(date.year(), date.month(), date.day()).and_hms(
-                date.hour(),
-                date.minute(),
-                0,
-            ),
-            Rotation::HOURLY => {
-                Utc.ymd(date.year(), date.month(), date.day())
-                    .and_hms(date.hour(), 0, 0)
+            Rotation::MINUTELY => {
+                let time = Time::from_hms(date.hour(), date.minute(), 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
             }
-            Rotation::DAILY => Utc
-                .ymd(date.year(), date.month(), date.day())
-                .and_hms(0, 0, 0),
+            Rotation::HOURLY => {
+                let time = Time::from_hms(date.hour(), 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
+            }
+            Rotation::DAILY => {
+                let time = Time::from_hms(0, 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
+            }
+            // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
-                Utc.ymd(date.year(), date.month(), date.day())
-                    .and_hms(date.hour(), 0, 0)
+                unreachable!("Rotation::NEVER is impossible to round.")
             }
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &DateTime<Utc>) -> String {
+    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
         match *self {
-            Rotation::MINUTELY => format!("{}.{}", filename, date.format("%F-%H-%M")),
-            Rotation::HOURLY => format!("{}.{}", filename, date.format("%F-%H")),
-            Rotation::DAILY => format!("{}.{}", filename, date.format("%F")),
+            Rotation::MINUTELY => {
+                let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
+            Rotation::HOURLY => {
+                let format = format_description::parse("[year]-[month]-[day]-[hour]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
+            Rotation::DAILY => {
+                let format = format_description::parse("[year]-[month]-[day]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+                let date = date
+                    .format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+                format!("{}.{}", filename, date)
+            }
             Rotation::NEVER => filename.to_string(),
         }
     }
+}
+
+// === impl RollingWriter ===
+
+impl io::Write for RollingWriter<'_> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&*self.0).write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        (&*self.0).flush()
+    }
+}
+
+// === impl Inner ===
+
+impl Inner {
+    fn new(
+        now: OffsetDateTime,
+        rotation: Rotation,
+        directory: impl AsRef<Path>,
+        file_name_prefix: impl AsRef<Path>,
+    ) -> (Self, RwLock<File>) {
+        let log_directory = directory.as_ref().to_str().unwrap();
+        let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
+
+        let filename = rotation.join_date(log_filename_prefix, &now);
+        let next_date = rotation.next_date(&now);
+        let writer = RwLock::new(
+            create_writer(log_directory, &filename).expect("failed to create appender"),
+        );
+
+        let inner = Inner {
+            log_directory: log_directory.to_string(),
+            log_filename_prefix: log_filename_prefix.to_string(),
+            next_date: AtomicUsize::new(
+                next_date
+                    .map(|date| date.unix_timestamp() as usize)
+                    .unwrap_or(0),
+            ),
+            rotation,
+        };
+        (inner, writer)
+    }
+
+    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
+        let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
+
+        match create_writer(&self.log_directory, &filename) {
+            Ok(new_file) => {
+                if let Err(err) = file.flush() {
+                    eprintln!("Couldn't flush previous writer: {}", err);
+                }
+                *file = new_file;
+            }
+            Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
+        }
+    }
+
+    /// Checks whether or not it's time to roll over the log file.
+    ///
+    /// Rather than returning a `bool`, this returns the current value of
+    /// `next_date` so that we can perform a `compare_exchange` operation with
+    /// that value when setting the next rollover time.
+    ///
+    /// If this method returns `Some`, we should roll to a new log file.
+    /// Otherwise, if this returns we should not rotate the log file.
+    fn should_rollover(&self, date: OffsetDateTime) -> Option<usize> {
+        let next_date = self.next_date.load(Ordering::Acquire);
+        // if the next date is 0, this appender *never* rotates log files.
+        if next_date == 0 {
+            return None;
+        }
+
+        if date.unix_timestamp() as usize >= next_date {
+            return Some(next_date);
+        }
+
+        None
+    }
+
+    fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
+        let next_date = self
+            .rotation
+            .next_date(&now)
+            .map(|date| date.unix_timestamp() as usize)
+            .unwrap_or(0);
+        self.next_date
+            .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+}
+
+fn create_writer(directory: &str, filename: &str) -> io::Result<File> {
+    let path = Path::new(directory).join(filename);
+    let mut open_options = OpenOptions::new();
+    open_options.append(true).create(true);
+
+    let new_file = open_options.open(path.as_path());
+    if new_file.is_err() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+            return open_options.open(path);
+        }
+    }
+
+    new_file
 }
 
 #[cfg(test)]
@@ -343,16 +573,16 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
-    use tempdir::TempDir;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
 
         for entry in dir_contents {
             let path = entry.expect("Expected dir entry").path();
-            let result = fs::read_to_string(path).expect("Failed to read file");
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
 
-            if result.as_str() == expected_value {
+            if file.as_str() == expected_value {
                 return true;
             }
         }
@@ -367,7 +597,8 @@ mod test {
         appender.flush().expect("Failed to flush!");
     }
 
-    fn test_appender(rotation: Rotation, directory: TempDir, file_prefix: &str) {
+    fn test_appender(rotation: Rotation, file_prefix: &str) {
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
         let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
 
         let expected_value = "Hello";
@@ -381,207 +612,155 @@ mod test {
 
     #[test]
     fn write_minutely_log() {
-        test_appender(
-            Rotation::HOURLY,
-            TempDir::new("minutely").expect("Failed to create tempdir"),
-            "minutely.log",
-        );
+        test_appender(Rotation::HOURLY, "minutely.log");
     }
 
     #[test]
     fn write_hourly_log() {
-        test_appender(
-            Rotation::HOURLY,
-            TempDir::new("hourly").expect("Failed to create tempdir"),
-            "hourly.log",
-        );
+        test_appender(Rotation::HOURLY, "hourly.log");
     }
 
     #[test]
     fn write_daily_log() {
-        test_appender(
-            Rotation::DAILY,
-            TempDir::new("daily").expect("Failed to create tempdir"),
-            "daily.log",
-        );
+        test_appender(Rotation::DAILY, "daily.log");
     }
 
     #[test]
     fn write_never_log() {
-        test_appender(
-            Rotation::NEVER,
-            TempDir::new("never").expect("Failed to create tempdir"),
-            "never.log",
-        );
+        test_appender(Rotation::NEVER, "never.log");
     }
 
     #[test]
-    fn test_next_date_minutely() {
-        let r = Rotation::MINUTELY;
+    fn test_rotations() {
+        // per-minute basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::MINUTELY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::MINUTE).minute(), next.minute());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_minute(1).unwrap(), next);
+        // per-hour basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::HOURLY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::HOUR).hour(), next.hour());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 30);
-        let next = r.next_date(&mock_now);
-        assert_eq!(
-            mock_now
-                .with_hour(0)
-                .unwrap()
-                .with_minute(21)
-                .unwrap()
-                .with_second(0)
-                .unwrap(),
-            next
-        );
+        // daily-basis
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::DAILY.next_date(&now).unwrap();
+        assert_eq!((now + Duration::DAY).day(), next.day());
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(
-            mock_now
-                .with_day(2)
-                .unwrap()
-                .with_hour(0)
-                .unwrap()
-                .with_minute(0)
-                .unwrap(),
-            next
-        );
-
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 59, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+        // never
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::NEVER.next_date(&now);
+        assert!(next.is_none());
     }
 
     #[test]
-    fn test_next_date_hourly() {
-        let r = Rotation::HOURLY;
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 20, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(1).unwrap().with_minute(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(1, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_hour(2).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
-
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+    #[should_panic(
+        expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
+    )]
+    fn test_never_date_rounding() {
+        let now = OffsetDateTime::now_utc();
+        let _ = Rotation::NEVER.round_date(&now);
     }
 
     #[test]
-    fn test_next_date_daily() {
-        let r = Rotation::DAILY;
+    fn test_path_concatination() {
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
 
-        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(mock_now.with_day(2).unwrap().with_hour(0).unwrap(), next);
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
-        let mock_now = Utc.ymd(2020, 8, 1).and_hms(0, 20, 5);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2020, 8, 2).and_hms(0, 0, 0), next);
+        // per-minute
+        let path = Rotation::MINUTELY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01-10-01", path);
 
-        let mock_now = Utc.ymd(2020, 8, 31).and_hms(11, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2020, 9, 1).and_hms(0, 0, 0), next);
+        // per-hour
+        let path = Rotation::HOURLY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01-10", path);
 
-        let mock_now = Utc.ymd(2020, 12, 31).and_hms(23, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(Utc.ymd(2021, 1, 1).and_hms(0, 0, 0), next);
+        // per-day
+        let path = Rotation::DAILY.join_date("app.log", &now);
+        assert_eq!("app.log.2020-02-01", path);
+
+        // never
+        let path = Rotation::NEVER.join_date("app.log", &now);
+        assert_eq!("app.log", path);
     }
 
     #[test]
-    fn test_round_date_minutely() {
-        let r = Rotation::MINUTELY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(10, 3, 0),
-            r.round_date(&mock_now)
-        );
+    fn test_make_writer() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::prelude::*;
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
 
-    #[test]
-    fn test_round_date_hourly() {
-        let r = Rotation::HOURLY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(10, 0, 0),
-            r.round_date(&mock_now)
-        );
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) =
+            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer");
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 0, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
 
-    #[test]
-    fn test_rotation_path_minutely() {
-        let r = Rotation::MINUTELY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10-03", path);
-    }
+        tracing::info!("file 1");
 
-    #[test]
-    fn test_rotation_path_hourly() {
-        let r = Rotation::HOURLY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01-10", path);
-    }
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
 
-    #[test]
-    fn test_rotation_path_daily() {
-        let r = Rotation::DAILY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        let path = r.join_date("MyApplication.log", &mock_now);
-        assert_eq!("MyApplication.log.2020-02-01", path);
-    }
+        tracing::info!("file 1");
 
-    #[test]
-    fn test_round_date_daily() {
-        let r = Rotation::DAILY;
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(10, 3, 1);
-        assert_eq!(
-            Utc.ymd(2020, 2, 1).and_hms(0, 0, 0),
-            r.round_date(&mock_now)
-        );
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        assert_eq!(mock_now, r.round_date(&mock_now));
-    }
+        tracing::info!("file 2");
 
-    #[test]
-    fn test_next_date_never() {
-        let r = Rotation::NEVER;
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let next = r.next_date(&mock_now);
-        assert_eq!(next, Utc.ymd(9999, 1, 1).and_hms(1, 0, 0));
-    }
+        tracing::info!("file 2");
 
-    #[test]
-    fn test_join_date_never() {
-        let r = Rotation::NEVER;
+        drop(default);
 
-        let mock_now = Utc.ymd(2020, 2, 1).and_hms(0, 0, 0);
-        let joined_date = r.join_date("Hello.log", &mock_now);
-        assert_eq!(joined_date, "Hello.log");
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+            let path = entry.expect("Expected dir entry").path();
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
+
+            match path
+                .extension()
+                .expect("found a file without a date!")
+                .to_str()
+                .expect("extension should be UTF8")
+            {
+                "2020-02-01-10" => {
+                    assert_eq!("file 1\nfile 1\n", file);
+                }
+                "2020-02-01-11" => {
+                    assert_eq!("file 2\nfile 2\n", file);
+                }
+                x => panic!("unexpected date {}", x),
+            }
+        }
     }
 }

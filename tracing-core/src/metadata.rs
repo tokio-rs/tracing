@@ -89,8 +89,8 @@ pub struct Metadata<'a> {
 }
 
 /// Indicates whether the callsite is a span or event.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Kind(KindInner);
+#[derive(Clone, Eq, PartialEq)]
+pub struct Kind(u8);
 
 /// Describes the level of verbosity of a span or event.
 ///
@@ -128,7 +128,7 @@ pub struct Kind(KindInner);
 /// verbosity. `Level`s can be compared against [`LevelFilter`]s, and
 /// [`LevelFilter`] has a variant for each `Level`, which compares analogously
 /// to that level. In addition, [`LevelFilter`] adds a [`LevelFilter::OFF`]
-/// variant, which is considered "less verbose" than every other `Level. This is
+/// variant, which is considered "less verbose" than every other `Level`. This is
 /// intended to allow filters to completely disable tracing in a particular context.
 ///
 /// For example:
@@ -221,24 +221,26 @@ pub struct Kind(KindInner);
 /// [`Collect::max_level_hint`]: crate::collect::Collect::max_level_hint
 /// [collector]: crate::collect::Collect
 /// [envfilter]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity [`Level`].
 ///
 /// If a [`Level`] is considered less than a `LevelFilter`, it should be
-/// considered disabled; if greater than or equal to the `LevelFilter`, that
-/// level is enabled.
+/// considered enabled; if greater than or equal to the `LevelFilter`,
+/// that level is disabled. See [`LevelFilter::current`] for more
+/// details.
 ///
 /// Note that this is essentially identical to the `Level` type, but with the
 /// addition of an [`OFF`] level that completely disables all trace
 /// instrumentation.
 ///
-/// See the documentation for the [`Level`] type for more details.
+/// See the documentation for the [`Level`] type to see how `Level`s
+/// and `LevelFilter`s interact.
 ///
 /// [`OFF`]: LevelFilter::OFF
 #[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct LevelFilter(Option<Level>);
 
 /// Indicates that a string could not be parsed to a valid level.
@@ -367,27 +369,78 @@ impl<'a> fmt::Debug for Metadata<'a> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum KindInner {
-    Event,
-    Span,
-}
-
 impl Kind {
+    const EVENT_BIT: u8 = 1 << 0;
+    const SPAN_BIT: u8 = 1 << 1;
+    const HINT_BIT: u8 = 1 << 2;
+
     /// `Event` callsite
-    pub const EVENT: Kind = Kind(KindInner::Event);
+    pub const EVENT: Kind = Kind(Self::EVENT_BIT);
 
     /// `Span` callsite
-    pub const SPAN: Kind = Kind(KindInner::Span);
+    pub const SPAN: Kind = Kind(Self::SPAN_BIT);
+
+    /// `enabled!` callsite. [`Collect`][`crate::collect::Collect`]s can assume
+    /// this `Kind` means they will never recieve a
+    /// full event with this [`Metadata`].
+    pub const HINT: Kind = Kind(Self::HINT_BIT);
 
     /// Return true if the callsite kind is `Span`
     pub fn is_span(&self) -> bool {
-        matches!(self, Kind(KindInner::Span))
+        self.0 & Self::SPAN_BIT == Self::SPAN_BIT
     }
 
     /// Return true if the callsite kind is `Event`
     pub fn is_event(&self) -> bool {
-        matches!(self, Kind(KindInner::Event))
+        self.0 & Self::EVENT_BIT == Self::EVENT_BIT
+    }
+
+    /// Return true if the callsite kind is `Hint`
+    pub fn is_hint(&self) -> bool {
+        self.0 & Self::HINT_BIT == Self::HINT_BIT
+    }
+
+    /// Sets that this `Kind` is a [hint](Self::HINT).
+    ///
+    /// This can be called on [`SPAN`](Self::SPAN) and [`EVENT`](Self::EVENT)
+    /// kinds to construct a hint callsite that also counts as a span or event.
+    pub const fn hint(self) -> Self {
+        Self(self.0 | Self::HINT_BIT)
+    }
+}
+
+impl fmt::Debug for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Kind(")?;
+        let mut has_bits = false;
+        let mut write_bit = |name: &str| {
+            if has_bits {
+                f.write_str(" | ")?;
+            }
+            f.write_str(name)?;
+            has_bits = true;
+            Ok(())
+        };
+
+        if self.is_event() {
+            write_bit("EVENT")?;
+        }
+
+        if self.is_span() {
+            write_bit("SPAN")?;
+        }
+
+        if self.is_hint() {
+            write_bit("HINT")?;
+        }
+
+        // if none of the expected bits were set, something is messed up, so
+        // just print the bits for debugging purposes
+        if !has_bits {
+            write!(f, "{:#b}", self.0)?;
+        }
+
+        f.write_str(")")
     }
 }
 
@@ -584,7 +637,7 @@ impl LevelFilter {
     /// Therefore, comparing a given span or event's level to the returned
     /// `LevelFilter` **can** be used for determining if something is
     /// *disabled*, but **should not** be used for determining if something is
-    /// *enabled*.`
+    /// *enabled*.
     ///
     /// [`Level`]: super::Level
     /// [collector]: super::Collect

@@ -3,7 +3,7 @@
 //! [`io::Write`]: std::io::Write
 
 use std::{
-    fmt::Debug,
+    fmt,
     io::{self, Write},
     sync::{Mutex, MutexGuard},
 };
@@ -435,6 +435,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// `and` can be used in conjunction with filtering combinators. For
     /// example, if we want to write to a number of outputs depending on
+    ///
+    /// [writers]: std::io::Write
     fn and<B>(self, other: B) -> Tee<Self, B>
     where
         Self: Sized,
@@ -463,6 +465,8 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
     /// ```
+    ///
+    /// [`make_writer`]: MakeWriter::make_writer
     fn or_else<W, B>(self, other: B) -> OrElse<Self, B>
     where
         Self: MakeWriter<'a, Writer = OptionalWriter<W>> + Sized,
@@ -594,7 +598,7 @@ pub struct WithMinLevel<M> {
 }
 
 /// A [`MakeWriter`] combinator that wraps a [`MakeWriter`] with a predicate for
-/// span and event [`Metadata`], so that the [`MakeWriterExt::make_writer_for`]
+/// span and event [`Metadata`], so that the [`MakeWriter::make_writer_for`]
 /// method returns [`OptionalWriter::some`] when the predicate returns `true`,
 /// and [`OptionalWriter::none`] when the predicate returns `false`.
 ///
@@ -629,6 +633,18 @@ pub struct OrElse<A, B> {
 pub struct Tee<A, B> {
     a: A,
     b: B,
+}
+
+/// A bridge between `fmt::Write` and `io::Write`.
+///
+/// This is used by the timestamp formatting implementation for the `time`
+/// crate and by the JSON formatter. In both cases, this is needed because
+/// `tracing-subscriber`'s `FormatEvent`/`FormatTime` traits expect a
+/// `fmt::Write` implementation, while `serde_json::Serializer` and `time`'s
+/// `format_into` methods expect an `io::Write`.
+#[cfg(any(feature = "json", feature = "time"))]
+pub(in crate::fmt) struct WriteAdaptor<'a> {
+    fmt_write: &'a mut dyn fmt::Write,
 }
 
 impl<'a, F, W> MakeWriter<'a> for F
@@ -695,8 +711,8 @@ impl BoxMakeWriter {
     }
 }
 
-impl Debug for BoxMakeWriter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for BoxMakeWriter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("BoxMakeWriter")
             .field(&format_args!("<{}>", self.name))
             .finish()
@@ -972,6 +988,8 @@ impl<A, B> Tee<A, B> {
     /// outputs.
     ///
     /// See the documentation for [`MakeWriterExt::and`] for details.
+    ///
+    /// [writers]: std::io::Write
     pub fn new(a: A, b: B) -> Self {
         Self { a, b }
     }
@@ -1080,10 +1098,41 @@ where
     }
 }
 
+// === impl WriteAdaptor ===
+
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> WriteAdaptor<'a> {
+    pub(in crate::fmt) fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
+        Self { fmt_write }
+    }
+}
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> io::Write for WriteAdaptor<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s =
+            std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        self.fmt_write
+            .write_str(s)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        Ok(s.as_bytes().len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(any(feature = "json", feature = "time"))]
+impl<'a> fmt::Debug for WriteAdaptor<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("WriteAdaptor { .. }")
+    }
+}
 // === blanket impls ===
 
 impl<'a, M> MakeWriterExt<'a> for M where M: MakeWriter<'a> {}
-
 #[cfg(test)]
 mod test {
     use super::*;

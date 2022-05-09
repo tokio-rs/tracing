@@ -3,6 +3,7 @@ name = "tracing-examples"
 version = "0.0.0"
 publish = false
 edition = "2018"
+rust-version = "1.49.0"
 
 [features]
 default = []
@@ -15,7 +16,7 @@ tracing-core = { path = "../tracing-core", version = "0.2"}
 tracing-error = { path = "../tracing-error" }
 tracing-flame = { path = "../tracing-flame" }
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["json", "chrono"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["json", "env-filter"] }
 tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["futures-01"] }
 tracing-attributes =  { path = "../tracing-attributes", version = "0.2"}
 tracing-log = { path = "../tracing-log", version = "0.2", features = ["env_logger"] }
@@ -36,20 +37,24 @@ env_logger = "0.8"
 # tower examples
 tower = { version = "0.4.4", features = ["full"] }
 http = "0.2"
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "0.14.11", features = ["full"] }
 rand = "0.7"
 bytes = "1"
-clap = "2.33"
+argh = "0.1.5"
 
 # sloggish example
 ansi_term = "0.12"
 humantime = "2.0"
 log = "0.4"
 
-# infero example
-inferno = "0.10.0"
-tempdir = "0.3.7"
+# inferno example
+inferno = "0.11.0"
+tempfile = "3"
 
 # opentelemetry example
-opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.14"
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.16"
+
+# fmt examples
+snafu = "0.6.10"
+thiserror = "1.0.26"

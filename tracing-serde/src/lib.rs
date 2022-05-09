@@ -32,7 +32,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting
 //! libraries and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -128,7 +128,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -403,6 +403,12 @@ where
         }
     }
 
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_entry(field.name(), &value)
+        }
+    }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(field.name(), &value)
@@ -444,6 +450,12 @@ where
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_field(field.name(), &value)
+        }
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_field(field.name(), &value)
         }

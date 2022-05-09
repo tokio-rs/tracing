@@ -1,5 +1,9 @@
 //! This example demonstrates how `tracing` events can be recorded from within a
 //! panic hook, capturing the span context in which the program panicked.
+//!
+//! A custom panic hook can also be used to record panics that are captured
+//! using `catch_unwind`, such as when Tokio catches panics in spawned async
+//! tasks. See the `tokio_panic_hook.rs` example for an example of this.
 
 fn main() {
     let collector = tracing_subscriber::fmt()

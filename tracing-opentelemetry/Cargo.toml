@@ -1,6 +1,6 @@
 [package]
 name = "tracing-opentelemetry"
-version = "0.14.0"
+version = "0.16.0"
 authors = [
     "Julian Tescher <julian@tescher.me>",
     "Tokio Contributors <team@tokio.rs>"
@@ -17,21 +17,22 @@ categories = [
 keywords = ["tracing", "opentelemetry", "jaeger", "zipkin", "async"]
 license = "MIT"
 edition = "2018"
+rust-version = "1.46.0"
 
 [features]
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.15", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.2" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry", "std"] }
 tracing-log = { path = "../tracing-log", version = "0.2", default-features = false, optional = true }
 
 [dev-dependencies]
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
-opentelemetry-jaeger = "0.14"
+opentelemetry-jaeger = "0.16"
 
 [lib]
 bench = false

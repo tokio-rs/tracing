@@ -58,22 +58,29 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [ctx]: crate::subscribe::Context
 //! [lookup]: crate::subscribe::Context::span()
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 use tracing_core::{field::FieldSet, span::Id, Metadata};
 
-/// A module containing a type map of span extensions.
-mod extensions;
+feature! {
+    #![feature = "std"]
+    /// A module containing a type map of span extensions.
+    mod extensions;
+    pub use extensions::{Extensions, ExtensionsMut};
 
-cfg_feature!("registry", {
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+
     mod sharded;
     mod stack;
 
     pub use sharded::Data;
     pub use sharded::Registry;
-});
 
-pub use extensions::{Extensions, ExtensionsMut};
+    use crate::filter::FilterId;
+}
 
 /// Provides access to stored span data.
 ///
@@ -117,11 +124,37 @@ pub trait LookupSpan<'a> {
     where
         Self: Sized,
     {
-        let data = self.span_data(&id)?;
+        let data = self.span_data(id)?;
         Some(SpanRef {
             registry: self,
             data,
+            #[cfg(feature = "registry")]
+            filter: FilterId::none(),
         })
+    }
+
+    /// Registers a [`Filter`] for [per-subscriber filtering] with this
+    /// [collector].
+    ///
+    /// The [`Filter`] can then use the returned [`FilterId`] to
+    /// [check if it previously enabled a span][check].
+    ///
+    /// # Panics
+    ///
+    /// If this collector does not support [per-subscriber filtering].
+    ///
+    /// [`Filter`]: crate::subscribe::Filter
+    /// [per-subscriber filtering]: crate::subscribe#per-subscriber-filtering
+    /// [collector]: tracing_core::Collect
+    /// [`FilterId`]: crate::filter::FilterId
+    /// [check]: SpanData::is_enabled_for
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    fn register_filter(&mut self) -> FilterId {
+        panic!(
+            "{} does not currently support filters",
+            std::any::type_name::<Self>()
+        )
     }
 }
 
@@ -140,13 +173,34 @@ pub trait SpanData<'a> {
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions(&self) -> Extensions<'_>;
 
     /// Returns a mutable reference to this span's `Extensions`.
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn extensions_mut(&self) -> ExtensionsMut<'_>;
+
+    /// Returns `true` if this span is enabled for the [per-subscriber filter][psf]
+    /// corresponding to the provided [`FilterId`].
+    ///
+    /// ## Default Implementation
+    ///
+    /// By default, this method assumes that the [`LookupSpan`] implementation
+    /// does not support [per-subscriber filtering][psf], and always returns `true`.
+    ///
+    /// [psf]: crate::subscribe#per-subscriber-filtering
+    /// [`FilterId`]: crate::filter::FilterId
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    fn is_enabled_for(&self, filter: FilterId) -> bool {
+        let _ = filter;
+        true
+    }
 }
 
 /// A reference to [span data] and the associated [registry].
@@ -161,6 +215,9 @@ pub trait SpanData<'a> {
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
     registry: &'a R,
     data: R::Data,
+
+    #[cfg(feature = "registry")]
+    filter: FilterId,
 }
 
 /// An iterator over the parents of a span, ordered from leaf to root.
@@ -170,30 +227,83 @@ pub struct SpanRef<'a, R: LookupSpan<'a>> {
 pub struct Scope<'a, R> {
     registry: &'a R,
     next: Option<Id>,
+
+    #[cfg(all(feature = "registry", feature = "std"))]
+    filter: FilterId,
 }
 
-impl<'a, R> Scope<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    /// Flips the order of the iterator, so that it is ordered from root to leaf.
+feature! {
+    #![any(feature = "alloc", feature = "std")]
+
+    #[cfg(not(feature = "smallvec"))]
+    use alloc::vec::{self, Vec};
+    use core::{fmt,iter};
+
+    /// An iterator over the parents of a span, ordered from root to leaf.
     ///
-    /// The iterator will first return the root span, then that span's immediate child,
-    /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
-    ///
-    /// If any items were consumed from the [`Scope`] before calling this method then they
-    /// will *not* be returned from the [`ScopeFromRoot`].
-    ///
-    /// **Note**: this will allocate if there are many spans remaining, or if the
-    /// "smallvec" feature flag is not enabled.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+    /// This is returned by the [`Scope::from_root`] method.
+    pub struct ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
         #[cfg(feature = "smallvec")]
-        type Buf<T> = smallvec::SmallVec<T>;
+        spans: iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
         #[cfg(not(feature = "smallvec"))]
-        type Buf<T> = Vec<T>;
-        ScopeFromRoot {
-            spans: self.collect::<Buf<_>>().into_iter().rev(),
+        spans: iter::Rev<vec::IntoIter<SpanRef<'a, R>>>,
+    }
+
+    #[cfg(feature = "smallvec")]
+    type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
+
+    impl<'a, R> Scope<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        /// Flips the order of the iterator, so that it is ordered from root to leaf.
+        ///
+        /// The iterator will first return the root span, then that span's immediate child,
+        /// and so on until it finally returns the span that [`SpanRef::scope`] was called on.
+        ///
+        /// If any items were consumed from the [`Scope`] before calling this method then they
+        /// will *not* be returned from the [`ScopeFromRoot`].
+        ///
+        /// **Note**: this will allocate if there are many spans remaining, or if the
+        /// "smallvec" feature flag is not enabled.
+        #[allow(clippy::wrong_self_convention)]
+        pub fn from_root(self) -> ScopeFromRoot<'a, R> {
+            #[cfg(feature = "smallvec")]
+            type Buf<T> = smallvec::SmallVec<T>;
+            #[cfg(not(feature = "smallvec"))]
+            type Buf<T> = Vec<T>;
+            ScopeFromRoot {
+                spans: self.collect::<Buf<_>>().into_iter().rev(),
+            }
+        }
+    }
+
+    impl<'a, R> Iterator for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        type Item = SpanRef<'a, R>;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.spans.next()
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.spans.size_hint()
+        }
+    }
+
+    impl<'a, R> fmt::Debug for ScopeFromRoot<'a, R>
+    where
+        R: LookupSpan<'a>,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.pad("ScopeFromRoot { .. }")
         }
     }
 }
@@ -205,53 +315,29 @@ where
     type Item = SpanRef<'a, R>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let curr = self.registry.span(self.next.as_ref()?)?;
-        self.next = curr.parent_id().cloned();
-        Some(curr)
+        loop {
+            let curr = self.registry.span(self.next.as_ref()?)?;
+
+            #[cfg(all(feature = "registry", feature = "std"))]
+            let curr = curr.with_filter(self.filter);
+            self.next = curr.data.parent().cloned();
+
+            // If the `Scope` is filtered, check if the current span is enabled
+            // by the selected filter ID.
+
+            #[cfg(all(feature = "registry", feature = "std"))]
+            {
+                if !curr.is_enabled_for(self.filter) {
+                    // The current span in the chain is disabled for this
+                    // filter. Try its parent.
+                    continue;
+                }
+            }
+
+            return Some(curr);
+        }
     }
 }
-
-/// An iterator over the parents of a span, ordered from root to leaf.
-///
-/// This is returned by the [`Scope::from_root`] method.
-pub struct ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    #[cfg(feature = "smallvec")]
-    spans: std::iter::Rev<smallvec::IntoIter<SpanRefVecArray<'a, R>>>,
-    #[cfg(not(feature = "smallvec"))]
-    spans: std::iter::Rev<std::vec::IntoIter<SpanRef<'a, R>>>,
-}
-
-impl<'a, R> Iterator for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    type Item = SpanRef<'a, R>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.spans.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.spans.size_hint()
-    }
-}
-
-impl<'a, R> Debug for ScopeFromRoot<'a, R>
-where
-    R: LookupSpan<'a>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad("ScopeFromRoot { .. }")
-    }
-}
-
-#[cfg(feature = "smallvec")]
-type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
 
 impl<'a, R> SpanRef<'a, R>
 where
@@ -281,15 +367,69 @@ where
 
     /// Returns the ID of this span's parent, or `None` if this span is the root
     /// of its trace tree.
+    #[deprecated(
+        note = "this method cannot properly support per-subscriber filtering, and may \
+            return the `Id` of a disabled span if per-subscriber filtering is in \
+            use. use `.parent().map(SpanRef::id)` instead.",
+        since = "0.2.21"
+    )]
     pub fn parent_id(&self) -> Option<&Id> {
+        // XXX(eliza): this doesn't work with PSF because the ID is potentially
+        // borrowed from a parent we got from the registry, rather than from
+        // `self`, so we can't return a borrowed parent. so, right now, we just
+        // return the actual parent ID, and ignore PSF. which is not great.
+        //
+        // i think if we want this to play nice with PSF, we should just change
+        // it to return the `Id` by value instead of `&Id` (which we ought to do
+        // anyway since an `Id` is just a word) but that's a breaking change.
+        // alternatively, we could deprecate this method since it can't support
+        // PSF in its current form (which is what we would want to do if we want
+        // to release PSF in a minor version)...
+
+        // let mut id = self.data.parent()?;
+        // loop {
+        //     // Is this parent enabled by our filter?
+        //     if self
+        //         .filter
+        //         .map(|filter| self.registry.is_enabled_for(id, filter))
+        //         .unwrap_or(true)
+        //     {
+        //         return Some(id);
+        //     }
+        //     id = self.registry.span_data(id)?.parent()?;
+        // }
         self.data.parent()
     }
 
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
+
     pub fn parent(&self) -> Option<Self> {
         let id = self.data.parent()?;
         let data = self.registry.span_data(id)?;
+
+        #[cfg(all(feature = "registry", feature = "std"))]
+        {
+            // move these into mut bindings if the registry feature is enabled,
+            // since they may be mutated in the loop.
+            let mut data = data;
+            loop {
+                // Is this parent enabled by our filter?
+                if data.is_enabled_for(self.filter) {
+                    return Some(Self {
+                        registry: self.registry,
+                        filter: self.filter,
+                        data,
+                    });
+                }
+
+                // It's not enabled. If the disabled span has a parent, try that!
+                let id = data.parent()?;
+                data = self.registry.span_data(id)?;
+            }
+        }
+
+        #[cfg(not(all(feature = "registry", feature = "std")))]
         Some(Self {
             registry: self.registry,
             data,
@@ -367,6 +507,9 @@ where
         Scope {
             registry: self.registry,
             next: Some(self.id()),
+
+            #[cfg(feature = "registry")]
+            filter: self.filter,
         }
     }
 
@@ -374,6 +517,8 @@ where
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions(&self) -> Extensions<'_> {
         self.data.extensions()
     }
@@ -382,12 +527,35 @@ where
     ///
     /// The extensions may be used by `Subscriber`s to store additional data
     /// describing the span.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         self.data.extensions_mut()
     }
+
+    #[cfg(all(feature = "registry", feature = "std"))]
+    pub(crate) fn try_with_filter(self, filter: FilterId) -> Option<Self> {
+        if self.is_enabled_for(filter) {
+            return Some(self.with_filter(filter));
+        }
+
+        None
+    }
+
+    #[inline]
+    #[cfg(all(feature = "registry", feature = "std"))]
+    pub(crate) fn is_enabled_for(&self, filter: FilterId) -> bool {
+        self.data.is_enabled_for(filter)
+    }
+
+    #[inline]
+    #[cfg(all(feature = "registry", feature = "std"))]
+    fn with_filter(self, filter: FilterId) -> Self {
+        Self { filter, ..self }
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "registry", feature = "std"))]
 mod tests {
     use crate::{
         prelude::*,

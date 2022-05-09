@@ -168,7 +168,7 @@ impl<'a> Attributes<'a> {
     /// Returns the new span's explicitly-specified parent, if there is one.
     ///
     /// Otherwise (if the new span is a root or is a child of the current span),
-    /// returns false.
+    /// returns `None`.
     pub fn parent(&self) -> Option<&Id> {
         match self.parent {
             Parent::Explicit(ref p) => Some(p),
@@ -300,7 +300,7 @@ impl Current {
     /// Borrows the `Metadata` of the current span, if one exists and is known.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
         match self.inner {
-            CurrentInner::Current { ref metadata, .. } => Some(*metadata),
+            CurrentInner::Current { metadata, .. } => Some(metadata),
             _ => None,
         }
     }

@@ -5,9 +5,6 @@
 // The alternative would be for each of these tests to be defined in a separate
 // file, which is :(
 #![cfg(feature = "std")]
-
-#[macro_use]
-extern crate tracing;
 use tracing::{
     collect::{with_default, Collect, Interest},
     field::display,
@@ -15,9 +12,7 @@ use tracing::{
     Event, Level, Metadata,
 };
 
-mod support;
-
-use self::support::*;
+use tracing_mock::*;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
@@ -34,7 +29,7 @@ fn event_macros_dont_infinite_loop() {
 
         fn enabled(&self, meta: &Metadata<'_>) -> bool {
             assert!(meta.fields().iter().any(|f| f.name() == "foo"));
-            event!(Level::TRACE, bar = false);
+            tracing::event!(Level::TRACE, bar = false);
             true
         }
 
@@ -48,7 +43,7 @@ fn event_macros_dont_infinite_loop() {
 
         fn event(&self, event: &Event<'_>) {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
-            event!(Level::TRACE, baz = false);
+            tracing::event!(Level::TRACE, baz = false);
         }
 
         fn enter(&self, _: &Id) {}
@@ -61,7 +56,7 @@ fn event_macros_dont_infinite_loop() {
     }
 
     with_default(TestCollector, || {
-        event!(Level::TRACE, foo = false);
+        tracing::event!(Level::TRACE, foo = false);
     })
 }
 
@@ -85,7 +80,7 @@ fn boxed_collector() {
 
     with_default(collector, || {
         let from = "my span";
-        let span = span!(
+        let span = tracing::span!(
             Level::TRACE,
             "foo",
             bar = format_args!("hello from {}", from)
@@ -123,7 +118,7 @@ fn arced_collector() {
     // Test using a clone of the `Arc`ed collector
     with_default(collector.clone(), || {
         let from = "my span";
-        let span = span!(
+        let span = tracing::span!(
             Level::TRACE,
             "foo",
             bar = format_args!("hello from {}", from)

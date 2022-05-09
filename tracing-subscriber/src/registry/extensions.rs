@@ -35,11 +35,13 @@ impl Hasher for IdHasher {
 
 /// An immutable, read-only reference to a Span's extensions.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct Extensions<'a> {
     inner: RwLockReadGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> Extensions<'a> {
+    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockReadGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -52,11 +54,13 @@ impl<'a> Extensions<'a> {
 
 /// An mutable reference to a Span's extensions.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct ExtensionsMut<'a> {
     inner: RwLockWriteGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> ExtensionsMut<'a> {
+    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockWriteGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -118,6 +122,7 @@ pub(crate) struct ExtensionsInner {
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
+    #[cfg(any(test, feature = "registry"))]
     #[inline]
     pub(crate) fn new() -> ExtensionsInner {
         ExtensionsInner {
@@ -177,6 +182,7 @@ impl ExtensionsInner {
     ///
     /// This permits the hash map allocation to be pooled by the registry so
     /// that future spans will not need to allocate new hashmaps.
+    #[cfg(any(test, feature = "registry"))]
     pub(crate) fn clear(&mut self) {
         self.map.clear();
     }

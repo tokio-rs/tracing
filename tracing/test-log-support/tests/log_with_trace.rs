@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate tracing;
-extern crate test_log_support;
-
 use test_log_support::Test;
-use tracing::Level;
+use tracing::{error, info, span, trace, warn, Level};
 use tracing_core::span::Current;
 
 pub struct NopCollector;
@@ -67,7 +63,7 @@ fn log_with_trace() {
     test.assert_logged("-- foo; span=1");
 
     let foo = span!(Level::TRACE, "foo", bar = 3, baz = false);
-    test.assert_logged("++ foo; bar=3 baz=false; span=2");
+    test.assert_logged("++ foo; bar=3 baz=false span=2");
 
     drop(foo);
     test.assert_logged("-- foo; span=2");

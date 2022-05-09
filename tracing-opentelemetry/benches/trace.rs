@@ -13,11 +13,11 @@ fn many_children(c: &mut Criterion) {
 
     group.bench_function("spec_baseline", |b| {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("bench", None);
+        let tracer = provider.tracer("bench");
         b.iter(|| {
             fn dummy(tracer: &Tracer, cx: &Context) {
                 for _ in 0..99 {
-                    tracer.start_with_context("child", cx.clone());
+                    tracer.start_with_context("child", cx);
                 }
             }
 
@@ -41,7 +41,7 @@ fn many_children(c: &mut Criterion) {
 
     {
         let provider = TracerProvider::default();
-        let tracer = provider.get_tracer("bench", None);
+        let tracer = provider.tracer("bench");
         let otel_layer = tracing_opentelemetry::subscriber()
             .with_tracer(tracer)
             .with_tracked_inactivity(false);
@@ -60,7 +60,7 @@ impl<C> tracing_subscriber::Subscribe<C> for RegistryAccessCollector
 where
     C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         _attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
@@ -87,7 +87,7 @@ impl<C> tracing_subscriber::Subscribe<C> for OtelDataCollector
 where
     C: tracing_core::Collect + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &tracing_core::span::Attributes<'_>,
         id: &tracing::span::Id,
@@ -96,8 +96,7 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         extensions.insert(
-            SpanBuilder::from_name(attrs.metadata().name().to_string())
-                .with_start_time(SystemTime::now()),
+            SpanBuilder::from_name(attrs.metadata().name()).with_start_time(SystemTime::now()),
         );
     }
 

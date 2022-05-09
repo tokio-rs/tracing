@@ -1,3 +1,4 @@
+#![cfg(feature = "fmt")]
 use tracing_subscriber::filter::LevelFilter;
 
 #[test]

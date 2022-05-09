@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate tracing;
-extern crate test_log_support;
-
 use test_log_support::Test;
-use tracing::Level;
+use tracing::{error, info, span, trace, warn, Level};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
@@ -25,7 +21,7 @@ fn span_activity_filtered_separately() {
 
     let foo = span!(Level::TRACE, "foo");
     // Creating a span goes to the `tracing::span` target.
-    test.assert_logged("foo");
+    test.assert_logged("foo;");
 
     foo.in_scope(|| {
         // enter should not be logged
@@ -39,7 +35,7 @@ fn span_activity_filtered_separately() {
 
     drop(foo);
     // drop should be logged
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo;");
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");
@@ -61,7 +57,7 @@ fn span_activity_filtered_separately() {
 
     let bar = span!(Level::INFO, "bar");
     // lifecycles for INFO spans should be logged
-    test.assert_logged("bar");
+    test.assert_logged("bar;");
 
     bar.in_scope(|| {
         // entering the INFO span should not be logged
@@ -72,9 +68,9 @@ fn span_activity_filtered_separately() {
 
     drop(foo);
     // drop should be logged
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo;");
 
     drop(bar);
     // dropping the INFO should be logged.
-    test.assert_logged("-- bar");
+    test.assert_logged("-- bar;");
 }

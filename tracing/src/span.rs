@@ -62,8 +62,7 @@
 //! The `enter` method enters a span, returning a [guard] that exits the span
 //! when dropped
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var);
 //!
@@ -76,7 +75,7 @@
 //! // Dropping the `_enter` guard will exit the span.
 //!```
 //!
-//! </div><div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
 //!  **Warning**: In asynchronous code that uses async/await syntax,
 //!  [`Span::enter`] may produce incorrect traces if the returned drop
@@ -88,8 +87,7 @@
 //! `in_scope` takes a closure or function pointer and executes it inside the
 //! span.
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! let my_var: u64 = 5;
 //! let my_span = span!(Level::TRACE, "my_span", my_var = &my_var);
 //!
@@ -122,8 +120,7 @@
 //! as long as the longest-executing span in its subtree.
 //!
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! // this span is considered the "root" of a new trace tree:
 //! span!(Level::INFO, "root").in_scope(|| {
 //!     // since we are now inside "root", this span is considered a child
@@ -143,8 +140,7 @@
 //! the `span!` macro. For example:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! // Create, but do not enter, a span called "foo".
 //! let foo = span!(Level::INFO, "foo");
 //!
@@ -186,28 +182,27 @@
 //! _closed_. Consider, for example, a future which has an associated
 //! span and enters that span every time it is polled:
 //! ```rust
-//! # extern crate tracing;
-//! # extern crate futures;
-//! # use futures::{Future, Poll, Async};
+//! # use std::future::Future;
+//! # use std::task::{Context, Poll};
+//! # use std::pin::Pin;
 //! struct MyFuture {
 //!    // data
 //!    span: tracing::Span,
 //! }
 //!
 //! impl Future for MyFuture {
-//!     type Item = ();
-//!     type Error = ();
+//!     type Output = ();
 //!
-//!     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+//!     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
 //!         let _enter = self.span.enter();
 //!         // Do actual future work...
-//! # Ok(Async::Ready(()))
+//! # Poll::Ready(())
 //!     }
 //! }
 //! ```
 //!
 //! If this future was spawned on an executor, it might yield one or more times
-//! before `poll` returns `Ok(Async::Ready)`. If the future were to yield, then
+//! before `poll` returns [`Poll::Ready`]. If the future were to yield, then
 //! the executor would move on to poll the next future, which may _also_ enter
 //! an associated span or series of spans. Therefore, it is valid for a span to
 //! be entered repeatedly before it completes. Only the time when that span or
@@ -227,8 +222,7 @@
 //! that handle "closes" the span, since the capacity to enter it no longer
 //! exists. For example:
 //! ```
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! {
 //!     span!(Level::TRACE, "my_span").in_scope(|| {
 //!         // perform some work in the context of `my_span`...
@@ -261,8 +255,7 @@
 //! construct one span and perform the entire loop inside of that span, like:
 //!
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! # let n = 1;
 //! let span = span!(Level::TRACE, "my_loop");
 //! let _enter = span.enter();
@@ -273,8 +266,7 @@
 //! ```
 //! Or, should we create a new span for each iteration of the loop, as in:
 //! ```rust
-//! # #[macro_use] extern crate tracing;
-//! # use tracing::Level;
+//! # use tracing::{Level, span};
 //! # let n = 1u64;
 //! for i in 0..n {
 //!     let span = span!(Level::TRACE, "my_loop", iteration = i);
@@ -292,6 +284,7 @@
 //! [fields]: super::field
 //! [Metadata]: super::Metadata
 //! [verbosity level]: super::Level
+//! [`Poll::Ready`]: std::task::Poll::Ready
 //! [`span!`]: super::span!
 //! [`trace_span!`]: super::trace_span!
 //! [`debug_span!`]: super::debug_span!
@@ -577,7 +570,12 @@ impl Span {
             } else {
                 meta.target()
             };
-            span.log(target, level_to_log!(*meta.level()), format_args!("++ {}{}", meta.name(), FmtAttrs(attrs)));
+            let values = attrs.values();
+            span.log(
+                target,
+                level_to_log!(*meta.level()),
+                format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
+            );
         }}
 
         span
@@ -612,9 +610,13 @@ impl Span {
     /// async fn my_async_function() {
     ///     let span = info_span!("my_async_function");
     ///
-    ///     // THIS WILL RESULT IN INCORRECT TRACES
+    ///     // WARNING: This span will remain entered until this
+    ///     // guard is dropped...
     ///     let _enter = span.enter();
-    ///     some_other_async_function().await;
+    ///     // ...but the `await` keyword may yield, causing the
+    ///     // runtime to switch to another task, while remaining in
+    ///     // this span!
+    ///     some_other_async_function().await
     ///
     ///     // ...
     /// }
@@ -721,8 +723,7 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
-    /// # use tracing::Level;
+    /// # use tracing::{span, Level};
     /// let span = span!(Level::INFO, "my_span");
     /// let guard = span.enter();
     ///
@@ -737,7 +738,7 @@ impl Span {
     /// Guards need not be explicitly dropped:
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
+    /// # use tracing::trace_span;
     /// fn my_function() -> String {
     ///     // enter a span for the duration of this function.
     ///     let span = trace_span!("my_function");
@@ -759,7 +760,7 @@ impl Span {
     /// entered:
     ///
     /// ```
-    /// #[macro_use] extern crate tracing;
+    /// # use tracing::{info, info_span};
     /// let span = info_span!("my_great_span");
     ///
     /// {
@@ -778,7 +779,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn enter(&self) -> Entered<'_> {
         self.do_enter();
         Entered {
@@ -892,7 +893,7 @@ impl Span {
     /// [`Collect::enter`]: super::collect::Collect::enter()
     /// [`Collect::exit`]: super::collect::Collect::exit()
     /// [`Id`]: super::Id
-    #[inline]
+    #[inline(always)]
     pub fn entered(self) -> EnteredSpan {
         self.do_enter();
         EnteredSpan {
@@ -901,15 +902,145 @@ impl Span {
         }
     }
 
-    #[inline]
+    /// Returns this span, if it was [enabled] by the current [collector], or
+    /// the [current span] (whose lexical distance may be further than expected),
+    ///  if this span [is disabled].
+    ///
+    /// This method can be useful when propagating spans to spawned threads or
+    /// [async tasks]. Consider the following:
+    ///
+    /// ```
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// let child_span = tracing::debug_span!("child");
+    ///
+    /// std::thread::spawn(move || {
+    ///     let _entered = child_span.entered();
+    ///
+    ///     tracing::info!("spawned a thread!");
+    ///
+    ///     // ...
+    /// });
+    /// ```
+    ///
+    /// If the current [collector] enables the [`DEBUG`] level, then both
+    /// the "parent" and "child" spans will be enabled. Thus, when the "spawned
+    /// a thread!" event occurs, it will be inside of the "child" span. Because
+    /// "parent" is the parent of "child", the event will _also_ be inside of
+    /// "parent".
+    ///
+    /// However, if the collector only enables the [`INFO`] level, the "child"
+    /// span will be disabled. When the thread is spawned, the
+    /// `child_span.entered()` call will do nothing, since "child" is not
+    /// enabled. In this case, the "spawned a thread!" event occurs outside of
+    /// *any* span, since the "child" span was responsible for propagating its
+    /// parent to the spawned thread.
+    ///
+    /// If this is not the desired behavior, `Span::or_current` can be used to
+    /// ensure that the "parent" span is propagated in both cases, either as a
+    /// parent of "child" _or_ directly. For example:
+    ///
+    /// ```
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// // If DEBUG is enabled, then "child" will be enabled, and `or_current`
+    /// // returns "child". Otherwise, if DEBUG is not enabled, "child" will be
+    /// // disabled, and `or_current` returns "parent".
+    /// let child_span = tracing::debug_span!("child").or_current();
+    ///
+    /// std::thread::spawn(move || {
+    ///     let _entered = child_span.entered();
+    ///
+    ///     tracing::info!("spawned a thread!");
+    ///
+    ///     // ...
+    /// });
+    /// ```
+    ///
+    /// When spawning [asynchronous tasks][async tasks], `Span::or_current` can
+    /// be used similarly, in combination with [`instrument`]:
+    ///
+    /// ```
+    /// use tracing::Instrument;
+    /// # // lol
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    ///
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // ...
+    ///
+    /// let child_span = tracing::debug_span!("child");
+    ///
+    /// tokio::spawn(
+    ///     async {
+    ///         tracing::info!("spawned a task!");
+    ///
+    ///         // ...
+    ///
+    ///     }.instrument(child_span.or_current())
+    /// );
+    /// ```
+    ///
+    /// In general, `or_current` should be preferred over nesting an
+    /// [`instrument`]  call inside of an [`in_current_span`] call, as using
+    /// `or_current` will be more efficient.
+    ///
+    /// ```
+    /// use tracing::Instrument;
+    /// # // lol
+    /// # mod tokio {
+    /// #     pub(super) fn spawn(_: impl std::future::Future) {}
+    /// # }
+    /// async fn my_async_fn() {
+    ///     // ...
+    /// }
+    ///
+    /// let _parent_span = tracing::info_span!("parent").entered();
+    ///
+    /// // Do this:
+    /// tokio::spawn(
+    ///     my_async_fn().instrument(tracing::debug_span!("child").or_current())
+    /// );
+    ///
+    /// // ...rather than this:
+    /// tokio::spawn(
+    ///     my_async_fn()
+    ///         .instrument(tracing::debug_span!("child"))
+    ///         .in_current_span()
+    /// );
+    /// ```
+    ///
+    /// [enabled]: crate::collect::Collect::enabled
+    /// [collector]: crate::collect::Collect
+    /// [current span]: Span::current
+    /// [is disabled]: Span::is_disabled
+    /// [`INFO`]: crate::Level::INFO
+    /// [`DEBUG`]: crate::Level::DEBUG
+    /// [async tasks]: std::task
+    /// [`instrument`]: crate::instrument::Instrument::instrument
+    /// [`in_current_span`]: crate::instrument::Instrument::in_current_span
+    pub fn or_current(self) -> Self {
+        if self.is_disabled() {
+            return Self::current();
+        }
+        self
+    }
+
+    #[inline(always)]
     fn do_enter(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.enter(&inner.id);
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {}", meta.name()));
+            if let Some(_meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("-> {};", _meta.name()));
             }
         }}
     }
@@ -918,15 +1049,15 @@ impl Span {
     //
     // Running this behaviour on drop rather than with an explicit function
     // call means that spans may still be exited when unwinding.
-    #[inline]
+    #[inline(always)]
     fn do_exit(&self) {
         if let Some(inner) = self.inner.as_ref() {
             inner.collector.exit(&inner.id);
         }
 
         if_log_enabled! { crate::Level::TRACE, {
-            if let Some(ref _meta) = self.meta {
-                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {}", _meta.name()));
+            if let Some(_meta) = self.meta {
+                self.log(ACTIVITY_LOG_TARGET, log::Level::Trace, format_args!("<- {};", _meta.name()));
             }
         }}
     }
@@ -943,8 +1074,7 @@ impl Span {
     /// # Examples
     ///
     /// ```
-    /// # #[macro_use] extern crate tracing;
-    /// # use tracing::Level;
+    /// # use tracing::{trace, span, Level};
     /// let my_span = span!(Level::TRACE, "my_span");
     ///
     /// my_span.in_scope(|| {
@@ -1068,7 +1198,7 @@ impl Span {
         Q: field::AsField,
         V: field::Value,
     {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if let Some(field) = field.as_field(meta) {
                 self.record_all(
                     &meta
@@ -1088,14 +1218,18 @@ impl Span {
             inner.record(&record);
         }
 
-        if let Some(ref _meta) = self.meta {
+        if let Some(_meta) = self.meta {
             if_log_enabled! { *_meta.level(), {
                 let target = if record.is_empty() {
                     LIFECYCLE_LOG_TARGET
                 } else {
                     _meta.target()
                 };
-                self.log(target, level_to_log!(*_meta.level()), format_args!("{}{}", _meta.name(), FmtValues(&record)));
+                self.log(
+                    target,
+                    level_to_log!(*_meta.level()),
+                    format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
+                );
             }}
         }
 
@@ -1188,7 +1322,7 @@ impl Span {
     #[cfg(feature = "log")]
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             if level_to_log!(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
@@ -1200,7 +1334,7 @@ impl Span {
                                 .module_path(meta.module_path())
                                 .file(meta.file())
                                 .line(meta.line())
-                                .args(format_args!("{}; span={}", message, inner.id.into_u64()))
+                                .args(format_args!("{} span={}", message, inner.id.into_u64()))
                                 .build(),
                         );
                     } else {
@@ -1251,7 +1385,7 @@ impl Hash for Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut span = f.debug_struct("Span");
-        if let Some(ref meta) = self.meta {
+        if let Some(meta) = self.meta {
             span.field("name", &meta.name())
                 .field("level", &meta.level())
                 .field("target", &meta.target());
@@ -1306,6 +1440,7 @@ impl<'a> From<&'a EnteredSpan> for Option<Id> {
 }
 
 impl Drop for Span {
+    #[inline(always)]
     fn drop(&mut self) {
         if let Some(Inner {
             ref id,
@@ -1315,15 +1450,15 @@ impl Drop for Span {
             collector.try_close(id.clone());
         }
 
-        if let Some(ref _meta) = self.meta {
-            if_log_enabled! { crate::Level::TRACE, {
+        if_log_enabled! { crate::Level::TRACE, {
+            if let Some(meta) = self.meta {
                 self.log(
                     LIFECYCLE_LOG_TARGET,
                     log::Level::Trace,
-                    format_args!("-- {}", _meta.name()),
+                    format_args!("-- {};", meta.name()),
                 );
-            }}
-        }
+            }
+        }}
     }
 }
 
@@ -1346,7 +1481,7 @@ impl Inner {
     /// returns `Ok(())` if the other span was added as a precedent of this
     /// span, or an error if this was not possible.
     fn follows_from(&self, from: &Id) {
-        self.collector.record_follows_from(&self.id, &from)
+        self.collector.record_follows_from(&self.id, from)
     }
 
     /// Returns the span's ID.
@@ -1415,14 +1550,14 @@ impl Deref for EnteredSpan {
 }
 
 impl<'a> Drop for Entered<'a> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
 }
 
 impl Drop for EnteredSpan {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
     }
@@ -1454,38 +1589,6 @@ const PhantomNotSend: PhantomNotSend = PhantomNotSend { ghost: PhantomData };
 ///
 /// Trivially safe, as `PhantomNotSend` doesn't have any API.
 unsafe impl Sync for PhantomNotSend {}
-
-#[cfg(feature = "log")]
-struct FmtValues<'a>(&'a Record<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
-
-#[cfg(feature = "log")]
-struct FmtAttrs<'a>(&'a Attributes<'a>);
-
-#[cfg(feature = "log")]
-impl<'a> fmt::Display for FmtAttrs<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = Ok(());
-        let mut is_first = true;
-        self.0.record(&mut |k: &field::Field, v: &dyn fmt::Debug| {
-            res = write!(f, "{} {}={:?}", if is_first { ";" } else { "" }, k, v);
-            is_first = false;
-        });
-        res
-    }
-}
 
 #[cfg(test)]
 mod test {

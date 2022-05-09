@@ -7,7 +7,7 @@
 //! a dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] that can
 //! be used with _or_ without the non-blocking writer.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.51+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [file_appender]: rolling::RollingFileAppender
@@ -109,8 +109,8 @@
 //!
 //! ## Supported Rust Versions
 //!
-//! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! `tracing-appender` is built against the latest stable release. The minimum supported
+//! version is 1.51. The current `tracing-appender` version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -153,13 +153,13 @@ use crate::non_blocking::{NonBlocking, WorkerGuard};
 
 use std::io::Write;
 
-mod inner;
-
 pub mod non_blocking;
 
 pub mod rolling;
 
 mod worker;
+
+pub(crate) mod sync;
 
 /// Convenience function for creating a non-blocking, off-thread writer.
 ///
