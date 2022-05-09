@@ -147,28 +147,28 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-// #![warn(
-//     missing_debug_implementations,
-//     // missing_docs, // TODO: add documentation
-//     rust_2018_idioms,
-//     unreachable_pub,
-//     bad_style,
-//     const_err,
-//     dead_code,
-//     improper_ctypes,
-//     non_shorthand_field_patterns,
-//     no_mangle_generic_items,
-//     overflowing_literals,
-//     path_statements,
-//     patterns_in_fns_without_body,
-//     private_in_public,
-//     unconditional_recursion,
-//     unused,
-//     unused_allocation,
-//     unused_comparisons,
-//     unused_parens,
-//     while_true
-// )]
+#![warn(
+    missing_debug_implementations,
+    // missing_docs, // TODO: add documentation
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    private_in_public,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
 // Support using tracing-serde without the standard library!
 #![cfg_attr(not(feature = "std"), no_std)]
 
