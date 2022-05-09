@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate tracing;
-extern crate test_log_support;
-
 use test_log_support::Test;
-use tracing::Level;
+use tracing::{error, info, span, trace, warn, Level};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
@@ -24,18 +20,18 @@ fn test_always_log() {
     test.assert_logged("hello world; thingy=42 other_thingy=666");
 
     let foo = span!(Level::TRACE, "foo");
-    test.assert_logged("foo");
+    test.assert_logged("foo;");
 
     foo.in_scope(|| {
-        test.assert_logged("-> foo");
+        test.assert_logged("-> foo;");
 
         trace!({foo = 3, bar = 4}, "hello {};", "san francisco");
         test.assert_logged("hello san francisco; foo=3 bar=4");
     });
-    test.assert_logged("<- foo");
+    test.assert_logged("<- foo;");
 
     drop(foo);
-    test.assert_logged("-- foo");
+    test.assert_logged("-- foo;");
 
     trace!(foo = 1, bar = 2, "hello world");
     test.assert_logged("hello world foo=1 bar=2");

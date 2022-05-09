@@ -14,11 +14,11 @@
 //!
 //! * [`SpanTrace`], a captured trace of the current `tracing` [span] context
 //!
-//! * [`ErrorSubscriber`], a [subscriber layer] which enables capturing `SpanTrace`s
+//! * [`ErrorSubscriber`], a [subscriber] which enables capturing `SpanTrace`s
 //!
 //! **Note**: This crate is currently experimental.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -161,14 +161,12 @@
 //! [span]: mod@tracing::span
 //! [events]: tracing::Event
 //! [collector]: tracing::Collect
-//! [subscriber layer]: tracing_subscriber::subscribe::Subscribe
-//! [`tracing`]: https://docs.rs/tracing
-//! [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+//! [subscriber]: tracing_subscriber::subscribe::Subscribe
 //!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -179,7 +177,7 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/tracing-error/0.1.2")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -211,12 +209,12 @@
 mod backtrace;
 #[cfg(feature = "traced-error")]
 mod error;
-mod layer;
+mod subscriber;
 
 pub use self::backtrace::{SpanTrace, SpanTraceStatus};
 #[cfg(feature = "traced-error")]
 pub use self::error::{ExtractSpanTrace, InstrumentError, InstrumentResult, TracedError};
-pub use self::layer::ErrorSubscriber;
+pub use self::subscriber::ErrorSubscriber;
 
 #[cfg(feature = "traced-error")]
 #[cfg_attr(docsrs, doc(cfg(feature = "traced-error")))]
@@ -227,5 +225,8 @@ pub mod prelude {
     //! extension traits. These traits allow attaching `SpanTrace`s to errors and
     //! subsequently retrieving them from `dyn Error` trait objects.
 
+    // apparently `as _` reexpoorts now generate `unreachable_pub` linting? which
+    // seems wrong to me...
+    #![allow(unreachable_pub)]
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }

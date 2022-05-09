@@ -23,7 +23,7 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -90,7 +90,7 @@
 //! All other features of `tracing-core` should behave identically with and
 //! without `std` and `alloc`.
 //!
-//! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`libstd`]: std
 //! [`Dispatch::new`]: crate::dispatch::Dispatch::new
 //! [`Dispatch::from_static`]: crate::dispatch::Dispatch::from_static
 //! [`Dispatch::set_default`]: crate::dispatch::set_default
@@ -104,12 +104,12 @@
 //! * `std`: Depend on the Rust standard library (enabled by default).
 //! * `alloc`: Depend on [`liballoc`] (enabled by "std").
 //!
-//! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
+//! [`liballoc`]: alloc
 //!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -139,7 +139,7 @@
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -173,9 +173,7 @@ extern crate alloc;
 ///
 /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
-/// use tracing_core::callsite;
+/// use tracing_core::{callsite, identify_callsite};
 /// # use tracing_core::{Metadata, collect::Interest};
 /// # fn main() {
 /// pub struct MyCallsite {
@@ -209,9 +207,8 @@ macro_rules! identify_callsite {
 ///
 /// /// For example:
 /// ```rust
-/// # #[macro_use]
-/// # extern crate tracing_core;
 /// # use tracing_core::{callsite::Callsite, collect::Interest};
+/// use tracing_core::metadata;
 /// use tracing_core::metadata::{Kind, Level, Metadata};
 /// # fn main() {
 /// # pub struct MyCallsite { }
@@ -276,11 +273,6 @@ macro_rules! metadata {
         )
     };
 }
-
-// std uses lazy_static from crates.io
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate lazy_static;
 
 // Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
 #[cfg(not(feature = "std"))]

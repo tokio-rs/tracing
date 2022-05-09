@@ -1,46 +1,30 @@
-use super::super::level::{self, LevelFilter};
-use super::{field, FieldMap, FilterVec};
+pub(crate) use crate::filter::directive::{FilterVec, ParseError, StaticDirective};
+use crate::filter::{
+    directive::{DirectiveSet, Match},
+    env::{field, FieldMap},
+    level::LevelFilter,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{cmp::Ordering, error::Error, fmt, iter::FromIterator, str::FromStr};
+use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
 // TODO(eliza): add a builder for programmatically constructing directives?
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
     in_span: Option<String>,
-    fields: FilterVec<field::Match>,
+    fields: Vec<field::Match>,
     pub(crate) target: Option<String>,
     pub(crate) level: LevelFilter,
 }
 
-/// A directive which will statically enable or disable a given callsite.
-///
-/// Unlike a dynamic directive, this can be cached by the callsite.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct StaticDirective {
-    target: Option<String>,
-    field_names: FilterVec<String>,
-    level: LevelFilter,
-}
-
-pub(crate) trait Match {
-    fn cares_about(&self, meta: &Metadata<'_>) -> bool;
-    fn level(&self) -> &LevelFilter;
-}
-
 /// A set of dynamic filtering directives.
-pub(crate) type Dynamics = DirectiveSet<Directive>;
+pub(super) type Dynamics = DirectiveSet<Directive>;
 
 /// A set of static filtering directives.
-pub(crate) type Statics = DirectiveSet<StaticDirective>;
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct DirectiveSet<T> {
-    directives: Vec<T>,
-    pub(crate) max_level: LevelFilter,
-}
+pub(super) type Statics = DirectiveSet<StaticDirective>;
 
 pub(crate) type CallsiteMatcher = MatchSet<field::CallsiteMatch>;
 pub(crate) type SpanMatcher = MatchSet<field::SpanMatch>;
@@ -49,19 +33,6 @@ pub(crate) type SpanMatcher = MatchSet<field::SpanMatch>;
 pub(crate) struct MatchSet<T> {
     field_matches: FilterVec<T>,
     base_level: LevelFilter,
-}
-
-/// Indicates that a string could not be parsed as a filtering directive.
-#[derive(Debug)]
-pub struct ParseError {
-    kind: ParseErrorKind,
-}
-
-#[derive(Debug)]
-enum ParseErrorKind {
-    Field(Box<dyn Error + Send + Sync>),
-    Level(level::ParseError),
-    Other,
 }
 
 impl Directive {
@@ -82,11 +53,11 @@ impl Directive {
         // `Arc`ing them to make this more efficient...
         let field_names = self.fields.iter().map(field::Match::name).collect();
 
-        Some(StaticDirective {
-            target: self.target.clone(),
+        Some(StaticDirective::new(
+            self.target.clone(),
             field_names,
-            level: self.level,
-        })
+            self.level,
+        ))
     }
 
     fn is_static(&self) -> bool {
@@ -136,62 +107,40 @@ impl Directive {
             .collect();
         (Dynamics::from_iter(dyns), statics)
     }
-}
 
-impl Match for Directive {
-    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
-        // Does this directive have a target filter, and does it match the
-        // metadata's target?
-        if let Some(ref target) = self.target.as_ref() {
-            if !meta.target().starts_with(&target[..]) {
-                return false;
+    pub(super) fn deregexify(&mut self) {
+        for field in &mut self.fields {
+            field.value = match field.value.take() {
+                Some(field::ValueMatch::Pat(pat)) => {
+                    Some(field::ValueMatch::Debug(pat.into_debug_match()))
+                }
+                x => x,
             }
         }
-
-        // Do we have a name filter, and does it match the metadata's name?
-        // TODO(eliza): put name globbing here?
-        if let Some(ref name) = self.in_span {
-            if name != meta.name() {
-                return false;
-            }
-        }
-
-        // Does the metadata define all the fields that this directive cares about?
-        let fields = meta.fields();
-        for field in &self.fields {
-            if fields.field(&field.name).is_none() {
-                return false;
-            }
-        }
-
-        true
     }
 
-    fn level(&self) -> &LevelFilter {
-        &self.level
-    }
-}
-
-impl FromStr for Directive {
-    type Err = ParseError;
-    fn from_str(from: &str) -> Result<Self, Self::Err> {
+    pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
         lazy_static! {
             static ref DIRECTIVE_RE: Regex = Regex::new(
                 r"(?x)
-                ^(?P<global_level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])$ |
+                ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
+                 #                 ^^^.
+                 #                     `note: we match log level names case-insensitively
                 ^
                 (?: # target name or span name
                     (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
                 ){1,2}
                 (?: # level or nothing
-                    =(?P<level>trace|TRACE|debug|DEBUG|info|INFO|warn|WARN|error|ERROR|off|OFF|[0-5])?
+                    =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
+                     #          ^^^.
+                     #              `note: we match log level names case-insensitively
                 )?
                 $
                 "
             )
             .unwrap();
             static ref SPAN_PART_RE: Regex =
-                Regex::new(r#"(?P<name>\w+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
+                Regex::new(r#"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap();
             static ref FIELD_FILTER_RE: Regex =
                 // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
                 // characters. We should fix that.
@@ -239,13 +188,13 @@ impl FromStr for Directive {
                     .map(|c| {
                         FIELD_FILTER_RE
                             .find_iter(c.as_str())
-                            .map(|c| c.as_str().parse())
-                            .collect::<Result<FilterVec<_>, _>>()
+                            .map(|c| field::Match::parse(c.as_str(), regex))
+                            .collect::<Result<Vec<_>, _>>()
                     })
-                    .unwrap_or_else(|| Ok(FilterVec::new()));
+                    .unwrap_or_else(|| Ok(Vec::new()));
                 Some((span, fields))
             })
-            .unwrap_or_else(|| (None, Ok(FilterVec::new())));
+            .unwrap_or_else(|| (None, Ok(Vec::new())));
 
         let level = caps
             .name("level")
@@ -253,12 +202,54 @@ impl FromStr for Directive {
             // Setting the target without the level enables every level for that target
             .unwrap_or(LevelFilter::TRACE);
 
-        Ok(Directive {
+        Ok(Self {
             level,
             target,
             in_span,
             fields: fields?,
         })
+    }
+}
+
+impl Match for Directive {
+    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
+        // Does this directive have a target filter, and does it match the
+        // metadata's target?
+        if let Some(ref target) = self.target {
+            if !meta.target().starts_with(&target[..]) {
+                return false;
+            }
+        }
+
+        // Do we have a name filter, and does it match the metadata's name?
+        // TODO(eliza): put name globbing here?
+        if let Some(ref name) = self.in_span {
+            if name != meta.name() {
+                return false;
+            }
+        }
+
+        // Does the metadata define all the fields that this directive cares about?
+        let actual_fields = meta.fields();
+        for expected_field in &self.fields {
+            // Does the actual field set (from the metadata) contain this field?
+            if actual_fields.field(&expected_field.name).is_none() {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn level(&self) -> &LevelFilter {
+        &self.level
+    }
+}
+
+impl FromStr for Directive {
+    type Err = ParseError;
+    fn from_str(from: &str) -> Result<Self, Self::Err> {
+        Directive::parse(from, true)
     }
 }
 
@@ -268,7 +259,7 @@ impl Default for Directive {
             level: LevelFilter::OFF,
             target: None,
             in_span: None,
-            fields: FilterVec::new(),
+            fields: Vec::new(),
         }
     }
 }
@@ -382,71 +373,6 @@ impl From<Level> for Directive {
     }
 }
 
-// === impl DirectiveSet ===
-
-impl<T> DirectiveSet<T> {
-    pub(crate) fn is_empty(&self) -> bool {
-        self.directives.is_empty()
-    }
-
-    pub(crate) fn iter(&self) -> std::slice::Iter<'_, T> {
-        self.directives.iter()
-    }
-}
-
-impl<T: Ord> Default for DirectiveSet<T> {
-    fn default() -> Self {
-        Self {
-            directives: Vec::new(),
-            max_level: LevelFilter::OFF,
-        }
-    }
-}
-
-impl<T: Match + Ord> DirectiveSet<T> {
-    fn directives_for<'a>(
-        &'a self,
-        metadata: &'a Metadata<'a>,
-    ) -> impl Iterator<Item = &'a T> + 'a {
-        self.directives
-            .iter()
-            .filter(move |d| d.cares_about(metadata))
-    }
-
-    pub(crate) fn add(&mut self, directive: T) {
-        // does this directive enable a more verbose level than the current
-        // max? if so, update the max level.
-        let level = *directive.level();
-        if level > self.max_level {
-            self.max_level = level;
-        }
-        // insert the directive into the vec of directives, ordered by
-        // specificity (length of target + number of field filters). this
-        // ensures that, when finding a directive to match a span or event, we
-        // search the directive set in most specific first order.
-        match self.directives.binary_search(&directive) {
-            Ok(i) => self.directives[i] = directive,
-            Err(i) => self.directives.insert(i, directive),
-        }
-    }
-}
-
-impl<T: Match + Ord> FromIterator<T> for DirectiveSet<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut this = Self::default();
-        this.extend(iter);
-        this
-    }
-}
-
-impl<T: Match + Ord> Extend<T> for DirectiveSet<T> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for directive in iter.into_iter() {
-            self.add(directive);
-        }
-    }
-}
-
 // === impl Dynamics ===
 
 impl Dynamics {
@@ -483,192 +409,8 @@ impl Dynamics {
     }
 
     pub(crate) fn has_value_filters(&self) -> bool {
-        self.directives
-            .iter()
+        self.directives()
             .any(|d| d.fields.iter().any(|f| f.value.is_some()))
-    }
-}
-
-// === impl Statics ===
-
-impl Statics {
-    pub(crate) fn enabled(&self, meta: &Metadata<'_>) -> bool {
-        let level = meta.level();
-        match self.directives_for(meta).next() {
-            Some(d) => d.level >= *level,
-            None => false,
-        }
-    }
-}
-
-impl Ord for StaticDirective {
-    fn cmp(&self, other: &StaticDirective) -> Ordering {
-        // We attempt to order directives by how "specific" they are. This
-        // ensures that we try the most specific directives first when
-        // attempting to match a piece of metadata.
-
-        // First, we compare based on whether a target is specified, and the
-        // lengths of those targets if both have targets.
-        let ordering = self
-            .target
-            .as_ref()
-            .map(String::len)
-            .cmp(&other.target.as_ref().map(String::len))
-            // Then we compare how many field names are matched by each directive.
-            .then_with(|| self.field_names.len().cmp(&other.field_names.len()))
-            // Finally, we fall back to lexicographical ordering if the directives are
-            // equally specific. Although this is no longer semantically important,
-            // we need to define a total ordering to determine the directive's place
-            // in the BTreeMap.
-            .then_with(|| {
-                self.target
-                    .cmp(&other.target)
-                    .then_with(|| self.field_names[..].cmp(&other.field_names[..]))
-            })
-            .reverse();
-
-        #[cfg(debug_assertions)]
-        {
-            if ordering == Ordering::Equal {
-                debug_assert_eq!(
-                    self.target, other.target,
-                    "invariant violated: Ordering::Equal must imply a.target == b.target"
-                );
-                debug_assert_eq!(
-                    self.field_names, other.field_names,
-                    "invariant violated: Ordering::Equal must imply a.field_names == b.field_names"
-                );
-            }
-        }
-
-        ordering
-    }
-}
-
-impl PartialOrd for StaticDirective {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// ===== impl StaticDirective =====
-
-impl Match for StaticDirective {
-    fn cares_about(&self, meta: &Metadata<'_>) -> bool {
-        // Does this directive have a target filter, and does it match the
-        // metadata's target?
-        if let Some(ref target) = self.target.as_ref() {
-            if !meta.target().starts_with(&target[..]) {
-                return false;
-            }
-        }
-
-        if meta.is_event() && !self.field_names.is_empty() {
-            let fields = meta.fields();
-            for name in &self.field_names {
-                if fields.field(name).is_none() {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-
-    fn level(&self) -> &LevelFilter {
-        &self.level
-    }
-}
-
-impl Default for StaticDirective {
-    fn default() -> Self {
-        StaticDirective {
-            target: None,
-            field_names: FilterVec::new(),
-            level: LevelFilter::ERROR,
-        }
-    }
-}
-
-impl fmt::Display for StaticDirective {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut wrote_any = false;
-        if let Some(ref target) = self.target {
-            fmt::Display::fmt(target, f)?;
-            wrote_any = true;
-        }
-
-        if !self.field_names.is_empty() {
-            f.write_str("[")?;
-
-            let mut fields = self.field_names.iter();
-            if let Some(field) = fields.next() {
-                write!(f, "{{{}", field)?;
-                for field in fields {
-                    write!(f, ",{}", field)?;
-                }
-                f.write_str("}")?;
-            }
-
-            f.write_str("]")?;
-            wrote_any = true;
-        }
-
-        if wrote_any {
-            f.write_str("=")?;
-        }
-
-        fmt::Display::fmt(&self.level, f)
-    }
-}
-
-// ===== impl ParseError =====
-
-impl ParseError {
-    fn new() -> Self {
-        ParseError {
-            kind: ParseErrorKind::Other,
-        }
-    }
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            ParseErrorKind::Other => f.pad("invalid filter directive"),
-            ParseErrorKind::Level(ref l) => l.fmt(f),
-            ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
-        }
-    }
-}
-
-impl Error for ParseError {
-    fn description(&self) -> &str {
-        "invalid filter directive"
-    }
-
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self.kind {
-            ParseErrorKind::Other => None,
-            ParseErrorKind::Level(ref l) => Some(l),
-            ParseErrorKind::Field(ref n) => Some(n.as_ref()),
-        }
-    }
-}
-
-impl From<Box<dyn Error + Send + Sync>> for ParseError {
-    fn from(e: Box<dyn Error + Send + Sync>) -> Self {
-        Self {
-            kind: ParseErrorKind::Field(e),
-        }
-    }
-}
-
-impl From<level::ParseError> for ParseError {
-    fn from(l: level::ParseError) -> Self {
-        Self {
-            kind: ParseErrorKind::Level(l),
-        }
     }
 }
 
@@ -828,6 +570,32 @@ mod test {
 
         assert_eq!(dirs[1].target, Some("server".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::TRACE);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_ralith_uc() {
+        let dirs = parse_directives("common=INFO,server=DEBUG");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[1].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_ralith_mixed() {
+        let dirs = parse_directives("common=iNfo,server=dEbUg");
+        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("common".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, None);
+
+        assert_eq!(dirs[1].target, Some("server".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
         assert_eq!(dirs[1].in_span, None);
     }
 
@@ -1003,6 +771,39 @@ mod test {
         assert_eq!(dirs[1].in_span, None);
     }
 
+    // helper function for tests below
+    fn test_parse_bare_level(directive_to_test: &str, level_expected: LevelFilter) {
+        let dirs = parse_directives(directive_to_test);
+        assert_eq!(
+            dirs.len(),
+            1,
+            "\ninput: \"{}\"; parsed: {:#?}",
+            directive_to_test,
+            dirs
+        );
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, level_expected);
+        assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_lc() {
+        // test parse_directives with no crate, in isolation, all lowercase
+        test_parse_bare_level("warn", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_uc() {
+        // test parse_directives with no crate, in isolation, all uppercase
+        test_parse_bare_level("WARN", LevelFilter::WARN);
+    }
+
+    #[test]
+    fn parse_directives_global_bare_warn_mixed() {
+        // test parse_directives with no crate, in isolation, mixed case
+        test_parse_bare_level("wArN", LevelFilter::WARN);
+    }
+
     #[test]
     fn parse_directives_valid_with_spans() {
         let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
@@ -1027,5 +828,35 @@ mod test {
         assert_eq!(dirs[0].target, Some("target-name".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
+    }
+
+    #[test]
+    fn parse_directives_with_dash_in_span_name() {
+        // Reproduces https://github.com/tokio-rs/tracing/issues/1367
+
+        let dirs = parse_directives("target[span-name]=info");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_special_characters_in_span_name() {
+        let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~[}";
+
+        let dirs = parse_directives(format!("target[{}]=info", span_name));
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
+    }
+
+    #[test]
+    fn parse_directives_with_invalid_span_chars() {
+        let invalid_span_name = "]{";
+
+        let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
+        assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
     }
 }

@@ -2,6 +2,7 @@
 use crate::{span, Event, LevelFilter, Metadata};
 
 use core::any::{Any, TypeId};
+use core::ptr::NonNull;
 
 /// Trait representing the functions required to collect trace data.
 ///
@@ -52,6 +53,10 @@ use core::any::{Any, TypeId};
 ///   Additionally, collectors which wish to perform a behaviour once for each
 ///   callsite, such as allocating storage for data related to that callsite,
 ///   can perform it in `register_callsite`.
+///
+///   See also the [documentation on the callsite registry][cs-reg] for details
+///   on [`register_callsite`].
+///
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
@@ -66,10 +71,11 @@ use core::any::{Any, TypeId};
 /// [`enabled`]: Collect::enabled
 /// [`clone_span`]: Collect::clone_span
 /// [`try_close`]: Collect::try_close
+/// [cs-reg]: crate::callsite#registering-callsites
 pub trait Collect: 'static {
     // === Span registry methods ==============================================
 
-    /// Registers a new callsite with this collector, returning whether or not
+    /// Registers a new [callsite] with this collector, returning whether or not
     /// the collector is interested in being notified about the callsite.
     ///
     /// By default, this function assumes that the collector's [filter]
@@ -95,7 +101,7 @@ pub trait Collect: 'static {
     /// never be enabled unless a new collector expresses interest in it.
     ///
     /// `Collector`s which require their filters to be run every time an event
-    /// occurs or a span is entered::exited should return `Interest::sometimes`.
+    /// occurs or a span is entered/exited should return `Interest::sometimes`.
     /// If a collector returns `Interest::sometimes`, then its' [`enabled`] method
     /// will be called every time an event or span is created from that callsite.
     ///
@@ -123,7 +129,11 @@ pub trait Collect: 'static {
     /// return `Interest::Never`, as a new collector may be added that _is_
     /// interested.
     ///
+    /// See the [documentation on the callsite registry][cs-reg] for more
+    /// details on how and when the `register_callsite` method is called.
+    ///
     /// # Notes
+    ///
     /// This function may be called again when a new collector is created or
     /// when the registry is invalidated.
     ///
@@ -131,10 +141,12 @@ pub trait Collect: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another collector expressed interest in it.
     ///
+    /// [callsite]: crate::callsite
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
     /// [`enabled`]: Self::enabled
-    /// [`rebuild_interest_cache`]: super::callsite::fn.rebuild_interest_cache.html
+    /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
+    /// [cs-reg]: crate::callsite#registering-callsites
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()
@@ -185,7 +197,7 @@ pub trait Collect: 'static {
     /// level changes.
     ///
     /// [level]: super::Level
-    /// [rebuild]: super::callsite::fn.rebuild_interest_cache.html
+    /// [rebuild]: super::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
@@ -238,8 +250,7 @@ pub trait Collect: 'static {
     /// but values for them won't be recorded at this time.
     ///
     /// ```rust,ignore
-    /// #[macro_use]
-    /// extern crate tracing;
+    /// # use tracing::span;
     ///
     /// let mut span = span!("my_span", foo = 3, bar, baz);
     ///
@@ -399,25 +410,18 @@ pub trait Collect: 'static {
 
     /// Returns a type representing this collector's view of the current span.
     ///
-    /// If collectors track a current span, they should override this function
-    /// to return [`Current::new`] if the thread from which this method is
-    /// called is inside a span, or [`Current::none`] if the thread is not
-    /// inside a span.
-    ///
-    /// By default, this returns a value indicating that the collector
-    /// does **not** track what span is current. If the collector does not
-    /// implement a current span, it should not override this method.
+    /// If collectors track a current span, they should return [`Current::new`]
+    /// if the thread from which this method is called is inside a span,
+    /// or [`Current::none`] if the thread is not inside a span.
     ///
     /// [`Current::new`]: super::span::Current::new
     /// [`Current::none`]: super::span::Current::none
-    fn current_span(&self) -> span::Current {
-        span::Current::unknown()
-    }
+    fn current_span(&self) -> span::Current;
 
     // === Downcasting methods ================================================
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
-    /// `*const` pointer to that type. Otherwise, returns `None`.
+    /// [`NonNull`] pointer to that type. Otherwise, returns `None`.
     ///
     /// If you wish to downcast a `Collector`, it is strongly advised to use
     /// the safe API provided by [`downcast_ref`] instead.
@@ -436,14 +440,15 @@ pub trait Collect: 'static {
     /// # Safety
     ///
     /// The [`downcast_ref`] method expects that the pointer returned by
-    /// `downcast_raw` is non-null and points to a valid instance of the type
+    /// `downcast_raw` points to a valid instance of the type
     /// with the provided `TypeId`. Failure to ensure this will result in
     /// undefined behaviour, so implementing `downcast_raw` is unsafe.
     ///
     /// [`downcast_ref`]: #method.downcast_ref
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    /// [`NonNull`]: core::ptr::NonNull
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const Self as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             None
         }
@@ -461,11 +466,7 @@ impl dyn Collect {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         unsafe {
             let raw = self.downcast_raw(TypeId::of::<T>())?;
-            if raw.is_null() {
-                None
-            } else {
-                Some(&*(raw as *const _))
-            }
+            Some(&*(raw.cast().as_ptr()))
         }
     }
 }
@@ -555,5 +556,193 @@ impl Interest {
         } else {
             Interest::sometimes()
         }
+    }
+}
+
+/// A no-op [collector](Collect).
+///
+/// [`NoCollector`] implements the [`Collect`] trait by never being enabled,
+/// never being interested in any callsite, and drops all spans and events.
+#[derive(Debug, Default, Copy, Clone)]
+pub struct NoCollector(());
+
+impl NoCollector {
+    /// Returns a new `NoCollector` instance.
+    ///
+    /// This function is equivalent to calling `NoCollector::default()`, but
+    /// this is usable in `const fn` contexts.
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
+impl Collect for NoCollector {
+    #[inline]
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::never()
+    }
+
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+        span::Id::from_u64(0xDEAD)
+    }
+
+    fn event(&self, _event: &Event<'_>) {}
+
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        false
+    }
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
+
+    fn enter(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::Id) {}
+}
+
+#[cfg(feature = "alloc")]
+impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.as_ref().register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.as_ref().new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.as_ref().record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.as_ref().enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.as_ref().exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.as_ref().clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.as_ref().try_close(id)
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        if id == TypeId::of::<Self>() {
+            return Some(NonNull::from(self).cast());
+        }
+
+        self.as_ref().downcast_raw(id)
+    }
+
+    fn current_span(&self) -> span::Current {
+        self.as_ref().current_span()
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        self.as_ref().register_callsite(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.as_ref().enabled(metadata)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().max_level_hint()
+    }
+
+    #[inline]
+    fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+        self.as_ref().new_span(span)
+    }
+
+    #[inline]
+    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+        self.as_ref().record(span, values)
+    }
+
+    #[inline]
+    fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
+        self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event(&self, event: &Event<'_>) {
+        self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn enter(&self, span: &span::Id) {
+        self.as_ref().enter(span)
+    }
+
+    #[inline]
+    fn exit(&self, span: &span::Id) {
+        self.as_ref().exit(span)
+    }
+
+    #[inline]
+    fn clone_span(&self, id: &span::Id) -> span::Id {
+        self.as_ref().clone_span(id)
+    }
+
+    #[inline]
+    fn try_close(&self, id: span::Id) -> bool {
+        self.as_ref().try_close(id)
+    }
+
+    #[inline]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        if id == TypeId::of::<Self>() {
+            return Some(NonNull::from(self).cast());
+        }
+
+        self.as_ref().downcast_raw(id)
+    }
+
+    fn current_span(&self) -> span::Current {
+        self.as_ref().current_span()
     }
 }

@@ -10,6 +10,7 @@ members = [
     "tracing-tower",
     "tracing-log",
     "tracing-macros",
+    "tracing-mock",
     "tracing-opentelemetry",
     "tracing-subscriber",
     "tracing-serde",

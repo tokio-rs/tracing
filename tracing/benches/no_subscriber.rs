@@ -1,6 +1,27 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
+struct FakeEmptySpan {
+    inner: Option<(usize, std::sync::Arc<()>)>,
+    meta: Option<&'static ()>,
+}
+
+impl FakeEmptySpan {
+    fn new() -> Self {
+        Self {
+            inner: None,
+            meta: None,
+        }
+    }
+}
+
+impl Drop for FakeEmptySpan {
+    fn drop(&mut self) {
+        black_box(&self.inner);
+        black_box(&self.meta);
+    }
+}
+
 fn bench_no_subscriber(c: &mut Criterion) {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -8,7 +29,26 @@ fn bench_no_subscriber(c: &mut Criterion) {
 
     group.bench_function("span", |b| {
         b.iter(|| {
-            black_box(tracing::span!(Level::TRACE, "span"));
+            let span = tracing::span!(Level::TRACE, "span");
+            black_box(&span);
+        })
+    });
+    group.bench_function("span_enter", |b| {
+        b.iter(|| {
+            let span = tracing::span!(Level::TRACE, "span");
+            let _e = span.enter();
+        })
+    });
+    group.bench_function("empty_span", |b| {
+        b.iter(|| {
+            let span = tracing::span::Span::none();
+            black_box(&span);
+        });
+    });
+    group.bench_function("empty_struct", |b| {
+        b.iter(|| {
+            let span = FakeEmptySpan::new();
+            black_box(&span);
         })
     });
     group.bench_function("event", |b| {

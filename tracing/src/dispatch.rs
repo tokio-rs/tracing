@@ -13,7 +13,10 @@
 //! ## Setting the Default Collector
 //!
 //! By default, the current collector is an empty implementation that does
-//! nothing. To use a collector implementation, it must be set as the default.
+//! nothing. Trace data provided to this "do nothing" implementation is
+//! immediately discarded, and is not available for any purpose.
+//!
+//! To use another collector implementation, it must be set as the default.
 //! There are two methods for doing so: [`with_default`] and
 //! [`set_global_default`]. `with_default` sets the default collector for the
 //! duration of a scope, while `set_global_default` sets a default collector
@@ -26,7 +29,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -36,6 +39,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -52,7 +56,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -62,6 +66,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -89,7 +94,7 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Id, Record}
+//! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
@@ -99,6 +104,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
+//! #   fn current_span(&self) -> Current { Current::unknown() }
 //! # }
 //! # impl FooCollector { fn new() -> Self { FooCollector } }
 //! # #[cfg(feature = "alloc")]
@@ -115,15 +121,13 @@
 //!
 //! // `my_collector` is now the default
 //! ```
-//! <div class="information">
-//!     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-//! </div>
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
-//! <strong>Note</strong>: The thread-local scoped dispatcher (<code>with_default</code>)
-//! requires the Rust standard library. <code>no_std</code> users should
-//! use <a href="fn.set_global_default.html"><code>set_global_default</code></a>
-//! instead.
+//!
+//! **Note**: The thread-local scoped dispatcher (`with_default`)
+//! requires the Rust standard library. `no_std` users should
+//! use [`set_global_default()`] instead.
+//!
 //! </pre></div>
 //!
 //! ## Accessing the Default Collector
@@ -151,6 +155,6 @@ pub use tracing_core::dispatch::{
 ///
 /// This function is *not* considered part of `tracing`'s public API, and has no
 /// stability guarantees. If you use it, and it breaks or disappears entirely,
-/// don't say we didn;'t warn you.
+/// don't say we didn't warn you.
 #[doc(hidden)]
 pub use tracing_core::dispatch::has_been_set;

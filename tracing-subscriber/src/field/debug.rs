@@ -1,8 +1,8 @@
 //! `MakeVisitor` wrappers for working with `fmt::Debug` fields.
-use super::{MakeVisitor, VisitFmt, VisitOutput, VisitWrite};
+use super::{MakeVisitor, VisitFmt, VisitOutput};
 use tracing_core::field::{Field, Visit};
 
-use std::{fmt, io};
+use core::fmt;
 
 /// A visitor wrapper that ensures any `fmt::Debug` fields are formatted using
 /// the alternate (`:#`) formatter.
@@ -38,6 +38,11 @@ impl<V> Visit for Alt<V>
 where
     V: Visit,
 {
+    #[inline]
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.0.record_f64(field, value)
+    }
+
     #[inline]
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.0.record_i64(field, value)
@@ -79,13 +84,19 @@ where
     }
 }
 
-impl<V> VisitWrite for Alt<V>
-where
-    V: VisitWrite,
-{
-    #[inline]
-    fn writer(&mut self) -> &mut dyn io::Write {
-        self.0.writer()
+feature! {
+    #![feature = "std"]
+    use super::VisitWrite;
+    use std::io;
+
+    impl<V> VisitWrite for Alt<V>
+    where
+        V: VisitWrite,
+    {
+        #[inline]
+        fn writer(&mut self) -> &mut dyn io::Write {
+            self.0.writer()
+        }
     }
 }
 

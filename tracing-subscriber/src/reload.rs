@@ -69,13 +69,13 @@ where
     }
 
     #[inline]
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &span::Attributes<'_>,
         id: &span::Id,
         ctx: subscribe::Context<'_, C>,
     ) {
-        try_lock!(self.inner.read()).new_span(attrs, id, ctx)
+        try_lock!(self.inner.read()).on_new_span(attrs, id, ctx)
     }
 
     #[inline]
@@ -142,6 +142,11 @@ impl<S> Subscriber<S> {
 
 impl<S> Handle<S> {
     /// Replace the current subscriber with the provided `new_subscriber`.
+    ///
+    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
+    /// at runtime via the [`Handle::reload`] method.
+    /// Use the [`Handle::modify`] method to change the filter instead.
+    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
     pub fn reload(&self, new_subscriber: impl Into<S>) -> Result<(), Error> {
         self.modify(|subscriber| {
             *subscriber = new_subscriber.into();
@@ -162,6 +167,16 @@ impl<S> Handle<S> {
         drop(lock);
 
         callsite::rebuild_interest_cache();
+
+        // If the `log` crate compatibility feature is in use, set `log`'s max
+        // level as well, in case the max `tracing` level changed. We do this
+        // *after* rebuilding the interest cache, as that's when the `tracing`
+        // max level filter is re-computed.
+        #[cfg(feature = "tracing-log")]
+        tracing_log::log::set_max_level(tracing_log::AsLog::as_log(
+            &crate::filter::LevelFilter::current(),
+        ));
+
         Ok(())
     }
 

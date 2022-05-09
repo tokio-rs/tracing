@@ -26,7 +26,7 @@ flamegraph/flamechart. Flamegraphs/flamecharts are useful for identifying perfor
 bottlenecks in an application. For more details, see Brendan Gregg's [post]
 on flamegraphs.
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.49+][msrv]*
 
 [msrv]: #supported-rust-versions
 [post]: http://www.brendangregg.com/flamegraphs.html
@@ -48,9 +48,8 @@ of the `FlameLayer`, see the docs for [`FlushGuard`].
 ## Layer Setup
 
 ```rust
-use std::{fs::File, io::BufWriter};
 use tracing_flame::FlameLayer;
-use tracing_subscriber::{registry::Registry, prelude::*, fmt};
+use tracing_subscriber::{prelude::*, fmt};
 
 fn setup_global_subscriber() -> impl Drop {
     let fmt_layer = fmt::Layer::default();
@@ -60,7 +59,7 @@ fn setup_global_subscriber() -> impl Drop {
     tracing_subscriber::registry()
         .with(fmt_layer)
         .with(flame_layer)
-        .init().
+        .init();
     _guard
 }
 
@@ -107,7 +106,7 @@ _flamechart_, which _does not_ sort or collapse identical stack frames.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

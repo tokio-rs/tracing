@@ -1,6 +1,7 @@
 use core::cell::UnsafeCell;
 use core::fmt;
-use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicUsize, Ordering};
+use core::hint::spin_loop;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the
@@ -73,24 +74,32 @@ impl<T> Once<T> {
         let mut status = self.state.load(Ordering::SeqCst);
 
         if status == INCOMPLETE {
-            status = self
-                .state
-                .compare_and_swap(INCOMPLETE, RUNNING, Ordering::SeqCst);
-            if status == INCOMPLETE {
-                // We init
-                // We use a guard (Finish) to catch panics caused by builder
-                let mut finish = Finish {
-                    state: &self.state,
-                    panicked: true,
-                };
-                unsafe { *self.data.get() = Some(builder()) };
-                finish.panicked = false;
+            status = match self.state.compare_exchange(
+                INCOMPLETE,
+                RUNNING,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(status) => {
+                    debug_assert_eq!(
+                        status, INCOMPLETE,
+                        "if compare_exchange succeeded, previous status must be incomplete",
+                    );
+                    // We init
+                    // We use a guard (Finish) to catch panics caused by builder
+                    let mut finish = Finish {
+                        state: &self.state,
+                        panicked: true,
+                    };
+                    unsafe { *self.data.get() = Some(builder()) };
+                    finish.panicked = false;
 
-                status = COMPLETE;
-                self.state.store(status, Ordering::SeqCst);
+                    self.state.store(COMPLETE, Ordering::SeqCst);
 
-                // This next line is strictly an optimization
-                return self.force_get();
+                    // This next line is strictly an optimization
+                    return self.force_get();
+                }
+                Err(status) => status,
             }
         }
 
@@ -99,7 +108,7 @@ impl<T> Once<T> {
                 INCOMPLETE => unreachable!(),
                 RUNNING => {
                     // We spin
-                    cpu_relax();
+                    spin_loop();
                     status = self.state.load(Ordering::SeqCst)
                 }
                 PANICKED => panic!("Once has panicked"),
@@ -123,7 +132,10 @@ impl<T> Once<T> {
         loop {
             match self.state.load(Ordering::SeqCst) {
                 INCOMPLETE => return None,
-                RUNNING => cpu_relax(), // We spin
+
+                RUNNING => {
+                    spin_loop() // We spin
+                }
                 COMPLETE => return Some(self.force_get()),
                 PANICKED => panic!("Once has panicked"),
                 _ => unsafe { unreachable() },

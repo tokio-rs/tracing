@@ -1,10 +1,10 @@
-extern crate criterion;
-extern crate tracing;
+use std::fmt::Write;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
 use tracing::{span, Event, Id, Metadata};
+use tracing_core::span::Current;
 
 /// A collector that is enabled but otherwise does nothing.
 struct EnabledCollector;
@@ -39,6 +39,36 @@ impl tracing::Collect for EnabledCollector {
     fn exit(&self, span: &Id) {
         let _ = span;
     }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
+    }
+}
+
+const NOP_LOGGER: NopLogger = NopLogger;
+
+struct NopLogger;
+
+impl log::Log for NopLogger {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            let mut this = self;
+            let _ = write!(this, "{}", record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+impl Write for &NopLogger {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        black_box(s);
+        Ok(())
+    }
 }
 
 const N_SPANS: usize = 100;
@@ -46,6 +76,8 @@ const N_SPANS: usize = 100;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut c = c.benchmark_group("global/collector");
     let _ = tracing::collect::set_global_default(EnabledCollector);
+    let _ = log::set_logger(&NOP_LOGGER);
+    log::set_max_level(log::LevelFilter::Trace);
     c.bench_function("span_no_fields", |b| b.iter(|| span!(Level::TRACE, "span")));
 
     c.bench_function("event", |b| {
@@ -85,8 +117,10 @@ fn criterion_benchmark(c: &mut Criterion) {
 }
 
 fn bench_dispatch(c: &mut Criterion) {
-    let _ = tracing::collect::set_global_default(EnabledCollector);
     let mut group = c.benchmark_group("global/dispatch");
+    let _ = tracing::collect::set_global_default(EnabledCollector);
+    let _ = log::set_logger(&NOP_LOGGER);
+    log::set_max_level(log::LevelFilter::Trace);
     group.bench_function("get_ref", |b| {
         b.iter(|| {
             tracing::dispatch::get_default(|current| {

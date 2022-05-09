@@ -1,3 +1,78 @@
+# 0.16.0 (January 30, 2022)
+
+### Breaking Changes
+
+- Upgrade to `v0.17.0` of `opentelemetry` (#1853)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.17.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0170).
+# 0.15.0 (August 7, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.16.0` of `opentelemetry` (#1497)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.16.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0160).
+
+# 0.14.0 (July 9, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.15.0` of `opentelemetry` (#1441)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.15.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0150).
+
+# 0.13.0 (May 15, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.14.0` of `opentelemetry` (#1394)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.14.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0140).
+
+# 0.12.0 (March 31, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.13.0` of `opentelemetry` (#1322)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.13.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0130).
+
+### Changed
+
+- Improve performance when tracked inactivity is disabled (#1315)
+
+# 0.11.0 (January 25, 2021)
+
+### Breaking Changes
+
+- Upgrade to `v0.12.0` of `opentelemetry` (#1200)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.12.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0120).
+
+# 0.10.0 (December 30, 2020)
+
+### Breaking Changes
+
+- Upgrade to `v0.11.0` of `opentelemetry` (#1161)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.11.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/master/opentelemetry/CHANGELOG.md#v0110).
+- Update `OpenTelemetrySpanExt::set_parent` to take a context by value as it is
+  now stored and propagated. (#1161)
+- Rename `PreSampledTracer::sampled_span_context` to
+  `PreSampledTracer::sampled_context` as it now returns a full otel context. (#1161)
+
+# 0.9.0 (November 13, 2020)
+
+### Added
+
+- Track busy/idle timings as attributes via `with_tracked_inactivity` (#1096)
+
+### Breaking Changes
+
+- Upgrade to `v0.10.0` of `opentelemetry` (#1049)
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.10.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/master/opentelemetry/CHANGELOG.md#v0100).
+
 # 0.8.0 (October 13, 2020)
 
 ### Added

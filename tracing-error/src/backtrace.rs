@@ -1,4 +1,4 @@
-use crate::layer::WithContext;
+use crate::subscriber::WithContext;
 use std::fmt;
 use tracing::{Metadata, Span};
 
@@ -53,12 +53,11 @@ use tracing::{Metadata, Span};
 /// Additionally, if custom formatting is desired, the [`with_spans`] method can
 /// be used to visit each span in the trace, formatting them in order.
 ///
-/// [`tracing`]: https://docs.rs/tracing
-/// [`Backtrace`]: https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html
+/// [`Backtrace`]: std::backtrace::Backtrace
 /// [span]: mod@tracing::span
 /// [parents]: mod@tracing::span#span-relationships
 /// [fields]: tracing::field
-/// [futures]: https://doc.rust-lang.org/std/future/trait.Future.html
+/// [futures]: std::future::Future
 /// [`tracing-futures`]: https://docs.rs/tracing-futures/
 /// [`with_spans`]: SpanTrace::with_spans()
 #[derive(Clone)]
@@ -69,6 +68,11 @@ pub struct SpanTrace {
 // === impl SpanTrace ===
 
 impl SpanTrace {
+    /// Create a new span trace with the given span as the innermost span.
+    pub fn new(span: Span) -> Self {
+        SpanTrace { span }
+    }
+
     /// Capture the current span trace.
     ///
     /// # Examples
@@ -96,9 +100,7 @@ impl SpanTrace {
     /// }
     /// ```
     pub fn capture() -> Self {
-        SpanTrace {
-            span: Span::current(),
-        }
+        SpanTrace::new(Span::current())
     }
 
     /// Apply a function to all captured spans in the trace until it returns

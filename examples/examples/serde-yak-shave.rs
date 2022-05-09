@@ -5,7 +5,7 @@ use tracing_core::{
     collect::Collect,
     event::Event,
     metadata::Metadata,
-    span::{Attributes, Id, Record},
+    span::{Attributes, Current, Id, Record},
 };
 use tracing_serde::AsSerde;
 
@@ -14,11 +14,11 @@ use serde_json::json;
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
-pub struct JsonSubscriber {
+pub struct JsonCollector {
     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 }
 
-impl Collect for JsonSubscriber {
+impl Collect for JsonCollector {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         let json = json!({
         "enabled": {
@@ -78,14 +78,18 @@ impl Collect for JsonSubscriber {
         });
         println!("{}", json);
     }
+
+    fn current_span(&self) -> Current {
+        Current::unknown()
+    }
 }
 
 fn main() {
-    let subscriber = JsonSubscriber {
+    let collector = JsonCollector {
         next_id: AtomicUsize::new(1),
     };
 
-    tracing::collect::with_default(subscriber, || {
+    tracing::collect::with_default(collector, || {
         let number_of_yaks = 3;
         debug!("preparing to shave {} yaks", number_of_yaks);
 

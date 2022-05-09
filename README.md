@@ -25,6 +25,8 @@
 [Website](https://tokio.rs) |
 [Chat](https://discord.gg/EeF3cQw) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
 
+# The master branch is the pre-release, development version of `tracing`. Please see the [v0.1.x](https://github.com/tokio-rs/tracing/tree/v0.1.x) branch for the versions of `tracing` released to crates.io.
+
 ## Overview
 
 `tracing` is a framework for instrumenting Rust programs to collect
@@ -96,7 +98,7 @@ fn main() {
         // build but do not install the subscriber.
         .finish();
 
-    tracing::collector::with_default(collector, || {
+    tracing::collect::with_default(collector, || {
         info!("This will be logged to stdout");
     });
     info!("This will _not_ be logged to stdout");
@@ -127,7 +129,7 @@ use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
-// every time the instrumented function is called. The span is named after the
+// every time the instrumented function is called. The span is named after
 // the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -169,7 +171,7 @@ pub fn shave_all(yaks: usize) -> usize {
 
         if let Err(ref error) = res {
             // Like spans, events can also use the field initialization shorthand.
-            // In this instance, `yak` is the field being initalized.
+            // In this instance, `yak` is the field being initialized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;
@@ -192,7 +194,7 @@ set the default later.
 
 ### In Asynchronous Code
 
-To trace `async fn`s, the preferred method is using the [`#[instrument]`] attribute:
+To trace `async fn`s, the preferred method is using the [`#[instrument]`][instrument] attribute:
 
 ```rust
 use tracing::{info, instrument};
@@ -206,9 +208,6 @@ async fn write(stream: &mut TcpStream) -> io::Result<usize> {
     result
 }
 ```
-
-The [`tracing-futures`] crate must be specified as a dependency to enable
-`async` support.
 
 Special handling is needed for the general case of code using
 [`std::future::Future`][std-future] or blocks with `async`/`await`, as the
@@ -244,19 +243,18 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the `#[instrument]` macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
-[`tracing-futures`]: https://docs.rs/tracing-futures
-[closing]: https://docs.rs/tracing/latest/span/index.html#closing-spans
+[closing]: https://docs.rs/tracing/latest/tracing/span/index.html#closing-spans
 [`Future::instrument`]: https://docs.rs/tracing/latest/tracing/trait.Instrument.html#method.instrument
-[`#[instrument]`]: https://docs.rs/tracing/0.1.11/tracing/attr.instrument.html
+[instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -376,6 +374,7 @@ are not maintained by the `tokio` project. These include:
   `tracing` events and generates histograms.
 - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
+- [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
@@ -393,12 +392,18 @@ are not maintained by the `tokio` project. These include:
   _inside_ of functions.
 - [`tracing-wasm`] provides a `Collector`/`Subscriber` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Collector`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+  grouping together logs from the same spans during writing.
+- [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -408,6 +413,7 @@ please let us know!)
 [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
+[`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
@@ -419,13 +425,22 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
+[`tracing-forest`]: https://crates.io/crates/tracing-forest
+[`tracing-loki`]: https://crates.io/crates/tracing-loki
+[Grafana Loki]: https://grafana.com/oss/loki/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -439,20 +454,25 @@ Tracing.
 #### Blog Posts
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
+* [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
+* [Custom Logging in Rust using `tracing` and `tracing-subscriber`, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
 
 #### Talks
 
-* [Bay Area Rust Meetup talk and Q&A][bay-rust-2018-03], March 2018
+* [Bay Area Rust Meetup talk and Q&A][bay-rust-2019-03], March 2019
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 
-[bay-rust-2018-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
+[bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
 [rust-conf-2019-08-slides]: https://www.elizas.website/slides/rustconf-8-2019.pdf
 [rusty-days-2020-08-video]: https://youtu.be/HtKnLiFwHJM
 [rusty-days-2020-08-slides]: https://docs.google.com/presentation/d/1zrxJs7fJgQ29bKfnAll1bYTo9cYZxsCZUwDDtyp5Fak/edit?usp=sharing
+[production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
+[custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
+[custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

@@ -1,22 +1,24 @@
 //! A Collector for formatting and logging `tracing` data.
 //!
-//! ## Overview
+//! # Overview
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
 //! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
 //! and `Span`s by formatting them as text and logging them to stdout.
 //!
-//! ## Usage
+//! # Usage
 //!
 //! First, add this to your `Cargo.toml` file:
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-subscriber = "0.2"
+//! tracing-subscriber = "0.3"
 //! ```
 //!
-//! *Compiler support: requires rustc 1.39+*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
+//!
+//! [msrv]: ../index.html#supported-rust-versions
 //!
 //! Add the following to your executable to initialize the default collector:
 //! ```rust
@@ -41,12 +43,12 @@
 //! **Note**: This should **not** be called by libraries. Libraries should use
 //! [`tracing`] to publish `tracing` `Event`s.
 //!
-//! ## Configuration
+//! # Configuration
 //!
 //! You can configure a collector instead of using the defaults with
 //! the following functions:
 //!
-//! ### Collector
+//! ## Collector
 //!
 //! The [`FmtCollector`] formats and records `tracing` events as line-oriented logs.
 //! You can create one by calling:
@@ -60,7 +62,7 @@
 //! The configuration methods for [`FmtCollector`] can be found in
 //! [`fmtBuilder`].
 //!
-//! ### Formatters
+//! ## Formatters
 //!
 //! The output format used by the subscriber and collector in this module is
 //! represented by implementing the [`FormatEvent`] trait, and can be
@@ -68,160 +70,65 @@
 //!
 //! * [`format::Full`]: The default formatter. This emits human-readable,
 //!   single-line logs for each event that occurs, with the current span context
-//!   displayed before the formatted representation of the event.
-//!
-//!   For example:
-//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.59s
-//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt`
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#4E9A06"> INFO</font> fmt: preparing to shave yaks number_of_yaks=3
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#4E9A06"> INFO</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: shaving yaks
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=1<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=1<b>}</b>: fmt::yak_shave: yak shaved successfully
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=1 shaved=true
-//!   <font color="#AAAAAA">Oct 24 12:55:47.814 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=1
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=2<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=2<b>}</b>: fmt::yak_shave: yak shaved successfully
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=2 shaved=true
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=2
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=3<b>}</b>: fmt::yak_shave: hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot;
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#C4A000"> WARN</font> <b>shaving_yaks{</b>yaks=3<b>}</b>:<b>shave{</b>yak=3<b>}</b>: fmt::yak_shave: could not locate yak
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#3465A4">DEBUG</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: yak_events: yak=3 shaved=false
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#CC0000">ERROR</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: failed to shave yak yak=3 error=missing yak
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#75507B">TRACE</font> <b>shaving_yaks{</b>yaks=3<b>}</b>: fmt::yak_shave: yaks_shaved=2
-//!   <font color="#AAAAAA">Oct 24 12:55:47.815 </font><font color="#4E9A06"> INFO</font> fmt: yak shaving completed all_yaks_shaved=false
-//!   </pre>
+//!   displayed before the formatted representation of the event. See
+//!   [here](format::Full#example-output) for sample output.
 //!
 //! * [`format::Compact`]: A variant of the default formatter, optimized for
 //!   short line lengths. Fields from the current span context are appended to
 //!   the fields of the formatted event, and span names are not shown; the
-//!   verbosity level is abbreviated to a single character.
-//!
-//!   For example:
-//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.51s
-//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-compact`
-//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> preparing to shave yaks number_of_yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.682 </font><font color="#4E9A06">I</font> shaving yaks yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=1 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=1 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=1 shaved=true yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=1 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=2 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yak shaved successfully yak=2 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=2 shaved=true yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> hello! I&apos;m gonna shave a yak excitement=&quot;yay!&quot; yak=3 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#C4A000">W</font> could not locate yak yak=3 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#3465A4">D</font> yak=3 shaved=false yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#CC0000">!</font> failed to shave yak yak=3 error=missing yak yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#75507B">T</font> yaks_shaved=2 yaks=3
-//!   <font color="#AAAAAA">Oct 24 13:40:45.683 </font><font color="#4E9A06">I</font> yak shaving completed all_yaks_shaved=false
-//!   </pre>
+//!   verbosity level is abbreviated to a single character. See
+//!   [here](format::Compact#example-output) for sample output.
 //!
 //! * [`format::Pretty`]: Emits excessively pretty, multi-line logs, optimized
 //!   for human readability. This is primarily intended to be used in local
 //!   development and debugging, or for command-line applications, where
 //!   automated analysis and compact storage of logs is less of a priority than
-//!   readability and visual appeal.
-//!
-//!   For example:
-//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.61s
-//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-pretty`
-//!   Oct 24 12:57:29.386 <font color="#4E9A06"><b>fmt_pretty</b></font><font color="#4E9A06">: preparing to shave yaks, </font><font color="#4E9A06"><b>number_of_yaks</b></font><font color="#4E9A06">: 3</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt-pretty.rs:16<font color="#AAAAAA"><i> on</i></font> main
-//!
-//!   Oct 24 12:57:29.386 <font color="#4E9A06"><b>fmt_pretty::yak_shave</b></font><font color="#4E9A06">: shaving yaks</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:38<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 1
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: yak shaved successfully</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:22<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 1
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 1, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: true</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 1</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 2
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: yak shaved successfully</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:22<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 2
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 2, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: true</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 2</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: hello! I&apos;m gonna shave a yak, </font><font color="#75507B"><b>excitement</b></font><font color="#75507B">: &quot;yay!&quot;</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:14<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 3
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#C4A000"><b>fmt_pretty::yak_shave</b></font><font color="#C4A000">: could not locate yak</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:16<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shave</b> <font color="#AAAAAA"><i>with</i></font> <b>yak</b>: 3
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#3465A4"><b>yak_events</b></font><font color="#3465A4">: </font><font color="#3465A4"><b>yak</b></font><font color="#3465A4">: 3, </font><font color="#3465A4"><b>shaved</b></font><font color="#3465A4">: false</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:43<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#CC0000"><b>fmt_pretty::yak_shave</b></font><font color="#CC0000">: failed to shave yak, </font><font color="#CC0000"><b>yak</b></font><font color="#CC0000">: 3, </font><font color="#CC0000"><b>error</b></font><font color="#CC0000">: missing yak</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:48<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#75507B"><b>fmt_pretty::yak_shave</b></font><font color="#75507B">: </font><font color="#75507B"><b>yaks_shaved</b></font><font color="#75507B">: 2</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt/yak_shave.rs:52<font color="#AAAAAA"><i> on</i></font> main
-//!     <font color="#AAAAAA"><i>in</i></font> fmt_pretty::yak_shave::<b>shaving_yaks</b> <font color="#AAAAAA"><i>with</i></font> <b>yaks</b>: 3
-//!
-//!   Oct 24 12:57:29.387 <font color="#4E9A06"><b>fmt_pretty</b></font><font color="#4E9A06">: yak shaving completed, </font><font color="#4E9A06"><b>all_yaks_shaved</b></font><font color="#4E9A06">: false</font>
-//!     <font color="#AAAAAA"><i>at</i></font> examples/examples/fmt-pretty.rs:19<font color="#AAAAAA"><i> on</i></font> main
-//!   </pre>
+//!   readability and visual appeal. See [here](format::Pretty#example-output)
+//!   for sample output.
 //!
 //! * [`format::Json`]: Outputs newline-delimited JSON logs. This is intended
 //!   for production use with systems where structured logs are consumed as JSON
-//!   by analysis and viewing tools. The JSON output, as seen below, is *not*
-//!   optimized for human readability.
+//!   by analysis and viewing tools. The JSON output is not optimized for human
+//!   readability. See [here](format::Json#example-output) for sample output.
 //!
-//!   For example:
-//!   <pre><font color="#4E9A06"><b>    Finished</b></font> dev [unoptimized + debuginfo] target(s) in 1.58s
-//!   <font color="#4E9A06"><b>     Running</b></font> `target/debug/examples/fmt-json`
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.873&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;preparing to shave yaks&quot;,&quot;number_of_yaks&quot;:3},&quot;target&quot;:&quot;fmt_json&quot;}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;shaving yaks&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;1&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaved successfully&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;1&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:1,&quot;shaved&quot;:true},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:1},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;2&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaved successfully&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;2&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:2,&quot;shaved&quot;:true},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:2},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.874&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;hello! I&apos;m gonna shave a yak&quot;,&quot;excitement&quot;:&quot;yay!&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;3&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;WARN&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;could not locate yak&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;},{&quot;yak&quot;:&quot;3&quot;,&quot;name&quot;:&quot;shave&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;DEBUG&quot;,&quot;fields&quot;:{&quot;yak&quot;:3,&quot;shaved&quot;:false},&quot;target&quot;:&quot;yak_events&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;ERROR&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;failed to shave yak&quot;,&quot;yak&quot;:3,&quot;error&quot;:&quot;missing yak&quot;},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;TRACE&quot;,&quot;fields&quot;:{&quot;yaks_shaved&quot;:2},&quot;target&quot;:&quot;fmt_json::yak_shave&quot;,&quot;spans&quot;:[{&quot;yaks&quot;:3,&quot;name&quot;:&quot;shaving_yaks&quot;}]}
-//!   {&quot;timestamp&quot;:&quot;Oct 24 13:00:00.875&quot;,&quot;level&quot;:&quot;INFO&quot;,&quot;fields&quot;:{&quot;message&quot;:&quot;yak shaving completed&quot;,&quot;all_yaks_shaved&quot;:false},&quot;target&quot;:&quot;fmt_json&quot;}
-//!   </pre>
+//! ### Customizing Formatters
 //!
-//! ### Filters
+//! The formatting of log lines for spans and events is controlled by two
+//! traits, [`FormatEvent`] and [`FormatFields`]. The [`FormatEvent`] trait
+//! determines the overall formatting of the log line, such as what information
+//! from the event's metadata and span context is included and in what order.
+//! The [`FormatFields`] trait determines how fields &mdash; both the event's
+//! fields and fields on spans &mdash; are formatted.
+//!
+//! The [`fmt::format`] module provides several types which implement these traits,
+//! many of which expose additional configuration options to customize their
+//! output. The [`format::Format`] type implements common configuration used by
+//! all the formatters provided in this crate, and can be used as a builder to
+//! set specific formatting settings. For example:
+//!
+//! ```
+//! use tracing_subscriber::fmt;
+//!
+//! // Configure a custom event formatter
+//! let format = fmt::format()
+//!    .with_level(false) // don't include levels in formatted output
+//!    .with_target(false) // don't include targets
+//!    .with_thread_ids(true) // include the thread ID of the current thread
+//!    .with_thread_names(true) // include the name of the current thread
+//!    .compact(); // use the `Compact` formatting style.
+//!
+//! // Create a `fmt` collector that uses our custom event format, and set it
+//! // as the default.
+//! tracing_subscriber::fmt()
+//!     .event_format(format)
+//!     .init();
+//! ```
+//!
+//! However, if a specific output format is needed, other crates can
+//! also implement [`FormatEvent`] and [`FormatFields`]. See those traits'
+//! documentation for details on how to implement them.
+//!
+//! ## Filters
 //!
 //! If you want to filter the `tracing` `Events` based on environment
 //! variables, you can use the [`EnvFilter`] as follows:
@@ -255,13 +162,14 @@
 //! // collector multiple times
 //! ```
 //!
-//! ### Composing Subscribers
+//! ## Composing Subscribers
 //!
-//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](../fmt/struct.Subscriber.html):
+//! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
 //! ```rust
 //! use tracing_subscriber::{fmt, EnvFilter};
-//! use tracing_subscriber::prelude::*;
+//! use tracing_subscriber::subscribe::CollectExt;
+//! use tracing_subscriber::util::SubscriberInitExt;
 //!
 //! let fmt_subscriber = fmt::subscriber()
 //!     .with_target(false);
@@ -280,15 +188,18 @@
 //! [`filter`]: super::filter
 //! [`fmtBuilder`]: CollectorBuilder
 //! [`FmtCollector`]: Collector
-//! [`Collect`]:
-//!     https://docs.rs/tracing/latest/tracing/trait.Collect.html
+//! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
-use std::{any::TypeId, error::Error, io};
+//! [`fmt::format`]: mod@crate::fmt::format
+use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod format;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod time;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
@@ -308,11 +219,12 @@ pub use self::{
 
 /// A `Collector` that logs formatted representations of `tracing` events.
 ///
-/// This consists of an inner `Formatter` wrapped in a layer that performs filtering.
+/// This consists of an inner `Formatter` wrapped in a subscriber that performs filtering.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Collector<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -321,17 +233,16 @@ pub struct Collector<
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
-pub type Formatter<
-    N = format::DefaultFields,
-    E = format::Format<format::Full>,
-    W = fn() -> io::Stdout,
-> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
+pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
+    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
-    E = format::Format<format::Full>,
+    E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
 > {
@@ -341,7 +252,7 @@ pub struct CollectorBuilder<
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
 ///
-/// This is essentially shorthand for [`CollectorBuilder::default()]`.
+/// This is essentially shorthand for [`CollectorBuilder::default()`].
 ///
 /// # Examples
 ///
@@ -398,10 +309,11 @@ pub struct CollectorBuilder<
 /// ```
 ///
 /// [formatting collector]: Collector
-/// [`CollectorBuilder::default()`]: CollectorBuilder::default()
+/// [`CollectorBuilder::default()`]: struct.CollectorBuilder.html#method.default
 /// [`init`]: CollectorBuilder::init()
 /// [`try_init`]: CollectorBuilder::try_init()
 /// [`finish`]: CollectorBuilder::finish()
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub fn fmt() -> CollectorBuilder {
     CollectorBuilder::default()
 }
@@ -409,11 +321,13 @@ pub fn fmt() -> CollectorBuilder {
 /// Returns a new [formatting subscriber] that can be [composed] with other subscribers to
 /// construct a collector.
 ///
-/// This is a shorthand for the equivalent [`Subscriber::default`] function.
+/// This is a shorthand for the equivalent [`Subscriber::default()`] function.
 ///
 /// [formatting subscriber]: Subscriber
 /// [composed]: super::subscribe
-pub fn subscriber<S>() -> Subscriber<S> {
+/// [`Subscriber::default()`]: struct.Subscriber.html#method.default
+#[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
+pub fn subscriber<C>() -> Subscriber<C> {
     Subscriber::default()
 }
 
@@ -450,7 +364,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
     fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
 {
@@ -510,9 +424,14 @@ where
         self.inner.try_close(id)
     }
 
-    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+    #[inline]
+    fn max_level_hint(&self) -> Option<tracing_core::LevelFilter> {
+        self.inner.max_level_hint()
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
-            Some(self as *const Self as *const ())
+            Some(NonNull::from(self).cast())
         } else {
             self.inner.downcast_raw(id)
         }
@@ -545,7 +464,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
@@ -569,12 +488,9 @@ where
     /// because a global collector was already installed by another
     /// call to `try_init`.
     pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::init().map_err(Box::new)?;
+        use crate::util::SubscriberInitExt;
+        self.finish().try_init()?;
 
-        tracing_core::dispatch::set_global_default(tracing_core::dispatch::Dispatch::new(
-            self.finish(),
-        ))?;
         Ok(())
     }
 
@@ -591,17 +507,17 @@ where
     }
 }
 
-impl<N, E, F, W> Into<tracing_core::Dispatch> for CollectorBuilder<N, E, F, W>
+impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    W: MakeWriter + 'static,
+    W: for<'writer> MakeWriter<'writer> + 'static,
     F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
     fmt_subscriber::Subscriber<Registry, N, E, W>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    fn into(self) -> tracing_core::Dispatch {
-        tracing_core::Dispatch::new(self.finish())
+    fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
+        tracing_core::Dispatch::new(builder.finish())
     }
 }
 
@@ -611,15 +527,18 @@ where
 {
     /// Use the given [`timer`] for log message timestamps.
     ///
-    /// See [`time`] for the provided timer implementations.
+    /// See the [`time` module] for the provided timer implementations.
     ///
-    /// Note that using the `chrono` feature flag enables the
-    /// additional time formatters [`ChronoUtc`] and [`ChronoLocal`].
+    /// Note that using the `"time`"" feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
     ///
-    /// [`time`]: mod@time
     /// [`timer`]: time::FormatTime
-    /// [`ChronoUtc`]: time::ChronoUtc
-    /// [`ChronoLocal`]: time::ChronoLocal
+    /// [`time` module]: mod@time
+    /// [`UtcTime`]: time::UtcTime
+    /// [`LocalTime`]: time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
@@ -643,17 +562,32 @@ where
     /// - `FmtSpan::NONE`: No events will be synthesized when spans are
     ///    created, entered, exited, or closed. Data from spans will still be
     ///    included as the context for formatted events. This is the default.
-    /// - `FmtSpan::ACTIVE`: Events will be synthesized when spans are entered
-    ///    or exited.
+    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
+    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
+    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
     /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
     ///    [timestamps are enabled][time] for this formatter, the generated
     ///    event will contain fields with the span's _busy time_ (the total
     ///    time for which it was entered) and _idle time_ (the total time that
     ///    the span existed but was not entered).
+    /// - `FmtSpan::ACTIVE`: An event will be synthesized when spans are entered
+    ///    or exited.
     /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
     ///    created, entered, exited, or closed. If timestamps are enabled, the
     ///    close event will contain the span's busy and idle time, as
     ///    described above.
+    ///
+    /// The options can be enabled in any combination. For instance, the following
+    /// will synthesize events whenever spans are created and closed:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format::FmtSpan;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let subscriber = fmt()
+    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    ///     .finish();
+    /// ```
     ///
     /// Note that the generated events will only be part of the log output by
     /// this formatter; they will not be recorded by other `Collector`s or by
@@ -663,18 +597,18 @@ where
     /// [time]: CollectorBuilder::without_time()
     pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_span_events(kind),
+            ..self
         }
     }
 
-    /// Enable ANSI encoding for formatted events.
+    /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_ansi(ansi),
+            ..self
         }
     }
 
@@ -684,8 +618,36 @@ where
         display_target: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_target(display_target),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code file path][file] is
+    /// displayed.
+    ///
+    /// [file]: tracing_core::Metadata::file
+    pub fn with_file(
+        self,
+        display_filename: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_file(display_filename),
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [source code line number][line] is
+    /// displayed.
+    ///
+    /// [line]: tracing_core::Metadata::line
+    pub fn with_line_number(
+        self,
+        display_line_number: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_line_number(display_line_number),
+            ..self
         }
     }
 
@@ -695,36 +657,36 @@ where
         display_level: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_level(display_level),
+            ..self
         }
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events
     ///
-    /// [name]: https://doc.rust-lang.org/stable/std/thread/index.html#naming-threads
+    /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_names(display_thread_names),
+            ..self
         }
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
     /// when formatting events
     ///
-    /// [thread ID]: https://doc.rust-lang.org/stable/std/thread/struct.ThreadId.html
+    /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
     ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
-            filter: self.filter,
             inner: self.inner.with_thread_ids(display_thread_ids),
+            ..self
         }
     }
 
@@ -755,7 +717,7 @@ where
 
     /// Sets the collector being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -774,7 +736,7 @@ where
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json collector being built to flatten event metadata.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -788,7 +750,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -802,7 +764,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](../fmt/format/struct.Json.html)
+    /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -832,12 +794,12 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// For example:
     /// ```rust
     /// use tracing_subscriber::fmt::format;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::field::MakeExt;
     ///
     /// let formatter =
     ///     // Construct a custom formatter for `Debug` fields
     ///     format::debug_fn(|writer, field, value| write!(writer, "{}: {:?}", field, value))
-    ///         // Use the `tracing_subscriber::MakeFmtExt` trait to wrap the
+    ///         // Use the `tracing_subscriber::MakeExt` trait to wrap the
     ///         // formatter so that a delimiter is added between fields.
     ///         .delimited(", ");
     ///
@@ -968,7 +930,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// ```
     /// use tracing::Level;
-    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::util::SubscriberInitExt;
     ///
     /// let builder = tracing_subscriber::fmt()
     ///      // Set a max level filter on the collector
@@ -1009,7 +971,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
-        W: MakeWriter + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1034,7 +996,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
-        W2: MakeWriter + 'static,
+        W2: for<'writer> MakeWriter<'writer> + 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1144,16 +1106,16 @@ mod test {
     };
     use std::{
         io,
-        sync::{Mutex, MutexGuard, TryLockError},
+        sync::{Arc, Mutex, MutexGuard, TryLockError},
     };
     use tracing_core::dispatch::Dispatch;
 
-    pub(crate) struct MockWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    pub(crate) struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
         }
 
@@ -1164,12 +1126,12 @@ mod test {
             }
         }
 
-        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'a, Vec<u8>>> {
+        pub(crate) fn buf(&self) -> io::Result<MutexGuard<'_, Vec<u8>>> {
             self.buf.try_lock().map_err(Self::map_error)
         }
     }
 
-    impl<'a> io::Write for MockWriter<'a> {
+    impl io::Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             self.buf()?.write(buf)
         }
@@ -1179,21 +1141,35 @@ mod test {
         }
     }
 
-    pub(crate) struct MockMakeWriter<'a> {
-        buf: &'a Mutex<Vec<u8>>,
+    #[derive(Clone, Default)]
+    pub(crate) struct MockMakeWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
     }
 
-    impl<'a> MockMakeWriter<'a> {
-        pub(crate) fn new(buf: &'a Mutex<Vec<u8>>) -> Self {
+    impl MockMakeWriter {
+        pub(crate) fn new(buf: Arc<Mutex<Vec<u8>>>) -> Self {
             Self { buf }
+        }
+
+        pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
+            self.buf.lock().unwrap()
+        }
+
+        pub(crate) fn get_string(&self) -> String {
+            let mut buf = self.buf.lock().expect("lock shouldn't be poisoned");
+            let string = std::str::from_utf8(&buf[..])
+                .expect("formatter should not have produced invalid utf-8")
+                .to_owned();
+            buf.clear();
+            string
         }
     }
 
-    impl<'a> MakeWriter for MockMakeWriter<'a> {
-        type Writer = MockWriter<'a>;
+    impl<'a> MakeWriter<'a> for MockMakeWriter {
+        type Writer = MockWriter;
 
-        fn make_writer(&self) -> Self::Writer {
-            MockWriter::new(self.buf)
+        fn make_writer(&'a self) -> Self::Writer {
+            MockWriter::new(self.buf.clone())
         }
     }
 

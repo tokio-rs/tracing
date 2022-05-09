@@ -15,7 +15,7 @@
 //! * [`WithCollector`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -60,7 +60,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -100,9 +100,9 @@
     while_true
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_cfg), deny(broken_intra_doc_links))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #[cfg(feature = "std-future")]
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 
 #[cfg(feature = "std-future")]
 use core::{pin::Pin, task::Context};
@@ -207,9 +207,9 @@ pub trait WithCollector: Sized {
     ///
     /// [collector]: tracing::collect::Collect
     /// [default]: tracing::dispatch#setting-the-default-collector
-    fn with_collector<S>(self, collector: S) -> WithDispatch<Self>
+    fn with_collector<C>(self, collector: C) -> WithDispatch<Self>
     where
-        S: Into<Dispatch>,
+        C: Into<Dispatch>,
     {
         WithDispatch {
             inner: self,
@@ -239,30 +239,44 @@ pub trait WithCollector: Sized {
     }
 }
 
+#[cfg(feature = "std-future")]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
+    #[derive(Debug, Clone)]
+    pub struct Instrumented<T> {
+        #[pin]
+        inner: T,
+        span: Span,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
-#[cfg_attr(feature = "std-future", pin_project)]
+#[cfg(not(feature = "std-future"))]
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     span: Span,
 }
 
+#[cfg(all(feature = "std", feature = "std-future"))]
+pin_project! {
+    /// A future, stream, sink, or executor that has been instrumented with a
+    /// `tracing` subscriber.
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[derive(Clone, Debug)]
+    pub struct WithDispatch<T> {
+        #[pin]
+        inner: T,
+        dispatch: Dispatch,
+    }
+}
+
 /// A future, stream, sink, or executor that has been instrumented with a
 /// `tracing` subscriber.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "std-future")))]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[cfg_attr(feature = "std-future", pin_project)]
 #[derive(Clone, Debug)]
 pub struct WithDispatch<T> {
-    // cfg_attr doesn't work inside structs, apparently...
-    #[cfg(feature = "std-future")]
-    #[pin]
-    inner: T,
-    #[cfg(not(feature = "std-future"))]
     inner: T,
     dispatch: Dispatch,
 }
@@ -499,16 +513,9 @@ impl<T> WithDispatch<T> {
 }
 
 #[cfg(test)]
-pub(crate) use self::support as test_support;
-// This has to have the same name as the module in `tracing`.
-#[path = "../../tracing/tests/support/mod.rs"]
-#[cfg(test)]
-#[allow(unreachable_pub)]
-pub(crate) mod support;
-
-#[cfg(test)]
 mod tests {
-    use super::{test_support::*, *};
+    use super::*;
+    use tracing_mock::*;
 
     #[cfg(feature = "futures-01")]
     mod futures_01_tests {

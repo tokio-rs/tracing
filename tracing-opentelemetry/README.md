@@ -17,9 +17,9 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-opentelemetry.svg
-[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.8.0
+[crates-url]: https://crates.io/crates/tracing-opentelemetry/0.16.0
 [docs-badge]: https://docs.rs/tracing-opentelemetry/badge.svg
-[docs-url]: https://docs.rs/tracing-opentelemetry/0.8.0/tracing_opentelemetry
+[docs-url]: https://docs.rs/tracing-opentelemetry/0.16.0/tracing_opentelemetry
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_opentelemetry
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -33,24 +33,24 @@ Utilities for adding [OpenTelemetry] interoperability to [`tracing`].
 ## Overview
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
-structured, event-based diagnostic information. This crate provides a layer
-that connects spans from multiple systems into a trace and emits them to
-[OpenTelemetry]-compatible distributed tracing systems for processing and
-visualization.
+structured, event-based diagnostic information. This crate provides a 
+subscriber that connects spans from multiple systems into a trace and 
+emits them to [OpenTelemetry]-compatible distributed tracing systems 
+for processing and visualization.
 
 The crate provides the following types:
 
-* [`OpenTelemetryLayer`] adds OpenTelemetry context to all `tracing` [span]s.
+* [`OpenTelemetrySubscriber`] adds OpenTelemetry context to all `tracing` [span]s.
 * [`OpenTelemetrySpanExt`] allows OpenTelemetry parent trace information to be
   injected and extracted from a `tracing` [span].
 
-[`OpenTelemetryLayer`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/struct.OpenTelemetryLayer.html
+[`OpenTelemetrySubscriber`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/struct.OpenTelemetrySubscriber.html
 [`OpenTelemetrySpanExt`]: https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/trait.OpenTelemetrySpanExt.html
 [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 [`tracing`]: https://crates.io/crates/tracing
 [OpenTelemetry]: https://opentelemetry.io/
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.49+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -59,22 +59,25 @@ The crate provides the following types:
 ### Basic Usage
 
 ```rust
-use opentelemetry::{api::Provider, sdk};
+use opentelemetry::exporter::trace::stdout;
 use tracing::{error, span};
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::subscriber::SubscriberExt;
 use tracing_subscriber::Registry;
 
 fn main() {
-    // Create a new tracer
-    let tracer = sdk::Provider::default().get_tracer("component_name");
+    // Install a new OpenTelemetry trace pipeline
+    let (tracer, _uninstall) = stdout::new_pipeline().install();
 
-    // Create a new OpenTelemetry tracing layer
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    // Create a tracing subscriber with the configured tracer
+    let telemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
 
-    let subscriber = Registry::default().with(telemetry);
+    // Use the tracing subscriber `Registry`, or any other subscriber
+    // that impls `LookupSpan`
+    let collector = Registry::default().with(telemetry);
 
     // Trace executed code
-    tracing::subscriber::with_default(subscriber, || {
+    tracing::collect::with_default(collector, || {
+        // Spans will be sent to the configured OpenTelemetry exporter
         let root = span!(tracing::Level::TRACE, "app_start", work_units = 2);
         let _enter = root.enter();
 
@@ -100,9 +103,9 @@ $ firefox http://localhost:16686/
 
 ## Supported Rust Versions
 
-Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
-versions earlier than the minimum supported version.
+Tracing Opentelemetry is built against the latest stable release. The minimum
+supported version is 1.46. The current Tracing version is not guaranteed to
+build on Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor

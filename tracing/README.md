@@ -47,7 +47,7 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.42+][msrv]*
+*Compiler support: [requires `rustc` 1.49+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -108,7 +108,7 @@ In addition, you can locally override the default subscriber. For example:
 
 ```rust
 use tracing::{info, Level};
-use tracing_subscruber::FmtSubscriber;
+use tracing_subscriber::FmtSubscriber;
 
 fn main() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -144,7 +144,7 @@ use std::{error::Error, io};
 use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
-// every time the instrumented function is called. The span is named after the
+// every time the instrumented function is called. The span is named after
 // the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
@@ -210,9 +210,8 @@ conflicts when executables try to set the default later.
 
 If you are instrumenting code that make use of
 [`std::future::Future`](https://doc.rust-lang.org/stable/std/future/trait.Future.html)
-or async/await, be sure to use the
-[`tracing-futures`](https://docs.rs/tracing-futures) crate. This is needed
-because the following example _will not_ work:
+or async/await, avoid using the `Span::enter` method. The following example
+_will not_ work:
 
 ```rust
 async {
@@ -348,6 +347,9 @@ In particular, the following crates are likely to be of interest:
   dependencies which use `log`. Note that if you're using
   `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
   `tracing-log` directly.
+- [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
+  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
+  tracing systems for processing and visualization.
 
 Additionally, there are also several third-party crates which are not
 maintained by the `tokio` project. These include:
@@ -355,8 +357,6 @@ maintained by the `tokio` project. These include:
 - [`tracing-timing`] implements inter-event timing metrics on top of `tracing`.
   It provides a subscriber that records the time elapsed between pairs of
   `tracing` events and generates histograms.
-- [`tracing-opentelemetry`] provides a subscriber for emitting traces to
-  [OpenTelemetry]-compatible distributed tracing systems.
 - [`tracing-honeycomb`] Provides a layer that reports traces spanning multiple machines to [honeycomb.io]. Backed by [`tracing-distributed`].
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
@@ -365,12 +365,18 @@ maintained by the `tokio` project. These include:
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
-- [`test-env-log`] takes care of initializing `tracing` for tests, based on
+- [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
 - [`diesel-tracing`] provides integration with [`diesel`] database connections.
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
+- [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
+- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`tracing-fluent-assertions`] provides a fluent assertions-style testing
+  framework for validating the behavior of `tracing` spans.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+- [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -385,12 +391,21 @@ please let us know! We'd love to add your project to the list!
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
-[`test-env-log`]: https://crates.io/crates/test-env-log
+[`test-log`]: https://crates.io/crates/test-log
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
 [`diesel`]: https://crates.io/crates/diesel
 [`diesel-tracing`]: https://crates.io/crates/diesel-tracing
 [`tracing-tracy`]: https://crates.io/crates/tracing-tracy
 [Tracy]: https://github.com/wolfpld/tracy
+[`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
+[Elastic APM]: https://www.elastic.co/apm
+[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
+[`tracing-loki`]: https://crates.io/crates/tracing-loki
+[Grafana Loki]: https://grafana.com/oss/loki/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -408,7 +423,7 @@ undergoing active development. They may be less stable than `tracing` and
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

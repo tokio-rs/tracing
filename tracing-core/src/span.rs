@@ -1,7 +1,9 @@
 //! Spans represent periods of time in the execution of a program.
+use core::num::NonZeroU64;
+
+use crate::field::FieldSet;
 use crate::parent::Parent;
 use crate::{field, Metadata};
-use core::num::NonZeroU64;
 
 /// Identifies a span within the context of a collector.
 ///
@@ -37,7 +39,7 @@ pub struct Record<'a> {
 /// - "none", indicating that the current context is known to not be in a span,
 /// - "some", with the current span's [`Id`] and [`Metadata`].
 ///
-/// [the `Collector` considers]: super::collect::Collect::current_span
+/// [the collector considers]: super::collect::Collect::current_span
 /// [`Metadata`]: super::metadata::Metadata
 #[derive(Debug)]
 pub struct Current {
@@ -59,15 +61,12 @@ enum CurrentInner {
 impl Id {
     /// Constructs a new span ID from the given `u64`.
     ///
-    /// <div class="information">
-    ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
-    /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: Span IDs must be greater than zero.</pre></div>
     ///
     /// # Panics
-    /// - If the provided `u64` is 0
+    /// - If the provided `u64` is 0.
     pub fn from_u64(u: u64) -> Self {
         Id(NonZeroU64::new(u).expect("span IDs must be > 0"))
     }
@@ -96,9 +95,9 @@ impl Id {
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Id {
-    fn into(self) -> Option<Id> {
-        Some(self.clone())
+impl<'a> From<&'a Id> for Option<Id> {
+    fn from(id: &'a Id) -> Self {
+        Some(id.clone())
     }
 }
 
@@ -169,7 +168,7 @@ impl<'a> Attributes<'a> {
     /// Returns the new span's explicitly-specified parent, if there is one.
     ///
     /// Otherwise (if the new span is a root or is a child of the current span),
-    /// returns false.
+    /// returns `None`.
     pub fn parent(&self) -> Option<&Id> {
         match self.parent {
             Parent::Explicit(ref p) => Some(p),
@@ -194,6 +193,21 @@ impl<'a> Attributes<'a> {
     /// Returns true if this set of `Attributes` contains _no_ values.
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
+    }
+
+    /// Returns the set of all [fields] defined by this span's [`Metadata`].
+    ///
+    /// Note that the [`FieldSet`] returned by this method includes *all* the
+    /// fields declared by this span, not just those with values that are recorded
+    /// as part of this set of `Attributes`. Other fields with values not present in
+    /// this `Attributes`' value set may [record] values later.
+    ///
+    /// [fields]: crate::field
+    /// [record]: Attributes::record()
+    /// [`Metadata`]: crate::metadata::Metadata
+    /// [`FieldSet`]: crate::field::FieldSet
+    pub fn fields(&self) -> &FieldSet {
+        self.values.field_set()
     }
 }
 
@@ -227,7 +241,7 @@ impl<'a> Record<'a> {
 
 impl Current {
     /// Constructs a new `Current` that indicates the current context is a span
-    /// with the given `metadata` and `metadata`.
+    /// with the given `id` and `metadata`.
     pub fn new(id: Id, metadata: &'static Metadata<'static>) -> Self {
         Self {
             inner: CurrentInner::Current { id, metadata },
@@ -244,7 +258,7 @@ impl Current {
 
     /// Constructs a new `Current` that indicates the collector does not
     /// track a current span.
-    pub(crate) fn unknown() -> Self {
+    pub fn unknown() -> Self {
         Self {
             inner: CurrentInner::Unknown,
         }
@@ -286,32 +300,35 @@ impl Current {
     /// Borrows the `Metadata` of the current span, if one exists and is known.
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
         match self.inner {
-            CurrentInner::Current { ref metadata, .. } => Some(*metadata),
+            CurrentInner::Current { metadata, .. } => Some(metadata),
             _ => None,
         }
     }
 }
 
-impl<'a> Into<Option<&'a Id>> for &'a Current {
-    fn into(self) -> Option<&'a Id> {
-        self.id()
+impl<'a> From<&'a Current> for Option<&'a Id> {
+    fn from(cur: &'a Current) -> Self {
+        cur.id()
     }
 }
 
-impl<'a> Into<Option<Id>> for &'a Current {
-    fn into(self) -> Option<Id> {
-        self.id().cloned()
+impl<'a> From<&'a Current> for Option<Id> {
+    fn from(cur: &'a Current) -> Self {
+        cur.id().cloned()
     }
 }
 
-impl Into<Option<Id>> for Current {
-    fn into(self) -> Option<Id> {
-        self.id().cloned()
+impl From<Current> for Option<Id> {
+    fn from(cur: Current) -> Self {
+        match cur.inner {
+            CurrentInner::Current { id, .. } => Some(id),
+            _ => None,
+        }
     }
 }
 
-impl<'a> Into<Option<&'static Metadata<'static>>> for &'a Current {
-    fn into(self) -> Option<&'static Metadata<'static>> {
-        self.metadata()
+impl<'a> From<&'a Current> for Option<&'static Metadata<'static>> {
+    fn from(cur: &'a Current) -> Self {
+        cur.metadata()
     }
 }

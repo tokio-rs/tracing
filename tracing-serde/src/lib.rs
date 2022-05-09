@@ -6,7 +6,7 @@
 //! [![Documentation (master)][docs-master-badge]][docs-master-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
-//! [docs-url]: https://docs.rs/tracing-serde
+//! [docs-url]: crate
 //! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 //! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
@@ -32,7 +32,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting
 //! libraries and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -66,7 +66,7 @@
 //!
 //! ```rust
 //! # use tracing_core::{Collect, Metadata, Event};
-//! # use tracing_core::span::{Attributes, Id, Record};
+//! # use tracing_core::span::{Attributes, Current, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
 //! use serde_json::json;
@@ -102,6 +102,7 @@
 //!     # fn exit(&self, _: &Id) {}
 //!     # fn record(&self, _: &Id, _: &Record<'_>) {}
 //!     # fn record_follows_from(&self, _: &Id, _: &Id) {}
+//!     # fn current_span(&self) -> Current { Current::unknown() }
 //! }
 //! ```
 //!
@@ -127,7 +128,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -146,7 +147,6 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(docsrs, deny(broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
     // missing_docs, // TODO: add documentation
@@ -403,6 +403,12 @@ where
         }
     }
 
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_entry(field.name(), &value)
+        }
+    }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(field.name(), &value)
@@ -444,6 +450,12 @@ where
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
+        if self.state.is_ok() {
+            self.state = self.serializer.serialize_field(field.name(), &value)
+        }
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
         if self.state.is_ok() {
             self.state = self.serializer.serialize_field(field.name(), &value)
         }

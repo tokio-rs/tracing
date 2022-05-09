@@ -1,8 +1,6 @@
-mod support;
-use support::*;
-
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
+use tracing_mock::*;
 
 #[test]
 fn destructure_tuples() {
@@ -74,7 +72,7 @@ fn destructure_refs() {
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("arg1").with_value(&format_args!("1")).only()),
+                .with_field(field::mock("arg1").with_value(&1usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())

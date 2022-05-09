@@ -17,8 +17,8 @@ use crate::{field, Metadata};
 ///   associated with an event should be in the event's fields rather than in
 ///   the textual message, as the fields are more structured.
 ///
-/// [span]: ../span
-/// [fields]: ../field
+/// [span]: super::span
+/// [fields]: super::field
 #[derive(Debug)]
 pub struct Event<'a> {
     fields: &'a field::ValueSet<'a>,
@@ -41,8 +41,8 @@ impl<'a> Event<'a> {
     #[inline]
     pub fn new(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'a>) -> Self {
         Event {
-            metadata,
             fields,
+            metadata,
             parent: Parent::Current,
         }
     }
@@ -60,8 +60,8 @@ impl<'a> Event<'a> {
             None => Parent::Root,
         };
         Event {
-            metadata,
             fields,
+            metadata,
             parent,
         }
     }
@@ -118,7 +118,7 @@ impl<'a> Event<'a> {
     /// Returns the new event's explicitly-specified parent, if there is one.
     ///
     /// Otherwise (if the new event is a root or is a child of the current span),
-    /// returns false.
+    /// returns `None`.
     pub fn parent(&self) -> Option<&Id> {
         match self.parent {
             Parent::Explicit(ref p) => Some(p),
