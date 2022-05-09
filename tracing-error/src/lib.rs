@@ -225,5 +225,8 @@ pub mod prelude {
     //! extension traits. These traits allow attaching `SpanTrace`s to errors and
     //! subsequently retrieving them from `dyn Error` trait objects.
 
+    // apparently `as _` reexpoorts now generate `unreachable_pub` linting? which
+    // seems wrong to me...
+    #![allow(unreachable_pub)]
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }

@@ -1,7 +1,12 @@
 #![cfg(feature = "env-filter")]
 
+#[path = "../support.rs"]
+mod support;
+use self::support::*;
+
+mod per_subscriber;
+
 use tracing::{self, collect::with_default, Level};
-use tracing_mock::*;
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
@@ -183,4 +188,13 @@ fn span_name_filter_is_dynamic() {
     });
 
     finished.assert_finished();
+}
+
+#[test]
+fn method_name_resolution() {
+    #[allow(unused_imports)]
+    use tracing_subscriber::subscribe::{Filter, Subscribe};
+
+    let filter = EnvFilter::new("hello_world=info");
+    filter.max_level_hint();
 }
