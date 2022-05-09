@@ -449,6 +449,11 @@ impl EnvFilter {
     /// # Ok(())
     /// # }
     /// ```
+    /// In the above example, substitute `my_crate`, `module`, etc. with the
+    /// name your target crate/module is imported with. This might be
+    /// different from the package name in Cargo.toml (`-` is replaced by `_`).
+    /// Example, if the package name in your Cargo.toml is `MY-FANCY-LIB`, then
+    /// the corresponding Rust identifier would be `MY_FANCY_LIB`:
     pub fn add_directive(mut self, mut directive: Directive) -> Self {
         if !self.regex {
             directive.deregexify();
