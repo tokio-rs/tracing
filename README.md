@@ -254,7 +254,7 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.42. The current Tracing version is not guaranteed to build on Rust
+version is 1.49. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -400,6 +400,10 @@ are not maintained by the `tokio` project. These include:
   applications.
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+  grouping together logs from the same spans during writing.
+- [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -432,6 +436,11 @@ please let us know!)
 [Elastic APM]: https://www.elastic.co/apm
 [`tracing-etw`]: https://github.com/microsoft/tracing-etw
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[Sentry]: https://sentry.io/welcome/
+[`tracing-forest`]: https://crates.io/crates/tracing-forest
+[`tracing-loki`]: https://crates.io/crates/tracing-loki
+[Grafana Loki]: https://grafana.com/oss/loki/
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

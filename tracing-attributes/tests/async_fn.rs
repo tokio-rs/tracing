@@ -1,9 +1,6 @@
-#[path = "../../tracing-futures/tests/support.rs"]
-// we don't use some of the test support functions, but `tracing-futures` does.
-#[allow(dead_code)]
-mod support;
-use support::*;
+use tracing_mock::*;
 
+use std::convert::Infallible;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
@@ -53,6 +50,22 @@ async fn repro_1613(var: bool) {
 async fn repro_1613_2() {
     // hello world
     // else
+}
+
+// Reproduces https://github.com/tokio-rs/tracing/issues/1831
+#[instrument]
+#[deny(unused_braces)]
+fn repro_1831() -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async move {})
+}
+
+// This replicates the pattern used to implement async trait methods on nightly using the
+// `type_alias_impl_trait` feature
+#[instrument(ret, err)]
+#[deny(unused_braces)]
+#[allow(clippy::manual_async_fn)]
+fn repro_1831_2() -> impl Future<Output = Result<(), Infallible>> {
+    async { Ok(()) }
 }
 
 #[test]
@@ -366,6 +379,69 @@ fn out_of_scope_fields() {
                 metrics: Arc::new(()),
             };
             my_thing.call(()).await;
+        });
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn manual_impl_future() {
+    #[allow(clippy::manual_async_fn)]
+    #[instrument]
+    fn manual_impl_future() -> impl Future<Output = ()> {
+        async {
+            tracing::trace!(poll = true);
+        }
+    }
+
+    let span = span::mock().named("manual_impl_future");
+    let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
+
+    let (collector, handle) = collector::mock()
+        // await manual_impl_future
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(poll_event())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            manual_impl_future().await;
+        });
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn manual_box_pin() {
+    #[instrument]
+    fn manual_box_pin() -> Pin<Box<dyn Future<Output = ()>>> {
+        Box::pin(async {
+            tracing::trace!(poll = true);
+        })
+    }
+
+    let span = span::mock().named("manual_box_pin");
+    let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
+
+    let (collector, handle) = collector::mock()
+        // await manual_box_pin
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(poll_event())
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+
+    with_default(collector, || {
+        block_on_future(async {
+            manual_box_pin().await;
         });
     });
 

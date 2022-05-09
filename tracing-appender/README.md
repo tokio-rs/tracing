@@ -44,7 +44,7 @@ that can be used with _or_ without the non-blocking writer.
 
 Add the following to your `Cargo.toml`:
 ```toml
-tracing-appender = "0.1"
+tracing-appender = "0.2"
 ```
 
 This crate can be used in a few ways to record spans/events:
@@ -112,7 +112,7 @@ a [`std::io::Write`][write]:
 
 ```rust
 fn main() {
-    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::Stdout);
+    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
     tracing_subscriber::fmt()
         .with_writer(non_blocking)
         .init();

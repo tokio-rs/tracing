@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.42+][msrv]*
+//! *Compiler support: [requires `rustc` 1.49+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.42. The current Tracing version is not guaranteed to build on
+//! version is 1.49. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -153,6 +153,47 @@ mod expand;
 ///     // ...
 /// }
 /// ```
+/// Overriding the generated span's parent:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(parent = None)]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// ```
+/// ```
+/// # use tracing_attributes::instrument;
+/// // A struct which owns a span handle.
+/// struct MyStruct
+/// {
+///     span: tracing::Span
+/// }
+///
+/// impl MyStruct
+/// {
+///     // Use the struct's `span` field as the parent span
+///     #[instrument(parent = &self.span, skip(self))]
+///     fn my_method(&self) {}
+/// }
+/// ```
+/// Specifying [`follows_from`] relationships:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = causes)]
+/// pub fn my_function(causes: &[tracing::Id]) {
+///     // ...
+/// }
+/// ```
+/// Any expression of type `impl IntoIterator<Item = impl Into<Option<Id>>>`
+/// may be provided to `follows_from`; e.g.:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(follows_from = [cause])]
+/// pub fn my_function(cause: &tracing::span::EnteredSpan) {
+///     // ...
+/// }
+/// ```
+///
 ///
 /// To skip recording an argument, pass the argument's name to the `skip`:
 ///
@@ -302,6 +343,7 @@ mod expand;
 /// (or maybe you can just bump `async-trait`).
 ///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
+/// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
 #[proc_macro_attribute]
@@ -332,7 +374,7 @@ fn instrument_speculative(
 }
 
 /// Instrument the function, by fully parsing the function body,
-/// which allows us to rewrite some statements related to async_trait-like patterns.
+/// which allows us to rewrite some statements related to async-like patterns.
 fn instrument_precise(
     args: attr::InstrumentArgs,
     item: proc_macro::TokenStream,
@@ -342,8 +384,8 @@ fn instrument_precise(
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
-    if let Some(async_trait) = expand::AsyncTraitInfo::from_fn(&input) {
-        return Ok(async_trait.gen_async_trait(args, instrumented_function_name.as_str()));
+    if let Some(async_like) = expand::AsyncInfo::from_fn(&input) {
+        return Ok(async_like.gen_async(args, instrumented_function_name.as_str()));
     }
 
     Ok(expand::gen_function(

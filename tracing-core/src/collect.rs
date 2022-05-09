@@ -53,6 +53,10 @@ use core::ptr::NonNull;
 ///   Additionally, collectors which wish to perform a behaviour once for each
 ///   callsite, such as allocating storage for data related to that callsite,
 ///   can perform it in `register_callsite`.
+///
+///   See also the [documentation on the callsite registry][cs-reg] for details
+///   on [`register_callsite`].
+///
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
@@ -67,10 +71,11 @@ use core::ptr::NonNull;
 /// [`enabled`]: Collect::enabled
 /// [`clone_span`]: Collect::clone_span
 /// [`try_close`]: Collect::try_close
+/// [cs-reg]: crate::callsite#registering-callsites
 pub trait Collect: 'static {
     // === Span registry methods ==============================================
 
-    /// Registers a new callsite with this collector, returning whether or not
+    /// Registers a new [callsite] with this collector, returning whether or not
     /// the collector is interested in being notified about the callsite.
     ///
     /// By default, this function assumes that the collector's [filter]
@@ -124,7 +129,11 @@ pub trait Collect: 'static {
     /// return `Interest::Never`, as a new collector may be added that _is_
     /// interested.
     ///
+    /// See the [documentation on the callsite registry][cs-reg] for more
+    /// details on how and when the `register_callsite` method is called.
+    ///
     /// # Notes
+    ///
     /// This function may be called again when a new collector is created or
     /// when the registry is invalidated.
     ///
@@ -132,10 +141,12 @@ pub trait Collect: 'static {
     /// _may_ still see spans and events originating from that callsite, if
     /// another collector expressed interest in it.
     ///
+    /// [callsite]: crate::callsite
     /// [filter]: Self::enabled
     /// [metadata]: super::metadata::Metadata
     /// [`enabled`]: Self::enabled
     /// [`rebuild_interest_cache`]: super::callsite::rebuild_interest_cache
+    /// [cs-reg]: crate::callsite#registering-callsites
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.enabled(metadata) {
             Interest::always()
@@ -546,6 +557,52 @@ impl Interest {
             Interest::sometimes()
         }
     }
+}
+
+/// A no-op [collector](Collect).
+///
+/// [`NoCollector`] implements the [`Collect`] trait by never being enabled,
+/// never being interested in any callsite, and drops all spans and events.
+#[derive(Debug, Default, Copy, Clone)]
+pub struct NoCollector(());
+
+impl NoCollector {
+    /// Returns a new `NoCollector` instance.
+    ///
+    /// This function is equivalent to calling `NoCollector::default()`, but
+    /// this is usable in `const fn` contexts.
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
+impl Collect for NoCollector {
+    #[inline]
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::never()
+    }
+
+    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+        span::Id::from_u64(0xDEAD)
+    }
+
+    fn event(&self, _event: &Event<'_>) {}
+
+    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
+
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        false
+    }
+
+    fn current_span(&self) -> span::Current {
+        span::Current::none()
+    }
+
+    fn enter(&self, _span: &span::Id) {}
+    fn exit(&self, _span: &span::Id) {}
 }
 
 #[cfg(feature = "alloc")]
