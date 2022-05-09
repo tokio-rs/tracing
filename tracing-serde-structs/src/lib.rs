@@ -191,37 +191,6 @@ use tracing_core::{
 
 pub mod fields;
 
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SerializeId {
-    id: NonZeroU64,
-}
-
-#[repr(usize)]
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum SerializeLevel {
-    /// The "trace" level.
-    ///
-    /// Designates very low priority, often extremely verbose, information.
-    Trace = 0,
-    /// The "debug" level.
-    ///
-    /// Designates lower priority information.
-    Debug = 1,
-    /// The "info" level.
-    ///
-    /// Designates useful information.
-    Info = 2,
-    /// The "warn" level.
-    ///
-    /// Designates hazardous situations.
-    Warn = 3,
-    /// The "error" level.
-    ///
-    /// Designates very serious errors.
-    Error = 4,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeField<'a> {
     name: &'a str,
@@ -262,6 +231,36 @@ impl<'a> From<Vec<&'a str>> for SerializeFieldSet<'a> {
     }
 }
 
+#[repr(usize)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub enum SerializeLevel {
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace = 0,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug = 1,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info = 2,
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn = 3,
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    Error = 4,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SerializeId {
+    id: NonZeroU64,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeMetadata<'a> {
     name: &'a str,
@@ -273,6 +272,63 @@ pub struct SerializeMetadata<'a> {
     fields: SerializeFieldSet<'a>,
     is_span: bool,
     is_event: bool,
+}
+
+/// Implements `serde::Serialize` to write `Event` data to a serializer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SerializeEvent<'a> {
+    #[serde(borrow)]
+    fields: SerializeRecordFields<'a>,
+    metadata: SerializeMetadata<'a>,
+    parent: Option<SerializeId>,
+}
+
+/// Implements `serde::Serialize` to write `Attributes` data to a serializer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SerializeAttributes<'a> {
+    #[serde(borrow)]
+    metadata: SerializeMetadata<'a>,
+    parent: Option<SerializeId>,
+    is_root: bool,
+}
+
+/// Implements `serde::Serialize` to write `Record` data to a serializer.
+#[derive(Debug, Deserialize)]
+#[serde(from = "Vec<DeserEventRecord<'a>>")]
+pub enum SerializeRecord<'a> {
+    #[serde(borrow)]
+    Ser(&'a Record<'a>),
+    De(Vec<DeserEventRecord<'a>>),
+}
+
+impl<'a> Serialize for SerializeRecord<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SerializeRecord::Ser(serf) => {
+                // TODO: Can we *not* visit all data twice? I dunno!
+                let mut ctr = VisitCounter { ct: 0 };
+                serf.record(&mut ctr);
+                let items = ctr.ct;
+
+                let serializer = serializer.serialize_seq(Some(items))?;
+                let mut ssv = SerdeSeqVisitor::new(serializer);
+                serf.record(&mut ssv);
+                ssv.finish()
+            }
+            SerializeRecord::De(derf) => {
+                derf.serialize(serializer)
+            }
+        }
+    }
+}
+
+impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeRecord<'a> {
+    fn from(other: Vec<DeserEventRecord<'a>>) -> Self {
+        Self::De(other)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -322,14 +378,7 @@ impl<'a> Serialize for DebugRecord<'a> {
 }
 
 
-/// Implements `serde::Serialize` to write `Attributes` data to a serializer.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SerializeAttributes<'a> {
-    #[serde(borrow)]
-    metadata: SerializeMetadata<'a>,
-    parent: Option<SerializeId>,
-    is_root: bool,
-}
+
 
 /// Implements `tracing_core::field::Visit` for some `serde::ser::SerializeMap`.
 #[derive(Debug)]
@@ -444,14 +493,6 @@ impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeRecordFields<'a> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SerializeEvent<'a> {
-    #[serde(borrow)]
-    fields: SerializeRecordFields<'a>,
-    metadata: SerializeMetadata<'a>,
-    parent: Option<SerializeId>,
-}
-
 impl<'a> Serialize for SerializeRecordFields<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -463,52 +504,13 @@ impl<'a> Serialize for SerializeRecordFields<'a> {
                 let mut ctr = VisitCounter { ct: 0 };
                 serf.record(&mut ctr);
                 let items = ctr.ct;
-                println!("&&&{}&&&", items);
+
                 let serializer = serializer.serialize_seq(Some(items))?;
                 let mut ssv = SerdeSeqVisitor::new(serializer);
                 serf.record(&mut ssv);
                 ssv.finish()
             }
             SerializeRecordFields::De(derf) => {
-                derf.serialize(serializer)
-            }
-        }
-    }
-}
-
-/// Implements `serde::Serialize` to write `Record` data to a serializer.
-#[derive(Debug, Deserialize)]
-#[serde(from = "Vec<DeserEventRecord<'a>>")]
-pub enum SerializeRecord<'a> {
-    #[serde(borrow)]
-    Ser(&'a Record<'a>),
-    De(Vec<DeserEventRecord<'a>>),
-}
-
-impl<'a> From<Vec<DeserEventRecord<'a>>> for SerializeRecord<'a> {
-    fn from(other: Vec<DeserEventRecord<'a>>) -> Self {
-        Self::De(other)
-    }
-}
-
-impl<'a> Serialize for SerializeRecord<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            SerializeRecord::Ser(serf) => {
-                // TODO: Can we *not* visit all data twice? I dunno!
-                let mut ctr = VisitCounter { ct: 0 };
-                serf.record(&mut ctr);
-                let items = ctr.ct;
-
-                let serializer = serializer.serialize_seq(Some(items))?;
-                let mut ssv = SerdeSeqVisitor::new(serializer);
-                serf.record(&mut ssv);
-                ssv.finish()
-            }
-            SerializeRecord::De(derf) => {
                 derf.serialize(serializer)
             }
         }
