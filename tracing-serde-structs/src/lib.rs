@@ -173,13 +173,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt;
-use core::num::NonZeroU64;
 use core::fmt::Arguments;
+use core::num::NonZeroU64;
 
 use serde::{
-    ser::{SerializeMap, Serializer, SerializeSeq},
-    Serialize,
-    Deserialize,
+    ser::{SerializeMap, SerializeSeq, Serializer},
+    Deserialize, Serialize,
 };
 
 use tracing_core::{
@@ -222,9 +221,7 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
                 }
                 seq.end()
             }
-            SerializeFieldSet::De(dfs) => {
-                dfs.serialize(serializer)
-            },
+            SerializeFieldSet::De(dfs) => dfs.serialize(serializer),
         }
     }
 }
@@ -325,9 +322,7 @@ impl<'a> Serialize for SerializeRecord<'a> {
                 serf.record(&mut ssv);
                 ssv.finish()
             }
-            SerializeRecord::De(derf) => {
-                derf.serialize(serializer)
-            }
+            SerializeRecord::De(derf) => derf.serialize(serializer),
         }
     }
 }
@@ -367,12 +362,8 @@ impl<'a> Serialize for DebugRecord<'a> {
         S: Serializer,
     {
         match self {
-            DebugRecord::Ser(args) => {
-                args.serialize(serializer)
-            }
-            DebugRecord::De(msg) => {
-                msg.serialize(serializer)
-            }
+            DebugRecord::Ser(args) => args.serialize(serializer),
+            DebugRecord::De(msg) => msg.serialize(serializer),
         }
     }
 }
@@ -410,9 +401,7 @@ impl<'a> Serialize for SerializeRecordFields<'a> {
                 serf.record(&mut ssv);
                 ssv.finish()
             }
-            SerializeRecordFields::De(derf) => {
-                derf.serialize(serializer)
-            }
+            SerializeRecordFields::De(derf) => derf.serialize(serializer),
         }
     }
 }
@@ -461,10 +450,9 @@ where
         // If previous fields serialized successfully, continue serializing,
         // otherwise, short-circuit and do nothing.
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(
-                field.name(),
-                &RecordValueSetItem::Bool(value),
-            )
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &RecordValueSetItem::Bool(value))
         }
     }
 
@@ -479,37 +467,33 @@ where
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(
-                field.name(),
-                &RecordValueSetItem::U64(value),
-            )
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &RecordValueSetItem::U64(value))
         }
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(
-                field.name(),
-                &RecordValueSetItem::I64(value),
-            )
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &RecordValueSetItem::I64(value))
         }
     }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(
-                field.name(),
-                &RecordValueSetItem::F64(value),
-            )
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &RecordValueSetItem::F64(value))
         }
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(
-                field.name(),
-                &RecordValueSetItem::Str(value),
-            )
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &RecordValueSetItem::Str(value))
         }
     }
 }
