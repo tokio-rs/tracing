@@ -234,28 +234,28 @@ impl<'a> From<TracingVec<&'a str>> for SerializeFieldSet<'a> {
 
 #[repr(usize)]
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
-#[allow(non_camel_case_types)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum SerializeLevel {
     /// The "trace" level.
     ///
     /// Designates very low priority, often extremely verbose, information.
-    TRACE = 0,
+    Trace = 0,
     /// The "debug" level.
     ///
     /// Designates lower priority information.
-    DEBUG = 1,
+    Debug = 1,
     /// The "info" level.
     ///
     /// Designates useful information.
-    INFO = 2,
+    Info = 2,
     /// The "warn" level.
     ///
     /// Designates hazardous situations.
-    WARN = 3,
+    Warn = 3,
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    ERROR = 4,
+    Error = 4,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -294,7 +294,7 @@ pub struct SerializeAttributes<'a> {
     is_root: bool,
 }
 
-type RecordMap<'a> = TracingMap<&'a str, RecordValueSetItem<'a>>;
+type RecordMap<'a> = TracingMap<&'a str, SerializeValue<'a>>;
 
 /// Implements `serde::Serialize` to write `Record` data to a serializer.
 #[derive(Debug, Deserialize)]
@@ -331,7 +331,8 @@ impl<'a> From<RecordMap<'a>> for SerializeRecord<'a> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum RecordValueSetItem<'a> {
+#[non_exhaustive]
+pub enum SerializeValue<'a> {
     Debug(DebugRecord<'a>),
     Str(&'a str),
     F64(f64),
@@ -444,7 +445,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &RecordValueSetItem::Bool(value))
+                .serialize_entry(field.name(), &SerializeValue::Bool(value))
         }
     }
 
@@ -452,7 +453,7 @@ where
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(
                 field.name(),
-                &RecordValueSetItem::Debug(DebugRecord::Ser(&format_args!("{:?}", value))),
+                &SerializeValue::Debug(DebugRecord::Ser(&format_args!("{:?}", value))),
             )
         }
     }
@@ -461,7 +462,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &RecordValueSetItem::U64(value))
+                .serialize_entry(field.name(), &SerializeValue::U64(value))
         }
     }
 
@@ -469,7 +470,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &RecordValueSetItem::I64(value))
+                .serialize_entry(field.name(), &SerializeValue::I64(value))
         }
     }
 
@@ -477,7 +478,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &RecordValueSetItem::F64(value))
+                .serialize_entry(field.name(), &SerializeValue::F64(value))
         }
     }
 
@@ -485,7 +486,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &RecordValueSetItem::Str(value))
+                .serialize_entry(field.name(), &SerializeValue::Str(value))
         }
     }
 }
@@ -562,11 +563,11 @@ impl<'a> AsSerde<'a> for Level {
 
     fn as_serde(&'a self) -> Self::Serializable {
         match self {
-            &Level::ERROR => SerializeLevel::ERROR,
-            &Level::WARN => SerializeLevel::WARN,
-            &Level::INFO => SerializeLevel::INFO,
-            &Level::DEBUG => SerializeLevel::DEBUG,
-            &Level::TRACE => SerializeLevel::TRACE,
+            &Level::ERROR => SerializeLevel::Error,
+            &Level::WARN => SerializeLevel::Warn,
+            &Level::INFO => SerializeLevel::Info,
+            &Level::DEBUG => SerializeLevel::Debug,
+            &Level::TRACE => SerializeLevel::Trace,
         }
     }
 }
