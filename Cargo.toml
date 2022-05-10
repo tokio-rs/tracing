@@ -14,7 +14,6 @@ members = [
     "tracing-opentelemetry",
     "tracing-subscriber",
     "tracing-serde",
-    "tracing-serde-structs",
     "tracing-appender",
     "tracing-journald",
     "examples"
