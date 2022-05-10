@@ -221,9 +221,17 @@ impl<'a> Record<'a> {
 
     /// Records all the fields in this `Record` with the provided [Visitor].
     ///
-    /// [visitor]: super::field::Visit
+    /// [Visitor]: super::field::Visit
     pub fn record(&self, visitor: &mut dyn field::Visit) {
         self.values.record(visitor)
+    }
+
+    /// Returns the number of fields that would be visited from this `Record`
+    /// when [`Record::record()`] is called
+    ///
+    /// [`Record::record()`]: Record::record()
+    pub fn record_len(&self) -> usize {
+        self.values.record_len()
     }
 
     /// Returns `true` if this `Record` contains a value for the given `Field`.

@@ -312,10 +312,7 @@ impl<'a> Serialize for SerializeRecord<'a> {
     {
         match self {
             SerializeRecord::Ser(serf) => {
-                // TODO: Can we *not* visit all data twice? I dunno!
-                let mut ctr = VisitCounter { ct: 0 };
-                serf.record(&mut ctr);
-                let items = ctr.ct;
+                let items = serf.record_len();
 
                 let serializer = serializer.serialize_map(Some(items))?;
                 let mut ssv = SerdeMapVisitor::new(serializer);
@@ -389,12 +386,7 @@ impl<'a> Serialize for SerializeRecordFields<'a> {
     {
         match self {
             SerializeRecordFields::Ser(serf) => {
-                // TODO: Can we *not* visit all data twice? I dunno!
-                // TODO: Eliza said we could make the `.len()` method public, so we
-                // should remove this before we are done.
-                let mut ctr = VisitCounter { ct: 0 };
-                serf.record(&mut ctr);
-                let items = ctr.ct;
+                let items = serf.fields().count();
 
                 let serializer = serializer.serialize_map(Some(items))?;
                 let mut ssv = SerdeMapVisitor::new(serializer);
@@ -495,17 +487,6 @@ where
                 .serializer
                 .serialize_entry(field.name(), &RecordValueSetItem::Str(value))
         }
-    }
-}
-
-struct VisitCounter {
-    ct: usize,
-}
-
-impl Visit for VisitCounter {
-    #[inline(always)]
-    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
-        self.ct += 1;
     }
 }
 
