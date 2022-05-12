@@ -590,6 +590,10 @@ impl<'a> AsSerde<'a> for tracing_core::Metadata<'a> {
     }
 }
 
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeFieldSet<'static> {}
+
 #[cfg(feature = "std")]
 impl<'a> SerializeFieldSet<'a> {
     pub fn to_owned(&self) -> SerializeFieldSet<'static> {
@@ -605,6 +609,10 @@ impl<'a> SerializeFieldSet<'a> {
         }
     }
 }
+
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeMetadata<'static> {}
 
 #[cfg(feature = "std")]
 impl<'a> SerializeMetadata<'a> {
@@ -635,6 +643,10 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     }
 }
 
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for DebugRecord<'static> {}
+
 #[cfg(feature = "std")]
 impl<'a> DebugRecord<'a> {
     pub fn to_owned(&self) -> DebugRecord<'static> {
@@ -644,6 +656,10 @@ impl<'a> DebugRecord<'a> {
         }
     }
 }
+
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeValue<'static> {}
 
 #[cfg(feature = "std")]
 impl<'a> SerializeValue<'a> {
@@ -707,6 +723,10 @@ impl Visit for HashVisit {
     }
 }
 
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeRecordFields<'static> {}
+
 #[cfg(feature = "std")]
 impl<'a> SerializeRecordFields<'a> {
     pub fn to_owned(&self) -> SerializeRecordFields<'static> {
@@ -724,6 +744,10 @@ impl<'a> SerializeRecordFields<'a> {
         }
     }
 }
+
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeEvent<'static> {}
 
 #[cfg(feature = "std")]
 impl<'a> SerializeEvent<'a> {
@@ -747,6 +771,10 @@ impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
         }
     }
 }
+
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeAttributes<'static> {}
 
 #[cfg(feature = "std")]
 impl<'a> SerializeAttributes<'a> {
@@ -783,6 +811,10 @@ impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
         SerializeRecord::Ser(self)
     }
 }
+
+/// SAFETY: If all data is 'static and/or owned, it is safe
+/// to send between threads.
+unsafe impl Send for SerializeRecord<'static> {}
 
 #[cfg(feature = "std")]
 impl<'a> SerializeRecord<'a> {
