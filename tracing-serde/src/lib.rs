@@ -174,7 +174,9 @@
 
 use core::fmt;
 use core::fmt::Arguments;
+use core::hash::Hash;
 use core::num::NonZeroU64;
+use core::ops::Deref;
 
 use serde::{
     ser::{SerializeMap, SerializeSeq, Serializer},
@@ -187,6 +189,75 @@ use tracing_core::{
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
 };
+
+#[derive(Debug, Deserialize, Eq)]
+#[serde(from = "&'a str")]
+pub enum CowString<'a> {
+    Borrowed(&'a str),
+    #[cfg(feature = "std")]
+    Owned(String),
+}
+
+impl<'a> Deref for CowString<'a> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl<'a> CowString<'a> {
+    pub fn as_str(&'a self) -> &'a str {
+        match self {
+            CowString::Borrowed(b) => b,
+            #[cfg(feature = "std")]
+            CowString::Owned(o) => o.as_str(),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> CowString<'a> {
+    pub fn to_owned(&'a self) -> CowString<'static> {
+        CowString::Owned(self.as_str().to_string())
+    }
+}
+
+impl<'a> Hash for CowString<'a> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state)
+    }
+}
+
+impl<'a> hash32::Hash for CowString<'a> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash32::Hasher
+    {
+        <str as hash32::Hash>::hash(self.as_str(), state)
+    }
+}
+
+impl<'a> PartialEq for CowString<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str().eq(other.as_str())
+    }
+}
+
+impl<'a> From<&'a str> for CowString<'a> {
+    fn from(other: &'a str) -> Self {
+        Self::Borrowed(other)
+    }
+}
+
+impl<'a> Serialize for CowString<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.as_str().serialize(serializer)
+    }
+}
 
 #[cfg(not(feature = "std"))]
 type TracingVec<T> = heapless::Vec<T, 32>;
@@ -201,11 +272,11 @@ type TracingVec<T> = std::vec::Vec<T>;
 type TracingMap<K, V> = std::collections::HashMap<K, V>;
 
 #[derive(Debug, Deserialize)]
-#[serde(from = "TracingVec<&'a str>")]
+#[serde(from = "TracingVec<CowString<'a>>")]
 pub enum SerializeFieldSet<'a> {
     Ser(&'a FieldSet),
     #[serde(borrow)]
-    De(TracingVec<&'a str>),
+    De(TracingVec<CowString<'a>>),
 }
 
 impl<'a> Serialize for SerializeFieldSet<'a> {
@@ -226,8 +297,8 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
     }
 }
 
-impl<'a> From<TracingVec<&'a str>> for SerializeFieldSet<'a> {
-    fn from(other: TracingVec<&'a str>) -> Self {
+impl<'a> From<TracingVec<CowString<'a>>> for SerializeFieldSet<'a> {
+    fn from(other: TracingVec<CowString<'a>>) -> Self {
         SerializeFieldSet::De(other)
     }
 }
@@ -258,18 +329,19 @@ pub enum SerializeLevel {
     Error = 4,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SerializeId {
     id: NonZeroU64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeMetadata<'a> {
-    name: &'a str,
-    target: &'a str,
+    #[serde(borrow)]
+    name: CowString<'a>,
+    target: CowString<'a>,
     level: SerializeLevel,
-    module_path: Option<&'a str>,
-    file: Option<&'a str>,
+    module_path: Option<CowString<'a>>,
+    file: Option<CowString<'a>>,
     line: Option<u32>,
     fields: SerializeFieldSet<'a>,
     is_span: bool,
@@ -294,7 +366,7 @@ pub struct SerializeAttributes<'a> {
     is_root: bool,
 }
 
-type RecordMap<'a> = TracingMap<&'a str, SerializeValue<'a>>;
+type RecordMap<'a> = TracingMap<CowString<'a>, SerializeValue<'a>>;
 
 /// Implements `serde::Serialize` to write `Record` data to a serializer.
 #[derive(Debug, Deserialize)]
@@ -333,8 +405,9 @@ impl<'a> From<RecordMap<'a>> for SerializeRecord<'a> {
 #[derive(Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum SerializeValue<'a> {
+    #[serde(borrow)]
     Debug(DebugRecord<'a>),
-    Str(&'a str),
+    Str(CowString<'a>),
     F64(f64),
     I64(i64),
     U64(u64),
@@ -342,14 +415,15 @@ pub enum SerializeValue<'a> {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(from = "&'a str")]
+#[serde(from = "CowString<'a>")]
 pub enum DebugRecord<'a> {
+    #[serde(borrow)]
     Ser(&'a Arguments<'a>),
-    De(&'a str),
+    De(CowString<'a>),
 }
 
-impl<'a> From<&'a str> for DebugRecord<'a> {
-    fn from(other: &'a str) -> Self {
+impl<'a> From<CowString<'a>> for DebugRecord<'a> {
+    fn from(other: CowString<'a>) -> Self {
         Self::De(other)
     }
 }
@@ -486,7 +560,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &SerializeValue::Str(value))
+                .serialize_entry(field.name(), &SerializeValue::Str(value.into()))
         }
     }
 }
@@ -503,15 +577,48 @@ impl<'a> AsSerde<'a> for tracing_core::Metadata<'a> {
 
     fn as_serde(&'a self) -> Self::Serializable {
         SerializeMetadata {
-            name: self.name(),
-            target: self.target(),
+            name: self.name().into(),
+            target: self.target().into(),
             level: self.level().as_serde(),
-            module_path: self.module_path(),
-            file: self.file(),
+            module_path: self.module_path().map(Into::into),
+            file: self.file().map(Into::into),
             line: self.line(),
             fields: SerializeFieldSet::Ser(self.fields()),
             is_span: self.is_span(),
             is_event: self.is_event(),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeFieldSet<'a> {
+    pub fn to_owned(&self) -> SerializeFieldSet<'static> {
+        match self {
+            SerializeFieldSet::Ser(sfs) => SerializeFieldSet::De(
+                sfs.iter()
+                    .map(|i| CowString::from(i.name()).to_owned())
+                    .collect(),
+            ),
+            SerializeFieldSet::De(dfs) => {
+                SerializeFieldSet::De(dfs.iter().map(CowString::to_owned).collect())
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeMetadata<'a> {
+    pub fn to_owned(&self) -> SerializeMetadata<'static> {
+        SerializeMetadata {
+            name: self.name.to_owned(),
+            target: self.target.to_owned(),
+            level: self.level,
+            module_path: self.module_path.as_ref().map(CowString::to_owned),
+            file: self.file.as_ref().map(CowString::to_owned),
+            line: self.line,
+            fields: self.fields.to_owned(),
+            is_span: self.is_span,
+            is_event: self.is_event,
         }
     }
 }
@@ -528,6 +635,107 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     }
 }
 
+#[cfg(feature = "std")]
+impl<'a> DebugRecord<'a> {
+    pub fn to_owned(&self) -> DebugRecord<'static> {
+        match self {
+            DebugRecord::Ser(args) => DebugRecord::De(CowString::Owned(args.to_string())),
+            DebugRecord::De(d) => DebugRecord::De(d.to_owned()),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeValue<'a> {
+    pub fn to_owned(&self) -> SerializeValue<'static> {
+        match self {
+            SerializeValue::Debug(dr) => SerializeValue::Debug(dr.to_owned()),
+            SerializeValue::Str(s) => SerializeValue::Str(s.to_owned()),
+            SerializeValue::F64(x) => SerializeValue::F64(*x),
+            SerializeValue::I64(x) => SerializeValue::I64(*x),
+            SerializeValue::U64(x) => SerializeValue::U64(*x),
+            SerializeValue::Bool(x) => SerializeValue::Bool(*x),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+struct HashVisit(std::collections::HashMap<CowString<'static>, SerializeValue<'static>>);
+
+#[cfg(feature = "std")]
+impl Visit for HashVisit {
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::Bool(value),
+        );
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::Debug(DebugRecord::De(CowString::Owned(format!("{:?}", value)))),
+        );
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::U64(value),
+        );
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::I64(value),
+        );
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::F64(value),
+        );
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.0.insert(
+            CowString::Owned(field.name().to_string()),
+            SerializeValue::Str(CowString::Owned(value.to_string())),
+        );
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeRecordFields<'a> {
+    pub fn to_owned(&self) -> SerializeRecordFields<'static> {
+        match self {
+            SerializeRecordFields::Ser(e) => {
+                let mut hv = HashVisit(std::collections::HashMap::new());
+                e.record(&mut hv);
+                SerializeRecordFields::De(hv.0)
+            }
+            SerializeRecordFields::De(dsrf) => SerializeRecordFields::De(
+                dsrf.iter()
+                    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeEvent<'a> {
+    pub fn to_owned(&self) -> SerializeEvent<'static> {
+        SerializeEvent {
+            fields: self.fields.to_owned(),
+            metadata: self.metadata.to_owned(),
+            parent: self.parent.clone(),
+        }
+    }
+}
+
 impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     type Serializable = SerializeAttributes<'a>;
 
@@ -536,6 +744,17 @@ impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
             metadata: self.metadata().as_serde(),
             parent: self.parent().map(|p| p.as_serde()),
             is_root: self.is_root(),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeAttributes<'a> {
+    pub fn to_owned(&self) -> SerializeAttributes<'static> {
+        SerializeAttributes {
+            metadata: self.metadata.to_owned(),
+            parent: self.parent.clone(),
+            is_root: self.is_root,
         }
     }
 }
@@ -550,11 +769,36 @@ impl<'a> AsSerde<'a> for tracing_core::span::Id {
     }
 }
 
+#[cfg(feature = "std")]
+impl SerializeId {
+    pub fn to_owned(&self) -> Self {
+        self.clone()
+    }
+}
+
 impl<'a> AsSerde<'a> for tracing_core::span::Record<'a> {
     type Serializable = SerializeRecord<'a>;
 
     fn as_serde(&'a self) -> Self::Serializable {
         SerializeRecord::Ser(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> SerializeRecord<'a> {
+    pub fn to_owned(&self) -> SerializeRecord<'static> {
+        match self {
+            SerializeRecord::Ser(s) => {
+                let mut hv = HashVisit(std::collections::HashMap::new());
+                s.record(&mut hv);
+                SerializeRecord::De(hv.0)
+            },
+            SerializeRecord::De(d) => {
+                SerializeRecord::De(
+                    d.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
+                )
+            },
+        }
     }
 }
 
@@ -569,6 +813,13 @@ impl<'a> AsSerde<'a> for Level {
             &Level::DEBUG => SerializeLevel::Debug,
             &Level::TRACE => SerializeLevel::Trace,
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeLevel {
+    pub fn to_owned(&self) -> Self {
+        self.clone()
     }
 }
 
