@@ -445,18 +445,20 @@ where
             .attributes
             .get_or_insert(Vec::with_capacity(attrs.fields().len() + 3));
 
-        let meta = attrs.metadata();
+        if self.event_location {
+            let meta = attrs.metadata();
 
-        if let Some(filename) = meta.file() {
-            builder_attrs.push(KeyValue::new("code.filepath", filename));
-        }
+            if let Some(filename) = meta.file() {
+                builder_attrs.push(KeyValue::new("code.filepath", filename));
+            }
 
-        if let Some(module) = meta.module_path() {
-            builder_attrs.push(KeyValue::new("code.namespace", module));
-        }
+            if let Some(module) = meta.module_path() {
+                builder_attrs.push(KeyValue::new("code.namespace", module));
+            }
 
-        if let Some(line) = meta.line() {
-            builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+            if let Some(line) = meta.line() {
+                builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+            }
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -904,5 +906,71 @@ mod tests {
             .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
+    }
+
+    #[test]
+    fn includes_event_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_event_location(true),
+        );
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+        let keys = attributes
+            .iter()
+            .map(|attr| attr.key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(keys.contains(&"code.filepath"));
+        assert!(keys.contains(&"code.namespace"));
+        assert!(keys.contains(&"code.lineno"));
+    }
+
+    #[test]
+    fn exludes_event_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_event_location(false),
+        );
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+        let keys = attributes
+            .iter()
+            .map(|attr| attr.key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(!keys.contains(&"code.filepath"));
+        assert!(!keys.contains(&"code.namespace"));
+        assert!(!keys.contains(&"code.lineno"));
     }
 }
