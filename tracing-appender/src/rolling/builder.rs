@@ -159,10 +159,9 @@ impl Builder {
     }
 
     fn create_file_writer(&self, filename: &str) -> RwLock<WriterChannel> {
-        let a = RwLock::new(WriterChannel::File(
+        RwLock::new(WriterChannel::File(
             create_writer_file(self.log_directory.as_str(), filename)
                 .expect("failed to create appender"),
-        ));
-        a
+        ))
     }
 }
