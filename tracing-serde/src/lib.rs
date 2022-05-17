@@ -331,39 +331,39 @@ pub enum SerializeLevel {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SerializeId {
-    id: NonZeroU64,
+    pub id: NonZeroU64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeMetadata<'a> {
     #[serde(borrow)]
-    name: CowString<'a>,
-    target: CowString<'a>,
-    level: SerializeLevel,
-    module_path: Option<CowString<'a>>,
-    file: Option<CowString<'a>>,
-    line: Option<u32>,
-    fields: SerializeFieldSet<'a>,
-    is_span: bool,
-    is_event: bool,
+    pub name: CowString<'a>,
+    pub target: CowString<'a>,
+    pub level: SerializeLevel,
+    pub module_path: Option<CowString<'a>>,
+    pub file: Option<CowString<'a>>,
+    pub line: Option<u32>,
+    pub fields: SerializeFieldSet<'a>,
+    pub is_span: bool,
+    pub is_event: bool,
 }
 
 /// Implements `serde::Serialize` to write `Event` data to a serializer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeEvent<'a> {
     #[serde(borrow)]
-    fields: SerializeRecordFields<'a>,
-    metadata: SerializeMetadata<'a>,
-    parent: Option<SerializeId>,
+    pub fields: SerializeRecordFields<'a>,
+    pub metadata: SerializeMetadata<'a>,
+    pub parent: Option<SerializeId>,
 }
 
 /// Implements `serde::Serialize` to write `Attributes` data to a serializer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializeAttributes<'a> {
     #[serde(borrow)]
-    metadata: SerializeMetadata<'a>,
-    parent: Option<SerializeId>,
-    is_root: bool,
+    pub metadata: SerializeMetadata<'a>,
+    pub parent: Option<SerializeId>,
+    pub is_root: bool,
 }
 
 type RecordMap<'a> = TracingMap<CowString<'a>, SerializeValue<'a>>;
