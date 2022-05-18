@@ -1257,7 +1257,7 @@ mod test {
 
         // Only assert the start because the line number and callsite may change.
         let expected = "Unable to format the following event. Name: event tracing-subscriber/src/fmt/fmt_layer.rs:";
-        assert!(actual.as_str().starts_with(expected));
+        assert!(actual.as_str().starts_with(expected), "\nactual = {}\nshould start with expected = {}\n", actual, expected);
     }
 
     #[test]
