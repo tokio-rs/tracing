@@ -268,11 +268,11 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         let mut next_err = value.source();
 
         while let Some(err) = next_err {
-            chain.push(Cow::Owned(format!("{}", err)));
+            chain.push(Cow::Owned(err.to_string()));
             next_err = err.source();
         }
 
-        self.record(Key::new(field.name()).string(format!("{}", value)));
+        self.record(Key::new(field.name()).string(value.to_string()));
         self.record(Key::new(format!("{}.chain", field.name())).array(chain));
     }
 }
