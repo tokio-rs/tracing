@@ -1115,6 +1115,7 @@ mod test {
 
     #[test]
     fn impls() {
+        #[allow(deprecated)]
         let f = Format::default().with_timer(time::Uptime::default());
         let fmt = fmt::Subscriber::default().event_format(f);
         let subscriber = fmt.with_collector(Registry::default());
@@ -1173,7 +1174,7 @@ mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             // check that FmtSpan::NONE is the default
             .finish();
 
@@ -1192,7 +1193,7 @@ mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .with_span_events(FmtSpan::ACTIVE)
             .finish();
 
@@ -1215,7 +1216,7 @@ mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .with_span_events(FmtSpan::CLOSE)
             .finish();
 
@@ -1237,7 +1238,7 @@ mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .without_time()
             .with_span_events(FmtSpan::CLOSE)
             .finish();
@@ -1260,7 +1261,7 @@ mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .with_span_events(FmtSpan::FULL)
             .finish();
 
@@ -1313,7 +1314,7 @@ mod test {
             .with_level(false)
             .with_target(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .with_span_events(FmtSpan::CLOSE)
             .finish();
 

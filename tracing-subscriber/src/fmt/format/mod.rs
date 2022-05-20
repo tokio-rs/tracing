@@ -1706,7 +1706,7 @@ pub(super) mod test {
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer.clone())
             .with_ansi(is_ansi)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         assert_info_hello(subscriber, make_writer, expected)
     }
 
@@ -1717,7 +1717,7 @@ pub(super) mod test {
         let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         assert_info_hello(subscriber, make_writer, expected);
     }
 
@@ -1728,7 +1728,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
 
         assert_info_hello(subscriber, make_writer, expected);
@@ -1743,7 +1743,7 @@ pub(super) mod test {
             .with_line_number(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
 
         let expected = Regex::new(&format!(
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
@@ -1767,7 +1767,7 @@ pub(super) mod test {
             .with_line_number(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
 
         let expected =
             Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$")
@@ -1786,7 +1786,7 @@ pub(super) mod test {
             .with_file(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = &format!(
             "fake time tracing_subscriber::fmt::format::test: {}: hello\n",
             current_path(),
@@ -1801,7 +1801,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_thread_ids(true)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected =
             "fake time  INFO ThreadId(NUMERIC) tracing_subscriber::fmt::format::test: hello\n";
 
@@ -1815,7 +1815,7 @@ pub(super) mod test {
             .pretty()
             .with_writer(make_writer.clone())
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = format!(
             r#"  fake time  INFO tracing_subscriber::fmt::format::test: hello
     at {}:NUMERIC
@@ -1859,7 +1859,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(collector, || {
@@ -1880,7 +1880,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(subscriber, || {
