@@ -4,6 +4,7 @@ use opentelemetry::{
     Context as OtelContext, Key, KeyValue, Value,
 };
 use std::any::TypeId;
+use std::borrow::Cow;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
@@ -252,6 +253,27 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             }
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] using a [`std::error::Error`]'s
+    /// [`std::fmt::Display`] implementation. Also adds the `source` chain as an extra field
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        let mut chain = Vec::new();
+        let mut next_err = value.source();
+
+        while let Some(err) = next_err {
+            chain.push(Cow::Owned(err.to_string()));
+            next_err = err.source();
+        }
+
+        self.record(Key::new(field.name()).string(value.to_string()));
+        self.record(Key::new(format!("{}.chain", field.name())).array(chain));
     }
 }
 
@@ -684,6 +706,7 @@ mod tests {
     use crate::OtelData;
     use opentelemetry::trace::{noop, SpanKind, TraceFlags};
     use std::borrow::Cow;
+    use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use std::time::SystemTime;
     use tracing_subscriber::prelude::*;
@@ -895,5 +918,81 @@ mod tests {
             .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
+    }
+
+    #[test]
+    fn records_error_fields() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+
+        use std::error::Error;
+        use std::fmt::Display;
+
+        #[derive(Debug)]
+        struct DynError {
+            msg: &'static str,
+            source: Option<Box<DynError>>,
+        }
+
+        impl Display for DynError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.msg)
+            }
+        }
+        impl Error for DynError {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
+                match &self.source {
+                    Some(source) => Some(source),
+                    None => None,
+                }
+            }
+        }
+
+        let err = DynError {
+            msg: "user error",
+            source: Some(Box::new(DynError {
+                msg: "intermediate error",
+                source: Some(Box::new(DynError {
+                    msg: "base error",
+                    source: None,
+                })),
+            })),
+        };
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug_span!(
+                "request",
+                error = &err as &(dyn std::error::Error + 'static)
+            );
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+
+        let key_values = attributes
+            .into_iter()
+            .map(|attr| (attr.key.as_str().to_owned(), attr.value))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(key_values["error"].as_str(), "user error");
+        assert_eq!(
+            key_values["error.chain"],
+            Value::Array(
+                vec![
+                    Cow::Borrowed("intermediate error"),
+                    Cow::Borrowed("base error")
+                ]
+                .into()
+            )
+        );
     }
 }
