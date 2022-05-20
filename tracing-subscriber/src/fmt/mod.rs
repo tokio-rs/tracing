@@ -1206,8 +1206,11 @@ mod test {
 
     #[test]
     fn impls() {
-        let f = Format::default().with_timer(time::Uptime::default());
-        let subscriber = Collector::builder().event_format(f).finish();
+        let f = Format::default();
+        let subscriber = Collector::builder()
+            .event_format(f)
+            .with_timestamp_format(time::Uptime::default())
+            .finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();

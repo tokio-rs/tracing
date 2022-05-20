@@ -811,7 +811,7 @@ mod test {
         let make_writer = MockMakeWriter::default();
         let collector = builder
             .with_writer(make_writer.clone())
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(collector, producer);
@@ -833,7 +833,7 @@ mod test {
         let make_writer = MockMakeWriter::default();
         let collector = builder
             .with_writer(make_writer.clone())
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(collector, producer);
