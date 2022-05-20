@@ -60,7 +60,7 @@ use tracing_core::{
 /// ```
 ///
 /// [`Subscriber`]: subscribe::Subscribe
-#[derive(Debug)]
+
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
     make_writer: W,
@@ -68,7 +68,8 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
-    timer: Box<dyn time::FormatTime>, // XXX(eliza): breaking change would make this a generic param...
+    // XXX(eliza): could make this a generic param as a breaking change...
+    timer: Option<Box<dyn time::FormatTime + Send + Sync>>,
     _inner: PhantomData<fn(C)>,
 }
 
@@ -118,6 +119,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -153,6 +155,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            timer: self.timer,
             make_writer,
             _inner: self._inner,
         }
@@ -237,6 +240,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
             make_writer: TestWriter::default(),
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -247,6 +251,25 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     pub fn with_ansi(self, ansi: bool) -> Self {
         Subscriber {
             is_ansi: ansi,
+            ..self
+        }
+    }
+
+    pub fn with_timestamp_format(
+        self,
+        timer: impl time::FormatTime + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            timer: Some(Box::new(timer)),
+            ..self
+        }
+    }
+
+    /// Do not emit timestamps with spans and events.
+    pub fn without_time(self) -> Self {
+        Subscriber {
+            fmt_span: self.fmt_span.without_time(),
+            timer: None,
             ..self
         }
     }
@@ -277,18 +300,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            _inner: self._inner,
-        }
-    }
-
-    /// Do not emit timestamps with spans and event.
-    pub fn without_time(self) -> Subscriber<C, N, format::Format<L, ()>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.without_time(),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span.without_time(),
-            make_writer: self.make_writer,
-            is_ansi: self.is_ansi,
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -420,6 +432,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -434,6 +447,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -463,6 +477,7 @@ where
             make_writer: self.make_writer,
             // always disable ANSI escapes in JSON mode!
             is_ansi: false,
+            timer: self.timer,
             _inner: self._inner,
         }
     }
@@ -529,8 +544,16 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            timer: self.timer,
             _inner: self._inner,
         }
+    }
+
+    pub(in crate::fmt) fn timestamp(&self) -> Option<time::Timestamp<'_>> {
+        self.timer.as_ref().map(|timer| time::Timestamp {
+            timer: timer.as_ref(),
+            is_ansi: self.is_ansi,
+        })
     }
 }
 
@@ -541,6 +564,7 @@ impl<C> Default for Subscriber<C> {
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
+            timer: Some(Box::new(time::SystemTime)),
             is_ansi: cfg!(feature = "ansi"),
             _inner: PhantomData,
         }
@@ -555,18 +579,32 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
-    fn make_ctx<'a>(
-        &'a self,
-        ctx: Context<'a, C>,
-        event: &'a Event<'a>,
-        timestamp: time::Timestamp<'a>,
-    ) -> FmtContext<'a, C, N> {
+    fn make_ctx<'a>(&'a self, ctx: Context<'a, C>, event: &'a Event<'a>) -> FmtContext<'a, C, N> {
         FmtContext {
             ctx,
             fmt_fields: &self.fmt_fields,
             event,
-            timestamp,
+            timestamp: self.timestamp(),
         }
+    }
+}
+
+impl<C, N, E, W> fmt::Debug for Subscriber<C, N, E, W>
+where
+    C: fmt::Debug,
+    N: fmt::Debug,
+    E: fmt::Debug,
+    W: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("fmt::Subscriber")
+            .field("fmt_fiedls", &self.fmt_fields)
+            .field("fmt_event", &self.fmt_event)
+            .field("fmt_span", &self.fmt_span)
+            .field("make_writer", &self.make_writer)
+            .field("is_ansi", &self.is_ansi)
+            .field("timer", &format_args!("Box<dyn FormatTime>"))
+            .finish()
     }
 }
 
@@ -798,14 +836,7 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(
-                ctx,
-                event,
-                time::Timestamp {
-                    timer: self.timer.as_ref(),
-                    is_ansi: self.is_ansi,
-                },
-            );
+            let ctx = self.make_ctx(ctx, event);
             if self
                 .fmt_event
                 .format_event(
@@ -843,7 +874,7 @@ pub struct FmtContext<'a, C, N> {
     pub(crate) ctx: Context<'a, C>,
     pub(crate) fmt_fields: &'a N,
     pub(crate) event: &'a Event<'a>,
-    pub(crate) timestamp: time::Timestamp<'a>,
+    pub(crate) timestamp: Option<time::Timestamp<'a>>,
 }
 
 impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
@@ -871,13 +902,18 @@ where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    /// Returns the event's timestamp.
+    /// Returns the event's timestamp, if timestamps are enabled.
     ///
     /// This returns a type implementing [`std::fmt::Display`] which formats the
     /// event's timestamp using the [timestamp formatter] provided to the
-    /// [`fmt::Subscriber`].
-    pub fn timestamp(&self) -> &time::Timestamp<'a> {
-        &self.timestamp
+    /// [`fmt::Subscriber`], or `None` if timestamps were disabled.
+    pub fn timestamp(&self) -> Option<time::Timestamp<'a>> {
+        self.timestamp.clone()
+    }
+
+    /// Returns `true` if timestamp formatting is enabled.
+    pub fn timestamp_enabled(&self) -> bool {
+        self.timestamp.is_some()
     }
 
     /// Visits every span in the current context with a closure.

@@ -539,18 +539,14 @@ where
     /// [`UtcTime`]: time::UtcTime
     /// [`LocalTime`]: time::LocalTime
     /// [`time` crate]: https://docs.rs/time/0.3
+    #[deprecated(
+        since = "0.3.12",
+        note = "use `CollectorBuilder::with_timestamp_format` instead"
+    )]
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_timer(timer),
-        }
-    }
-
-    /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
-        CollectorBuilder {
-            filter: self.filter,
-            inner: self.inner.without_time(),
         }
     }
 
@@ -1032,6 +1028,24 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
+        }
+    }
+
+    pub fn with_timestamp_format(
+        self,
+        timer: impl time::FormatTime + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            inner: self.inner.with_timestamp_format(timer),
+            ..self
+        }
+    }
+
+    /// Do not emit timestamps with log messages.
+    pub fn without_time(self) -> Self {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.without_time(),
         }
     }
 }

@@ -220,8 +220,8 @@ where
 
             let mut serializer = serializer.serialize_map(None)?;
 
-            if self.display_timestamp {
-                serializer.serialize_entry("timestamp", &CollectStr(&ctx.timestamp()))?;
+            if let Some(timestamp) = ctx.timestamp() {
+                serializer.serialize_entry("timestamp", &CollectStr(&timestamp))?;
             }
 
             if self.display_level {

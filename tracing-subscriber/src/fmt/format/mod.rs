@@ -414,6 +414,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    // XXX(eliza): annoying backwards-compatibility cruft.
+    has_overridden_timer: bool,
 }
 
 // === impl Writer ===
@@ -592,6 +594,7 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            has_overridden_timer: false,
         }
     }
 }
@@ -612,6 +615,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -651,6 +655,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -683,6 +688,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -700,6 +706,10 @@ impl<F, T> Format<F, T> {
     /// [`UtcTime`]: super::time::UtcTime
     /// [`LocalTime`]: super::time::LocalTime
     /// [`time` crate]: https://docs.rs/time/0.3
+    #[deprecated(
+        since = "0.3.12",
+        note = "use `fmt::Subscriber::with_timestamp_format` instead"
+    )]
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
@@ -712,6 +722,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: true,
         }
     }
 
@@ -728,6 +739,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: true,
         }
     }
 
@@ -831,14 +843,22 @@ impl<F, T> Format<F, T> {
     }
 
     #[inline]
-    fn format_timestamp(
-        &self,
-        timestamp: &time::Timestamp<'_>,
+    fn format_timestamp<'a>(
+        &'a self,
+        mut timestamp: time::Timestamp<'a>,
         writer: &mut Writer<'_>,
-    ) -> fmt::Result {
+    ) -> fmt::Result
+    where
+        T: FormatTime,
+    {
         // If timestamps are disabled, do nothing.
         if !self.display_timestamp {
             return Ok(());
+        }
+
+        // XXX(eliza): ugly backwards-compatibility cruft, remove in 0.4
+        if self.has_overridden_timer {
+            timestamp.timer = &self.timer;
         }
 
         // If ANSI color codes are enabled, format the timestamp with ANSI
@@ -924,8 +944,11 @@ where
             writer = writer.with_ansi(ansi);
         }
 
-        self.format_timestamp(ctx.timestamp(), &mut writer)?;
-        writer.write_char(' ')?;
+        if let Some(timestamp) = ctx.timestamp() {
+            self.format_timestamp(timestamp, &mut writer)?;
+            writer.write_char(' ')?;
+        }
+
         self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
@@ -1032,7 +1055,11 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        self.format_timestamp(ctx.timestamp(), &mut writer)?;
+        if let Some(timestamp) = ctx.timestamp() {
+            self.format_timestamp(timestamp, &mut writer)?;
+            writer.write_char(' ')?;
+        }
+
         writer.write_char(' ')?;
         self.format_level(*meta.level(), &mut writer)?;
 

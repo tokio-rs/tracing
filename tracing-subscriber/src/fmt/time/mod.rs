@@ -91,9 +91,10 @@ impl FormatTime for fn(&mut Writer<'_>) -> fmt::Result {
 }
 
 /// A timestamp implementing [`std::fmt::Display`].
+#[derive(Clone)]
 pub struct Timestamp<'a> {
-    timer: &'a dyn FormatTime,
-    is_ansi: bool,
+    pub(in crate::fmt) timer: &'a dyn FormatTime,
+    pub(in crate::fmt) is_ansi: bool,
 }
 
 /// Retrieve and print the current wall-clock time.
@@ -143,17 +144,15 @@ impl FormatTime for Uptime {
 
 impl fmt::Display for Timestamp<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self
-            .timer
+        self.timer
             .format_time(&mut Writer::new(f).with_ansi(self.is_ansi))
-        {
-            Ok(()) => return Ok(()),
-            // if writing the timestamp failed because of the timer
-            // implementation, indicate that the time is unknown. if the problem
-            // is with the formatter, this write_str call will also error, so
-            // the error is propagated.
-            Err(_) => f.write_str("<unknown time>"),
-        }
+            .or_else(|_| {
+                // if writing the timestamp failed because of the timer
+                // implementation, indicate that the time is unknown. if the problem
+                // is with the formatter, this write_str call will also error, so
+                // the error is propagated.
+                f.write_str("<unknown time>")
+            })
     }
 }
 
