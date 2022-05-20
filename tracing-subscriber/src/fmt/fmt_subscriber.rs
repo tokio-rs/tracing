@@ -255,56 +255,6 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         }
     }
 
-    pub fn with_timestamp_format(
-        self,
-        timer: impl time::FormatTime + Send + Sync + 'static,
-    ) -> Self {
-        Self {
-            timer: Some(Box::new(timer)),
-            ..self
-        }
-    }
-
-    /// Do not emit timestamps with spans and events.
-    pub fn without_time(self) -> Self {
-        Subscriber {
-            fmt_span: self.fmt_span.without_time(),
-            timer: None,
-            ..self
-        }
-    }
-}
-
-impl<C, N, L, T, W> Subscriber<C, N, format::Format<L, T>, W>
-where
-    N: for<'writer> FormatFields<'writer> + 'static,
-{
-    /// Use the given [`timer`] for span and event timestamps.
-    ///
-    /// See the [`time` module] for the provided timer implementations.
-    ///
-    /// Note that using the `"time`"" feature flag enables the
-    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
-    /// [`time` crate] to provide more sophisticated timestamp formatting
-    /// options.
-    ///
-    /// [`timer`]: super::time::FormatTime
-    /// [`time` module]: mod@super::time
-    /// [`UtcTime`]: super::time::UtcTime
-    /// [`LocalTime`]: super::time::LocalTime
-    /// [`time` crate]: https://docs.rs/time/0.3
-    pub fn with_timer<T2>(self, timer: T2) -> Subscriber<C, N, format::Format<L, T2>, W> {
-        Subscriber {
-            fmt_event: self.fmt_event.with_timer(timer),
-            fmt_fields: self.fmt_fields,
-            fmt_span: self.fmt_span,
-            make_writer: self.make_writer,
-            is_ansi: self.is_ansi,
-            timer: self.timer,
-            _inner: self._inner,
-        }
-    }
-
     /// Configures how synthesized events are emitted at points in the [span
     /// lifecycle][lifecycle].
     ///
@@ -350,6 +300,61 @@ where
         Subscriber {
             fmt_span: self.fmt_span.with_kind(kind),
             ..self
+        }
+    }
+
+    pub fn with_timestamp_format(
+        self,
+        timer: impl time::FormatTime + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            timer: Some(Box::new(timer)),
+            ..self
+        }
+    }
+
+    /// Do not emit timestamps with spans and events.
+    pub fn without_time(self) -> Self {
+        Subscriber {
+            fmt_span: self.fmt_span.without_time(),
+            timer: None,
+            ..self
+        }
+    }
+}
+
+impl<C, N, L, T, W> Subscriber<C, N, format::Format<L, T>, W>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    /// Use the given [`timer`] for span and event timestamps.
+    ///
+    /// See the [`time` module] for the provided timer implementations.
+    ///
+    /// Note that using the `"time`"" feature flag enables the
+    /// additional time formatters [`UtcTime`] and [`LocalTime`], which use the
+    /// [`time` crate] to provide more sophisticated timestamp formatting
+    /// options.
+    ///
+    /// [`timer`]: super::time::FormatTime
+    /// [`time` module]: mod@super::time
+    /// [`UtcTime`]: super::time::UtcTime
+    /// [`LocalTime`]: super::time::LocalTime
+    /// [`time` crate]: https://docs.rs/time/0.3
+    #[deprecated(
+        since = "0.3.12",
+        note = "use `fmt::Subscriber::with_timestamp_format` instead"
+    )]
+    pub fn with_timer<T2>(self, timer: T2) -> Subscriber<C, N, format::Format<L, T2>, W> {
+        #[allow(deprecated)]
+        Subscriber {
+            fmt_event: self.fmt_event.with_timer(timer),
+            fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            timer: self.timer,
+            _inner: self._inner,
         }
     }
 
