@@ -255,8 +255,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         }
     }
 
-    /// Set attributes on the underlying OpenTelemetry [`Span`] from values that
-    /// implement Debug. Also adds the `source` chain as an extra field
+    /// Set attributes on the underlying OpenTelemetry [`Span`] using a [`std::error::Error`]'s
+    /// [`std::fmt::Display`] implementation. Also adds the `source` chain as an extra field
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_error(
