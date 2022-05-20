@@ -62,14 +62,21 @@ use tracing_core::{
 /// [`Subscriber`]: subscribe::Subscribe
 
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
-pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> {
+#[derive(Debug)]
+pub struct Subscriber<
+    C,
+    N = format::DefaultFields,
+    E = format::Format,
+    W = fn() -> io::Stdout,
+    T = time::SystemTime,
+> {
     make_writer: W,
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
     // XXX(eliza): could make this a generic param as a breaking change...
-    timer: Option<Box<dyn time::FormatTime + Send + Sync>>,
+    timer: Option<T>,
     _inner: PhantomData<fn(C)>,
 }
 
@@ -81,7 +88,7 @@ impl<C> Subscriber<C> {
 }
 
 // This needs to be a separate impl block because they place different bounds on the type parameters.
-impl<C, N, E, W> Subscriber<C, N, E, W>
+impl<C, N, E, W, T> Subscriber<C, N, E, W, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -109,7 +116,7 @@ where
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
     /// [`Writer`]: format::Writer
-    pub fn event_format<E2>(self, e: E2) -> Subscriber<C, N, E2, W>
+    pub fn event_format<E2>(self, e: E2) -> Subscriber<C, N, E2, W, T>
     where
         E2: FormatEvent<C, N> + 'static,
     {
@@ -126,7 +133,7 @@ where
 }
 
 // This needs to be a separate impl block because they place different bounds on the type parameters.
-impl<C, N, E, W> Subscriber<C, N, E, W> {
+impl<C, N, E, W, T> Subscriber<C, N, E, W, T> {
     /// Sets the [`MakeWriter`] that the [`Subscriber`] being built will use to write events.
     ///
     /// # Examples
@@ -146,7 +153,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     ///
     /// [`MakeWriter`]: super::writer::MakeWriter
     /// [`Subscriber`]: super::Subscriber
-    pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<C, N, E, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> Subscriber<C, N, E, W2, T>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
     {
@@ -233,7 +240,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: super::writer::TestWriter
-    pub fn with_test_writer(self) -> Subscriber<C, N, E, TestWriter> {
+    pub fn with_test_writer(self) -> Subscriber<C, N, E, TestWriter, T> {
         Subscriber {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
@@ -303,13 +310,18 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         }
     }
 
-    pub fn with_timestamp_format(
-        self,
-        timer: impl time::FormatTime + Send + Sync + 'static,
-    ) -> Self {
-        Self {
-            timer: Some(Box::new(timer)),
-            ..self
+    pub fn with_timestamp_format<T2>(self, timer: T2) -> Subscriber<C, N, E, W, T2>
+    where
+        T2: time::FormatTime,
+    {
+        Subscriber {
+            timer: Some(timer),
+            fmt_fields: self.fmt_fields,
+            fmt_event: self.fmt_event,
+            fmt_span: self.fmt_span,
+            is_ansi: self.is_ansi,
+            make_writer: self.make_writer,
+            _inner: self._inner,
         }
     }
 
@@ -357,9 +369,17 @@ where
             _inner: self._inner,
         }
     }
+}
 
+impl<C, N, L, T, W, T2> Subscriber<C, N, format::Format<L, T2>, W, T>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     /// Sets whether or not an event's target is displayed.
-    pub fn with_target(self, display_target: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    pub fn with_target(
+        self,
+        display_target: bool,
+    ) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_target(display_target),
             ..self
@@ -369,7 +389,10 @@ where
     /// displayed.
     ///
     /// [file]: tracing_core::Metadata::file
-    pub fn with_file(self, display_filename: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    pub fn with_file(
+        self,
+        display_filename: bool,
+    ) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_file(display_filename),
             ..self
@@ -383,7 +406,7 @@ where
     pub fn with_line_number(
         self,
         display_line_number: bool,
-    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+    ) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_line_number(display_line_number),
             ..self
@@ -391,7 +414,7 @@ where
     }
 
     /// Sets whether or not an event's level is displayed.
-    pub fn with_level(self, display_level: bool) -> Subscriber<C, N, format::Format<L, T>, W> {
+    pub fn with_level(self, display_level: bool) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_level(display_level),
             ..self
@@ -405,7 +428,7 @@ where
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
-    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+    ) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_ids(display_thread_ids),
             ..self
@@ -419,7 +442,7 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+    ) -> Subscriber<C, N, format::Format<L, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
             ..self
@@ -427,7 +450,7 @@ where
     }
 
     /// Sets the subscriber being built to use a [less verbose formatter](format::Compact).
-    pub fn compact(self) -> Subscriber<C, N, format::Format<format::Compact, T>, W>
+    pub fn compact(self) -> Subscriber<C, N, format::Format<format::Compact, T2>, W, T>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -445,7 +468,7 @@ where
     /// Sets the subscriber being built to use an [excessively pretty, human-readable formatter](crate::fmt::format::Pretty).
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn pretty(self) -> Subscriber<C, format::Pretty, format::Format<format::Pretty, T>, W> {
+    pub fn pretty(self) -> Subscriber<C, format::Pretty, format::Format<format::Pretty, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.pretty(),
             fmt_fields: format::Pretty::default(),
@@ -474,7 +497,7 @@ where
     ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+    pub fn json(self) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
@@ -490,14 +513,14 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+impl<C, T, T2, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T2>, W, T> {
     /// Sets the JSON subscriber being built to flatten event metadata.
     ///
     /// See [`format::Json`]
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
@@ -512,7 +535,7 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
@@ -527,7 +550,7 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T2>, W, T> {
         Subscriber {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
@@ -536,10 +559,10 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
     }
 }
 
-impl<C, N, E, W> Subscriber<C, N, E, W> {
+impl<C, N, E, W, T> Subscriber<C, N, E, W, T> {
     /// Sets the field formatter that the subscriber being built will use to record
     /// fields.
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<C, N2, E, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<C, N2, E, W, T>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -554,9 +577,12 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         }
     }
 
-    pub(in crate::fmt) fn timestamp(&self) -> Option<time::Timestamp<'_>> {
+    pub(in crate::fmt) fn timestamp(&self) -> Option<time::Timestamp<'_>>
+    where
+        T: time::FormatTime,
+    {
         self.timer.as_ref().map(|timer| time::Timestamp {
-            timer: timer.as_ref(),
+            timer,
             is_ansi: self.is_ansi,
         })
     }
@@ -569,19 +595,20 @@ impl<C> Default for Subscriber<C> {
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
-            timer: Some(Box::new(time::SystemTime)),
+            timer: Some(time::SystemTime),
             is_ansi: cfg!(feature = "ansi"),
             _inner: PhantomData,
         }
     }
 }
 
-impl<C, N, E, W> Subscriber<C, N, E, W>
+impl<C, N, E, W, T> Subscriber<C, N, E, W, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
+    T: time::FormatTime,
 {
     #[inline]
     fn make_ctx<'a>(&'a self, ctx: Context<'a, C>, event: &'a Event<'a>) -> FmtContext<'a, C, N> {
@@ -591,25 +618,6 @@ where
             event,
             timestamp: self.timestamp(),
         }
-    }
-}
-
-impl<C, N, E, W> fmt::Debug for Subscriber<C, N, E, W>
-where
-    C: fmt::Debug,
-    N: fmt::Debug,
-    E: fmt::Debug,
-    W: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("fmt::Subscriber")
-            .field("fmt_fiedls", &self.fmt_fields)
-            .field("fmt_event", &self.fmt_event)
-            .field("fmt_span", &self.fmt_span)
-            .field("make_writer", &self.make_writer)
-            .field("is_ansi", &self.is_ansi)
-            .field("timer", &format_args!("Box<dyn FormatTime>"))
-            .finish()
     }
 }
 
@@ -690,12 +698,13 @@ macro_rules! with_event_from_span {
     };
 }
 
-impl<C, N, E, W> subscribe::Subscribe<C> for Subscriber<C, N, E, W>
+impl<C, N, E, W, T> subscribe::Subscribe<C> for Subscriber<C, N, E, W, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
+    T: time::FormatTime + 'static,
 {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
