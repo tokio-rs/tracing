@@ -208,9 +208,6 @@ where
     where
         C: Collect + for<'a> LookupSpan<'a>,
     {
-        let mut timestamp = String::new();
-        self.timer.format_time(&mut Writer::new(&mut timestamp))?;
-
         #[cfg(feature = "tracing-log")]
         let normalized_meta = event.normalized_metadata();
         #[cfg(feature = "tracing-log")]
@@ -224,7 +221,7 @@ where
             let mut serializer = serializer.serialize_map(None)?;
 
             if self.display_timestamp {
-                serializer.serialize_entry("timestamp", &timestamp)?;
+                serializer.serialize_entry("timestamp", &CollectStr(&ctx.timestamp()))?;
             }
 
             if self.display_level {
@@ -502,6 +499,19 @@ impl<'a> field::Visit for JsonVisitor<'a> {
                     .insert(name, serde_json::Value::from(format!("{:?}", value)));
             }
         };
+    }
+}
+
+struct CollectStr<'a, D>(&'a D);
+impl<D> serde::ser::Serialize for CollectStr<'_, D>
+where
+    D: fmt::Display,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.collect_str(self.0)
     }
 }
 #[cfg(test)]

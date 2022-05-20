@@ -1,6 +1,6 @@
 use crate::{
     field::RecordFields,
-    fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
+    fmt::{format, time, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
@@ -68,6 +68,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
+    timer: Box<dyn time::FormatTime>, // XXX(eliza): breaking change would make this a generic param...
     _inner: PhantomData<fn(C)>,
 }
 
@@ -554,11 +555,17 @@ where
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     #[inline]
-    fn make_ctx<'a>(&'a self, ctx: Context<'a, C>, event: &'a Event<'a>) -> FmtContext<'a, C, N> {
+    fn make_ctx<'a>(
+        &'a self,
+        ctx: Context<'a, C>,
+        event: &'a Event<'a>,
+        timestamp: time::Timestamp<'a>,
+    ) -> FmtContext<'a, C, N> {
         FmtContext {
             ctx,
             fmt_fields: &self.fmt_fields,
             event,
+            timestamp,
         }
     }
 }
@@ -632,10 +639,10 @@ macro_rules! with_event_from_span {
         #[allow(unused)]
         let mut iter = fs.iter();
         let v = [$(
-            (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
+            (&iter.next().unwrap(), Some($value as &dyn field::Value)),
         )*];
         let vs = fs.value_set(&v);
-        let $event = Event::new_child_of($id, meta, &vs);
+        let $event = Event::new(meta, &vs);
         $code
     };
 }
@@ -649,33 +656,29 @@ where
 {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
+        let mut fields = FormattedFields::<N>::new(String::new());
+        let did_format_fields = self
+            .fmt_fields
+            .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
+            .is_ok();
+        if did_format_fields && self.fmt_span.trace_new() {
+            let message = format!("{}: {}", span.name(), &fields.fields);
+            let msg = message.as_str();
+            with_event_from_span!(id, span, "message" = &msg, |event| {
+                self.on_event(&event, ctx.clone());
+            });
+        }
         let mut extensions = span.extensions_mut();
 
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut fields = FormattedFields::<N>::new(String::new());
-            if self
-                .fmt_fields
-                .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
-                .is_ok()
-            {
-                fields.was_ansi = self.is_ansi;
-                extensions.insert(fields);
-            }
+        if did_format_fields && extensions.get_mut::<FormattedFields<N>>().is_none() {
+            fields.was_ansi = self.is_ansi;
+            extensions.insert(fields);
         }
-
         if self.fmt_span.fmt_timing
             && self.fmt_span.trace_close()
             && extensions.get_mut::<Timings>().is_none()
         {
             extensions.insert(Timings::new());
-        }
-
-        if self.fmt_span.trace_new() {
-            with_event_from_span!(id, span, "message" = "new", |event| {
-                drop(extensions);
-                drop(span);
-                self.on_event(&event, ctx);
-            });
         }
     }
 
@@ -709,7 +712,7 @@ where
             }
 
             if self.fmt_span.trace_enter() {
-                with_event_from_span!(id, span, "message" = "enter", |event| {
+                with_event_from_span!(id, span, "message" = &"enter", |event| {
                     drop(extensions);
                     drop(span);
                     self.on_event(&event, ctx);
@@ -729,7 +732,7 @@ where
             }
 
             if self.fmt_span.trace_exit() {
-                with_event_from_span!(id, span, "message" = "exit", |event| {
+                with_event_from_span!(id, span, "message" = &"exit", |event| {
                     drop(extensions);
                     drop(span);
                     self.on_event(&event, ctx);
@@ -756,9 +759,9 @@ where
                 with_event_from_span!(
                     id,
                     span,
-                    "message" = "close",
-                    "time.busy" = t_busy,
-                    "time.idle" = t_idle,
+                    "message" = &"close",
+                    "time.busy" = &t_busy,
+                    "time.idle" = &t_idle,
                     |event| {
                         drop(extensions);
                         drop(span);
@@ -766,7 +769,7 @@ where
                     }
                 );
             } else {
-                with_event_from_span!(id, span, "message" = "close", |event| {
+                with_event_from_span!(id, span, "message" = &"close", |event| {
                     drop(extensions);
                     drop(span);
                     self.on_event(&event, ctx);
@@ -795,7 +798,14 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(ctx, event);
+            let ctx = self.make_ctx(
+                ctx,
+                event,
+                time::Timestamp {
+                    timer: self.timer.as_ref(),
+                    is_ansi: self.is_ansi,
+                },
+            );
             if self
                 .fmt_event
                 .format_event(
@@ -833,6 +843,7 @@ pub struct FmtContext<'a, C, N> {
     pub(crate) ctx: Context<'a, C>,
     pub(crate) fmt_fields: &'a N,
     pub(crate) event: &'a Event<'a>,
+    pub(crate) timestamp: time::Timestamp<'a>,
 }
 
 impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
@@ -860,6 +871,15 @@ where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
+    /// Returns the event's timestamp.
+    ///
+    /// This returns a type implementing [`std::fmt::Display`] which formats the
+    /// event's timestamp using the [timestamp formatter] provided to the
+    /// [`fmt::Subscriber`].
+    pub fn timestamp(&self) -> &time::Timestamp<'a> {
+        &self.timestamp
+    }
+
     /// Visits every span in the current context with a closure.
     ///
     /// The provided closure will be called first with the current span,

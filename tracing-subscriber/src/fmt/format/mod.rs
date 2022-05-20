@@ -28,7 +28,7 @@
 //!   for production use with systems where structured logs are consumed as JSON
 //!   by analysis and viewing tools. The JSON output is not optimized for human
 //!   readability. See [here](Json#example-output) for sample output.
-use super::time::{FormatTime, SystemTime};
+use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_subscriber::{FmtContext, FormattedFields},
@@ -831,10 +831,11 @@ impl<F, T> Format<F, T> {
     }
 
     #[inline]
-    fn format_timestamp(&self, writer: &mut Writer<'_>) -> fmt::Result
-    where
-        T: FormatTime,
-    {
+    fn format_timestamp(
+        &self,
+        timestamp: &time::Timestamp<'_>,
+        writer: &mut Writer<'_>,
+    ) -> fmt::Result {
         // If timestamps are disabled, do nothing.
         if !self.display_timestamp {
             return Ok(());
@@ -846,26 +847,12 @@ impl<F, T> Format<F, T> {
         {
             if writer.has_ansi_escapes() {
                 let style = Style::new().dimmed();
-                write!(writer, "{}", style.prefix())?;
-
-                // If getting the timestamp failed, don't bail --- only bail on
-                // formatting errors.
-                if self.timer.format_time(writer).is_err() {
-                    writer.write_str("<unknown time>")?;
-                }
-
-                write!(writer, "{} ", style.suffix())?;
-                return Ok(());
+                write!(writer, "{}{}{}", style.prefix(), timestamp, style.suffix())?;
             }
         }
 
         // Otherwise, just format the timestamp without ANSI formatting.
-        // If getting the timestamp failed, don't bail --- only bail on
-        // formatting errors.
-        if self.timer.format_time(writer).is_err() {
-            writer.write_str("<unknown time>")?;
-        }
-        writer.write_char(' ')
+        write!(writer, "{}", timestamp)
     }
 }
 
@@ -937,7 +924,8 @@ where
             writer = writer.with_ansi(ansi);
         }
 
-        self.format_timestamp(&mut writer)?;
+        self.format_timestamp(ctx.timestamp(), &mut writer)?;
+        writer.write_char(' ')?;
         self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
@@ -1044,7 +1032,8 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        self.format_timestamp(&mut writer)?;
+        self.format_timestamp(ctx.timestamp(), &mut writer)?;
+        writer.write_char(' ')?;
         self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
