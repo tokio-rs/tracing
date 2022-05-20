@@ -276,7 +276,17 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         }
 
         self.record(Key::new(field.name()).string(value.to_string()));
-        self.record(Key::new(format!("{}.chain", field.name())).array(chain));
+        self.record(Key::new(format!("{}.chain", field.name())).array(chain.clone()));
+
+        self.record(Key::new("exception.message").string(value.to_string()));
+
+        // NOTE: This is actually not the stacktrace of the exception. This is
+        // the "source chain". It represents the heirarchy of errors from the
+        // app level to the lowest level such as IO. It does not represent all
+        // of the callsites in the code that led to the error happening.
+        // `std::error::Error::backtrace` is a nightly-only API and cannot be
+        // used here until the feature is stabilized.
+        self.record(Key::new("exception.stacktrace").array(chain));
     }
 }
 
@@ -1047,6 +1057,18 @@ mod tests {
         assert_eq!(key_values["error"].as_str(), "user error");
         assert_eq!(
             key_values["error.chain"],
+            Value::Array(
+                vec![
+                    Cow::Borrowed("intermediate error"),
+                    Cow::Borrowed("base error")
+                ]
+                .into()
+            )
+        );
+
+        assert_eq!(key_values["exception.message"].as_str(), "user error");
+        assert_eq!(
+            key_values["exception.stacktrace"],
             Value::Array(
                 vec![
                     Cow::Borrowed("intermediate error"),
