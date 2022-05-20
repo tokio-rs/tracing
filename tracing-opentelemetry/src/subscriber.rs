@@ -747,6 +747,14 @@ mod tests {
         }
     }
 
+    impl TestTracer {
+        fn with_data<T>(&self, f: impl FnOnce(&OtelData) -> T) -> T {
+            let lock = self.0.lock().unwrap();
+            let data = lock.as_ref().expect("no span data has been recorded yet");
+            f(data)
+        }
+    }
+
     #[derive(Debug, Clone)]
     struct TestSpan(otel::SpanContext);
     impl otel::Span for TestSpan {
@@ -799,15 +807,7 @@ mod tests {
             tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
-        let recorded_kind = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .span_kind
-            .clone();
+        let recorded_kind = tracer.with_data(|data| data.builder.span_kind.clone());
         assert_eq!(recorded_kind, Some(otel::SpanKind::Server))
     }
 
@@ -820,14 +820,8 @@ mod tests {
         tracing::collect::with_default(subscriber, || {
             tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
         });
-        let recorded_status_code = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .status_code;
+
+        let recorded_status_code = tracer.with_data(|data| data.builder.status_code);
         assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
     }
 
@@ -843,16 +837,7 @@ mod tests {
             tracing::debug_span!("request", otel.status_message = message);
         });
 
-        let recorded_status_message = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .status_message
-            .clone();
-
+        let recorded_status_message = tracer.with_data(|data| data.builder.status_message.clone());
         assert_eq!(recorded_status_message, Some(message.into()))
     }
 
@@ -875,16 +860,8 @@ mod tests {
             tracing::debug_span!("request", otel.kind = %SpanKind::Server);
         });
 
-        let recorded_trace_id = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .parent_cx
-            .span()
-            .span_context()
-            .trace_id();
+        let recorded_trace_id =
+            tracer.with_data(|data| data.parent_cx.span().span_context().trace_id());
         assert_eq!(recorded_trace_id, trace_id)
     }
 
@@ -901,17 +878,7 @@ mod tests {
             tracing::debug_span!("request");
         });
 
-        let attributes = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .attributes
-            .as_ref()
-            .unwrap()
-            .clone();
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
         let keys = attributes
             .iter()
             .map(|attr| attr.key.as_str())
@@ -930,17 +897,7 @@ mod tests {
             tracing::debug_span!("request");
         });
 
-        let attributes = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .attributes
-            .as_ref()
-            .unwrap()
-            .clone();
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
         let keys = attributes
             .iter()
             .map(|attr| attr.key.as_str())
@@ -963,17 +920,7 @@ mod tests {
             tracing::debug_span!("request");
         });
 
-        let attributes = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .attributes
-            .as_ref()
-            .unwrap()
-            .clone();
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
         let keys = attributes
             .iter()
             .map(|attr| attr.key.as_str())
