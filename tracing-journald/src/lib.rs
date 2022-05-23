@@ -37,6 +37,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
 use std::{fmt, io, io::Write};
@@ -69,12 +70,11 @@ mod socket;
 /// - `DEBUG` => Informational (6)
 /// - `TRACE` => Debug (7)
 ///
-/// Note that the naming scheme differs slightly for the latter half.
-///
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
-/// field is emitted containing the event's target. Enclosing spans are numbered counting up from
-/// the root, and their fields and metadata are included in fields prefixed by `Sn_` where `n` is
-/// that number.
+/// field is emitted containing the event's target.
+///
+/// For events recorded inside spans, an additional `SPAN_NAME` field is emitted with the name of
+/// each of the event's parent spans.
 ///
 /// User-defined fields other than the event `message` field have a prefix applied by default to
 /// prevent collision with standard fields.
@@ -215,16 +215,13 @@ where
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
-        let depth = span.scope().skip(1).count();
-
-        writeln!(buf, "S{}_NAME", depth).unwrap();
+        writeln!(buf, "SPAN_NAME").unwrap();
         put_value(&mut buf, span.name().as_bytes());
-        put_metadata(&mut buf, span.metadata(), Some(depth));
+        put_metadata(&mut buf, span.metadata(), Some("SPAN_"));
 
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
-            depth,
-            prefix: self.field_prefix.as_ref().map(|x| &x[..]),
+            field_prefix: self.field_prefix.as_deref(),
         });
 
         span.extensions_mut().insert(SpanFields(buf));
@@ -232,13 +229,11 @@ where
 
     fn on_record(&self, id: &Id, values: &Record, ctx: Context<C>) {
         let span = ctx.span(id).expect("unknown span");
-        let depth = span.scope().skip(1).count();
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;
         values.record(&mut SpanVisitor {
             buf,
-            depth,
-            prefix: self.field_prefix.as_ref().map(|x| &x[..]),
+            field_prefix: self.field_prefix.as_deref(),
         });
     }
 
@@ -257,6 +252,7 @@ where
         }
 
         // Record event fields
+        put_priority(&mut buf, event.metadata());
         put_metadata(&mut buf, event.metadata(), None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
@@ -264,7 +260,7 @@ where
 
         event.record(&mut EventVisitor::new(
             &mut buf,
-            self.field_prefix.as_ref().map(|x| &x[..]),
+            self.field_prefix.as_deref(),
         ));
 
         // At this point we can't handle the error anymore so just ignore it.
@@ -276,17 +272,15 @@ struct SpanFields(Vec<u8>);
 
 struct SpanVisitor<'a> {
     buf: &'a mut Vec<u8>,
-    depth: usize,
-    prefix: Option<&'a str>,
+    field_prefix: Option<&'a str>,
 }
 
 impl SpanVisitor<'_> {
     fn put_span_prefix(&mut self) {
-        write!(self.buf, "S{}", self.depth).unwrap();
-        if let Some(prefix) = self.prefix {
+        if let Some(prefix) = self.field_prefix {
             self.buf.extend_from_slice(prefix.as_bytes());
+            self.buf.push(b'_');
         }
-        self.buf.push(b'_');
     }
 }
 
@@ -345,33 +339,34 @@ impl Visit for EventVisitor<'_> {
     }
 }
 
-fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, span: Option<usize>) {
-    if span.is_none() {
-        put_field_wellformed(
-            buf,
-            "PRIORITY",
-            match *meta.level() {
-                Level::ERROR => b"3",
-                Level::WARN => b"4",
-                Level::INFO => b"5",
-                Level::DEBUG => b"6",
-                Level::TRACE => b"7",
-            },
-        );
-    }
-    if let Some(n) = span {
-        write!(buf, "S{}_", n).unwrap();
+fn put_priority(buf: &mut Vec<u8>, meta: &Metadata) {
+    put_field_wellformed(
+        buf,
+        "PRIORITY",
+        match *meta.level() {
+            Level::ERROR => b"3",
+            Level::WARN => b"4",
+            Level::INFO => b"5",
+            Level::DEBUG => b"6",
+            Level::TRACE => b"7",
+        },
+    );
+}
+
+fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, prefix: Option<&str>) {
+    if let Some(prefix) = prefix {
+        write!(buf, "{}", prefix).unwrap();
     }
     put_field_wellformed(buf, "TARGET", meta.target().as_bytes());
     if let Some(file) = meta.file() {
-        if let Some(n) = span {
-            write!(buf, "S{}_", n).unwrap();
+        if let Some(prefix) = prefix {
+            write!(buf, "{}", prefix).unwrap();
         }
         put_field_wellformed(buf, "CODE_FILE", file.as_bytes());
     }
     if let Some(line) = meta.line() {
-        if let Some(n) = span {
-            write!(buf, "S{}_", n).unwrap();
+        if let Some(prefix) = prefix {
+            write!(buf, "{}", prefix).unwrap();
         }
         // Text format is safe as a line number can't possibly contain anything funny
         writeln!(buf, "CODE_LINE={}", line).unwrap();

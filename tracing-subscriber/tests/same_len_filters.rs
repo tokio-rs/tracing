@@ -1,9 +1,9 @@
 // These tests include field filters with no targets, so they have to go in a
 // separate file.
 #![cfg(feature = "env-filter")]
-mod support;
-use self::support::*;
+
 use tracing::{self, collect::with_default, Level};
+use tracing_mock::*;
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]

@@ -88,6 +88,13 @@ fn gen_block<B: ToTokens>(
 
     let level = args.level();
 
+    let follows_from = args.follows_from.iter();
+    let follows_from = quote! {
+        #(for cause in #follows_from {
+            __tracing_attr_span.follows_from(cause);
+        })*
+    };
+
     // generate this inside a closure, so we can return early on errors.
     let span = (|| {
         // Pull out the arguments-to-be-skipped first, so we can filter results
@@ -134,6 +141,8 @@ fn gen_block<B: ToTokens>(
         }
 
         let target = args.target();
+
+        let parent = args.parent.iter();
 
         // filter out skipped fields
         let quoted_fields: Vec<_> = param_names
@@ -182,6 +191,7 @@ fn gen_block<B: ToTokens>(
 
         quote!(tracing::span!(
             target: #target,
+            #(parent: #parent,)*
             #level,
             #span_name,
             #(#quoted_fields,)*
@@ -217,7 +227,7 @@ fn gen_block<B: ToTokens>(
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    match async move { #block }.await {
+                    match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
                             #ret_event;
@@ -232,7 +242,7 @@ fn gen_block<B: ToTokens>(
             ),
             (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
-                    match async move { #block }.await {
+                    match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
@@ -244,13 +254,13 @@ fn gen_block<B: ToTokens>(
             ),
             (None, Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    let x = async move { #block }.await;
+                    let x = async move #block.await;
                     #ret_event;
                     x
                 }
             ),
             (None, None) => quote_spanned!(block.span()=>
-                async move { #block }
+                async move #block
             ),
         };
 
@@ -258,6 +268,7 @@ fn gen_block<B: ToTokens>(
             let __tracing_attr_span = #span;
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
+                #follows_from
                 tracing::Instrument::instrument(
                     __tracing_instrument_future,
                     __tracing_attr_span
@@ -284,6 +295,7 @@ fn gen_block<B: ToTokens>(
         let __tracing_attr_guard;
         if tracing::level_enabled!(#level) {
             __tracing_attr_span = #span;
+            #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
     );

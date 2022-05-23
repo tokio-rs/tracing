@@ -4,10 +4,8 @@
 // these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
-pub use self::{
-    directive::{Directive, ParseError},
-    field::BadName as BadFieldName,
-};
+pub use self::{builder::Builder, directive::Directive, field::BadName as BadFieldName};
+mod builder;
 mod directive;
 mod field;
 
@@ -16,7 +14,9 @@ use crate::{
     subscribe::{Context, Subscribe},
     sync::RwLock,
 };
+use directive::ParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use thread_local::ThreadLocal;
 use tracing_core::{
     callsite,
     collect::{Collect, Interest},
@@ -26,6 +26,16 @@ use tracing_core::{
 
 /// A [`Subscriber`] which filters spans and events based on a set of filter
 /// directives.
+///
+/// `EnvFilter` implements both the [`Subscribe`](#impl-Subscribe<C>) and
+/// [`Filter`] traits, so it may be used for both [global filtering][global] and
+/// [per-subscriber filtering][psf], respectively. See [the documentation on
+/// filtering with `Subscriber`s][filtering]  for details.
+///
+/// The [`Targets`] type implements a similar form of filtering, but without the
+/// ability to dynamically enable events based on the current span context, and
+/// without filtering on field values. When these features are not required,
+/// [`Targets`] provides a lighter-weight alternative to [`EnvFilter`].
 ///
 /// # Directives
 ///
@@ -53,9 +63,26 @@ use tracing_core::{
 ///    and will match on any [`Span`] or [`Event`] that has a field with that name.
 ///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
-///    it will match _only_ on that value. Otherwise, this filter acts as a regex on
-///    the `std::fmt::Debug` output from the value.
+///    it will match _only_ on that value. Otherwise, this filter matches the
+///    [`std::fmt::Debug`] output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
+///
+/// When a field value directive (`[{<FIELD NAME>=<FIELD_VALUE>}]=...`) matches a
+/// value's [`std::fmt::Debug`] output (i.e., the field value in the directive
+/// is not a `bool`, `i64`, `u64`, or `f64` literal), the matched pattern may be
+/// interpreted as either a regular expression or as the precise expected
+/// output of the field's [`std::fmt::Debug`] implementation. By default, these
+/// filters are interpreted as regular expressions, but this can be disabled
+/// using the [`Builder::with_regex`] builder method to use precise matching
+/// instead.
+///
+/// When field value filters are interpreted as regular expressions, the
+/// [`regex-automata` crate's regular expression syntax][re-syntax] is
+/// supported.
+///
+/// **Note**: When filters are constructed from potentially untrusted inputs,
+/// [disabling regular expression matching](Builder::with_regex) is strongly
+/// recommended.
 ///
 /// ## Usage Notes
 ///
@@ -73,7 +100,7 @@ use tracing_core::{
 /// - A dash in a target will only appear when being specified explicitly:
 ///   `tracing::info!(target: "target-name", ...);`
 ///
-/// ## Examples
+/// ## Example Syntax
 ///
 /// - `tokio::net=info` will enable all spans or events that:
 ///    - have the `tokio::net` target,
@@ -90,6 +117,69 @@ use tracing_core::{
 ///    - which has a field named `name` with value `bob`,
 ///    - at _any_ level.
 ///
+/// # Examples
+///
+/// Parsing an `EnvFilter` from the [default environment
+/// variable](EnvFilter::from_default_env) (`RUST_LOG`):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::subscriber())
+///     .with(EnvFilter::from_default_env())
+///     .init();
+/// ```
+///
+/// Parsing an `EnvFilter` [from a user-provided environment
+/// variable](EnvFilter::from_env):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// tracing_subscriber::registry()
+///     .with(fmt::subscriber())
+///     .with(EnvFilter::from_env("MYAPP_LOG"))
+///     .init();
+/// ```
+///
+/// Using `EnvFilter` as a [per-subscriber filter][psf] to filter only a single
+/// [subscriber](crate::subscribe::Subscribe):
+///
+/// ```
+/// use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+///
+/// // Parse an `EnvFilter` configuration from the `RUST_LOG`
+/// // environment variable.
+/// let filter = EnvFilter::from_default_env();
+///
+/// // Apply the filter to this subscriber *only*.
+/// let filtered_subscriber = fmt::subscriber().with_filter(filter);
+///
+/// // Some other subscriber, whose output we don't want to filter.
+/// let unfiltered_subscriber = // ...
+///     # fmt::subscriber();
+///
+/// tracing_subscriber::registry()
+///     .with(filtered_subscriber)
+///     .with(unfiltered_subscriber)
+///     .init();
+/// ```
+/// # Constructing `EnvFilter`s
+///
+/// An `EnvFilter` is be constructed by parsing a string containing one or more
+/// directives. The [`EnvFilter::new`] constructor parses an `EnvFilter` from a
+/// string, ignoring any invalid directives, while [`EnvFilter::try_new`]
+/// returns an error if invalid directives are encountered. Similarly, the
+/// [`EnvFilter::from_env`] and [`EnvFilter::try_from_env`] constructors parse
+/// an `EnvFilter` from the value of the provided environment variable, with
+/// lossy and strict validation, respectively.
+///
+/// A [builder](EnvFilter::builder) interface is available to set additional
+/// configuration options prior to parsing an `EnvFilter`. See the [`Builder`
+/// type's documentation](Builder) for details on the options that can be
+/// configured using the builder.
+///
 /// [`Subscriber`]: Subscribe
 /// [`env_logger`]: https://docs.rs/env_logger/0.7.1/env_logger/#enabling-logging
 /// [`Span`]: tracing_core::span
@@ -97,6 +187,11 @@ use tracing_core::{
 /// [`Event`]: tracing_core::Event
 /// [`level`]: tracing_core::Level
 /// [`Metadata`]: tracing_core::Metadata
+/// [`Targets`]: crate::filter::Targets
+/// [`Filter`]: #impl-Filter<C>
+/// [global]: crate::subscribe#global-filtering
+/// [psf]: crate::subscribe#per-subscriber-filtering
+/// [filtering]: crate::subscribe#filtering-with-subscribers
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -105,18 +200,11 @@ pub struct EnvFilter {
     has_dynamics: bool,
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
-}
-
-thread_local! {
-    static SCOPE: RefCell<Vec<LevelFilter>> = RefCell::new(Vec::new());
+    scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
+    regex: bool,
 }
 
 type FieldMap<T> = HashMap<Field, T>;
-
-#[cfg(feature = "smallvec")]
-type FilterVec<T> = smallvec::SmallVec<[T; 8]>;
-#[cfg(not(feature = "smallvec"))]
-type FilterVec<T> = Vec<T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
 /// environment variable.
@@ -138,54 +226,177 @@ impl EnvFilter {
     ///
     pub const DEFAULT_ENV: &'static str = "RUST_LOG";
 
+    // === constructors, etc ===
+
+    /// Returns a [builder] that can be used to configure a new [`EnvFilter`]
+    /// instance.
+    ///
+    /// The [`Builder`] type is used to set additional configurations, such as
+    /// [whether regular expressions are enabled](Builder::with_regex) or [the
+    /// default directive](Builder::with_default_directive) before parsing an
+    /// [`EnvFilter`] from a string or environment variable.
+    ///
+    /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
+    pub fn builder() -> Builder {
+        Builder::default()
+    }
+
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
     /// variable, ignoring any invalid filter directives.
+    ///
+    /// If the environment variable is empty or not set, or if it contains only
+    /// invalid directives, a default directive enabling the [`ERROR`] level is
+    /// added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .from_env_lossy()
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
     pub fn from_default_env() -> Self {
-        Self::from_env(Self::DEFAULT_ENV)
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .from_env_lossy()
     }
 
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, ignoring any invalid filter directives.
+    ///
+    /// If the environment variable is empty or not set, or if it contains only
+    /// invalid directives, a default directive enabling the [`ERROR`] level is
+    /// added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// # let env = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .with_env_var(env)
+    ///     .from_env_lossy()
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
     pub fn from_env<A: AsRef<str>>(env: A) -> Self {
-        env::var(env.as_ref()).map(Self::new).unwrap_or_default()
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .with_env_var(env.as_ref())
+            .from_env_lossy()
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// ignoring any that are invalid.
-    pub fn new<S: AsRef<str>>(dirs: S) -> Self {
-        let directives = dirs.as_ref().split(',').filter_map(|s| match s.parse() {
-            Ok(d) => Some(d),
-            Err(err) => {
-                eprintln!("ignoring `{}`: {}", s, err);
-                None
-            }
-        });
-        Self::from_directives(directives)
+    ///
+    /// If the string is empty or contains only invalid directives, a default
+    /// directive enabling the [`ERROR`] level is added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// # let directives = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .parse_lossy(directives)
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
+    pub fn new<S: AsRef<str>>(directives: S) -> Self {
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .parse_lossy(directives)
     }
 
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// or an error if any are invalid.
-    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, ParseError> {
-        let directives = dirs
-            .as_ref()
-            .split(',')
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self::from_directives(directives))
+    ///
+    /// If the string is empty, a default directive enabling the [`ERROR`] level
+    /// is added.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::ParseError> {
+    /// # let directives = "";
+    /// EnvFilter::builder()
+    ///     .with_default_directive(LevelFilter::ERROR.into())
+    ///     .parse(directives)
+    /// # }
+    /// ```
+    ///
+    /// [`ERROR`]: tracing::Level::ERROR
+    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::ParseError> {
+        Self::builder().parse(dirs)
     }
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
-    /// variable, or an error if the environment variable contains any invalid
-    /// filter directives.
+    /// variable, or an error if the environment variable is unset or contains
+    /// any invalid filter directives.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::EnvFilter;
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
+    /// EnvFilter::builder().try_from_env()
+    /// # }
+    /// ```
     pub fn try_from_default_env() -> Result<Self, FromEnvError> {
-        Self::try_from_env(Self::DEFAULT_ENV)
+        Self::builder().try_from_env()
     }
 
     /// Returns a new `EnvFilter` from the value of the given environment
     /// variable, or an error if the environment variable is unset or contains
     /// any invalid filter directives.
+    ///
+    /// To set additional configuration options prior to parsing the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::EnvFilter;
+    ///
+    /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
+    /// # let env = "";
+    /// EnvFilter::builder().with_env_var(env).try_from_env()
+    /// # }
+    /// ```
     pub fn try_from_env<A: AsRef<str>>(env: A) -> Result<Self, FromEnvError> {
-        env::var(env.as_ref())?.parse().map_err(Into::into)
+        Self::builder().with_env_var(env.as_ref()).try_from_env()
     }
 
     /// Add a filtering directive to this `EnvFilter`.
@@ -207,7 +418,7 @@ impl EnvFilter {
     /// # Examples
     ///
     /// From [`LevelFilter`]:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
     /// let mut filter = EnvFilter::from_default_env()
@@ -222,9 +433,9 @@ impl EnvFilter {
     /// let mut filter = EnvFilter::from_default_env()
     ///     .add_directive(Level::INFO.into());
     /// ```
-    ////
+    ///
     /// Parsed from a string:
-    ////
+    ///
     /// ```rust
     /// use tracing_subscriber::filter::{EnvFilter, Directive};
     ///
@@ -235,7 +446,15 @@ impl EnvFilter {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn add_directive(mut self, directive: Directive) -> Self {
+    /// In the above example, substitute `my_crate`, `module`, etc. with the
+    /// name your target crate/module is imported with. This might be
+    /// different from the package name in Cargo.toml (`-` is replaced by `_`).
+    /// Example, if the package name in your Cargo.toml is `MY-FANCY-LIB`, then
+    /// the corresponding Rust identifier would be `MY_FANCY_LIB`:
+    pub fn add_directive(mut self, mut directive: Directive) -> Self {
+        if !self.regex {
+            directive.deregexify();
+        }
         if let Some(stat) = directive.to_static() {
             self.statics.add(stat)
         } else {
@@ -245,109 +464,141 @@ impl EnvFilter {
         self
     }
 
-    fn from_directives(directives: impl IntoIterator<Item = Directive>) -> Self {
-        use tracing::level_filters::STATIC_MAX_LEVEL;
-        use tracing::Level;
+    // === filtering methods ===
 
-        let directives: Vec<_> = directives.into_iter().collect();
+    /// Returns `true` if this `EnvFilter` would enable the provided `metadata`
+    /// in the current context.
+    ///
+    /// This is equivalent to calling the [`Subscribe::enabled`] or
+    /// [`Filter::enabled`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn enabled<C>(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
+        let level = metadata.level();
 
-        let disabled: Vec<_> = directives
-            .iter()
-            .filter(|directive| directive.level > STATIC_MAX_LEVEL)
-            .collect();
-
-        if !disabled.is_empty() {
-            #[cfg(feature = "ansi_term")]
-            use ansi_term::{Color, Style};
-            // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
-            // has no knowledge of any underlying subscriber or collector, which
-            // may or may not use a `MakeWriter`.
-            let warn = |msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("warning: {}", msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let bold = Style::new().bold();
-                    let mut warning = Color::Yellow.paint("warning");
-                    warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
-                };
-                eprintln!("{}", msg);
-            };
-            let ctx_prefixed = |prefix: &str, msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("note: {}", msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let mut equal = Color::Fixed(21).paint("="); // dark blue
-                    equal.style_ref_mut().is_bold = true;
-                    format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
-                };
-                eprintln!("{}", msg);
-            };
-            let ctx_help = |msg| ctx_prefixed("help:", msg);
-            let ctx_note = |msg| ctx_prefixed("note:", msg);
-            let ctx = |msg: &str| {
-                #[cfg(not(feature = "ansi_term"))]
-                let msg = format!("note: {}", msg);
-                #[cfg(feature = "ansi_term")]
-                let msg = {
-                    let mut pipe = Color::Fixed(21).paint("|");
-                    pipe.style_ref_mut().is_bold = true;
-                    format!(" {} {}", pipe, msg)
-                };
-                eprintln!("{}", msg);
-            };
-            warn("some trace filter directives would enable traces that are disabled statically");
-            for directive in disabled {
-                let target = if let Some(target) = &directive.target {
-                    format!("the `{}` target", target)
-                } else {
-                    "all targets".into()
-                };
-                let level = directive
-                    .level
-                    .into_level()
-                    .expect("=off would not have enabled any filters");
-                ctx(&format!(
-                    "`{}` would enable the {} level for {}",
-                    directive, level, target
-                ));
+        // is it possible for a dynamic filter directive to enable this event?
+        // if not, we can avoid the thread loca'l access + iterating over the
+        // spans in the current scope.
+        if self.has_dynamics && self.dynamics.max_level >= *level {
+            if metadata.is_span() {
+                // If the metadata is a span, see if we care about its callsite.
+                let enabled_by_cs = self
+                    .by_cs
+                    .read()
+                    .ok()
+                    .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
+                    .unwrap_or(false);
+                if enabled_by_cs {
+                    return true;
+                }
             }
-            ctx_note(&format!("the static max level is `{}`", STATIC_MAX_LEVEL));
-            let help_msg = || {
-                let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
-                    Some(Level::TRACE) => unreachable!(
-                        "if the max level is trace, no static filtering features are enabled"
-                    ),
-                    Some(Level::DEBUG) => ("max_level_debug", Level::TRACE),
-                    Some(Level::INFO) => ("max_level_info", Level::DEBUG),
-                    Some(Level::WARN) => ("max_level_warn", Level::INFO),
-                    Some(Level::ERROR) => ("max_level_error", Level::WARN),
-                    None => return ("max_level_off", String::new()),
-                };
-                (feature, format!("{} ", filter))
+
+            let enabled_by_scope = {
+                let scope = self.scope.get_or_default().borrow();
+                for filter in &*scope {
+                    if filter >= level {
+                        return true;
+                    }
+                }
+                false
             };
-            let (feature, earlier_level) = help_msg();
-            ctx_help(&format!(
-                "to enable {}logging, remove the `{}` feature",
-                earlier_level, feature
-            ));
+            if enabled_by_scope {
+                return true;
+            }
         }
 
-        let (dynamics, mut statics) = Directive::make_tables(directives);
-        let has_dynamics = !dynamics.is_empty();
-
-        if statics.is_empty() && !has_dynamics {
-            statics.add(directive::StaticDirective::default());
+        // is it possible for a static filter directive to enable this event?
+        if self.statics.max_level >= *level {
+            // Otherwise, fall back to checking if the callsite is
+            // statically enabled.
+            return self.statics.enabled(metadata);
         }
 
-        Self {
-            statics,
-            dynamics,
-            has_dynamics,
-            by_id: RwLock::new(HashMap::new()),
-            by_cs: RwLock::new(HashMap::new()),
+        false
+    }
+
+    /// Returns an optional hint of the highest [verbosity level][level] that
+    /// this `EnvFilter` will enable.
+    ///
+    /// This is equivalent to calling the [`Subscribe::max_level_hint`] or
+    /// [`Filter::max_level_hint`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    ///
+    /// [level]: tracing_core::metadata::Level
+    pub fn max_level_hint(&self) -> Option<LevelFilter> {
+        if self.dynamics.has_value_filters() {
+            // If we perform any filtering on span field *values*, we will
+            // enable *all* spans, because their field values are not known
+            // until recording.
+            return Some(LevelFilter::TRACE);
+        }
+        std::cmp::max(
+            self.statics.max_level.into(),
+            self.dynamics.max_level.into(),
+        )
+    }
+
+    /// Informs the filter that a new span was created.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_new_span`] or
+    /// [`Filter::on_new_span`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_new_span<C>(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
+        let by_cs = try_lock!(self.by_cs.read());
+        if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
+            let span = cs.to_span_match(attrs);
+            try_lock!(self.by_id.write()).insert(id.clone(), span);
+        }
+    }
+
+    /// Informs the filter that the span with the provided `id` was entered.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_enter`] or
+    /// [`Filter::on_enter`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_enter<C>(&self, id: &span::Id, _: Context<'_, C>) {
+        // XXX: This is where _we_ could push IDs to the stack instead, and use
+        // that to allow changing the filter while a span is already entered.
+        // But that might be much less efficient...
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            self.scope.get_or_default().borrow_mut().push(span.level());
+        }
+    }
+
+    /// Informs the filter that the span with the provided `id` was exited.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_exit`] or
+    /// [`Filter::on_exit`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_exit<C>(&self, id: &span::Id, _: Context<'_, C>) {
+        if self.cares_about_span(id) {
+            self.scope.get_or_default().borrow_mut().pop();
+        }
+    }
+
+    /// Informs the filter that the span with the provided `id` was closed.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_close`] or
+    /// [`Filter::on_close`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope.
+    pub fn on_close<C>(&self, id: span::Id, _: Context<'_, C>) {
+        // If we don't need to acquire a write lock, avoid doing so.
+        if !self.cares_about_span(&id) {
+            return;
+        }
+
+        let mut spans = try_lock!(self.by_id.write());
+        spans.remove(&id);
+    }
+
+    /// Informs the filter that the span with the provided `id` recorded the
+    /// provided field `values`.
+    ///
+    /// This is equivalent to calling the [`Subscribe::on_record`] or
+    /// [`Filter::on_record`] methods on `EnvFilter`'s implementations of those
+    /// traits, but it does not require the trait to be in scope
+    pub fn on_record<C>(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
+        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+            span.record_update(values);
         }
     }
 
@@ -363,9 +614,7 @@ impl EnvFilter {
             Interest::never()
         }
     }
-}
 
-impl<C: Collect> Subscribe<C> for EnvFilter {
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         if self.has_dynamics && metadata.is_span() {
             // If this metadata describes a span, first, check if there is a
@@ -385,105 +634,99 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
             self.base_interest()
         }
     }
+}
 
+impl<C: Collect> Subscribe<C> for EnvFilter {
+    #[inline]
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        EnvFilter::register_callsite(self, metadata)
+    }
+
+    #[inline]
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        if self.dynamics.has_value_filters() {
-            // If we perform any filtering on span field *values*, we will
-            // enable *all* spans, because their field values are not known
-            // until recording.
-            return Some(LevelFilter::TRACE);
-        }
-        std::cmp::max(
-            self.statics.max_level.into(),
-            self.dynamics.max_level.into(),
-        )
+        EnvFilter::max_level_hint(self)
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
-        let level = metadata.level();
-
-        // is it possible for a dynamic filter directive to enable this event?
-        // if not, we can avoid the thread local access + iterating over the
-        // spans in the current scope.
-        if self.has_dynamics && self.dynamics.max_level >= *level {
-            if metadata.is_span() {
-                // If the metadata is a span, see if we care about its callsite.
-                let enabled_by_cs = self
-                    .by_cs
-                    .read()
-                    .ok()
-                    .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
-                    .unwrap_or(false);
-                if enabled_by_cs {
-                    return true;
-                }
-            }
-
-            let enabled_by_scope = SCOPE.with(|scope| {
-                for filter in scope.borrow().iter() {
-                    if filter >= level {
-                        return true;
-                    }
-                }
-                false
-            });
-            if enabled_by_scope {
-                return true;
-            }
-        }
-
-        // is it possible for a static filter directive to enable this event?
-        if self.statics.max_level >= *level {
-            // Otherwise, fall back to checking if the callsite is
-            // statically enabled.
-            return self.statics.enabled(metadata);
-        }
-
-        false
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+        self.enabled(metadata, ctx)
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
-        let by_cs = try_lock!(self.by_cs.read());
-        if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
-            let span = cs.to_span_match(attrs);
-            try_lock!(self.by_id.write()).insert(id.clone(), span);
-        }
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+        self.on_new_span(attrs, id, ctx)
     }
 
-    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            span.record_update(values);
-        }
+    #[inline]
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+        self.on_record(id, values, ctx);
     }
 
-    fn on_enter(&self, id: &span::Id, _: Context<'_, C>) {
-        // XXX: This is where _we_ could push IDs to the stack instead, and use
-        // that to allow changing the filter while a span is already entered.
-        // But that might be much less efficient...
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            SCOPE.with(|scope| scope.borrow_mut().push(span.level()));
-        }
+    #[inline]
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+        self.on_enter(id, ctx);
     }
 
-    fn on_exit(&self, id: &span::Id, _: Context<'_, C>) {
-        if self.cares_about_span(id) {
-            SCOPE.with(|scope| scope.borrow_mut().pop());
-        }
+    #[inline]
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+        self.on_exit(id, ctx);
     }
 
-    fn on_close(&self, id: span::Id, _: Context<'_, C>) {
-        // If we don't need to acquire a write lock, avoid doing so.
-        if !self.cares_about_span(&id) {
-            return;
+    #[inline]
+    fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+        self.on_close(id, ctx);
+    }
+}
+
+feature! {
+    #![all(feature = "registry", feature = "std")]
+    use crate::subscribe::Filter;
+
+    impl<C> Filter<C> for EnvFilter {
+        #[inline]
+        fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
+            self.enabled(meta, ctx.clone())
         }
 
-        let mut spans = try_lock!(self.by_id.write());
-        spans.remove(&id);
+        #[inline]
+        fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+            self.register_callsite(meta)
+        }
+
+        #[inline]
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            EnvFilter::max_level_hint(self)
+        }
+
+        #[inline]
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {
+            self.on_new_span(attrs, id, ctx)
+        }
+
+        #[inline]
+        fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, C>) {
+            self.on_record(id, values, ctx);
+        }
+
+        #[inline]
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
+            self.on_enter(id, ctx);
+        }
+
+        #[inline]
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
+            self.on_exit(id, ctx);
+        }
+
+        #[inline]
+        fn on_close(&self, id: span::Id, ctx: Context<'_, C>) {
+            self.on_close(id, ctx);
+        }
     }
 }
 
 impl FromStr for EnvFilter {
-    type Err = ParseError;
+    type Err = directive::ParseError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
         Self::try_new(spec)
@@ -501,7 +744,7 @@ where
 
 impl Default for EnvFilter {
     fn default() -> Self {
-        Self::from_directives(std::iter::empty())
+        Builder::default().from_directives(std::iter::empty())
     }
 }
 
@@ -534,8 +777,8 @@ impl fmt::Display for EnvFilter {
 
 // ===== impl FromEnvError =====
 
-impl From<ParseError> for FromEnvError {
-    fn from(p: ParseError) -> Self {
+impl From<directive::ParseError> for FromEnvError {
+    fn from(p: directive::ParseError) -> Self {
         Self {
             kind: ErrorKind::Parse(p),
         }
@@ -707,5 +950,42 @@ mod tests {
         let f2: EnvFilter = format!("{}", f1).parse().unwrap();
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
+    }
+
+    #[test]
+    fn size_of_filters() {
+        fn print_sz(s: &str) {
+            let filter = s.parse::<EnvFilter>().expect("filter should parse");
+            println!(
+                "size_of_val({:?})\n -> {}B",
+                s,
+                std::mem::size_of_val(&filter)
+            );
+        }
+
+        print_sz("info");
+
+        print_sz("foo=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off",
+        );
+
+        print_sz("[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug");
+
+        print_sz(
+            "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
+            crate2=debug,crate3=trace,crate3::mod2::mod1=off,[span1{foo=1}]=error,\
+            [span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug",
+        );
+    }
+
+    #[test]
+    fn parse_empty_string() {
+        // There is no corresponding test for [`Builder::parse_lossy`] as failed
+        // parsing does not produce any observable side effects. If this test fails
+        // check that [`Builder::parse_lossy`] is behaving correctly as well.
+        assert!(EnvFilter::builder().parse("").is_ok());
     }
 }

@@ -68,7 +68,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
-    _inner: PhantomData<C>,
+    _inner: PhantomData<fn(C)>,
 }
 
 impl<C> Subscriber<C> {
@@ -155,6 +155,56 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             make_writer,
             _inner: self._inner,
         }
+    }
+
+    /// Borrows the [writer] for this subscriber.
+    ///
+    /// [writer]: MakeWriter
+    pub fn writer(&self) -> &W {
+        &self.make_writer
+    }
+
+    /// Mutably borrows the [writer] for this subscriber.
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tracing::info;
+    /// # use tracing_subscriber::{fmt,reload,Registry,prelude::*};
+    /// # fn non_blocking<T: std::io::Write>(writer: T) -> (fn() -> std::io::Stdout) {
+    /// #   std::io::stdout
+    /// # }
+    /// # fn main() {
+    /// let subscriber = fmt::subscriber().with_writer(non_blocking(std::io::stderr()));
+    /// let (subscriber, reload_handle) = reload::Subscriber::new(subscriber);
+    /// #
+    /// # // specifying the Registry type is required
+    /// # let _: &reload::Handle<fmt::Subscriber<Registry, _, _, _>> = &reload_handle;
+    /// #
+    /// info!("This will be logged to stderr");
+    /// reload_handle.modify(|subscriber| *subscriber.writer_mut() = non_blocking(std::io::stdout()));
+    /// info!("This will be logged to stdout");
+    /// # }
+    /// ```
+    ///
+    /// [writer]: MakeWriter
+    pub fn writer_mut(&mut self) -> &mut W {
+        &mut self.make_writer
+    }
+
+    /// Sets whether this subscriber should use ANSI terminal formatting
+    /// escape codes (such as colors).
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method when changing
+    /// the writer.
+    #[cfg(feature = "ansi")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    pub fn set_ansi(&mut self, ansi: bool) {
+        self.is_ansi = ansi;
     }
 
     /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
@@ -331,7 +381,7 @@ where
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
@@ -345,7 +395,7 @@ where
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [name]: std::thread#naming-threads
     pub fn with_thread_names(

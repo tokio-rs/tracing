@@ -7,7 +7,7 @@ use tracing::{debug, error, info, span, trace, warn, Level};
 // every time the instrumented function is called. The span is named after
 // the function or method. Paramaters passed to the function are recorded as fields.
 #[tracing::instrument]
-pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
+pub fn shave(yak: usize) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // this creates an event at the TRACE log level with two fields:
     // - `excitement`, with the key "excitement" and the value "yay!"
     // - `message`, with the key "message" and the value "hello! I'm gonna shave a yak."
