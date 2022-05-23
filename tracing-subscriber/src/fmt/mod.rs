@@ -666,7 +666,7 @@ where
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
@@ -680,7 +680,7 @@ where
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
