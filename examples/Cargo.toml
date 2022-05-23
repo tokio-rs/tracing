@@ -56,5 +56,5 @@ opentelemetry = { version = "0.17", default-features = false, features = ["trace
 opentelemetry-jaeger = "0.16"
 
 # fmt examples
-snafu = "0.6.10"
+snafu = "0.7.1"
 thiserror = "1.0.26"
