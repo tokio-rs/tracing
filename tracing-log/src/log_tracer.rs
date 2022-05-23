@@ -28,15 +28,24 @@ use crate::AsTrace;
 pub use log::SetLoggerError;
 use tracing_core::dispatcher;
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 /// A simple "logger" that converts all log records into `tracing` `Event`s.
 #[derive(Debug)]
 pub struct LogTracer {
+    #[cfg(feature = "alloc")]
     ignore_crates: Box<[String]>,
 }
 
 /// Configures a new `LogTracer`.
 #[derive(Debug)]
 pub struct Builder {
+    #[cfg(feature = "alloc")]
     ignore_crates: Vec<String>,
     filter: log::LevelFilter,
     #[cfg(all(feature = "interest-cache", feature = "std"))]
@@ -97,6 +106,7 @@ impl LogTracer {
     /// [`init_with_filter`]: .#method.init_with_filter
     pub fn new() -> Self {
         Self {
+            #[cfg(feature = "alloc")]
             ignore_crates: Vec::new().into_boxed_slice(),
         }
     }
@@ -177,13 +187,16 @@ impl log::Log for LogTracer {
 
         // Okay, it wasn't disabled by the max level — do we have any specific
         // modules to ignore?
-        if !self.ignore_crates.is_empty() {
-            // If we are ignoring certain module paths, ensure that the metadata
-            // does not start with one of those paths.
-            let target = metadata.target();
-            for ignored in &self.ignore_crates[..] {
-                if target.starts_with(ignored) {
-                    return false;
+        #[cfg(feature = "alloc")]
+        {
+            if !self.ignore_crates.is_empty() {
+                // If we are ignoring certain module paths, ensure that the metadata
+                // does not start with one of those paths.
+                let target = metadata.target();
+                for ignored in &self.ignore_crates[..] {
+                    if target.starts_with(ignored) {
+                        return false;
+                    }
                 }
             }
         }
@@ -223,6 +236,8 @@ impl Builder {
         Self { filter, ..self }
     }
 
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     /// Configures the `LogTracer` to ignore all log records whose target
     /// starts with the given string.
     ///
@@ -234,6 +249,8 @@ impl Builder {
         self
     }
 
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     /// Configures the `LogTracer` to ignore all log records whose target
     /// starts with any of the given the given strings.
     ///
@@ -280,8 +297,8 @@ impl Builder {
     /// as the default logger.
     ///
     /// Setting a global logger can only be done once.
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     #[allow(unused_mut)]
     pub fn init(mut self) -> Result<(), SetLoggerError> {
         #[cfg(all(feature = "interest-cache", feature = "std"))]
@@ -289,7 +306,7 @@ impl Builder {
 
         let ignore_crates = self.ignore_crates.into_boxed_slice();
         let logger = Box::new(LogTracer { ignore_crates });
-        log::set_boxed_logger(logger)?;
+        log::set_logger(Box::leak(logger))?;
         log::set_max_level(self.filter);
         Ok(())
     }
@@ -298,6 +315,7 @@ impl Builder {
 impl Default for Builder {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "alloc")]
             ignore_crates: Vec::new(),
             filter: log::LevelFilter::max(),
             #[cfg(all(feature = "interest-cache", feature = "std"))]

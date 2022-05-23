@@ -106,6 +106,7 @@
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -128,34 +129,33 @@
     unused_parens,
     while_true
 )]
-use lazy_static::lazy_static;
 
-use std::{fmt, io};
+#[cfg(all(feature = "alloc", feature = "log-tracer"))]
+extern crate alloc;
 
 use tracing_core::{
     callsite::{self, Callsite},
-    dispatcher,
     field::{self, Field, Visit},
     identify_callsite,
     metadata::{Kind, Level},
     subscriber, Event, Metadata,
 };
 
-#[cfg(feature = "log-tracer")]
-#[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
+#[cfg(all(feature = "log-tracer"))]
+#[cfg_attr(docsrs, doc(all(feature = "log-tracer")))]
 pub mod log_tracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
+#[cfg(all(feature = "trace-logger", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "trace-logger", feature = "std"))))]
 pub mod trace_logger;
 
-#[cfg(feature = "log-tracer")]
+#[cfg(all(feature = "log-tracer"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
+#[cfg(all(feature = "trace-logger", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "trace-logger", feature = "std"))))]
 #[deprecated(
     since = "0.1.1",
     note = "use the `tracing` crate's \"log\" feature flag instead"
@@ -180,17 +180,20 @@ mod interest_cache;
 )]
 pub use crate::interest_cache::InterestCacheConfig;
 
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 /// Format a log record as a trace event in the current span.
-pub fn format_trace(record: &log::Record<'_>) -> io::Result<()> {
+pub fn format_trace(record: &log::Record<'_>) -> std::io::Result<()> {
     dispatch_record(record);
     Ok(())
 }
 
+#[cfg(any(feature = "std", feature = "log-tracer"))]
 // XXX(eliza): this is factored out so that we don't have to deal with the pub
 // function `format_trace`'s `Result` return type...maybe we should get rid of
 // that in 0.2...
 pub(crate) fn dispatch_record(record: &log::Record<'_>) {
-    dispatcher::get_default(|dispatch| {
+    tracing_core::dispatcher::get_default(|dispatch| {
         let filter_meta = record.as_trace();
         if !dispatch.enabled(&filter_meta) {
             return;
@@ -268,6 +271,7 @@ impl<'a> AsTrace for log::Metadata<'a> {
 }
 
 struct Fields {
+    #[allow(dead_code)]
     message: field::Field,
     target: field::Field,
     module: field::Field,
@@ -283,22 +287,31 @@ static FIELD_NAMES: &[&str] = &[
     "log.line",
 ];
 
-impl Fields {
-    fn new(cs: &'static dyn Callsite) -> Self {
-        let fieldset = cs.metadata().fields();
-        let message = fieldset.field("message").unwrap();
-        let target = fieldset.field("log.target").unwrap();
-        let module = fieldset.field("log.module_path").unwrap();
-        let file = fieldset.field("log.file").unwrap();
-        let line = fieldset.field("log.line").unwrap();
+macro_rules! fields {
+    ($cs:ident) => {
         Fields {
-            message,
-            target,
-            module,
-            file,
-            line,
+            message: Field::new_unchecked(
+                0,
+                field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            ),
+            target: Field::new_unchecked(
+                1,
+                field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            ),
+            module: Field::new_unchecked(
+                2,
+                field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            ),
+            file: Field::new_unchecked(
+                3,
+                field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            ),
+            line: Field::new_unchecked(
+                4,
+                field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
+            ),
         }
-    }
+    };
 }
 
 macro_rules! log_cs {
@@ -346,21 +359,19 @@ log_cs!(
     ErrorCallsite
 );
 
-lazy_static! {
-    static ref TRACE_FIELDS: Fields = Fields::new(&TRACE_CS);
-    static ref DEBUG_FIELDS: Fields = Fields::new(&DEBUG_CS);
-    static ref INFO_FIELDS: Fields = Fields::new(&INFO_CS);
-    static ref WARN_FIELDS: Fields = Fields::new(&WARN_CS);
-    static ref ERROR_FIELDS: Fields = Fields::new(&ERROR_CS);
-}
+static TRACE_FIELDS: Fields = fields!(TRACE_CS);
+static DEBUG_FIELDS: Fields = fields!(DEBUG_CS);
+static INFO_FIELDS: Fields = fields!(INFO_CS);
+static WARN_FIELDS: Fields = fields!(WARN_CS);
+static ERROR_FIELDS: Fields = fields!(ERROR_CS);
 
 fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
     match level {
-        Level::TRACE => (&TRACE_CS, &*TRACE_FIELDS),
-        Level::DEBUG => (&DEBUG_CS, &*DEBUG_FIELDS),
-        Level::INFO => (&INFO_CS, &*INFO_FIELDS),
-        Level::WARN => (&WARN_CS, &*WARN_FIELDS),
-        Level::ERROR => (&ERROR_CS, &*ERROR_FIELDS),
+        Level::TRACE => (&TRACE_CS, &TRACE_FIELDS),
+        Level::DEBUG => (&DEBUG_CS, &DEBUG_FIELDS),
+        Level::INFO => (&INFO_CS, &INFO_FIELDS),
+        Level::WARN => (&WARN_CS, &WARN_FIELDS),
+        Level::ERROR => (&ERROR_CS, &ERROR_FIELDS),
     }
 }
 
@@ -372,11 +383,11 @@ fn loglevel_to_cs(
     &'static Metadata<'static>,
 ) {
     match level {
-        log::Level::Trace => (&TRACE_CS, &*TRACE_FIELDS, &TRACE_META),
-        log::Level::Debug => (&DEBUG_CS, &*DEBUG_FIELDS, &DEBUG_META),
-        log::Level::Info => (&INFO_CS, &*INFO_FIELDS, &INFO_META),
-        log::Level::Warn => (&WARN_CS, &*WARN_FIELDS, &WARN_META),
-        log::Level::Error => (&ERROR_CS, &*ERROR_FIELDS, &ERROR_META),
+        log::Level::Trace => (&TRACE_CS, &TRACE_FIELDS, &TRACE_META),
+        log::Level::Debug => (&DEBUG_CS, &DEBUG_FIELDS, &DEBUG_META),
+        log::Level::Info => (&INFO_CS, &INFO_FIELDS, &INFO_META),
+        log::Level::Warn => (&WARN_CS, &WARN_FIELDS, &WARN_META),
+        log::Level::Error => (&ERROR_CS, &ERROR_FIELDS, &ERROR_META),
     }
 }
 
@@ -544,7 +555,7 @@ impl<'a> LogVisitor<'a> {
 }
 
 impl<'a> Visit for LogVisitor<'a> {
-    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
+    fn record_debug(&mut self, _field: &Field, _value: &dyn core::fmt::Debug) {}
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field == &self.fields.line {

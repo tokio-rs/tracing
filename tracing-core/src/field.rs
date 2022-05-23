@@ -732,6 +732,11 @@ impl Field {
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
     }
+
+    #[doc(hidden)]
+    pub const fn new_unchecked(i: usize, fields: FieldSet) -> Self {
+        Field { i, fields }
+    }
 }
 
 impl fmt::Display for Field {
