@@ -826,6 +826,8 @@ macro_rules! event {
 /// }
 /// ```
 ///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! event_enabled {
     ($($rest:tt)*)=> (
@@ -858,6 +860,8 @@ macro_rules! event_enabled {
 /// }
 /// ```
 ///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! span_enabled {
     ($($rest:tt)*)=> (
@@ -953,7 +957,8 @@ macro_rules! span_enabled {
 /// [`Metadata`]: crate::Metadata
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
-///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! enabled {
     (kind: $kind:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
