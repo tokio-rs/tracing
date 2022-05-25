@@ -909,6 +909,7 @@ impl<T> Format<Json, T> {
         self
     }
 
+    /// Sets `timestamp` field name.
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn timestamp_name(mut self, name: &'static str) -> Format<Json, T> {
@@ -916,6 +917,7 @@ impl<T> Format<Json, T> {
         self
     }
 
+    /// Sets `target` field name.
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn target_name(mut self, name: &'static str) -> Format<Json, T> {

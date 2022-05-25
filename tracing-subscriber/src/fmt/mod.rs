@@ -775,6 +775,22 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
         }
     }
 
+    /// Sets `timestamp` field name.
+    /// For example:
+    /// ```rust
+    /// tracing_subscriber::fmt()
+    ///     .json()
+    ///     .timestamp_name("time")
+    ///     .init();
+    ///
+    /// tracing::info!("Hello world!");
+    /// ```
+    ///
+    /// will produce:
+    ///
+    /// ```json
+    /// {"time":"2022-05-25T17:32:53.604269Z","level":"INFO","fields":{"message":"Hello"},"target":"playground"}
+    /// ```
     pub fn timestamp_name(
         self,
         name: &'static str,
@@ -785,6 +801,22 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
         }
     }
 
+    /// Sets `target` field name.
+    /// For example:
+    /// ```rust
+    /// tracing_subscriber::fmt()
+    ///     .json()
+    ///     .target_name("from")
+    ///     .init();
+    ///
+    /// tracing::info!("Hello world!");
+    /// ```
+    ///
+    /// will produce:
+    ///
+    /// ```json
+    /// {"timestamp":"2022-05-25T17:32:53.604269Z","level":"INFO","fields":{"message":"Hello"},"from":"playground"}
+    /// ```
     pub fn target_name(
         self,
         name: &'static str,

@@ -514,6 +514,7 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
         }
     }
 
+    /// Sets `timestamp` field name.
     pub fn timestamp_name(
         self,
         name: &'static str,
@@ -525,6 +526,7 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
         }
     }
 
+    /// Sets `target` field name.
     pub fn target_name(
         self,
         name: &'static str,
