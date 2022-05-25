@@ -95,10 +95,12 @@ impl Json {
         self.display_span_list = display_span_list;
     }
 
+    /// Sets `timestamp` field name.
     pub fn timestamp_name(&mut self, name: &'static str) {
         self.timestamp_name = name;
     }
 
+    /// Sets `target` field name.
     pub fn target_name(&mut self, name: &'static str) {
         self.target_name = name;
     }
