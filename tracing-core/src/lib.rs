@@ -294,6 +294,7 @@ pub mod dispatch;
 pub mod event;
 pub mod field;
 pub mod metadata;
+pub mod metric;
 mod parent;
 pub mod span;
 
@@ -303,6 +304,7 @@ pub use self::{
     collect::Collect,
     dispatch::Dispatch,
     event::Event,
+    metric::Metric,
     field::Field,
     metadata::{Level, LevelFilter, Metadata},
 };
