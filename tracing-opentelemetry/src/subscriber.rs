@@ -27,7 +27,7 @@ const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetrySubscriber<C, T> {
     tracer: T,
-    event_location: bool,
+    location: bool,
     tracked_inactivity: bool,
     get_context: WithContext,
     _registry: marker::PhantomData<C>,
@@ -290,7 +290,7 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetrySubscriber {
             tracer,
-            event_location: true,
+            location: true,
             tracked_inactivity: true,
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
@@ -329,20 +329,32 @@ where
     {
         OpenTelemetrySubscriber {
             tracer,
-            event_location: self.event_location,
+            location: self.location,
             tracked_inactivity: self.tracked_inactivity,
             get_context: WithContext(OpenTelemetrySubscriber::<C, Tracer>::get_context),
             _registry: self._registry,
         }
     }
 
+    /// Sets whether or not span and event metadata should include detailed
+    /// location  information, such as the file, module and line number.
+    ///
+    /// By default, locations are enabled.
+    pub fn with_location(self, location: bool) -> Self {
+        Self { location, ..self }
+    }
+
     /// Sets whether or not event span's metadata should include detailed location
     /// information, such as the file, module and line number.
     ///
     /// By default, event locations are enabled.
+    #[deprecated(
+        since = "0.17.3",
+        note = "renamed to `OpenTelemetrySubscriber::with_location`"
+    )]
     pub fn with_event_location(self, event_location: bool) -> Self {
         Self {
-            event_location,
+            location: event_location,
             ..self
         }
     }
@@ -445,18 +457,20 @@ where
             .attributes
             .get_or_insert(Vec::with_capacity(attrs.fields().len() + 3));
 
-        let meta = attrs.metadata();
+        if self.location {
+            let meta = attrs.metadata();
 
-        if let Some(filename) = meta.file() {
-            builder_attrs.push(KeyValue::new("code.filepath", filename));
-        }
+            if let Some(filename) = meta.file() {
+                builder_attrs.push(KeyValue::new("code.filepath", filename));
+            }
 
-        if let Some(module) = meta.module_path() {
-            builder_attrs.push(KeyValue::new("code.namespace", module));
-        }
+            if let Some(module) = meta.module_path() {
+                builder_attrs.push(KeyValue::new("code.namespace", module));
+            }
 
-        if let Some(line) = meta.line() {
-            builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+            if let Some(line) = meta.line() {
+                builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+            }
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -579,7 +593,7 @@ where
                     builder.status_code = Some(otel::StatusCode::Error);
                 }
 
-                if self.event_location {
+                if self.location {
                     #[cfg(not(feature = "tracing-log"))]
                     let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
                     let (file, module) = match &normalized_meta {
@@ -904,5 +918,68 @@ mod tests {
             .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
+    }
+
+    #[test]
+    fn includes_span_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry()
+            .with(subscriber().with_tracer(tracer.clone()).with_location(true));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+        let keys = attributes
+            .iter()
+            .map(|attr| attr.key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(keys.contains(&"code.filepath"));
+        assert!(keys.contains(&"code.namespace"));
+        assert!(keys.contains(&"code.lineno"));
+    }
+
+    #[test]
+    fn excludes_span_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_location(false),
+        );
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+        let keys = attributes
+            .iter()
+            .map(|attr| attr.key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(!keys.contains(&"code.filepath"));
+        assert!(!keys.contains(&"code.namespace"));
+        assert!(!keys.contains(&"code.lineno"));
     }
 }
