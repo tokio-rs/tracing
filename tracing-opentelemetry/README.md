@@ -66,7 +66,7 @@ use tracing_subscriber::Registry;
 
 fn main() {
     // Install a new OpenTelemetry trace pipeline
-    let (tracer, _uninstall) = stdout::new_pipeline().install();
+    let tracer = opentelemetry::sdk::export::trace::stdout::new_pipeline().install_simple();
 
     // Create a tracing subscriber with the configured tracer
     let telemetry = tracing_opentelemetry::subscriber().with_tracer(tracer);
