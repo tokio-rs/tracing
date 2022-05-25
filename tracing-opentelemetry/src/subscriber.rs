@@ -389,6 +389,7 @@ where
     /// [OpenTelemetry semantic conventions for threads][conv].
     ///
     /// By default, thread attributes are enabled.
+    ///
     /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#general-thread-attributes
     pub fn with_threads(self, threads: bool) -> Self {
         Self {
