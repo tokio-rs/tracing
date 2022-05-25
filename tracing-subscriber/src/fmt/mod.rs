@@ -774,6 +774,26 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
             inner: self.inner.with_span_list(display_span_list),
         }
     }
+
+    pub fn timestamp_name(
+        self,
+        name: &'static str,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.timestamp_name(name),
+        }
+    }
+
+    pub fn target_name(
+        self,
+        name: &'static str,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.target_name(name),
+        }
+    }
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>

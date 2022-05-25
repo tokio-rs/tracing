@@ -513,6 +513,28 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
             ..self
         }
     }
+
+    pub fn timestamp_name(
+        self,
+        name: &'static str,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.timestamp_name(name),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
+
+    pub fn target_name(
+        self,
+        name: &'static str,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.target_name(name),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
 }
 
 impl<C, N, E, W> Subscriber<C, N, E, W> {

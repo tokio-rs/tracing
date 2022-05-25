@@ -908,6 +908,20 @@ impl<T> Format<Json, T> {
         self.format.with_span_list(display_span_list);
         self
     }
+
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn timestamp_name(mut self, name: &'static str) -> Format<Json, T> {
+        self.format.timestamp_name(name);
+        self
+    }
+
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn target_name(mut self, name: &'static str) -> Format<Json, T> {
+        self.format.target_name(name);
+        self
+    }
 }
 
 impl<C, N, T> FormatEvent<C, N> for Format<Full, T>

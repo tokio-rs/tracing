@@ -74,6 +74,8 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) timestamp_name: &'static str,
+    pub(crate) target_name: &'static str,
 }
 
 impl Json {
@@ -91,6 +93,14 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    pub fn timestamp_name(&mut self, name: &'static str) {
+        self.timestamp_name = name;
+    }
+
+    pub fn target_name(&mut self, name: &'static str) {
+        self.target_name = name;
     }
 }
 
@@ -224,7 +234,7 @@ where
             let mut serializer = serializer.serialize_map(None)?;
 
             if self.display_timestamp {
-                serializer.serialize_entry("timestamp", &timestamp)?;
+                serializer.serialize_entry(self.format.timestamp_name, &timestamp)?;
             }
 
             if self.display_level {
@@ -254,7 +264,7 @@ where
             };
 
             if self.display_target {
-                serializer.serialize_entry("target", meta.target())?;
+                serializer.serialize_entry(self.format.target_name, meta.target())?;
             }
 
             if self.display_filename {
@@ -318,6 +328,8 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            timestamp_name: "timestamp",
+            target_name: "target",
         }
     }
 }
