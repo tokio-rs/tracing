@@ -137,7 +137,7 @@
 //! instrumentation.
 use crate::{
     collect::{self, Collect, NoCollector},
-    span, Event, LevelFilter, Metadata,
+    span, Event, LevelFilter, Metadata, Metric,
 };
 
 use core::{
@@ -685,6 +685,19 @@ impl Dispatch {
         self.collector().event(event)
     }
 
+    /// Records that a [`Metric`] has occurred.
+    ///
+    /// This calls the [`metric`] function on the [`Collect`] that this
+    /// `Dispatch` forwards to.
+    ///
+    /// [`Metric`]: super::metric::Metric
+    /// [`Collect`]: super::collect::Collect
+    /// [`metric`]: super::collect::Collect::metric
+    #[inline]
+    pub fn metric(&self, metric: &Metric<'_>) {
+        self.collector().metric(metric)
+    }
+
     /// Records that a span has been can_enter.
     ///
     /// This calls the [`enter`] function on the [`Collect`] that this
@@ -1006,6 +1019,8 @@ mod test {
                 Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
             }
 
+            fn metric(&self, _: &Metric<'_>) {}
+
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
@@ -1058,6 +1073,8 @@ mod test {
 
             fn event(&self, _: &Event<'_>) {}
 
+            fn metric(&self, _: &Metric<'_>) {}
+
             fn enter(&self, _: &span::Id) {}
 
             fn exit(&self, _: &span::Id) {}
@@ -1094,6 +1111,8 @@ mod test {
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
             fn event(&self, _: &Event<'_>) {}
+
+            fn metric(&self, _: &Metric<'_>) {}
 
             fn enter(&self, _: &span::Id) {}
 

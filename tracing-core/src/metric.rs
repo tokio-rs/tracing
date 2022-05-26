@@ -10,11 +10,11 @@ use crate::{field, Metadata};
 /// two key differences:
 /// - `Metric`s exist _within the context of a [span]_. Unlike log lines, they
 ///   may be located within the trace tree, allowing visibility into the
-///   _temporal_ context in which the Metric occurred, as well as the source
+///   _temporal_ context in which the metric occurred, as well as the source
 ///   code location.
 /// - Like spans, `Metric`s have structured key-value data known as _[fields]_,
 ///   which may include textual message. In general, a majority of the data
-///   associated with an Metric should be in the Metric's fields rather than in
+///   associated with an metric should be in the metric's fields rather than in
 ///   the textual message, as the fields are more structured.
 ///
 /// [span]: super::span
@@ -30,9 +30,9 @@ impl<'a> Metric<'a> {
     /// Constructs a new `Metric` with the specified metadata and set of values,
     /// and observes it with the current collector.
     pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
-        let Metric = Metric::new(metadata, fields);
+        let metric = Metric::new(metadata, fields);
         crate::dispatch::get_default(|current| {
-            current.Metric(&Metric);
+            current.metric(&metric);
         });
     }
 
@@ -73,9 +73,9 @@ impl<'a> Metric<'a> {
         metadata: &'static Metadata<'static>,
         fields: &'a field::ValueSet<'_>,
     ) {
-        let Metric = Self::new_child_of(parent, metadata, fields);
+        let metric = Self::new_child_of(parent, metadata, fields);
         crate::dispatch::get_default(|current| {
-            current.Metric(&Metric);
+            current.metric(&metric);
         });
     }
 
@@ -99,25 +99,25 @@ impl<'a> Metric<'a> {
         self.metadata
     }
 
-    /// Returns true if the new Metric should be a root.
+    /// Returns true if the new metric should be a root.
     pub fn is_root(&self) -> bool {
         matches!(self.parent, Parent::Root)
     }
 
-    /// Returns true if the new Metric's parent should be determined based on the
+    /// Returns true if the new metric's parent should be determined based on the
     /// current context.
     ///
     /// If this is true and the current thread is currently inside a span, then
-    /// that span should be the new Metric's parent. Otherwise, if the current
-    /// thread is _not_ inside a span, then the new Metric will be the root of its
+    /// that span should be the new metric's parent. Otherwise, if the current
+    /// thread is _not_ inside a span, then the new metric will be the root of its
     /// own trace tree.
     pub fn is_contextual(&self) -> bool {
         matches!(self.parent, Parent::Current)
     }
 
-    /// Returns the new Metric's explicitly-specified parent, if there is one.
+    /// Returns the new metric's explicitly-specified parent, if there is one.
     ///
-    /// Otherwise (if the new Metric is a root or is a child of the current span),
+    /// Otherwise (if the new metric is a root or is a child of the current span),
     /// returns `None`.
     pub fn parent(&self) -> Option<&Id> {
         match self.parent {

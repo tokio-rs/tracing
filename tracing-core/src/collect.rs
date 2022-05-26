@@ -1,5 +1,5 @@
 //! Collectors collect and record trace data.
-use crate::{span, Event, LevelFilter, Metadata};
+use crate::{span, Event, LevelFilter, Metadata, Metric};
 
 use core::any::{Any, TypeId};
 use core::ptr::NonNull;
@@ -308,6 +308,26 @@ pub trait Collect: 'static {
     /// [`dispatch` method]: super::event::Event::dispatch
     fn event(&self, event: &Event<'_>);
 
+    /// Records that a [`Metric`] has occurred.
+    //
+    /// This method will be invoked when an Metric is constructed by
+    /// the `Metric`'s [`dispatch` method]. For example, this happens internally
+    /// when an metric macro from `tracing` is called.
+    ///
+    /// The key difference between this method and `record` is that `record` is
+    /// called when a value is recorded for a field defined by a span,
+    /// while `metric` is called when a new metric occurs.
+    ///
+    /// The provided `Metric` struct contains any field values attached to the
+    /// metric. The collector may pass a [visitor] to the `Metric`'s
+    /// [`record` method] to record these values.
+    ///
+    /// [`Metric`]: super::metric::Metric
+    /// [visitor]: super::field::Visit
+    /// [`record` method]: super::metric::Metric::record
+    /// [`dispatch` method]: super::metric::Metric::dispatch
+    fn metric(&self, metric: &Metric<'_>);
+
     /// Records that a span has been entered.
     ///
     /// When entering a span, this method is called to notify the collector
@@ -588,6 +608,8 @@ impl Collect for NoCollector {
 
     fn event(&self, _event: &Event<'_>) {}
 
+    fn metric(&self, _event: &Metric<'_>) {}
+
     fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
@@ -640,6 +662,11 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
     #[inline]
     fn event(&self, event: &Event<'_>) {
         self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn metric(&self, metric: &Metric<'_>) {
+        self.as_ref().metric(metric)
     }
 
     #[inline]
@@ -711,6 +738,11 @@ impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
     #[inline]
     fn event(&self, event: &Event<'_>) {
         self.as_ref().event(event)
+    }
+
+    #[inline]
+    fn metric(&self, metric: &Metric<'_>) {
+        self.as_ref().metric(metric)
     }
 
     #[inline]
