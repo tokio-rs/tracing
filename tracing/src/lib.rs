@@ -560,6 +560,7 @@
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn metric(&self, _: &tracing::Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -603,6 +604,7 @@
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &tracing::Event) {}
+//! #   fn metric(&self, _: &tracing::Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -947,7 +949,7 @@ use tracing_core::*;
 
 #[doc(inline)]
 pub use self::instrument::Instrument;
-pub use self::{collect::Collect, dispatch::Dispatch, event::Event, field::Value};
+pub use self::{collect::Collect, dispatch::Dispatch, event::Event, field::Value, metric::Metric};
 
 #[doc(hidden)]
 pub use self::span::Id;

@@ -146,6 +146,7 @@ pub trait WithCollector: Sized {
     /// #   }
     /// #   fn record(&self, _: &tracing::span::Id, _: &tracing::span::Record) {}
     /// #   fn event(&self, _: &tracing::Event<'_>) {}
+    /// #   fn metric(&self, _: &tracing::Metric<'_>) {}
     /// #   fn record_follows_from(&self, _: &tracing::span::Id, _: &tracing::span::Id) {}
     /// #   fn enabled(&self, _: &tracing::Metadata) -> bool { false }
     /// #   fn enter(&self, _: &tracing::span::Id) {}
@@ -215,6 +216,7 @@ pub trait WithCollector: Sized {
     /// #   }
     /// #   fn record(&self, _: &tracing::span::Id, _: &tracing::span::Record) {}
     /// #   fn event(&self, _: &tracing::Event<'_>) {}
+    /// #   fn metric(&self, _: &tracing::Metric<'_>) {}
     /// #   fn record_follows_from(&self, _: &tracing::span::Id, _: &tracing::span::Id) {}
     /// #   fn enabled(&self, _: &tracing::Metadata) -> bool { false }
     /// #   fn enter(&self, _: &tracing::span::Id) {}

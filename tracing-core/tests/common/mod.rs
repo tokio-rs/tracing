@@ -1,4 +1,4 @@
-use tracing_core::{collect::Collect, metadata::Metadata, span, Event};
+use tracing_core::{collect::Collect, metadata::Metadata, span, Event, Metric};
 
 pub struct TestCollectorA;
 impl Collect for TestCollectorA {
@@ -11,6 +11,7 @@ impl Collect for TestCollectorA {
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
+    fn metric(&self, _: &Metric<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
     fn current_span(&self) -> span::Current {
@@ -28,9 +29,11 @@ impl Collect for TestCollectorB {
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
+    fn metric(&self, _: &Metric<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
     fn current_span(&self) -> span::Current {
         span::Current::unknown()
     }
+
 }

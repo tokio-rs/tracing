@@ -152,7 +152,7 @@ pub struct Kind(u8);
 /// often improving performance in short-lived programs.
 ///
 /// ```
-/// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata};
+/// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata, Metric};
 /// # use tracing_core::span::{Id, Record, Current};
 ///
 /// #[derive(Debug)]
@@ -199,7 +199,12 @@ pub struct Kind(u8);
 ///         // ...
 ///         # drop(event);
 ///     }
-///
+/// 
+///     fn metric(&self, metric: &Metric<'_>) {
+///         // ...
+///         # drop(metric);
+///     }
+/// 
 ///     // ...
 ///     # fn enter(&self, _: &Id) {}
 ///     # fn exit(&self, _: &Id) {}

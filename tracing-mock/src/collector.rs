@@ -17,7 +17,7 @@ use tracing::{
     collect::Interest,
     level_filters::LevelFilter,
     span::{self, Attributes, Id},
-    Collect, Event, Metadata,
+    Collect, Event, Metadata, Metric,
 };
 
 #[derive(Debug, Eq, PartialEq)]
@@ -257,6 +257,10 @@ where
             }
             Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        todo!()
     }
 
     fn record_follows_from(&self, consequence_id: &Id, cause_id: &Id) {

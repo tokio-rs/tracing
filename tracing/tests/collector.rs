@@ -9,7 +9,7 @@ use tracing::{
     collect::{with_default, Collect, Interest},
     field::display,
     span::{Attributes, Id, Record},
-    Event, Level, Metadata,
+    Event, Level, Metadata, Metric,
 };
 
 use tracing_mock::*;
@@ -45,6 +45,8 @@ fn event_macros_dont_infinite_loop() {
             assert!(event.metadata().fields().iter().any(|f| f.name() == "foo"));
             tracing::event!(Level::TRACE, baz = false);
         }
+
+        fn metric(&self, event: &Metric<'_>) {}
 
         fn enter(&self, _: &Id) {}
 

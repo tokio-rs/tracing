@@ -28,13 +28,14 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatch, Event, Metadata,
+//! #   dispatch, Event, Metadata, Metric,
 //! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
+//! #   fn metric(&self, _: &Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -55,13 +56,14 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatch, Event, Metadata,
+//! #   dispatch, Event, Metadata, Metric,
 //! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
+//! #   fn metric(&self, _: &Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -92,13 +94,14 @@
 //! ```rust
 //! # pub struct FooCollector;
 //! # use tracing_core::{
-//! #   dispatch, Event, Metadata,
+//! #   dispatch, Event, Metadata, Metric,
 //! #   span::{Attributes, Current, Id, Record}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
+//! #   fn metric(&self, _: &Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -518,12 +521,13 @@ impl Dispatch {
     ///    // ...
     /// }
     ///
-    /// # use tracing_core::{span::{Id, Attributes, Current, Record}, Event, Metadata};
+    /// # use tracing_core::{span::{Id, Attributes, Current, Record}, Event, Metadata, Metric};
     /// impl tracing_core::Collect for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
+    /// #   fn metric(&self, _: &Metric) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
