@@ -27,7 +27,7 @@ rust-version = "1.49.0"
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
 alloc = ["tracing-core/alloc"]
 std = ["alloc", "tracing-core/std"]
-env-filter = ["matchers", "regex", "lazy_static", "tracing", "std", "thread_local"]
+env-filter = ["matchers", "regex", "once_cell", "tracing", "std", "thread_local"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local", "std"]
@@ -44,7 +44,7 @@ tracing = { optional = true, path = "../tracing", version = "0.2", default-featu
 matchers = { optional = true, version = "0.1.0" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1" }
-lazy_static = { optional = true, version = "1" }
+once_cell = { optional = true, version = "1.12" }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
