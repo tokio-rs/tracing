@@ -550,11 +550,11 @@ impl Dispatch {
     /// with access to `liballoc` or the Rust standard library are encouraged to
     /// use [`Dispatch::new`] rather than `from_static`. `no_std` users who
     /// cannot allocate or do not have access to `liballoc` may want to consider
-    /// the [`lazy_static`] crate, or another library which allows lazy
+    /// the [`once_cell`] crate, or another library which allows lazy
     /// initialization of statics.
     ///
     /// [collector]: super::collect::Collect
-    /// [`lazy_static`]: https://crates.io/crates/lazy_static
+    /// [`once_cell`]: https://crates.io/crates/once_cell
     pub fn from_static(collector: &'static (dyn Collect + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]
         let me = Self {
