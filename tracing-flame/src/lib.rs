@@ -158,7 +158,7 @@ use tracing_subscriber::Subscribe;
 
 mod error;
 
-static START: Lazy<Instant> = Lazy::new(|| Instant::now());
+static START: Lazy<Instant> = Lazy::new(Instant::now);
 
 thread_local! {
     static LAST_EVENT: Cell<Instant> = Cell::new(*START);
