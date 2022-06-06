@@ -29,13 +29,13 @@ rust-version = "1.49.0"
 [features]
 default = ["std"]
 alloc = []
-std = ["lazy_static", "alloc"]
+std = ["once_cell", "alloc"]
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-lazy_static = { version = "1.0.2", optional = true }
+once_cell = { version = "1.12", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
