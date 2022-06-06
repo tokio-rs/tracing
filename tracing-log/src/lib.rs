@@ -125,7 +125,7 @@
     unused_parens,
     while_true
 )]
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use std::{fmt, io};
 
@@ -319,13 +319,11 @@ log_cs!(
     ErrorCallsite
 );
 
-lazy_static! {
-    static ref TRACE_FIELDS: Fields = Fields::new(&TRACE_CS);
-    static ref DEBUG_FIELDS: Fields = Fields::new(&DEBUG_CS);
-    static ref INFO_FIELDS: Fields = Fields::new(&INFO_CS);
-    static ref WARN_FIELDS: Fields = Fields::new(&WARN_CS);
-    static ref ERROR_FIELDS: Fields = Fields::new(&ERROR_CS);
-}
+static TRACE_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&TRACE_CS));
+static DEBUG_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&DEBUG_CS));
+static INFO_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&INFO_CS));
+static WARN_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&WARN_CS));
+static ERROR_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&ERROR_CS));
 
 fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
     match level {
