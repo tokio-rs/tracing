@@ -1,6 +1,7 @@
 use ahash::AHasher;
 use log::{Level, Metadata};
 use lru::LruCache;
+use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -140,12 +141,10 @@ static SENTINEL_METADATA: tracing_core::Metadata<'static> = tracing_core::Metada
     tracing_core::metadata::Kind::EVENT,
 );
 
-lazy_static::lazy_static! {
-    static ref CONFIG: Mutex<InterestCacheConfig> = {
-        tracing_core::callsite::register(&SENTINEL_CALLSITE);
-        Mutex::new(InterestCacheConfig::disabled())
-    };
-}
+static CONFIG: Lazy<Mutex<InterestCacheConfig>> = Lazy::new(|| {
+    tracing_core::callsite::register(&SENTINEL_CALLSITE);
+    Mutex::new(InterestCacheConfig::disabled())
+});
 
 thread_local! {
     static STATE: RefCell<State> = {
@@ -236,10 +235,7 @@ mod tests {
 
     fn lock_for_test() -> impl Drop {
         // We need to make sure only one test runs at a time.
-
-        lazy_static::lazy_static! {
-            static ref LOCK: Mutex<()> = Mutex::new(());
-        }
+        static LOCK: Lazy<Mutex<()>> = Lazy::new(Mutex::new);
 
         match LOCK.lock() {
             Ok(guard) => guard,
