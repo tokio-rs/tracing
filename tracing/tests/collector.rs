@@ -46,7 +46,7 @@ fn event_macros_dont_infinite_loop() {
             tracing::event!(Level::TRACE, baz = false);
         }
 
-        fn metric(&self, event: &Metric<'_>) {}
+        fn metric(&self, _: &Metric<'_>) {}
 
         fn enter(&self, _: &Id) {}
 

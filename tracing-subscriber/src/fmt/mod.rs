@@ -192,7 +192,7 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`fmt::format`]: mod@crate::fmt::format
 use std::{any::TypeId, error::Error, io, ptr::NonNull};
-use tracing_core::{collect::Interest, span, Event, Metadata};
+use tracing_core::{collect::Interest, span, Event, Metadata, Metric};
 
 mod fmt_subscriber;
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
@@ -396,6 +396,11 @@ where
     #[inline]
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
+    }
+
+    #[inline]
+    fn metric(&self, metric: &Metric<'_>) {
+        self.inner.metric(metric);
     }
 
     #[inline]

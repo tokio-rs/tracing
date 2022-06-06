@@ -3,7 +3,7 @@
 use tracing::{
     collect::{self, Collect},
     field::{Field, Visit},
-    info, span, warn, Event, Id, Level, Metadata,
+    info, span, warn, Event, Id, Level, Metadata, Metric,
 };
 
 use tracing_core::span::Current;
@@ -93,6 +93,10 @@ impl Collect for CounterCollector {
 
     fn event(&self, event: &Event<'_>) {
         event.record(&mut self.visitor())
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        metric.record(&mut self.visitor())
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {

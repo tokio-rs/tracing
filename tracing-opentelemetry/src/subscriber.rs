@@ -10,7 +10,7 @@ use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
-use tracing_core::{field, Collect, Event};
+use tracing_core::{field, Collect, Event, Metric};
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::registry::LookupSpan;
@@ -695,6 +695,10 @@ where
                 }
             }
         };
+    }
+
+    fn on_metric(&self, metric: &Metric<'_>, _ctx: Context<'_, C>) {
+        println!("uck: {:?}", metric);
     }
 
     /// Exports an OpenTelemetry [`Span`] on close.

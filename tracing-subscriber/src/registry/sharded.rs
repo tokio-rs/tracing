@@ -17,7 +17,7 @@ use std::{
 use tracing_core::{
     dispatch::{self, Dispatch},
     span::{self, Current, Id},
-    Collect, Event, Interest, Metadata,
+    Collect, Event, Interest, Metadata, Metric,
 };
 
 /// A shared, reusable store for spans.
@@ -278,6 +278,10 @@ impl Collect for Registry {
     /// This is intentionally not implemented, as recording events
     /// is the responsibility of subscribers atop of this registry.
     fn event(&self, _: &Event<'_>) {}
+
+    /// This is intentionally not implemented, as recording metrics
+    /// is the responsibility of subscribers atop of this registry.
+    fn metric(&self, _: &Metric<'_>) {}
 
     fn enter(&self, id: &span::Id) {
         if self

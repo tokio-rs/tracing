@@ -259,7 +259,7 @@ where
         }
     }
 
-    fn metric(&self, metric: &Metric<'_>) {
+    fn metric(&self, _metric: &Metric<'_>) {
         todo!()
     }
 

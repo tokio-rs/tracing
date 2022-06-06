@@ -257,6 +257,10 @@ impl Collect for SloggishCollector {
         writeln!(&mut visitor.stderr).unwrap();
     }
 
+    fn metric(&self, _metric: &tracing::Metric<'_>) {
+        todo!()
+    }
+
     #[inline]
     fn exit(&self, _span: &tracing::Id) {
         // TODO: unify stack with current span

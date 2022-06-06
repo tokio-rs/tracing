@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use tracing::collect::with_default;
 use tracing_core::span::{Attributes, Record};
-use tracing_core::{span, Collect, Event, Level, LevelFilter, Metadata};
+use tracing_core::{span, Collect, Event, Level, LevelFilter, Metadata, Metric};
 use tracing_log::{LogTracer, NormalizeEvent};
 
 struct State {
@@ -52,6 +52,8 @@ impl Collect for TestSubscriber {
             }),
         )
     }
+
+    fn metric(&self, _: &Metric<'_>) {}
 
     fn enter(&self, _span: &span::Id) {}
 

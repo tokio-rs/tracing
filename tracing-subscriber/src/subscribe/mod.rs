@@ -52,12 +52,13 @@
 //!     // ...
 //! }
 //!
-//! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+//! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event, Metric};
 //! impl Collect for MyCollector {
 //!     // ...
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
+//! #   fn metric(&self, _: &Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
@@ -99,11 +100,12 @@
 //! # pub struct MySubscriber {}
 //! # impl<C: Collect> Subscribe<C> for MySubscriber {}
 //! # pub struct MyCollector { }
-//! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+//! # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event, Metric};
 //! # impl Collect for MyCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
 //! #   fn record(&self, _: &Id, _: &Record) {}
 //! #   fn event(&self, _: &Event) {}
+//! #   fn metric(&self, _: &Metric) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn current_span(&self) -> tracing_core::span::Current { tracing_core::span::Current::none() }
@@ -659,7 +661,7 @@ use crate::filter;
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Event, LevelFilter, Metric,
 };
 
 use core::{any::TypeId, ptr::NonNull};
@@ -830,6 +832,9 @@ where
     /// Notifies this subscriber that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
 
+    /// Notifies this subscriber that a metric has occurred.
+    fn on_metric(&self, _metric: &Metric<'_>, _ctx: Context<'_, C>) {}
+
     /// Notifies this subscriber that a span with the given ID was entered.
     fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, C>) {}
 
@@ -883,11 +888,12 @@ where
     /// # impl MyCollector {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event, Metric};
     /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
+    /// #   fn metric(&self, _: &Metric) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
@@ -918,11 +924,12 @@ where
     /// # impl MyCollector {
     /// # fn new() -> Self { Self { }}
     /// # }
-    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event};
+    /// # use tracing_core::{span::{Id, Attributes, Record}, Metadata, Event, Metric};
     /// # impl tracing_core::Collect for MyCollector {
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(1) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &Event) {}
+    /// #   fn metric(&self, _: &Metric) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}
@@ -986,6 +993,7 @@ where
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
     /// #   fn record(&self, _: &Id, _: &Record) {}
     /// #   fn event(&self, _: &tracing_core::Event) {}
+    /// #   fn metric(&self, _: &tracing_core::Metric) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
     /// #   fn enter(&self, _: &Id) {}

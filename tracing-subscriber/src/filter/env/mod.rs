@@ -827,6 +827,7 @@ mod tests {
             span::Id::from_u64(0xDEAD)
         }
         fn event(&self, _event: &Event<'_>) {}
+        fn metric(&self, _metric: &Metric<'_>) {}
         fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
         fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 

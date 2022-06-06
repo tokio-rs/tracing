@@ -1,7 +1,7 @@
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Event, LevelFilter, Metric,
 };
 
 use crate::{
@@ -116,6 +116,11 @@ where
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
         self.subscriber.on_event(event, self.ctx());
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        self.inner.metric(metric);
+        self.subscriber.on_metric(metric, self.ctx());
     }
 
     fn enter(&self, span: &span::Id) {

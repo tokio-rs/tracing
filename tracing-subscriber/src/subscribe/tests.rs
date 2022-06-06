@@ -18,6 +18,7 @@ impl Collect for NopCollector {
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
+    fn metric(&self, _: &Metric<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
 
@@ -63,6 +64,7 @@ impl Collect for StringCollector {
     fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
+    fn metric(&self, _: &Metric<'_>) {}
     fn enter(&self, _: &span::Id) {}
     fn exit(&self, _: &span::Id) {}
 

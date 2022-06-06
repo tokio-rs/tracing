@@ -6,6 +6,7 @@ use tracing_core::{
     event::Event,
     metadata::Metadata,
     span::{Attributes, Current, Id, Record},
+    metric::Metric,
 };
 use tracing_serde::AsSerde;
 
@@ -61,6 +62,13 @@ impl Collect for JsonCollector {
     fn event(&self, event: &Event<'_>) {
         let json = json!({
             "event": event.as_serde(),
+        });
+        println!("{}", json);
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        let json = json!({
+            "metric": metric.as_serde(),
         });
         println!("{}", json);
     }

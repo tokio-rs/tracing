@@ -65,7 +65,7 @@
 //! types how you'd like.
 //!
 //! ```rust
-//! # use tracing_core::{Collect, Metadata, Event};
+//! # use tracing_core::{Collect, Metadata, Event, Metric};
 //! # use tracing_core::span::{Attributes, Current, Id, Record};
 //! # use std::sync::atomic::{AtomicUsize, Ordering};
 //! use tracing_serde::AsSerde;
@@ -97,6 +97,7 @@
 //!     }
 //!
 //!     // ...
+//!     # fn metric(&self, _: &Metric<'_>) {}
 //!     # fn enabled(&self, _: &Metadata<'_>) -> bool { false }
 //!     # fn enter(&self, _: &Id) {}
 //!     # fn exit(&self, _: &Id) {}
@@ -184,6 +185,7 @@ use tracing_core::{
     field::{Field, FieldSet, Visit},
     metadata::{Level, Metadata},
     span::{Attributes, Id, Record},
+    metric::Metric,
 };
 
 pub mod fields;
@@ -286,6 +288,26 @@ impl<'a> Serialize for SerializeEvent<'a> {
         S: Serializer,
     {
         let mut serializer = serializer.serialize_struct("Event", 2)?;
+        serializer.serialize_field("metadata", &SerializeMetadata(self.0.metadata()))?;
+        let mut visitor = SerdeStructVisitor {
+            serializer,
+            state: Ok(()),
+        };
+        self.0.record(&mut visitor);
+        visitor.finish()
+    }
+}
+
+/// Implements `serde::Serialize` to write `Event` data to a serializer.
+#[derive(Debug)]
+pub struct SerializeMetric<'a>(&'a Metric<'a>);
+
+impl<'a> Serialize for SerializeMetric<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut serializer = serializer.serialize_struct("Metric", 2)?;
         serializer.serialize_field("metadata", &SerializeMetadata(self.0.metadata()))?;
         let mut visitor = SerdeStructVisitor {
             serializer,
@@ -501,6 +523,14 @@ impl<'a> AsSerde<'a> for tracing_core::Event<'a> {
     }
 }
 
+impl<'a> AsSerde<'a> for tracing_core::Metric<'a> {
+    type Serializable = SerializeMetric<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeMetric(self)
+    }
+}
+
 impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
     type Serializable = SerializeAttributes<'a>;
 
@@ -534,6 +564,8 @@ impl<'a> AsSerde<'a> for Level {
 }
 
 impl<'a> self::sealed::Sealed for Event<'a> {}
+
+impl<'a> self::sealed::Sealed for Metric<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
 

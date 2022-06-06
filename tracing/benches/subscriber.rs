@@ -5,7 +5,7 @@ use std::{
     fmt,
     sync::{Mutex, MutexGuard},
 };
-use tracing::{field, span, Event, Id, Metadata};
+use tracing::{field, span, Event, Id, Metadata, Metric};
 use tracing_core::span::Current;
 
 /// A collector that is enabled but otherwise does nothing.
@@ -19,6 +19,10 @@ impl tracing::Collect for EnabledCollector {
 
     fn event(&self, event: &Event<'_>) {
         let _ = event;
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        let _ = metric;
     }
 
     fn record(&self, span: &Id, values: &span::Record<'_>) {
@@ -73,6 +77,11 @@ impl tracing::Collect for VisitingCollector {
     fn event(&self, event: &Event<'_>) {
         let mut visitor = Visitor(self.0.lock().unwrap());
         event.record(&mut visitor);
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        let mut visitor = Visitor(self.0.lock().unwrap());
+        metric.record(&mut visitor);
     }
 
     fn record_follows_from(&self, span: &Id, follows: &Id) {

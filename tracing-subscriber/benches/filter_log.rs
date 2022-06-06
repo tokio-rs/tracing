@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
-use tracing::{dispatch::Dispatch, span, Event, Id, Metadata};
+use tracing::{dispatch::Dispatch, span, Event, Id, Metadata, Metric};
 use tracing_core::span::Current;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -18,6 +18,10 @@ impl tracing::Collect for EnabledSubscriber {
 
     fn event(&self, event: &Event<'_>) {
         let _ = event;
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        let _ = metric;
     }
 
     fn record(&self, span: &Id, values: &span::Record<'_>) {

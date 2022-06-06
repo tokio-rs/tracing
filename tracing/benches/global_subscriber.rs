@@ -3,7 +3,7 @@ use std::fmt::Write;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tracing::Level;
 
-use tracing::{span, Event, Id, Metadata};
+use tracing::{span, Event, Id, Metadata, Metric};
 use tracing_core::span::Current;
 
 /// A collector that is enabled but otherwise does nothing.
@@ -17,6 +17,10 @@ impl tracing::Collect for EnabledCollector {
 
     fn event(&self, event: &Event<'_>) {
         let _ = event;
+    }
+
+    fn metric(&self, metric: &Metric<'_>) {
+        let _ = metric;
     }
 
     fn record(&self, span: &Id, values: &span::Record<'_>) {
