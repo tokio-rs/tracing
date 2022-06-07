@@ -30,6 +30,9 @@ and span source code locations.
 - `Layer::with_event_location`: renamed to `Layer::with_location`, as it now
   controls both span and event locations ([#2124])
 
+Thanks to new contributors @lilymara-onesignal, @hubertbudzynski, and @DevinCarr
+for contributing to this release!
+
 [thread-semconv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#source-code-attributes
 [#2134]: https://github.com/tokio-rs/tracing/pull/2134
 [#2122]: https://github.com/tokio-rs/tracing/pull/2122
