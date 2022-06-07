@@ -935,6 +935,19 @@ impl<'a> ValueSet<'a> {
         }
     }
 
+    /// Returns the number of fields in this `ValueSet` that would be visited
+    /// by a given [visitor] to the [`ValueSet::record()`] method.
+    ///
+    /// [visitor]: Visit
+    /// [`ValueSet::record()`]: ValueSet::record()
+    pub fn record_len(&self) -> usize {
+        let my_callsite = self.callsite();
+        self.values
+            .iter()
+            .filter(|(field, _)| field.callsite() == my_callsite)
+            .count()
+    }
+
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite()
