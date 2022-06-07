@@ -253,6 +253,11 @@ static CALLSITES: Callsites = Callsites {
 
 static DISPATCHERS: Dispatchers = Dispatchers::new();
 
+#[cfg(feature = "std")]
+static LOCKED_CALLSITES: once_cell::sync::Lazy<Mutex<Vec<&'static dyn Callsite>>> =
+    once_cell::sync::Lazy::new(Default::default);
+
+#[cfg(not(feature = "std"))]
 crate::lazy_static! {
     static ref LOCKED_CALLSITES: Mutex<Vec<&'static dyn Callsite>> = Mutex::new(Vec::new());
 }
@@ -510,6 +515,7 @@ mod private {
 #[cfg(feature = "std")]
 mod dispatchers {
     use crate::dispatcher;
+    use once_cell::sync::Lazy;
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
@@ -519,9 +525,8 @@ mod dispatchers {
         has_just_one: AtomicBool,
     }
 
-    crate::lazy_static! {
-        static ref LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
-    }
+    static LOCKED_DISPATCHERS: Lazy<RwLock<Vec<dispatcher::Registrar>>> =
+        Lazy::new(Default::default);
 
     pub(super) enum Rebuilder<'a> {
         JustOne,
