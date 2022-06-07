@@ -940,7 +940,7 @@ impl<'a> ValueSet<'a> {
     ///
     /// [visitor]: Visit
     /// [`ValueSet::record()`]: ValueSet::record()
-    pub fn record_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         let my_callsite = self.callsite();
         self.values
             .iter()

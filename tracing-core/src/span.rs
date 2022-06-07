@@ -229,8 +229,8 @@ impl<'a> Record<'a> {
     /// when [`Record::record()`] is called
     ///
     /// [`Record::record()`]: Record::record()
-    pub fn record_len(&self) -> usize {
-        self.values.record_len()
+    pub fn len(&self) -> usize {
+        self.values.len()
     }
 
     /// Returns `true` if this `Record` contains a value for the given `Field`.
