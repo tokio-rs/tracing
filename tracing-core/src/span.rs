@@ -233,7 +233,6 @@ impl<'a> Record<'a> {
         self.values.record_len()
     }
 
-
     /// Returns `true` if this `Record` contains a value for the given `Field`.
     pub fn contains(&self, field: &field::Field) -> bool {
         self.values.contains(field)
