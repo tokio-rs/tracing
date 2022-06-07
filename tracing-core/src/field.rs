@@ -958,7 +958,7 @@ impl<'a> ValueSet<'a> {
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         let my_callsite = self.callsite();
         self.values
             .iter()
