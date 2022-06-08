@@ -1,4 +1,4 @@
-# 0.1.35 (June 7, 2022)
+# 0.1.35 (June 8, 2022)
 
 This release reduces the overhead of callsite registration by using new
 `tracing-core` APIs.
