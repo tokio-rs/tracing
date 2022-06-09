@@ -33,6 +33,7 @@ pub struct OpenTelemetryLayer<S, T> {
     location: bool,
     tracked_inactivity: bool,
     with_threads: bool,
+    exception_config: ExceptionFieldConfig,
     get_context: WithContext,
     _registry: marker::PhantomData<S>,
 }
@@ -110,9 +111,13 @@ fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
     }
 }
 
-struct SpanEventVisitor<'a>(&'a mut otel::Event);
+struct SpanEventVisitor<'a, 'b>(
+    &'a mut otel::Event,
+    Option<&'b mut otel::SpanBuilder>,
+    ExceptionFieldConfig,
+);
 
-impl<'a> field::Visit for SpanEventVisitor<'a> {
+impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
@@ -192,9 +197,72 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
             }
         }
     }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] using a [`std::error::Error`]'s
+    /// [`std::fmt::Display`] implementation. Also adds the `source` chain as an extra field
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        let mut chain = Vec::new();
+        let mut next_err = value.source();
+
+        while let Some(err) = next_err {
+            chain.push(Cow::Owned(err.to_string()));
+            next_err = err.source();
+        }
+
+        self.0
+            .attributes
+            .push(Key::new(field.name()).string(value.to_string()));
+        self.0
+            .attributes
+            .push(Key::new(format!("{}.chain", field.name())).array(chain.clone()));
+
+        if self.2.record {
+            self.0
+                .attributes
+                .push(Key::new("exception.message").string(value.to_string()));
+
+            // NOTE: This is actually not the stacktrace of the exception. This is
+            // the "source chain". It represents the heirarchy of errors from the
+            // app level to the lowest level such as IO. It does not represent all
+            // of the callsites in the code that led to the error happening.
+            // `std::error::Error::backtrace` is a nightly-only API and cannot be
+            // used here until the feature is stabilized.
+            self.0
+                .attributes
+                .push(Key::new("exception.stacktrace").array(chain.clone()));
+        }
+
+        if self.2.propagate {
+            if let Some(span) = &mut self.1 {
+                if let Some(attrs) = span.attributes.as_mut() {
+                    attrs.push(Key::new("exception.message").string(value.to_string()));
+
+                    // NOTE: This is actually not the stacktrace of the exception. This is
+                    // the "source chain". It represents the heirarchy of errors from the
+                    // app level to the lowest level such as IO. It does not represent all
+                    // of the callsites in the code that led to the error happening.
+                    // `std::error::Error::backtrace` is a nightly-only API and cannot be
+                    // used here until the feature is stabilized.
+                    attrs.push(Key::new("exception.stacktrace").array(chain));
+                }
+            }
+        }
+    }
 }
 
-struct SpanAttributeVisitor<'a>(&'a mut otel::SpanBuilder);
+#[derive(Clone, Copy)]
+struct ExceptionFieldConfig {
+    record: bool,
+    propagate: bool,
+}
+
+struct SpanAttributeVisitor<'a>(&'a mut otel::SpanBuilder, ExceptionFieldConfig);
 
 impl<'a> SpanAttributeVisitor<'a> {
     fn record(&mut self, attribute: KeyValue) {
@@ -278,15 +346,17 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         self.record(Key::new(field.name()).string(value.to_string()));
         self.record(Key::new(format!("{}.chain", field.name())).array(chain.clone()));
 
-        self.record(Key::new("exception.message").string(value.to_string()));
+        if self.1.record {
+            self.record(Key::new("exception.message").string(value.to_string()));
 
-        // NOTE: This is actually not the stacktrace of the exception. This is
-        // the "source chain". It represents the heirarchy of errors from the
-        // app level to the lowest level such as IO. It does not represent all
-        // of the callsites in the code that led to the error happening.
-        // `std::error::Error::backtrace` is a nightly-only API and cannot be
-        // used here until the feature is stabilized.
-        self.record(Key::new("exception.stacktrace").array(chain));
+            // NOTE: This is actually not the stacktrace of the exception. This is
+            // the "source chain". It represents the heirarchy of errors from the
+            // app level to the lowest level such as IO. It does not represent all
+            // of the callsites in the code that led to the error happening.
+            // `std::error::Error::backtrace` is a nightly-only API and cannot be
+            // used here until the feature is stabilized.
+            self.record(Key::new("exception.stacktrace").array(chain));
+        }
     }
 }
 
@@ -328,6 +398,10 @@ where
             location: true,
             tracked_inactivity: true,
             with_threads: true,
+            exception_config: ExceptionFieldConfig {
+                record: true,
+                propagate: true,
+            },
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
         }
@@ -368,8 +442,29 @@ where
             location: self.location,
             tracked_inactivity: self.tracked_inactivity,
             with_threads: self.with_threads,
+            exception_config: self.exception_config,
             get_context: WithContext(OpenTelemetryLayer::<S, Tracer>::get_context),
             _registry: self._registry,
+        }
+    }
+
+    pub fn with_exception_fields(self, exception_fields: bool) -> Self {
+        Self {
+            exception_config: ExceptionFieldConfig {
+                record: exception_fields,
+                ..self.exception_config
+            },
+            ..self
+        }
+    }
+
+    pub fn with_exception_field_propagation(self, exception_field_propagation: bool) -> Self {
+        Self {
+            exception_config: ExceptionFieldConfig {
+                propagate: exception_field_propagation,
+                ..self.exception_config
+            },
+            ..self
         }
     }
 
@@ -569,7 +664,10 @@ where
             }
         }
 
-        attrs.record(&mut SpanAttributeVisitor(&mut builder));
+        attrs.record(&mut SpanAttributeVisitor(
+            &mut builder,
+            self.exception_config,
+        ));
         extensions.insert(OtelData { builder, parent_cx });
     }
 
@@ -610,7 +708,10 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<OtelData>() {
-            values.record(&mut SpanAttributeVisitor(&mut data.builder));
+            values.record(&mut SpanAttributeVisitor(
+                &mut data.builder,
+                self.exception_config,
+            ));
         }
     }
 
@@ -675,15 +776,23 @@ where
             #[cfg(not(feature = "tracing-log"))]
             let target = target.string(meta.target());
 
+            let mut extensions = span.extensions_mut();
+            let span_builder = extensions
+                .get_mut::<OtelData>()
+                .map(|data| &mut data.builder);
+
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
                 vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
-            event.record(&mut SpanEventVisitor(&mut otel_event));
+            event.record(&mut SpanEventVisitor(
+                &mut otel_event,
+                span_builder,
+                self.exception_config,
+            ));
 
-            let mut extensions = span.extensions_mut();
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
                     builder.status_code = Some(otel::StatusCode::Error);
@@ -809,6 +918,8 @@ mod tests {
     use std::{
         borrow::Cow,
         collections::HashMap,
+        error::Error,
+        fmt::Display,
         sync::{Arc, Mutex},
         thread,
         time::SystemTime,
@@ -884,6 +995,36 @@ mod tests {
         fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
         fn update_name<T: Into<Cow<'static, str>>>(&mut self, _new_name: T) {}
         fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
+    }
+
+    #[derive(Debug)]
+    struct TestDynError {
+        msg: &'static str,
+        source: Option<Box<TestDynError>>,
+    }
+    impl Display for TestDynError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.msg)
+        }
+    }
+    impl Error for TestDynError {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            match &self.source {
+                Some(source) => Some(source),
+                None => None,
+            }
+        }
+    }
+    impl TestDynError {
+        fn new(msg: &'static str) -> Self {
+            Self { msg, source: None }
+        }
+        fn with_parent(self, parent_msg: &'static str) -> Self {
+            Self {
+                msg: parent_msg,
+                source: Some(Box::new(self)),
+            }
+        }
     }
 
     #[test]
@@ -996,39 +1137,9 @@ mod tests {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
-        use std::error::Error;
-        use std::fmt::Display;
-
-        #[derive(Debug)]
-        struct DynError {
-            msg: &'static str,
-            source: Option<Box<DynError>>,
-        }
-
-        impl Display for DynError {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.msg)
-            }
-        }
-        impl Error for DynError {
-            fn source(&self) -> Option<&(dyn Error + 'static)> {
-                match &self.source {
-                    Some(source) => Some(source),
-                    None => None,
-                }
-            }
-        }
-
-        let err = DynError {
-            msg: "user error",
-            source: Some(Box::new(DynError {
-                msg: "intermediate error",
-                source: Some(Box::new(DynError {
-                    msg: "base error",
-                    source: None,
-                })),
-            })),
-        };
+        let err = TestDynError::new("base error")
+            .with_parent("intermediate error")
+            .with_parent("user error");
 
         tracing::subscriber::with_default(subscriber, || {
             tracing::debug_span!(
@@ -1161,5 +1272,53 @@ mod tests {
             .collect::<Vec<&str>>();
         assert!(!keys.contains(&"thread.name"));
         assert!(!keys.contains(&"thread.id"));
+    }
+
+    #[test]
+    fn propagates_error_fields_from_event_to_span() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+
+        let err = TestDynError::new("base error")
+            .with_parent("intermediate error")
+            .with_parent("user error");
+
+        tracing::subscriber::with_default(subscriber, || {
+            let _guard = tracing::debug_span!("request",).entered();
+
+            tracing::error!(
+                error = &err as &(dyn std::error::Error + 'static),
+                "request error!"
+            )
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+
+        let key_values = attributes
+            .into_iter()
+            .map(|attr| (attr.key.as_str().to_owned(), attr.value))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(key_values["exception.message"].as_str(), "user error");
+        assert_eq!(
+            key_values["exception.stacktrace"],
+            Value::Array(
+                vec![
+                    Cow::Borrowed("intermediate error"),
+                    Cow::Borrowed("base error")
+                ]
+                .into()
+            )
+        );
     }
 }
