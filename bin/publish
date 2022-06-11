@@ -14,7 +14,7 @@ DRY_RUN=""
 VERBOSE=""
 
 err() {
-    echo -e "\e[31m\e[1merror:\e[0m $@" 1>&2;
+    echo -e "\e[31m\e[1merror:\e[0m" "$@" 1>&2;
 }
 
 status() {
@@ -38,13 +38,18 @@ verify() {
 
     status "Checking" "if $CRATE builds across feature combinations"
 
-    CARGO_HACK=(cargo hack check $VERBOSE --feature-powerset  --no-dev-deps)
+    CARGO_HACK=(cargo hack check --feature-powerset  --no-dev-deps)
+
+    if [[ "$VERBOSE" ]]; then
+        CARGO_HACK+=("$VERBOSE")
+    fi
+
     case "$CRATE" in
         tracing-subscriber)
             # for tracing-subscriber, don't test a complete powerset because
             # there are lots of feature flags
             INCLUDE_FEATURES=(fmt ansi json registry env-filter)
-            ${CARGO_HACK[@]} --include-features "${INCLUDE_FEATURES[*]}"
+            "${CARGO_HACK[@]}" --include-features "${INCLUDE_FEATURES[*]}"
             CARGO_HACK_STATUS="$?"
             ;;
         tracing)
@@ -58,11 +63,11 @@ verify() {
                 release_max_level_info release_max_level_debug
                 release_max_level_trace
             )
-            ${CARGO_HACK[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            "${CARGO_HACK[@]}" --exclude-features "${EXCLUDE_FEATURES[*]}"
             CARGO_HACK_STATUS="$?"
             ;;
         *)
-            ${CARGO_HACK[@]}
+            "${CARGO_HACK[@]}"
             CARGO_HACK_STATUS="$?"
             ;;
     esac
@@ -81,8 +86,8 @@ verify() {
 
 release() {
     status "Releasing" "$CRATE v$VERSION"
-    cargo package $VERBOSE
-    cargo publish $VERBOSE $DRY_RUN
+    cargo package "$VERBOSE"
+    cargo publish "$VERBOSE" "$DRY_RUN"
 
     status "Tagging" "$TAG"
     if [ -n "$DRY_RUN" ]; then
