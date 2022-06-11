@@ -89,11 +89,25 @@ verify() {
 
 release() {
     status "Releasing" "$CRATE v$VERSION"
-    cargo package "$VERBOSE"
+    local CARGO_PACKAGE=(cargo package)
+    local CARGO_PUBLISH=(cargo publish)
+
+    if [[ "$VERBOSE" ]]; then
+        CARGO_PACKAGE+=("$VERBOSE")
+        CARGO_PUBLISH+=("$VERBOSE")
+    fi
+
+    if [[ "$DRY_RUN" ]]; then
+        CARGO_PUBLISH+=("$DRY_RUN")
+    fi
+
+    "${CARGO_PACKAGE[@]}"
+    "${CARGO_PUBLISH[@]}"
+
     cargo publish "$VERBOSE" "$DRY_RUN"
 
     status "Tagging" "$TAG"
-    if [ -n "$DRY_RUN" ]; then
+    if [[ "$DRY_RUN" ]]; then
         echo "# git tag $TAG && git push --tags"
     else
         git tag "$TAG" && git push --tags
