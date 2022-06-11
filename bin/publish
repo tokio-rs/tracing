@@ -35,8 +35,23 @@ verify() {
     fi
 
     if ! cargo --list | grep -q "hack"; then
-        status "Installing" "cargo-hack"
-        cargo install cargo-hack
+        err "missing cargo-hack executable"
+        read -r -p "install it? [Y/n] " INPUT
+
+        case "$INPUT" in
+            [yY][eE][sS]|[yY])
+                status "Installing" "cargo-hack"
+                cargo install cargo-hack
+                ;;
+            [nN][oO]|[nN])
+                echo "okay, exiting"
+                exit 1
+                ;;
+            *)
+                err "invalid input $INPUT"
+                exit 1
+                ;;
+        esac
     fi
 
     status "Checking" "if $CRATE builds across feature combinations"
