@@ -75,8 +75,8 @@ verify() {
             ;;
     esac
 
-    if "$CARGO_HACK_STATUS" ; then
-        err "$CRATE did not build with all feature combinations!"
+    if [[ "$CARGO_HACK_STATUS" != "0" ]] ; then
+        err "$CRATE did not build with all feature combinations (cargo hack exited with $CARGO_HACK_STATUS)!"
         exit 1
     fi
 
