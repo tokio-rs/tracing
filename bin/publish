@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 USAGE="Publish a new release of a tokio crate
 
 USAGE:
@@ -9,6 +8,10 @@ OPTIONS:
     -v, --verbose   Use verbose Cargo output
     -d, --dry-run   Perform a dry run (do not publish or tag the release)
     -h, --help      Show this help text and exit"
+
+set -euo pipefail
+
+cd "$(dirname "$0")"/..
 
 DRY_RUN=""
 VERBOSE=""
@@ -116,9 +119,9 @@ case "$1" in
     exit 1
     ;;
     *) # crate or version
-    if [ -z "$CRATE" ]; then
+    if [[ -z "${CRATE+crate}" ]]; then
         CRATE="$1"
-    elif [ -z "$VERSION" ]; then
+    elif [[ -z "${VERSION+version}" ]]; then
         VERSION="$1"
     else
         err "unknown positional argument \"$1\""
@@ -131,19 +134,19 @@ esac
 done
 # set -- "${POSITIONAL[@]}"
 
-if [ -z "$VERSION" ]; then
+if [[ -z "${VERSION+version}" ]]; then
     err "no version specified!"
     HELP=1
 fi
 
-if [ -n "$CRATE" ]; then
+if [[ "${CRATE+crate}" ]]; then
     TAG="$CRATE-$VERSION"
 else
     err "no crate specified!"
     HELP=1
 fi
 
-if [ -n "$HELP" ]; then
+if [[ "${HELP+help}" ]]; then
     echo "$USAGE"
     exit 1
 fi
