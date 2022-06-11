@@ -31,7 +31,7 @@ verify() {
         exit 1
     fi
 
-    if ! cargo list | grep -q "hack"; then
+    if ! cargo --list | grep -q "hack"; then
         status "Installing" "cargo-hack"
         cargo install cargo-hack
     fi
