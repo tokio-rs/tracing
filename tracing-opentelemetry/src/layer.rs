@@ -215,13 +215,6 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
             next_err = err.source();
         }
 
-        self.0
-            .attributes
-            .push(Key::new(field.name()).string(value.to_string()));
-        self.0
-            .attributes
-            .push(Key::new(format!("{}.chain", field.name())).array(chain.clone()));
-
         if self.2.record {
             self.0
                 .attributes
@@ -249,10 +242,17 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
                     // of the callsites in the code that led to the error happening.
                     // `std::error::Error::backtrace` is a nightly-only API and cannot be
                     // used here until the feature is stabilized.
-                    attrs.push(Key::new("exception.stacktrace").array(chain));
+                    attrs.push(Key::new("exception.stacktrace").array(chain.clone()));
                 }
             }
         }
+
+        self.0
+            .attributes
+            .push(Key::new(field.name()).string(value.to_string()));
+        self.0
+            .attributes
+            .push(Key::new(format!("{}.chain", field.name())).array(chain));
     }
 }
 
@@ -343,9 +343,6 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             next_err = err.source();
         }
 
-        self.record(Key::new(field.name()).string(value.to_string()));
-        self.record(Key::new(format!("{}.chain", field.name())).array(chain.clone()));
-
         if self.1.record {
             self.record(Key::new("exception.message").string(value.to_string()));
 
@@ -355,8 +352,11 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             // of the callsites in the code that led to the error happening.
             // `std::error::Error::backtrace` is a nightly-only API and cannot be
             // used here until the feature is stabilized.
-            self.record(Key::new("exception.stacktrace").array(chain));
+            self.record(Key::new("exception.stacktrace").array(chain.clone()));
         }
+
+        self.record(Key::new(field.name()).string(value.to_string()));
+        self.record(Key::new(format!("{}.chain", field.name())).array(chain));
     }
 }
 
@@ -448,6 +448,17 @@ where
         }
     }
 
+    /// Sets whether or not span and event metadata should include OpenTelemetry
+    /// exception fields such as `exception.message` and `exception.backtrace`
+    /// when an `Error` value is recorded. This is completely independent of
+    /// `with_exception_field_propagation`.
+    ///
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// exceptions][conv].
+    ///
+    /// By default, these fields are enabled
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
     pub fn with_exception_fields(self, exception_fields: bool) -> Self {
         Self {
             exception_config: ExceptionFieldConfig {
@@ -458,6 +469,17 @@ where
         }
     }
 
+    /// Sets whether or not reporting an `Error` value on an event will
+    /// propagate the OpenTelemetry exception fields such as `exception.message`
+    /// and `exception.backtrace` to the corresponding span. This is completely
+    /// independent of `with_exception_fields`.
+    ///
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// exceptions][conv].
+    ///
+    /// By default, this is enabled
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
     pub fn with_exception_field_propagation(self, exception_field_propagation: bool) -> Self {
         Self {
             exception_config: ExceptionFieldConfig {
