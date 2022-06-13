@@ -484,6 +484,66 @@ impl dyn Subscriber {
     }
 }
 
+impl dyn Subscriber + Send {
+    /// Returns `true` if this [`Subscriber`] is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this [`Subscriber`] value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            if raw.is_null() {
+                None
+            } else {
+                Some(&*(raw as *const _))
+            }
+        }
+    }
+}
+
+impl dyn Subscriber + Sync {
+    /// Returns `true` if this [`Subscriber`] is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `[`Subscriber`] value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            if raw.is_null() {
+                None
+            } else {
+                Some(&*(raw as *const _))
+            }
+        }
+    }
+}
+
+impl dyn Subscriber + Send + Sync {
+    /// Returns `true` if this [`Subscriber`] is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this [`Subscriber`] value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            if raw.is_null() {
+                None
+            } else {
+                Some(&*(raw as *const _))
+            }
+        }
+    }
+}
+
 /// Indicates a [`Subscriber`]'s interest in a particular callsite.
 ///
 /// `Subscriber`s return an `Interest` from their [`register_callsite`] methods
