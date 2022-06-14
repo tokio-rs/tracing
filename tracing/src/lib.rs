@@ -1138,6 +1138,25 @@ pub mod __macro_support {
         }
     }
 
+    /// Implementation of [autoref specialization] for span/event value capture.
+    ///
+    /// Used by the `__tracing_capture_value!` macro by importing all of the
+    /// traits in this module, which all provide `__tracing_capture_value()`,
+    /// and then calling `(&&value).__tracing_capture_value()`.
+    ///
+    /// Method resolution checks `&&T`, then `&T`, and then `T` for the
+    /// `__tracing_capture_value()` method. We take advantage of this via the
+    /// different blanket implementations of `__tracing_capture_value()` for
+    /// the different amounts of indirection.
+    ///
+    /// [autoref specialization]: https://github.com/dtolnay/case-studies/blob/master/autoref-specialization/README.md
+    ///
+    /// /!\ WARNING: This is *not* a stable API! /!\
+    /// This type, and all code contained in the `__macro_support` module, is
+    /// a *private* API of `tracing`. It is exposed publicly because it is used
+    /// by the `tracing` macros, but it is not part of the stable versioned API.
+    /// Breaking changes to this module may occur in small-numbered versions
+    /// without warning.
     pub mod __tracing_capture_value_by {
         /// Autoref specialization level 0 for `__tracing_capture_value!`
         ///
@@ -1175,7 +1194,7 @@ pub mod __macro_support {
         #[cfg(not(all(tracing_unstable, feature = "valuable")))]
         impl<T: crate::field::Value> TracingCaptureValueByValue for &T {
             fn __tracing_capture_value(&self) -> &dyn crate::field::Value {
-                self
+                *self
             }
         }
 
@@ -1193,7 +1212,7 @@ pub mod __macro_support {
 
         impl<T: core::fmt::Debug> TracingCaptureValueByDebug for &&T {
             fn __tracing_capture_value(&self) -> &dyn crate::field::Value {
-                crate::field::debug_ref(self)
+                crate::field::debug_ref(**self)
             }
         }
     }
