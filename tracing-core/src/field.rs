@@ -264,8 +264,8 @@ where
     DebugValue(t)
 }
 
-/// Wraps a type implementing `fmt::Debug` as a `Value` that can be
-/// recorded using its `Debug` implementation.
+/// Wraps a type behind a refererence implementing `fmt::Debug` as a
+/// `Value` that can be recorded using its `Debug` implementation.
 pub fn debug_ref<T>(t: &T) -> &DebugValue<T>
 where
     T: fmt::Debug,
