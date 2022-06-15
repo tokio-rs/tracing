@@ -1144,7 +1144,7 @@ pub mod __macro_support {
     /// traits in this module, which all provide `__tracing_capture_value()`,
     /// and then calling `(&&value).__tracing_capture_value()`.
     ///
-    /// Method resolution checks `&&T`, then `&T`, and then `T` for the
+    /// Method resolution checks `T`, then `&T`, and then `&&T` for the
     /// `__tracing_capture_value()` method. We take advantage of this via the
     /// different blanket implementations of `__tracing_capture_value()` for
     /// the different amounts of indirection.
