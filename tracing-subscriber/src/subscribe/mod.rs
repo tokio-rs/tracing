@@ -417,6 +417,28 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
+//! ### Enabling interest
+//!
+//! Whenever an tracing event (or span) is emitted, it goes through a number of
+//! steps to determine how and how much it should be processed. The earlier an
+//! event is disabled, the less work has to be done to process the event, so
+//! subscribers that implement filtering should attempt to disable unwanted
+//! events as early as possible. In order, each event checks:
+//!
+//! - [`register_callsite`], once per callsite (roughly: once per time that
+//!   `event!` or `span!` is written in the source code; this is cached at the
+//!   callsite). See [`Collect::register_callsite`] and
+//!   [`tracing_core::callsite`] for a summary of how this behaves.
+//! - [`enabled`], once per emitted event (roughly: once per time that `event!`
+//!   or `span!` is *executed*), and only if `register_callsite` regesters an
+//!   [`Interest::sometimes`]. This is the main customization point to globally
+//!   filter events based on their [`Metadata`]. If an event can be disabled
+//!   based only on [`Metadata`], it should be, as this allows the construction
+//!   of the actual `Event`/`Span` to be skipped.
+//! - For events only (and not spans), [`event_enabled`] is called just before
+//!   processing the event. This gives subscribers one last chance to say that
+//!   an event should be filtered out, now that the event's fields are known.
+//!
 //! ## Per-Subscriber Filtering
 //!
 //! **Note**: per-subscriber filtering APIs currently require the [`"registry"` crate
@@ -639,6 +661,7 @@
 //! [the current span]: Context::current_span
 //! [`register_callsite`]: Subscribe::register_callsite
 //! [`enabled`]: Subscribe::enabled
+//! [`event_enabled`]: Subscribe::event_enabled
 //! [`on_enter`]: Subscribe::on_enter
 //! [`Subscribe::register_callsite`]: Subscribe::register_callsite
 //! [`Subscribe::enabled`]: Subscribe::enabled
@@ -686,31 +709,7 @@ pub(crate) mod tests;
 /// be composed together with other subscribers to build a [collector]. See the
 /// [module-level documentation](crate::subscribe) for details.
 ///
-/// # Enabling interest
-///
-/// Whenever an tracing event (or span) is emitted, it goes through a number of
-/// steps to determine how and how much it should be processed. The earlier an
-/// event is disabled, the less work has to be done to process the event, so
-/// subscribers should attempt to provide accurate information as early as
-/// possible. Note that this determines **global** interest for the entire stack
-/// of subscribers; a subscriber that wants to ignore certain events/spans
-/// should just ignore them in the notifications. In order, each event checks:
-///
-/// - [`register_callsite`], once per callsite (roughly: once per time that
-///   `event!` or `span!` is written in the source code; this is cached at the
-///   callsite). See [`Collect::register_callsite`] for how this behaves.
-/// - [`enabled`], once per emitted event (or span). This is the main point to
-///   (globally) filter events based on their [`Metadata`]. If an event can be
-///   disabled by just its structure, it should be, as this allows construction
-///   of the actual `Event`/`Span` to be skipped.
-/// - For events only (and not spans), [`event_enabled`] is called just before
-///   processing the event. This gives subscribers one last chance to say that
-///   an event should be filtered out, now that the event's fields are known.
-///
 /// [collector]: tracing_core::Collect
-/// [`enabled`]: Self::enabled
-/// [`event_enabled`]: Self::event_enabled
-/// [`register_callsite`]: Self::register_callsite
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Subscribe<C>
 where
@@ -858,10 +857,10 @@ where
     ///
     /// **Note**: This method determines whether an event is globally enabled,
     /// *not* whether the individual subscriber will be notified about the
-    /// event. This is intended to be used by layers that implement filtering
-    /// for the entire stack. Layers which do not wish to be notified about
-    /// certain events but do not wish to globally disable them should ignore
-    /// those events in their [on_event][Self::on_event].
+    /// event. This is intended to be used by subscibers that implement
+    /// filtering for the entire stack. Subscribers which do not wish to be
+    /// notified about certain events but do not wish to globally disable them
+    /// should ignore those events in their [on_event][Self::on_event].
     ///
     /// </pre></div>
     ///

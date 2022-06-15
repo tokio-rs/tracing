@@ -57,9 +57,9 @@ use core::ptr::NonNull;
 ///   See also the [documentation on the callsite registry][cs-reg] for details
 ///   on [`register_callsite`].
 ///
-/// - [`event_enabled`] is called once before every [`event`] is recorded. This
-///   can be used to implement filtering on events once their field values are
-///   known but before any processing is done in `event`.
+/// - [`event_enabled`] is called once before every call to the [`event`]
+///   method. This can be used to implement filtering on events once their field
+///   values are known, but before any processing is done in the `event` method.
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
