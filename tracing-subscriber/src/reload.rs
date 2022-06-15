@@ -1,10 +1,11 @@
 //! Wrapper for a `Layer` to allow it to be dynamically reloaded.
 //!
-//! This module provides a [`Layer` type] which wraps another type implementing
-//! the [`Layer` trait], allowing the wrapped type to be replaced with another
+//! This module provides a [`Layer` type] implementing the [`Layer` trait] and [`Filter` trait]
+//! which wraps another type implementing the corresponding trait. This
+//! allows the wrapped type to be replaced with another
 //! instance of that type at runtime.
 //!
-//! This can be used in cases where a subset of `Subscriber` functionality
+//! This can be used in cases where a subset of `Layer` or `Filter` functionality
 //! should be dynamically reconfigured, such as when filtering directives may
 //! change at runtime. Note that this layer introduces a (relatively small)
 //! amount of overhead, and should thus only be used as needed.
@@ -52,6 +53,15 @@
 //! info!("This will be logged");
 //! ```
 //!
+//! ## Note
+//!
+//! //! The [`Subscribe`] implementation is unable to implement downcasting functionality,
+//! so certain `Subscribers` will fail to reload if wrapped in a `reload::Subscriber`.
+//!
+//! If you only want to be able to dynamically change the
+//! `Filter` on your layer, prefer wrapping that `Filter` in the `reload::Subscriber`.
+//!
+//! [`Filter` trait]: crate::subscribe::Filter
 //! [`Layer` type]: Layer
 //! [`Layer` trait]: super::layer::Layer
 use crate::layer;
@@ -68,7 +78,7 @@ use tracing_core::{
     Event, Metadata,
 };
 
-/// Wraps a `Layer`, allowing it to be reloaded dynamically at runtime.
+/// Wraps a `Layer` or `Filter`, allowing it to be reloaded dynamically at runtime.
 #[derive(Debug)]
 pub struct Layer<L, S> {
     // TODO(eliza): this once used a `crossbeam_util::ShardedRwLock`. We may
@@ -165,12 +175,54 @@ where
     }
 }
 
-impl<L, S> Layer<L, S>
+// ===== impl Filter =====
+
+#[cfg(all(feature = "registry", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
+impl<S, L> crate::layer::Filter<S> for Layer<L, S>
 where
-    L: crate::Layer<S> + 'static,
+    L: crate::layer::Filter<S> + 'static,
     S: Subscriber,
 {
-    /// Wraps the given `Layer`, returning a `Layer` and a `Handle` that allows
+    #[inline]
+    fn callsite_enabled(&self, metadata: &'static Metadata<'static>) -> Interest {
+        try_lock!(self.inner.read(), else return Interest::sometimes()).callsite_enabled(metadata)
+    }
+
+    #[inline]
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &layer::Context<'_, S>) -> bool {
+        try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_new_span(attrs, id, ctx)
+    }
+
+    #[inline]
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_record(span, values, ctx)
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_enter(id, ctx)
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_exit(id, ctx)
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, ctx: layer::Context<'_, S>) {
+        try_lock!(self.inner.read()).on_close(id, ctx)
+    }
+}
+
+impl<L, S> Layer<L, S> {
+    /// Wraps the given `Subscribe` or `Filter`,
+    /// returning a subscriber or filter and a `Handle` that allows
     /// the inner type to be modified at runtime.
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
@@ -181,7 +233,7 @@ where
         (this, handle)
     }
 
-    /// Returns a `Handle` that can be used to reload the wrapped `Layer`.
+    /// Returns a `Handle` that can be used to reload the wrapped `Layer` or `Filter`.
     pub fn handle(&self) -> Handle<L, S> {
         Handle {
             inner: Arc::downgrade(&self.inner),
@@ -192,24 +244,23 @@ where
 
 // ===== impl Handle =====
 
-impl<L, S> Handle<L, S>
-where
-    L: crate::Layer<S> + 'static,
-    S: Subscriber,
-{
-    /// Replace the current layer with the provided `new_layer`.
+impl<L, S> Handle<L, S> {
+    /// Replace the current layer or filter with the provided `new_value`.
     ///
-    /// **Warning:** The [`Filtered`](crate::filter::Filtered) type currently can't be changed
-    /// at runtime via the [`Handle::reload`] method.
-    /// Use the [`Handle::modify`] method to change the filter instead.
-    /// (see <https://github.com/tokio-rs/tracing/issues/1629>)
-    pub fn reload(&self, new_layer: impl Into<L>) -> Result<(), Error> {
+    /// [`Handle::reload`] cannot be used with the [`Filtered`](crate::filter::Filtered)
+    /// subscriber; use [`Handle::modify`] instead (see [this issue] for additional details).
+    ///
+    /// However, if the _only_ the [`Filter`](crate::subscribe::Filter) needs to be modified,
+    /// use `reload::Subscriber` to wrap the `Filter` directly.
+    ///
+    /// [this issue]: https://github.com/tokio-rs/tracing/issues/1629
+    pub fn reload(&self, new_value: impl Into<L>) -> Result<(), Error> {
         self.modify(|layer| {
-            *layer = new_layer.into();
+            *layer = new_value.into();
         })
     }
 
-    /// Invokes a closure with a mutable reference to the current layer,
+    /// Invokes a closure with a mutable reference to the current layer or filter,
     /// allowing it to be modified in place.
     pub fn modify(&self, f: impl FnOnce(&mut L)) -> Result<(), Error> {
         let inner = self.inner.upgrade().ok_or(Error {
@@ -226,7 +277,7 @@ where
         Ok(())
     }
 
-    /// Returns a clone of the layer's current value if it still exists.
+    /// Returns a clone of the layer or filter's current value if it still exists.
     /// Otherwise, if the subscriber has been dropped, returns `None`.
     pub fn clone_current(&self) -> Option<L>
     where
@@ -235,7 +286,7 @@ where
         self.with_current(L::clone).ok()
     }
 
-    /// Invokes a closure with a borrowed reference to the current layer,
+    /// Invokes a closure with a borrowed reference to the current layer or filter,
     /// returning the result (or an error if the subscriber no longer exists).
     pub fn with_current<T>(&self, f: impl FnOnce(&L) -> T) -> Result<T, Error> {
         let inner = self.inner.upgrade().ok_or(Error {
