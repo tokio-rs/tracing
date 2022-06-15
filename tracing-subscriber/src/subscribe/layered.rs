@@ -11,7 +11,12 @@ use crate::{
 };
 #[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
-use core::{any::TypeId, cmp, fmt, marker::PhantomData, ptr::NonNull};
+use core::{
+    any::{Any, TypeId},
+    cmp, fmt,
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 /// A [collector] composed of a [collector] wrapped by one or more
 /// [subscriber]s.
@@ -61,6 +66,26 @@ pub struct Layered<S, I, C = I> {
 }
 
 // === impl Layered ===
+
+impl<S, C> Layered<S, C>
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    /// Returns `true` if this `Collector` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Collector` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
 
 impl<S, C> Collect for Layered<S, C>
 where
