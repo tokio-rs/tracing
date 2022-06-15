@@ -1,3 +1,5 @@
+#![cfg(feature = "registry")]
+
 use std::sync::{Arc, Mutex};
 use tracing::{collect::with_default, Collect};
 use tracing_subscriber::{prelude::*, registry, Subscribe};
