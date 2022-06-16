@@ -654,7 +654,10 @@ impl Collect for NoCollector {
 }
 
 #[cfg(feature = "alloc")]
-impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
+impl<C> Collect for alloc::boxed::Box<C>
+where
+    C: Collect + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
@@ -725,7 +728,10 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
 }
 
 #[cfg(feature = "alloc")]
-impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
+impl<C> Collect for alloc::sync::Arc<C>
+where
+    C: Collect + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
