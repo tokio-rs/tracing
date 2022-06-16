@@ -662,7 +662,10 @@ impl Subscriber for NoSubscriber {
     fn exit(&self, _span: &span::Id) {}
 }
 
-impl Subscriber for Box<dyn Subscriber + Send + Sync + 'static> {
+impl<S> Subscriber for Box<S>
+where
+    S: Subscriber + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
@@ -739,7 +742,10 @@ impl Subscriber for Box<dyn Subscriber + Send + Sync + 'static> {
     }
 }
 
-impl Subscriber for Arc<dyn Subscriber + Send + Sync + 'static> {
+impl<S> Subscriber for Arc<S>
+where
+    S: Subscriber + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
