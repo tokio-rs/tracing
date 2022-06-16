@@ -367,3 +367,27 @@ fn explicit_child_at_levels() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn string_field() {
+    let (collector, handle) = collector::mock()
+        .event(event::mock().with_fields(field::mock("my_string").with_value(&"hello").only()))
+        .event(
+            event::mock().with_fields(field::mock("my_string").with_value(&"hello world!").only()),
+        )
+        .done()
+        .run_with_handle();
+    with_default(collector, || {
+        let mut my_string = String::from("hello");
+
+        tracing::event!(Level::INFO, my_string);
+
+        // the string is not moved by using it as a field!
+        my_string.push_str(" world!");
+
+        tracing::event!(Level::INFO, my_string);
+    });
+
+    handle.assert_finished();
+}
