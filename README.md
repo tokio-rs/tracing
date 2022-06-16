@@ -404,6 +404,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
+- [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -441,6 +442,7 @@ please let us know!)
 [`tracing-forest`]: https://crates.io/crates/tracing-forest
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
+[`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
