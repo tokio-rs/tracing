@@ -377,6 +377,7 @@ maintained by the `tokio` project. These include:
   framework for validating the behavior of `tracing` spans.
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
+- [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -406,6 +407,7 @@ please let us know! We'd love to add your project to the list!
 [Sentry]: https://sentry.io/welcome/
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
+[`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
