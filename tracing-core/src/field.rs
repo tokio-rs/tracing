@@ -503,6 +503,18 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+impl crate::sealed::Sealed for alloc::string::String {}
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+impl Value for alloc::string::String {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_str(key, self.as_str())
+    }
+}
+
 impl fmt::Debug for dyn Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We are only going to be recording the field value, so we don't
