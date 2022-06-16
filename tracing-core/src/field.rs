@@ -116,6 +116,7 @@ use crate::stdlib::{
     hash::{Hash, Hasher},
     num,
     ops::Range,
+    string::String,
 };
 
 use self::private::ValidLen;
@@ -593,6 +594,13 @@ where
     #[inline]
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         self.as_ref().record(key, visitor)
+    }
+}
+
+impl crate::sealed::Sealed for String {}
+impl Value for String {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_str(key, self.as_str())
     }
 }
 
