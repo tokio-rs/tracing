@@ -16,9 +16,9 @@
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
-//! (`i64`, `u64`, `f64`, `bool`, and `&str`) or using a `fmt::Display` or
-//! `fmt::Debug` implementation. Collectors are provided these primitive
-//! value types as `dyn Value` trait objects.
+//! (`i64`, `u64`, `f64`, `i128`, `u128`, `bool`, and `&str`) or using a
+//! `fmt::Display` or `fmt::Debug` implementation. Collectors are provided
+//! these primitive value types as `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
 //! recorded as typed data by calling the [`Value::record`] method on these
