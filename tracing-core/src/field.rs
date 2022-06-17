@@ -16,9 +16,9 @@
 //! will contain any fields attached to each event.
 //!
 //! `tracing` represents values as either one of a set of Rust primitives
-//! (`i64`, `u64`, `f64`, `bool`, and `&str`) or using a `fmt::Display` or
-//! `fmt::Debug` implementation. Collectors are provided these primitive
-//! value types as `dyn Value` trait objects.
+//! (`i64`, `u64`, `f64`, `i128`, `u128`, `bool`, and `&str`) or using a
+//! `fmt::Display` or `fmt::Debug` implementation. Collectors are provided
+//! these primitive value types as `dyn Value` trait objects.
 //!
 //! These trait objects can be formatted using `fmt::Debug`, but may also be
 //! recorded as typed data by calling the [`Value::record`] method on these
@@ -191,6 +191,16 @@ pub trait Visit {
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
+        self.record_debug(field, &value)
+    }
+
+    /// Visit a signed 128-bit integer value.
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        self.record_debug(field, &value)
+    }
+
+    /// Visit an unsigned 128-bit integer value.
+    fn record_u128(&mut self, field: &Field, value: u128) {
         self.record_debug(field, &value)
     }
 
@@ -393,6 +403,8 @@ impl_values! {
     record_u64(usize, u32, u16, u8 as u64),
     record_i64(i64),
     record_i64(isize, i32, i16, i8 as i64),
+    record_u128(u128),
+    record_i128(i128),
     record_bool(bool),
     record_f64(f64, f32 as f64)
 }
