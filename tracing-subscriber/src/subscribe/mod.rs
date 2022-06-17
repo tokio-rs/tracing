@@ -417,7 +417,7 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
-//! ### Enabling interest
+//! ### Enabling Interest
 //!
 //! Whenever an tracing event (or span) is emitted, it goes through a number of
 //! steps to determine how and how much it should be processed. The earlier an
