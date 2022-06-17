@@ -194,6 +194,16 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
+    /// Visit a signed 128-bit integer value.
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        self.record_debug(field, &value)
+    }
+
+    /// Visit an unsigned 128-bit integer value.
+    fn record_u128(&mut self, field: &Field, value: u128) {
+        self.record_debug(field, &value)
+    }
+
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.record_debug(field, &value)
@@ -393,6 +403,8 @@ impl_values! {
     record_u64(usize, u32, u16, u8 as u64),
     record_i64(i64),
     record_i64(isize, i32, i16, i8 as i64),
+    record_u128(u128),
+    record_i128(i128),
     record_bool(bool),
     record_f64(f64, f32 as f64)
 }
