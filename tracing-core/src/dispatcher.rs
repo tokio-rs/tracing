@@ -123,6 +123,7 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
+
 use crate::{
     callsite, span,
     subscriber::{self, NoSubscriber, Subscriber},
@@ -142,6 +143,7 @@ use crate::stdlib::{
 use crate::stdlib::{
     cell::{Cell, RefCell, RefMut},
     error,
+    ops::Deref,
     sync::Weak,
 };
 
@@ -697,14 +699,49 @@ impl State {
 
 // ===== impl Entered =====
 
+/// Return value of [`Entered::current`].
+///
+/// [`Entered::current`]: Entered::current
+#[cfg(feature = "std")]
+enum Current<'a> {
+    /// There is a local default dispatch set or we just set the local
+    /// default to the global dispatch.
+    Default(RefMut<'a, Dispatch>),
+    /// There is no dispatch set, so we use the `none` dispatch.
+    None(Dispatch),
+}
+
+#[cfg(feature = "std")]
+impl<'a> Deref for Current<'a> {
+    type Target = Dispatch;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Default(def) => def,
+            Self::None(none) => none,
+        }
+    }
+}
+
 #[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
-    fn current(&self) -> RefMut<'a, Dispatch> {
-        let default = self.0.default.borrow_mut();
-        RefMut::map(default, |default| {
-            default.get_or_insert_with(|| get_global().cloned().unwrap_or_else(Dispatch::none))
-        })
+    fn current(&self) -> Current<'a> {
+        let mut default = self.0.default.borrow_mut();
+        match *default {
+            Some(_) => Current::Default(RefMut::map(default, |d| {
+                d.as_mut().expect("`default` is `Some(_)`")
+            })),
+            None => match get_global() {
+                Some(global) => {
+                    *default = Some(global.clone());
+                    Current::Default(RefMut::map(default, |d| {
+                        d.as_mut().expect("We just initialized the `Option`")
+                    }))
+                }
+                None => Current::None(Dispatch::none()),
+            },
+        }
     }
 }
 
