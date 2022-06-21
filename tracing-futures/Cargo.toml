@@ -35,8 +35,8 @@ tokio-executor = { version = "0.1", optional = true }
 tokio = { version = "0.1", optional = true }
 
 [dev-dependencies]
-tokio = "0.1.22"
-tokio-test = "0.3"
+tokio = "1"
+tokio-test = "0.4"
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-mock = { path = "../tracing-mock" }
 
