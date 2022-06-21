@@ -98,5 +98,5 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all-features --locked --lib=tracing-appender
+        args: --all-features --locked -p tracing-appender
         toolchain: ${{ env.APPENDER_MSRV }}
