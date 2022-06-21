@@ -682,7 +682,10 @@ impl Dispatch {
     /// [`event`]: super::collect::Collect::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        self.collector().event(event)
+        let collector = self.collector();
+        if collector.event_enabled(event) {
+            collector.event(event);
+        }
     }
 
     /// Records that a span has been can_enter.
