@@ -511,7 +511,9 @@ impl Dispatch {
     /// [`event`]: super::subscriber::Subscriber::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        self.subscriber.event(event)
+        if self.subscriber.event_enabled(event) {
+            self.subscriber.event(event);
+        }
     }
 
     /// Records that a span has been can_enter.

@@ -415,6 +415,28 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
+//! ### Enabling Interest
+//!
+//! Whenever an tracing event (or span) is emitted, it goes through a number of
+//! steps to determine how and how much it should be processed. The earlier an
+//! event is disabled, the less work has to be done to process the event, so
+//! `Layer`s that implement filtering should attempt to disable unwanted
+//! events as early as possible. In order, each event checks:
+//!
+//! - [`register_callsite`], once per callsite (roughly: once per time that
+//!   `event!` or `span!` is written in the source code; this is cached at the
+//!   callsite). See [`Subscriber::register_callsite`] and
+//!   [`tracing_core::callsite`] for a summary of how this behaves.
+//! - [`enabled`], once per emitted event (roughly: once per time that `event!`
+//!   or `span!` is *executed*), and only if `register_callsite` regesters an
+//!   [`Interest::sometimes`]. This is the main customization point to globally
+//!   filter events based on their [`Metadata`]. If an event can be disabled
+//!   based only on [`Metadata`], it should be, as this allows the construction
+//!   of the actual `Event`/`Span` to be skipped.
+//! - For events only (and not spans), [`event_enabled`] is called just before
+//!   processing the event. This gives layers one last chance to say that
+//!   an event should be filtered out, now that the event's fields are known.
+//!
 //! ## Per-Layer Filtering
 //!
 //! **Note**: per-layer filtering APIs currently require the [`"registry"` crate
@@ -634,6 +656,7 @@
 //! [the current span]: Context::current_span
 //! [`register_callsite`]: Layer::register_callsite
 //! [`enabled`]: Layer::enabled
+//! [`event_enabled`]: Layer::event_enabled
 //! [`on_enter`]: Layer::on_enter
 //! [`Layer::register_callsite`]: Layer::register_callsite
 //! [`Layer::enabled`]: Layer::enabled
@@ -831,6 +854,31 @@ where
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, S>) {}
+
+    /// Called before [`on_event`], to determine if `on_event` should be called.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note**: This method determines whether an event is globally enabled,
+    /// *not* whether the individual `Layer` will be notified about the
+    /// event. This is intended to be used by `Layer`s that implement
+    /// filtering for the entire stack. `Layer`s which do not wish to be
+    /// notified about certain events but do not wish to globally disable them
+    /// should ignore those events in their [on_event][Self::on_event].
+    ///
+    /// </pre></div>
+    ///
+    /// See [the trait-level documentation] for more information on filtering
+    /// with `Layer`s.
+    ///
+    /// [`on_event`]: Self::on_event
+    /// [`Interest`]: tracing_core::Interest
+    /// [the trait-level documentation]: #filtering-with-layers
+    #[inline] // collapse this to a constant please mrs optimizer
+    fn event_enabled(&self, _event: &Event<'_>, _ctx: Context<'_, S>) -> bool {
+        true
+    }
 
     /// Notifies this layer that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, S>) {}
@@ -1461,6 +1509,14 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
+        match self {
+            Some(ref inner) => inner.event_enabled(event, ctx),
+            None => false,
+        }
+    }
+
+    #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_event(event, ctx);
@@ -1549,6 +1605,11 @@ feature! {
             }
 
             #[inline]
+            fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
+                self.deref().event_enabled(event, ctx)
+            }
+
+            #[inline]
             fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
                 self.deref().on_event(event, ctx)
             }
@@ -1627,6 +1688,10 @@ feature! {
 
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
             self.iter().all(|l| l.enabled(metadata, ctx.clone()))
+        }
+
+        fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
+            self.iter().all(|l| l.event_enabled(event, ctx.clone()))
         }
 
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
