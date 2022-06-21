@@ -58,15 +58,15 @@ jobs:
       with:
         command: check
         # skip the following crates:
-        # - tracing-futures, as it depends on ancient tokio versions.
-        #   TODO(eliza): remove this when the ancient tokio deps are dropped
         # - tracing-appender, as it has its own MSRV.
         #   TODO(eliza): remove this when appender is on the same MSRV as
         #   everything else
         # - the examples, as they are not published & we don't care about
         #   MSRV support for them.
+        # - tracing-futures, as it depends on ancient tokio versions.
+        #   TODO(eliza): remove this when the ancient tokio deps are dropped
         args: >-
-          --workspace --all-targets --all-features --locked
+          --workspace --all-features --locked
           --exclude=tracing-appender
           --exclude=tracing-examples
           --exclude=tracing-futures
