@@ -394,6 +394,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.inner.event_enabled(event)
+    }
+
+    #[inline]
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
     }

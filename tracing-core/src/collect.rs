@@ -57,6 +57,9 @@ use core::ptr::NonNull;
 ///   See also the [documentation on the callsite registry][cs-reg] for details
 ///   on [`register_callsite`].
 ///
+/// - [`event_enabled`] is called once before every call to the [`event`]
+///   method. This can be used to implement filtering on events once their field
+///   values are known, but before any processing is done in the `event` method.
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
@@ -72,6 +75,8 @@ use core::ptr::NonNull;
 /// [`clone_span`]: Collect::clone_span
 /// [`try_close`]: Collect::try_close
 /// [cs-reg]: crate::callsite#registering-callsites
+/// [`event`]: Collect::event
+/// [`event_enabled`]: Collect::event_enabled
 pub trait Collect: 'static {
     // === Span registry methods ==============================================
 
@@ -287,6 +292,17 @@ pub trait Collect: 'static {
     /// (i.e., some span _a_ which proceeds some other span _b_ may not also
     /// follow from _b_), it may silently do nothing.
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id);
+
+    /// Determine if an [`Event`] should be recorded.
+    ///
+    /// By default, this returns `true` and collectors can filter events in
+    /// [`event`][Self::event] without any penalty. However, when `event` is
+    /// more complicated, this can be used to determine if `event` should be
+    /// called at all, separating out the decision from the processing.
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        let _ = event;
+        true
+    }
 
     /// Records that an [`Event`] has occurred.
     ///
@@ -689,6 +705,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
+    }
+
+    #[inline]
     fn event(&self, event: &Event<'_>) {
         self.as_ref().event(event)
     }
@@ -760,6 +781,11 @@ where
     #[inline]
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
     }
 
     #[inline]

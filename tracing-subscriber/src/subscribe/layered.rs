@@ -138,6 +138,16 @@ where
         self.subscriber.on_follows_from(span, follows, self.ctx());
     }
 
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        if self.subscriber.event_enabled(event, self.ctx()) {
+            // if the outer subscriber enables the event, ask the inner collector.
+            self.inner.event_enabled(event)
+        } else {
+            // otherwise, the event is disabled by this subscriber
+            false
+        }
+    }
+
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
         self.subscriber.on_event(event, self.ctx());
@@ -278,6 +288,17 @@ where
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
         self.inner.on_follows_from(span, follows, ctx.clone());
         self.subscriber.on_follows_from(span, follows, ctx);
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+        if self.subscriber.event_enabled(event, ctx.clone()) {
+            // if the outer subscriber enables the event, ask the inner collector.
+            self.inner.event_enabled(event, ctx)
+        } else {
+            // otherwise, the event is disabled by this subscriber
+            false
+        }
     }
 
     #[inline]
