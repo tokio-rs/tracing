@@ -57,13 +57,25 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --workspace --all-targets --all-features --locked --exclude=tracing-appender --exclude=tracing-examples
+        # skip the following crates:
+        # - tracing-futures, as it depends on ancient tokio versions.
+        #   TODO(eliza): remove this when the ancient tokio deps are dropped
+        # - tracing-appender, as it has its own MSRV.
+        #   TODO(eliza): remove this when appender is on the same MSRV as
+        #   everything else
+        # - the examples, as they are not published & we don't care about
+        #   MSRV support for them.
+        args: >-
+          --workspace --all-targets --all-features --locked
+          --exclude=tracing-appender
+          --exclude=tracing-examples
+          --exclude=tracing-futures
         toolchain: ${{ env.MSRV }}
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
     # Run `cargo check` on our minimum supported Rust version (1.53.0).
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - name: "install Rust ${{ env.APPENDER_MSRV }}"
