@@ -135,6 +135,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: layer::Context<'_, S>) -> bool {
+        try_lock!(self.inner.read(), else return false).event_enabled(event, ctx)
+    }
+
+    #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: layer::Context<'_, S>) {
         try_lock!(self.inner.read()).on_event(event, ctx)
     }
