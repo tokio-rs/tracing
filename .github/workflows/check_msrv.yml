@@ -27,37 +27,76 @@ env:
   RUSTUP_MAX_RETRIES: 10
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
+  MSRV: 1.49.0
+  # TODO: remove this once tracing's MSRV is bumped.
+  APPENDER_MSRV: 1.53.0
 
 jobs:
   check-msrv:
     # Run `cargo check` on our minimum supported Rust version (1.49.0).
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@master
+    - name: "install Rust ${{ env.MSRV }}"
+      uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.49.0
+        toolchain: ${{ env.MSRV }}
         profile: minimal
-        override: true
+    - name: "install Rust nightly"
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+    - name: Select minimal versions
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -Z minimal-versions
+        toolchain: nightly
     - name: Check
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --exclude=tracing-appender
+        # skip the following crates:
+        # - tracing-appender, as it has its own MSRV.
+        #   TODO(eliza): remove this when appender is on the same MSRV as
+        #   everything else
+        # - the examples, as they are not published & we don't care about
+        #   MSRV support for them.
+        # - tracing-futures, as it depends on ancient tokio versions.
+        #   TODO(eliza): remove this when the ancient tokio deps are dropped
+        args: >-
+          --workspace --all-features --locked
+          --exclude=tracing-appender
+          --exclude=tracing-examples
+          --exclude=tracing-futures
+        toolchain: ${{ env.MSRV }}
 
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
     # Run `cargo check` on our minimum supported Rust version (1.53.0).
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@main
-    - uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@master
+    - name: "install Rust ${{ env.APPENDER_MSRV }}"
+      uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.53.0
+        toolchain: ${{ env.APPENDER_MSRV }}
         profile: minimal
-        override: true
+    - name: "install Rust nightly"
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+    - name: Select minimal versions
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -Z minimal-versions
+        toolchain: nightly
     - name: Check
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --lib=tracing-appender
+        args: --all-features --locked -p tracing-appender
+        toolchain: ${{ env.APPENDER_MSRV }}
