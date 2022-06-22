@@ -23,7 +23,7 @@ mod spin {
     }
 
     impl<T: fmt::Debug, F> fmt::Debug for Lazy<T, F> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("Lazy")
                 .field("cell", &self.cell)
                 .field("init", &"..")
