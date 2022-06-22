@@ -111,6 +111,7 @@ use crate::stdlib::{
 };
 use crate::{
     dispatcher::Dispatch,
+    lazy::Lazy,
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
 };
@@ -253,14 +254,7 @@ static CALLSITES: Callsites = Callsites {
 
 static DISPATCHERS: Dispatchers = Dispatchers::new();
 
-#[cfg(feature = "std")]
-static LOCKED_CALLSITES: once_cell::sync::Lazy<Mutex<Vec<&'static dyn Callsite>>> =
-    once_cell::sync::Lazy::new(Default::default);
-
-#[cfg(not(feature = "std"))]
-crate::lazy_static! {
-    static ref LOCKED_CALLSITES: Mutex<Vec<&'static dyn Callsite>> = Mutex::new(Vec::new());
-}
+static LOCKED_CALLSITES: Lazy<Mutex<Vec<&'static dyn Callsite>>> = Lazy::new(Default::default);
 
 struct Callsites {
     list_head: AtomicPtr<DefaultCallsite>,
@@ -514,8 +508,7 @@ mod private {
 
 #[cfg(feature = "std")]
 mod dispatchers {
-    use crate::dispatcher;
-    use once_cell::sync::Lazy;
+    use crate::{dispatcher, lazy::Lazy};
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
