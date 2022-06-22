@@ -6,6 +6,9 @@ pub(crate) use self::spin::Lazy;
 
 #[cfg(not(feature = "std"))]
 mod spin {
+    //! This is the `once_cell::sync::Lazy` type, but modified to use our
+    //! `spin::Once` type rather than `OnceCell`. This is used to replace
+    //! `once_cell::sync::Lazy` on `no-std` builds.
     use crate::spin::Once;
     use core::{
         cell::Cell,
