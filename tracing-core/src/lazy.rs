@@ -10,11 +10,7 @@ mod spin {
     //! `spin::Once` type rather than `OnceCell`. This is used to replace
     //! `once_cell::sync::Lazy` on `no-std` builds.
     use crate::spin::Once;
-    use core::{
-        cell::Cell,
-        fmt,
-        ops::{Deref, DerefMut},
-    };
+    use core::{cell::Cell, fmt, ops::Deref};
 
     /// Re-implementation of `once_cell::sync::Lazy` on top of `spin::Once`
     /// rather than `OnceCell`.
@@ -38,7 +34,7 @@ mod spin {
     // `Sync` for `F`. We do create a `&mut Option<F>` in `force`, but this is
     // properly synchronized, so it only happens once so it also does not
     // contribute to this impl.
-    unsafe impl<T, F: Send> Sync for Lazy<T, F> where OnceCell<T>: Sync {}
+    unsafe impl<T, F: Send> Sync for Lazy<T, F> where Once<T>: Sync {}
     // auto-derived `Send` impl is OK.
 
     impl<T, F> Lazy<T, F> {
@@ -49,18 +45,6 @@ mod spin {
                 init: Cell::new(Some(init)),
             }
         }
-
-        /// Consumes this `Lazy` returning the stored value.
-        ///
-        /// Returns `Ok(value)` if `Lazy` is initialized and `Err(f)` otherwise.
-        pub(crate) fn into_value(this: Lazy<T, F>) -> Result<T, F> {
-            let cell = this.cell;
-            let init = this.init;
-            cell.into_inner().ok_or_else(|| {
-                init.take()
-                    .unwrap_or_else(|| panic!("Lazy instance has previously been poisoned"))
-            })
-        }
     }
 
     impl<T, F: FnOnce() -> T> Lazy<T, F> {
@@ -69,7 +53,7 @@ mod spin {
         ///
         /// This is equivalent to the `Deref` impl, but is explicit.
         pub(crate) fn force(this: &Lazy<T, F>) -> &T {
-            this.cell.get_or_init(|| match this.init.take() {
+            this.cell.call_once(|| match this.init.take() {
                 Some(f) => f(),
                 None => panic!("Lazy instance has previously been poisoned"),
             })
@@ -80,13 +64,6 @@ mod spin {
         type Target = T;
         fn deref(&self) -> &T {
             Lazy::force(self)
-        }
-    }
-
-    impl<T, F: FnOnce() -> T> DerefMut for Lazy<T, F> {
-        fn deref_mut(&mut self) -> &mut T {
-            Lazy::force(self);
-            self.cell.get_mut().unwrap_or_else(|| unreachable!())
         }
     }
 
