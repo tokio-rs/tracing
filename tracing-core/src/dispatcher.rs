@@ -125,7 +125,9 @@
 //!
 
 use crate::{
-    callsite, span,
+    callsite,
+    lazy::Lazy,
+    span,
     subscriber::{self, NoSubscriber, Subscriber},
     Event, LevelFilter, Metadata,
 };
@@ -169,6 +171,8 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
+
+static NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch::new(NoSubscriber::default()));
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
@@ -327,9 +331,9 @@ where
                 return entered.with_current(|current| f(current));
             }
 
-            f(&Dispatch::none())
+            f(&NO_DISPATCH)
         })
-        .unwrap_or_else(|_| f(&Dispatch::none()))
+        .unwrap_or_else(|_| f(&NO_DISPATCH))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -372,7 +376,7 @@ where
     if let Some(d) = get_global() {
         f(d)
     } else {
-        f(&Dispatch::none())
+        f(&NO_DISPATCH)
     }
 }
 
@@ -396,9 +400,7 @@ impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
     #[inline]
     pub fn none() -> Self {
-        Dispatch {
-            subscriber: Arc::new(NoSubscriber::default()),
-        }
+        NO_DISPATCH.clone()
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
@@ -710,7 +712,7 @@ impl<'a> Entered<'a> {
                     *default = Some(global.clone());
                     f(global)
                 }
-                None => f(&Dispatch::none()),
+                None => f(&NO_DISPATCH),
             },
         }
     }
