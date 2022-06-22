@@ -7,7 +7,11 @@ pub(crate) use self::spin::Lazy;
 #[cfg(not(feature = "std"))]
 mod spin {
     use crate::spin::Once;
-    use core::{cell::Cell, fmt, ops::Deref};
+    use core::{
+        cell::Cell,
+        fmt,
+        ops::{Deref, DerefMut},
+    };
 
     /// Re-implementation of `once_cell::sync::Lazy` on top of `spin::Once`
     /// rather than `OnceCell`.
