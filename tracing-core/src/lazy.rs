@@ -31,6 +31,13 @@ mod spin {
         }
     }
 
+    // We never create a `&F` from a `&Lazy<T, F>` so it is fine to not impl
+    // `Sync` for `F`. We do create a `&mut Option<F>` in `force`, but this is
+    // properly synchronized, so it only happens once so it also does not
+    // contribute to this impl.
+    unsafe impl<T, F: Send> Sync for Lazy<T, F> where OnceCell<T>: Sync {}
+    // auto-derived `Send` impl is OK.
+
     impl<T, F> Lazy<T, F> {
         /// Creates a new lazy value with the given initializing function.
         pub(crate) const fn new(init: F) -> Lazy<T, F> {
