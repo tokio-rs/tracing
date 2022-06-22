@@ -141,9 +141,8 @@ use crate::stdlib::{
 
 #[cfg(feature = "std")]
 use crate::stdlib::{
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, RefCell},
     error,
-    ops::Deref,
     sync::Weak,
 };
 
@@ -336,7 +335,7 @@ where
     CURRENT_STATE
         .try_with(|state| {
             if let Some(entered) = state.enter() {
-                return f(&*entered.current());
+                return entered.with_current(|current| f(current));
             }
 
             f(&Dispatch::none())
@@ -358,7 +357,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
     CURRENT_STATE
         .try_with(|state| {
             let entered = state.enter()?;
-            Some(f(&*entered.current()))
+            Some(entered.with_current(f))
         })
         .ok()?
 }
@@ -710,47 +709,19 @@ impl State {
 
 // ===== impl Entered =====
 
-/// Return value of [`Entered::current`].
-///
-/// [`Entered::current`]: Entered::current
-#[cfg(feature = "std")]
-enum Current<'a> {
-    /// There is a local default dispatch set or we just set the local
-    /// default to the global dispatch.
-    Default(RefMut<'a, Dispatch>),
-    /// There is no dispatch set, so we use the `none` dispatch.
-    None(Dispatch),
-}
-
-#[cfg(feature = "std")]
-impl<'a> Deref for Current<'a> {
-    type Target = Dispatch;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Default(def) => def,
-            Self::None(none) => none,
-        }
-    }
-}
-
 #[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
-    fn current(&self) -> Current<'a> {
+    fn with_current<T>(&self, f: impl FnOnce(&Dispatch) -> T) -> T {
         let mut default = self.0.default.borrow_mut();
-        match *default {
-            Some(_) => Current::Default(RefMut::map(default, |d| {
-                d.as_mut().expect("`default` is `Some(_)`")
-            })),
+        match &*default {
+            Some(default) => f(default),
             None => match get_global() {
                 Some(global) => {
                     *default = Some(global.clone());
-                    Current::Default(RefMut::map(default, |d| {
-                        d.as_mut().expect("We just initialized the `Option`")
-                    }))
+                    f(global)
                 }
-                None => Current::None(Dispatch::none()),
+                None => f(&Dispatch::none()),
             },
         }
     }
