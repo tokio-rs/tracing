@@ -267,8 +267,8 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     }
 }
 
-#[derive(Clone, Copy)]
 /// Control over opentelemetry conventional exception fields
+#[derive(Clone, Copy)]
 struct ExceptionFieldConfig {
     /// If an error value is recorded on an event/span, should the otel fields
     /// be added
@@ -425,8 +425,8 @@ where
             tracked_inactivity: true,
             with_threads: true,
             exception_config: ExceptionFieldConfig {
-                record: true,
-                propagate: true,
+                record: false,
+                propagate: false,
             },
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
