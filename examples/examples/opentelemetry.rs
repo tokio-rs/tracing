@@ -38,8 +38,11 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 
         warn!("About to exit!");
         trace!("status: {}", work_result);
-    }
+    } // Once this scope is closed, all spans inside are closed as well
 
+    // Shut down the current tracer provider. This will invoke the shutdown
+    // method on all span processors. span processors should export remaining
+    // spans before return.
     global::shutdown_tracer_provider();
 
     Ok(())
