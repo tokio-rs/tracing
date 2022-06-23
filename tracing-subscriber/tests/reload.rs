@@ -1,4 +1,4 @@
-#![cfg(feature = "registry")]
+#![cfg(feature = "reload")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -29,16 +29,6 @@ impl Subscriber for NopSubscriber {
     fn exit(&self, _: &Id) {}
 }
 
-pub struct NopLayer;
-impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
-    fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
-        Interest::sometimes()
-    }
-
-    fn enabled(&self, _m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
-        true
-    }
-}
 
 #[test]
 fn reload_handle() {
@@ -92,7 +82,19 @@ fn reload_handle() {
 }
 
 #[test]
+#[cfg(feature = "registry")]
 fn reload_filter() {
+    struct NopLayer;
+    impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
+        fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
+            Interest::sometimes()
+        }
+
+        fn enabled(&self, _m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+            true
+        }
+    }
+
     static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
     static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
 
