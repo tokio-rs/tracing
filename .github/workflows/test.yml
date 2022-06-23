@@ -1,4 +1,4 @@
-name: Tests (WASM)
+name: Tests
 
 on:
   push:
@@ -29,6 +29,35 @@ env:
   RUST_BACKTRACE: short
 
 jobs:
+  test:
+    # Test against stable Rust across macOS, Windows, and Linux, and against
+    # beta and nightly rust on Ubuntu.
+    name: cargo test (${{ matrix.rust }} on ${{ matrix.os }})
+    strategy:
+      matrix:
+        # test all Rust versions on ubuntu-latest
+        os: [ubuntu-latest]
+        rust: [stable, beta, nightly]
+        # test stable Rust on Windows and MacOS as well
+        include:
+          - rust: stable
+            os: windows-latest
+          - rust: stable
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
+        override: true
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all
+
   test-build-wasm:
     runs-on: ubuntu-latest
     strategy:
@@ -75,6 +104,6 @@ jobs:
         toolchain: stable
         override: true
     - name: install test runner for wasm
-      run:  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      uses: taiki-e/install-action@wasm-pack
     - name: run wasm tests
       run: cd ${{ matrix.subcrate }} && wasm-pack test --node
