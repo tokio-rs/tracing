@@ -1186,7 +1186,11 @@ mod tests {
     #[test]
     fn records_error_fields() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let subscriber = tracing_subscriber::registry().with(
+            layer()
+                .with_tracer(tracer.clone())
+                .with_exception_fields(true),
+        );
 
         let err = TestDynError::new("base error")
             .with_parent("intermediate error")
@@ -1328,7 +1332,11 @@ mod tests {
     #[test]
     fn propagates_error_fields_from_event_to_span() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
+        let subscriber = tracing_subscriber::registry().with(
+            layer()
+                .with_tracer(tracer.clone())
+                .with_exception_field_propagation(true),
+        );
 
         let err = TestDynError::new("base error")
             .with_parent("intermediate error")
