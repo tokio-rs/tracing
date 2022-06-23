@@ -1,6 +1,6 @@
 //! Wrapper for a `Layer` to allow it to be dynamically reloaded.
 //!
-//! This module provides a [`Layer` type] implementing the [`Layer` trait] and [`Filter` trait]
+//! This module provides a [`Layer` type] implementing the [`Layer` trait] or [`Filter` trait]
 //! which wraps another type implementing the corresponding trait. This
 //! allows the wrapped type to be replaced with another
 //! instance of that type at runtime.
@@ -55,13 +55,13 @@
 //!
 //! ## Note
 //!
-//! //! The [`Subscribe`] implementation is unable to implement downcasting functionality,
-//! so certain `Subscribers` will fail to reload if wrapped in a `reload::Subscriber`.
+//! The [`Layer`] implementation is unable to implement downcasting functionality,
+//! so certain [`Layer`] will fail to downcast if wrapped in a `reload::Layer`.
 //!
 //! If you only want to be able to dynamically change the
-//! `Filter` on your layer, prefer wrapping that `Filter` in the `reload::Subscriber`.
+//! `Filter` on a layer, prefer wrapping that `Filter` in the `reload::Layer`.
 //!
-//! [`Filter` trait]: crate::subscribe::Filter
+//! [`Filter` trait]: crate::layer::Filter
 //! [`Layer` type]: Layer
 //! [`Layer` trait]: super::layer::Layer
 use crate::layer;
@@ -221,9 +221,11 @@ where
 }
 
 impl<L, S> Layer<L, S> {
-    /// Wraps the given `Subscribe` or `Filter`,
-    /// returning a subscriber or filter and a `Handle` that allows
-    /// the inner type to be modified at runtime.
+    /// Wraps the given [`Layer`] or [`Filter`], returning a `reload::Layer`
+    /// and a `Handle` that allows the inner value to be modified at runtime.
+    ///
+    /// [`Layer`]: crate::layer::Layer
+    /// [`Filter`]: crate::layer::Filter
     pub fn new(inner: L) -> (Self, Handle<L, S>) {
         let this = Self {
             inner: Arc::new(RwLock::new(inner)),
@@ -245,13 +247,18 @@ impl<L, S> Layer<L, S> {
 // ===== impl Handle =====
 
 impl<L, S> Handle<L, S> {
-    /// Replace the current layer or filter with the provided `new_value`.
+    /// Replace the current [`Layer`] or [`Filter`] with the provided `new_value`.
     ///
-    /// [`Handle::reload`] cannot be used with the [`Filtered`](crate::filter::Filtered)
-    /// subscriber; use [`Handle::modify`] instead (see [this issue] for additional details).
+    /// [`Handle::reload`] cannot be used with the [`Filtered`] layer; use
+    /// [`Handle::modify`] instead (see [this issue] for additional details).
     ///
-    /// However, if the _only_ the [`Filter`](crate::subscribe::Filter) needs to be modified,
-    /// use `reload::Subscriber` to wrap the `Filter` directly.
+    /// However, if the _only_ the [`Filter`]  needs to be modified, use
+    /// `reload::Layer` to wrap the `Filter` directly.
+    ///
+    /// [`Layer`]: crate::layer::Layer
+    /// [`Filter`]: crate::layer::Filter
+    /// [`Filtered`]: crate::filter::Filtered
+``
     ///
     /// [this issue]: https://github.com/tokio-rs/tracing/issues/1629
     pub fn reload(&self, new_value: impl Into<L>) -> Result<(), Error> {
