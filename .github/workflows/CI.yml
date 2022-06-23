@@ -340,6 +340,7 @@ jobs:
     # using cargo's V2 feature resolver (https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions)
     # and avoid cd'ing into each crate's directory.
     name: cargo test (feature-specific)
+    needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@main
