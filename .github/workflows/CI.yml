@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - "v0.1.x"
   pull_request: {}
 
 env:
