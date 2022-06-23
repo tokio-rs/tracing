@@ -7,6 +7,9 @@ mod targets;
 mod trees;
 mod vec;
 
+#[cfg(feature = "reload")]
+mod reload;
+
 use tracing::{level_filters::LevelFilter, Level};
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
