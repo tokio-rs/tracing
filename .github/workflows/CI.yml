@@ -277,6 +277,12 @@ jobs:
       uses: taiki-e/install-action@nextest
     - name: Run tests
       run: cargo nextest run --profile ci --workspace --all-features
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: always() # always run even if the previous step fails
+      with:
+        report_paths: 'target/nextest/ci/junit.xml'
+        check_name: "Test Report (Rust ${{ matrix.rust }} on ${{ matrix.os }})"
     - name: Run doctests
       run: cargo test --doc --workspace --all-features
 
