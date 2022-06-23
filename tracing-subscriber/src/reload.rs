@@ -258,7 +258,6 @@ impl<L, S> Handle<L, S> {
     /// [`Layer`]: crate::layer::Layer
     /// [`Filter`]: crate::layer::Filter
     /// [`Filtered`]: crate::filter::Filtered
-``
     ///
     /// [this issue]: https://github.com/tokio-rs/tracing/issues/1629
     pub fn reload(&self, new_value: impl Into<L>) -> Result<(), Error> {
