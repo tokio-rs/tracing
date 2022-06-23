@@ -378,3 +378,20 @@ jobs:
     - name: "Test tracing-subscriber with all features disabled"
       run: cargo test --lib --tests --no-default-features
       working-directory: tracing-subscriber
+
+  # all required checks except for the main test run (which we only require
+  # specific matrix combinations from)
+  all_required:
+    name: "all systems go!"
+    runs-on: ubuntu-latest
+    needs:
+      - style
+      - minimal-versions
+      - cargo-hack
+      - check-msrv
+      - check-msrv-appender
+      - test-build-wasm
+      - test-wasm
+      - test-features-stable
+    steps:
+      - run: exit 0
