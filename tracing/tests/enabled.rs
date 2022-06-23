@@ -24,6 +24,7 @@ fn level_and_target() {
     assert!(tracing::enabled!(target: "debug_module", Level::DEBUG));
     assert!(tracing::enabled!(Level::ERROR));
     assert!(!tracing::enabled!(Level::DEBUG));
+    panic!("lol fake panic to test CI");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
