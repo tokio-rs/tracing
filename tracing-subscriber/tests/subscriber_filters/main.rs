@@ -4,7 +4,7 @@ mod support;
 use self::support::*;
 mod filter_scopes;
 mod targets;
-mod trees;
+pub(crate) mod trees;
 mod vec;
 
 #[cfg(feature = "reload")]
