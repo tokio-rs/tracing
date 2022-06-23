@@ -282,7 +282,8 @@ jobs:
       if: always() # always run even if the previous step fails
       with:
         report_paths: 'target/nextest/ci/junit.xml'
-        check_name: "Test Report (Rust ${{ matrix.rust }} on ${{ matrix.os }})"
+        check_name: "cargo test (Rust ${{ matrix.rust }} on ${{ matrix.os }})"
+        check_title_template: "{{SUITE_NAME}}::{{TEST_NAME}}"
     - name: Run doctests
       run: cargo test --doc --workspace --all-features
 
