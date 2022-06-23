@@ -175,7 +175,7 @@ jobs:
 
   check-msrv:
     # Run `cargo check` on our minimum supported Rust version (1.49.0).
-    name: "cargo check (${{ env.MSRV }} on ubuntu-latest)""
+    name: "cargo check (${{ env.MSRV }} on ubuntu-latest)"
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -218,7 +218,7 @@ jobs:
   # TODO: remove this once tracing's MSRV is bumped.
   check-msrv-appender:
     # Run `cargo check` on our minimum supported Rust version (1.53.0).
-    name: "cargo check (tracing-appender ${{ env.APPENDER_MSRV }})""
+    name: "cargo check (tracing-appender ${{ env.APPENDER_MSRV }})"
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -251,7 +251,7 @@ jobs:
   test:
     # Test against stable Rust across macOS, Windows, and Linux, and against
     # beta and nightly rust on Ubuntu.
-    name: cargo test (${{ matrix.rust }} on ${{ matrix.os }})
+    name: "cargo test (${{ matrix.rust }} on ${{ matrix.os }})"
     needs: check
     strategy:
       matrix:
