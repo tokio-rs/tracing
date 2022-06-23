@@ -52,11 +52,12 @@ jobs:
         toolchain: ${{ matrix.rust }}
         profile: minimal
         override: true
+    - name: install cargo-nextest
+      uses: taiki-e/install-action@nextest
     - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --all
+      run: cargo nextest run --profile ci --workspace --all-features
+    - name: Run doctests
+      run: cargo test --doc --workspace --all-features
 
   test-build-wasm:
     runs-on: ubuntu-latest
