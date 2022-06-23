@@ -23,6 +23,7 @@ default = ["std-future", "std"]
 futures-01 = ["futures_01", "std"]
 futures-03 = ["std-future", "futures", "futures-task", "std"]
 std-future = ["pin-project-lite"]
+tokio = ["tokio_01"]
 std = ["tracing/std"]
 
 [dependencies]
@@ -32,13 +33,12 @@ futures-task = { version = "0.3", optional = true }
 pin-project-lite = { version = "0.2.4", optional = true }
 tracing = { path = "../tracing", version = "0.2", default-features = false }
 tokio-executor = { version = "0.1", optional = true }
-tokio = { version = "0.1", optional = true }
+tokio_01 = { package = "tokio", version = "0.1", optional = true }
 
 [dev-dependencies]
-tokio = "1"
 tokio-test = "0.4"
 tracing-core = { path = "../tracing-core", version = "0.2" }
-tracing-mock = { path = "../tracing-mock" }
+tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
 
 [badges]
 maintenance = { status = "actively-developed" }
