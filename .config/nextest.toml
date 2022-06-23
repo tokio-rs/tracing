@@ -7,5 +7,6 @@ failure-output = "immediate-final"
 # Do not cancel the test run on the first failure.
 fail-fast = false
 
-[profile.ci.junit]
-path = "junit.xml"
+# TODO(eliza): uncomment this when we can get nicer JUnit output from nextest...
+# [profile.ci.junit]
+# path = "junit.xml"
