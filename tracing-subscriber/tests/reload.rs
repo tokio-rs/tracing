@@ -1,4 +1,4 @@
-#![cfg(feature = "reload")]
+#![cfg(feature = "std")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -28,7 +28,6 @@ impl Subscriber for NopSubscriber {
     fn enter(&self, _: &Id) {}
     fn exit(&self, _: &Id) {}
 }
-
 
 #[test]
 fn reload_handle() {
