@@ -68,15 +68,39 @@ log-always = ["log"]
 attributes = ["tracing-attributes"]
 
 [[bench]]
-name = "subscriber"
+name = "baseline"
 harness = false
 
 [[bench]]
-name = "no_subscriber"
+name = "dispatch_get_clone"
 harness = false
 
 [[bench]]
-name = "global_subscriber"
+name = "dispatch_get_ref"
+harness = false
+
+[[bench]]
+name = "empty_span"
+harness = false
+
+[[bench]]
+name = "enter_span"
+harness = false
+
+[[bench]]
+name = "event"
+harness = false
+
+[[bench]]
+name = "span_fields"
+harness = false
+
+[[bench]]
+name = "span_no_fields"
+harness = false
+
+[[bench]]
+name = "span_repeated"
 harness = false
 
 [badges]
