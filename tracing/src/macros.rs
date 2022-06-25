@@ -806,6 +806,9 @@ macro_rules! event {
 /// This is similar to [`enabled!`], but queries the current collector specifically for
 /// an event, whereas [`enabled!`] queries for an event _or_ span.
 ///
+/// Although it shares the name, this *does not* call [`Collect::event_enabled`].
+/// `Collect::event_enabled` is only called once the event fields are available.
+///
 /// See the documentation for [`enabled!]` for more details on using this macro.
 /// See also [`span_enabled!`].
 ///
