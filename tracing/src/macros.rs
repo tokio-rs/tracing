@@ -958,6 +958,7 @@ macro_rules! span_enabled {
 ///
 ///
 /// [`Metadata`]: crate::Metadata
+/// [`Collect::event_enabled`]: crate::Collect::event_enabled
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
 /// [`enabled!`]: crate::enabled
