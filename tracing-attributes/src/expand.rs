@@ -200,11 +200,8 @@ fn gen_block<B: ToTokens>(
         ))
     })();
 
-    let target_expr = if let Some(target) = args.target() {
-        quote!(target: #target)
-    } else {
-        quote!()
-    };
+
+    let target_expr = args.target();
 
     let err_event = match args.err_mode {
         Some(FormatMode::Default) | Some(FormatMode::Display) => {
