@@ -200,18 +200,24 @@ fn gen_block<B: ToTokens>(
         ))
     })();
 
+    let target_expr = if let Some(target) = attrs.target {
+        quote!(target: #target)
+    } else {
+        quote!()
+    };
+
     let err_event = match args.err_mode {
         Some(FormatMode::Default) | Some(FormatMode::Display) => {
-            Some(quote!(tracing::error!(error = %e)))
+            Some(quote!(tracing::error!(#target_expr, error = %e)))
         }
-        Some(FormatMode::Debug) => Some(quote!(tracing::error!(error = ?e))),
+        Some(FormatMode::Debug) => Some(quote!(tracing::error!(#target_expr, error = ?e))),
         _ => None,
     };
 
     let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::event!(#level, return = %x))),
+        Some(FormatMode::Display) => Some(quote!(tracing::event!(#target_expr, #level, return = %x))),
         Some(FormatMode::Default) | Some(FormatMode::Debug) => {
-            Some(quote!(tracing::event!(#level, return = ?x)))
+            Some(quote!(tracing::event!(#target_expr, #level, return = ?x)))
         }
         _ => None,
     };
