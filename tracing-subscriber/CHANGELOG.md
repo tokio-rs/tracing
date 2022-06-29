@@ -1,3 +1,45 @@
+# 0.3.12 (Jun 29, 2022)
+
+This release of `tracing-subscriber` adds a new `Layer::event_enabled` method,
+which allows `Layer`s to filter events *after* their field values are recorded;
+a `Filter` implementation for `reload::Layer`, to make using `reload` with
+per-layer filtering more ergonomic, and additional inherent method downcasting
+APIs for the `Layered` type. In addition, it includes dependency updates, and
+minor fixes for documentation and feature flagging.
+
+### Added
+
+- **layer**: `Layer::event_enabled` method, which can be implemented to filter
+  events based on their field values ([#2008])
+- **reload**: `Filter` implementation for `reload::Layer` ([#2159])
+- **layer**: `Layered::downcast_ref` and `Layered::is` inherent methods
+  ([#2160])
+
+### Changed
+
+- **parking_lot**: Updated dependency on `parking_lot` to 0.13.0 ([#2143])
+- Replaced `lazy_static` dependency with `once_cell` ([#2147])
+
+### Fixed
+
+- Don't enable `tracing-core` features by default ([#2107])
+- Several documentation link and typo fixes ([#2064], [#2068], #[2077], [#2161],
+  [#1088])
+
+Thanks to @ben0x539, @jamesmunns, @georgemp, @james7132, @jswrenn, @CAD97, and
+@guswynn for contributing to this release!
+
+[#2008]: https://github.com/tokio-rs/tracing/pull/2008
+[#2159]: https://github.com/tokio-rs/tracing/pull/2159
+[#2160]: https://github.com/tokio-rs/tracing/pull/2160
+[#2143]: https://github.com/tokio-rs/tracing/pull/2143
+[#2107]: https://github.com/tokio-rs/tracing/pull/2107
+[#2064]: https://github.com/tokio-rs/tracing/pull/2064
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+[#2077]: https://github.com/tokio-rs/tracing/pull/2077
+[#2161]: https://github.com/tokio-rs/tracing/pull/2161
+[#1088]: https://github.com/tokio-rs/tracing/pull/1088
+
 # 0.3.11 (Apr 9, 2022)
 
 This is a bugfix release for the `Filter` implementation for `EnvFilter` added
