@@ -269,6 +269,9 @@ mod expand;
 /// }
 /// ```
 ///
+/// If a `target` is specified, both the `ret` and `err` arguments will output to
+/// the declared target.
+///
 /// The `ret` and `err` arguments can be combined in order to record an event if a
 /// function returns [`Result::Ok`] or [`Result::Err`]:
 ///

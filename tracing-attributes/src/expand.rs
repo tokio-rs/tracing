@@ -200,7 +200,6 @@ fn gen_block<B: ToTokens>(
         ))
     })();
 
-
     let target = args.target();
 
     let err_event = match args.err_mode {
@@ -212,10 +211,12 @@ fn gen_block<B: ToTokens>(
     };
 
     let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(tracing::event!(target: #target, #level, return = %x))),
-        Some(FormatMode::Default) | Some(FormatMode::Debug) => {
-            Some(quote!(tracing::event!(target: #target, #level, return = ?x)))
-        }
+        Some(FormatMode::Display) => Some(quote!(
+            tracing::event!(target: #target, #level, return = %x)
+        )),
+        Some(FormatMode::Default) | Some(FormatMode::Debug) => Some(quote!(
+            tracing::event!(target: #target, #level, return = ?x)
+        )),
         _ => None,
     };
 
