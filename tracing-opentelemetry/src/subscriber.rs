@@ -1,14 +1,22 @@
-use crate::{OtelData, PreSampledTracer};
+use crate::{
+    metric::{Instruments, MetricVisitor},
+    OtelData, PreSampledTracer,
+};
 use once_cell::unsync;
 use opentelemetry::{
+    metrics::{Meter, MeterProvider},
+    sdk::metrics::PushController,
     trace::{self as otel, noop, TraceContextExt},
     Context as OtelContext, Key, KeyValue, Value,
 };
-use std::fmt;
 use std::marker;
 use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -21,7 +29,14 @@ const SPAN_NAME_FIELD: &str = "otel.name";
 const SPAN_KIND_FIELD: &str = "otel.kind";
 const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
 const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
+const INSTRUMENTATION_NAME: &str = "tracing/tracing-opentelemetry";
 
+struct Instruments_(Arc<RwLock<Instruments>>);
+
+struct MetricsHandler {
+    _push_controller: PushController,
+    meter: Meter,
+}
 /// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
 ///
@@ -29,6 +44,8 @@ const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetrySubscriber<C, T> {
     tracer: T,
+    metrics_handler: Option<MetricsHandler>,
+    instruments: Instruments_,
     location: bool,
     tracked_inactivity: bool,
     with_threads: bool,
@@ -291,8 +308,12 @@ where
     /// # drop(subscriber);
     /// ```
     pub fn new(tracer: T) -> Self {
+        let inner: Instruments = Default::default();
+        let instruments = Instruments_(Arc::new(RwLock::new(inner)));
         OpenTelemetrySubscriber {
             tracer,
+            metrics_handler: None,
+            instruments,
             location: true,
             tracked_inactivity: true,
             with_threads: true,
@@ -327,12 +348,23 @@ where
     /// let subscriber = Registry::default().with(otel_subscriber);
     /// # drop(subscriber);
     /// ```
-    pub fn with_tracer<Tracer>(self, tracer: Tracer) -> OpenTelemetrySubscriber<C, Tracer>
+    pub fn with_tracer_and_push_controller<Tracer>(
+        self,
+        tracer: Tracer,
+        push_controller: PushController,
+    ) -> OpenTelemetrySubscriber<C, Tracer>
     where
         Tracer: otel::Tracer + PreSampledTracer + 'static,
     {
+        let meter = push_controller.provider().meter(INSTRUMENTATION_NAME, None);
+        let metrics_handler = Some(MetricsHandler {
+            _push_controller: push_controller,
+            meter,
+        });
         OpenTelemetrySubscriber {
             tracer,
+            metrics_handler,
+            instruments: self.instruments,
             location: self.location,
             tracked_inactivity: self.tracked_inactivity,
             with_threads: self.with_threads,
@@ -622,6 +654,14 @@ where
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         // Ignore events that are not in the context of a span
         if let Some(span) = ctx.lookup_current() {
+            if let Some(metrics_handler) = &self.metrics_handler {
+                let mut metric_visitor = MetricVisitor {
+                    instruments: &self.instruments.0,
+                    meter: &metrics_handler.meter,
+                };
+                event.record(&mut metric_visitor);
+            }
+
             // Performing read operations before getting a write lock to avoid a deadlock
             // See https://github.com/tokio-rs/tracing/issues/763
             #[cfg(feature = "tracing-log")]
@@ -649,8 +689,8 @@ where
                 vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
-            event.record(&mut SpanEventVisitor(&mut otel_event));
 
+            event.record(&mut SpanEventVisitor(&mut otel_event));
             let mut extensions = span.extensions_mut();
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
                 if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
