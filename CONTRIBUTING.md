@@ -12,14 +12,14 @@ expert, we can use your help.
 This guide will help you get started. **Do not let this guide intimidate you**.
 It should be considered a map to help you navigate the process.
 
-You may also get help with contributing in the [dev channel][dev], please join
-us!
+You may also get help with contributing in [Tokio's Discord server][discord],
+`#tracing-dev` channel. Please join us!
 
 Tracing is a part of the [Tokio][tokio] project, and follows the project's
 guidelines for contributing. This document is based on the
 [`CONTRIBUTING.md` file][tokio-contrib] in the `tokio-rs/tokio` repository.
 
-[dev]: https://gitter.im/tokio-rs/dev
+[discord]: https://discord.gg/tokio
 [tokio]: https://tokio.rs
 [tokio-contrib]: https://github.com/tokio-rs/tokio/blob/master/CONTRIBUTING.md
 
