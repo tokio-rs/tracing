@@ -3,7 +3,6 @@
 mod support;
 use self::support::*;
 mod filter_scopes;
-mod option;
 mod targets;
 mod trees;
 mod vec;
