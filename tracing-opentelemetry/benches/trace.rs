@@ -75,9 +75,7 @@ where
         let span = ctx.span(&id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if let Some(no_data) = extensions.remove::<NoDataSpan>() {
-            drop(no_data)
-        }
+        extensions.remove::<NoDataSpan>();
     }
 }
 
