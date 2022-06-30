@@ -2,6 +2,8 @@ use tracing::collect::with_default;
 use tracing::Level;
 use tracing_attributes::instrument;
 use tracing_mock::*;
+use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::subscribe::CollectExt;
 
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
@@ -217,5 +219,30 @@ fn test_err_display_default() {
         .done()
         .run_with_handle();
     with_default(collector, || err().ok());
+    handle.assert_finished();
+}
+
+#[test]
+fn test_err_custom_target() {
+    let filter: EnvFilter = "my_target=error".parse().expect("filter should parse");
+    let (collector, handle) = collector::mock()
+        .new_span(span::mock().named("custom_span").with_target("my_target"))
+        .enter(span::mock().named("custom_span").with_target("my_target"))
+        .event(
+            event::mock()
+                .at_level(Level::ERROR)
+                .with_target("my_target"),
+        )
+        .exit(span::mock().named("custom_span").with_target("my_target"))
+        .done()
+        .run_with_handle();
+
+    let subscriber = collector.with(filter);
+
+    with_default(subscriber, || {
+        tracing::error!("this should not be enabled");
+        tracing::error!(target: "my_target", "this should be enabled also");
+    });
+
     handle.assert_finished();
 }
