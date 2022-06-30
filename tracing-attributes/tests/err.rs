@@ -225,24 +225,18 @@ fn test_err_display_default() {
 #[test]
 fn test_err_custom_target() {
     let filter: EnvFilter = "my_target=error".parse().expect("filter should parse");
-    let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("custom_span").with_target("my_target"))
-        .enter(span::mock().named("custom_span").with_target("my_target"))
-        .event(
-            event::mock()
-                .at_level(Level::ERROR)
-                .with_target("my_target"),
-        )
-        .exit(span::mock().named("custom_span").with_target("my_target"))
+    let span = span::mock().named("err_early_return").with_target("my_target");
+    let (subscriber, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::ERROR).with_target("my_target"))
+        .exit(span.clone())
+        .drop_span(span)
         .done()
         .run_with_handle();
 
-    let subscriber = collector.with(filter);
+    let subscriber = subscriber.with(filter);
 
-    with_default(subscriber, || {
-        tracing::error!("this should not be enabled");
-        tracing::error!(target: "my_target", "this should be enabled also");
-    });
-
+    with_default(subscriber, || err().ok());
     handle.assert_finished();
 }
