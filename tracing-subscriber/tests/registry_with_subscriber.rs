@@ -4,7 +4,7 @@ use tracing_subscriber::prelude::*;
 
 #[tokio::test]
 async fn future_with_subscriber() {
-    let _default = tracing_subscriber::registry().init();
+    tracing_subscriber::registry().init();
     let span = tracing::info_span!("foo");
     let _e = span.enter();
     let span = tracing::info_span!("bar");
