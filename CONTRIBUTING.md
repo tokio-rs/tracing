@@ -12,7 +12,7 @@ expert, we can use your help.
 This guide will help you get started. **Do not let this guide intimidate you**.
 It should be considered a map to help you navigate the process.
 
-You may also get help with contributing in [tokio's Discord server][discord],
+You may also get help with contributing in [Tokio's Discord server][discord],
 `#tracing-dev` channel. Please join us!
 
 Tracing is a part of the [Tokio][tokio] project, and follows the project's
