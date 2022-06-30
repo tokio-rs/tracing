@@ -1,8 +1,6 @@
-mod support;
-use self::support::*;
+use tracing::level_filters::LevelFilter;
 use tracing::Collect;
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*, Subscribe};
+use tracing_subscriber::prelude::*;
 
 #[test]
 fn just_empty_vec() {

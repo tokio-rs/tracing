@@ -1,8 +1,6 @@
-mod support;
-use self::support::*;
+use tracing::level_filters::LevelFilter;
 use tracing::Collect;
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*, Subscribe};
+use tracing_subscriber::prelude::*;
 
 // This test is just used to compare to the tests below
 #[test]
