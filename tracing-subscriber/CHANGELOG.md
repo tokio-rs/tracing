@@ -1,3 +1,14 @@
+# 0.3.13 (Jun 30, 2022)
+
+This release of `tracing-subscriber` fixes a compilation failure due to an
+incorrect `tracing-core` dependency that was introduced in v0.3.12.
+
+### Changed
+
+- **tracing_core**: Updated minimum dependency version to 0.1.28 ([#2190])
+
+[#2190]: https://github.com/tokio-rs/tracing/pull/2190
+
 # 0.3.12 (Jun 29, 2022)
 
 This release of `tracing-subscriber` adds a new `Layer::event_enabled` method,
