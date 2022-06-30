@@ -225,9 +225,8 @@ fn test_err_display_default() {
 #[test]
 fn test_err_custom_target() {
     let filter: EnvFilter = "my_target=error".parse().expect("filter should parse");
-    let span = span::mock()
-        .named("err_early_return")
-        .with_target("my_target");
+    let span = span::mock().named("error_span").with_target("my_target");
+
     let (subscriber, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
@@ -243,6 +242,13 @@ fn test_err_custom_target() {
 
     let subscriber = subscriber.with(filter);
 
-    with_default(subscriber, || err().ok());
+    with_default(subscriber, || {
+        let error_span = tracing::error_span!(target: "my_target", "error_span");
+
+        {
+            let _enter = error_span.enter();
+            tracing::error!(target: "my_target", "This should display")
+        }
+    });
     handle.assert_finished();
 }
