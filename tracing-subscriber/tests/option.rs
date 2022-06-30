@@ -1,9 +1,12 @@
-use super::*;
+mod support;
+use self::support::*;
 use tracing::Collect;
+use tracing_subscriber::{filter, prelude::*, Subscribe};
+use tracing::{level_filters::LevelFilter, Level};
 
 // This test is just used to compare to the tests below
 #[test]
-fn just_layer() {
+fn just_subscriber() {
     let info = subscriber::named("info")
         .run()
         .with_filter(LevelFilter::INFO)
@@ -14,7 +17,7 @@ fn just_layer() {
 }
 
 #[test]
-fn layer_and_option_layer() {
+fn subscriber_and_option_some_subscriber() {
     let info = subscriber::named("info")
         .run()
         .with_filter(LevelFilter::INFO)
@@ -25,21 +28,36 @@ fn layer_and_option_layer() {
         .with_filter(LevelFilter::DEBUG)
         .boxed();
 
-    let mut collector = tracing_subscriber::registry().with(info).with(Some(debug));
+    let collector = tracing_subscriber::registry().with(info).with(Some(debug));
     assert_eq!(collector.max_level_hint(), Some(LevelFilter::DEBUG));
+}
 
+#[test]
+fn subscriber_and_option_none_subscriber() {
     let error = subscriber::named("error")
         .run()
         .with_filter(LevelFilter::ERROR)
         .boxed();
     // None means the other layer takes control
-    collector = tracing_subscriber::registry().with(error).with(None);
+    let collector = tracing_subscriber::registry()
+        .with(error)
+        .with(None::<ExpectSubscriber>);
     assert_eq!(collector.max_level_hint(), Some(LevelFilter::ERROR));
 }
 
 #[test]
-fn just_option_layer() {
+fn just_option_some_subscriber() {
     // Just a None means everything is off
     let collector = tracing_subscriber::registry().with(None::<ExpectSubscriber>);
     assert_eq!(collector.max_level_hint(), Some(LevelFilter::OFF));
+}
+
+#[test]
+fn just_option_none_subscriber() {
+    let error = subscriber::named("error")
+        .run()
+        .with_filter(LevelFilter::ERROR)
+        .boxed();
+    let collector = tracing_subscriber::registry().with(Some(error));
+    assert_eq!(collector.max_level_hint(), Some(LevelFilter::ERROR));
 }
