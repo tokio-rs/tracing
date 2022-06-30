@@ -1507,7 +1507,7 @@ where
     fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
         match self {
             Some(ref inner) => inner.event_enabled(event, ctx),
-            None => false,
+            None => true,
         }
     }
 
