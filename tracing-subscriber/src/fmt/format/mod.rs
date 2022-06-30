@@ -1396,7 +1396,7 @@ struct FmtLevel<F: ?Sized> {
     _f: PhantomData<fn(F)>,
 }
 
-impl<'a, F: LevelNames> fmt::Display for FmtLevel<F> {
+impl<F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
