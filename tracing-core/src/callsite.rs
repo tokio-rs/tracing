@@ -501,9 +501,9 @@ mod tests {
 
         let linked_list = LinkedList::new();
 
-        fn expect<'a>(
-            callsites: &'a mut impl Iterator<Item = &'static Registration>,
-        ) -> impl FnMut(&'static Registration) + 'a {
+        fn expect(
+            callsites: &mut impl Iterator<Item = &'static Registration>,
+        ) -> impl FnMut(&'static Registration) + '_ {
             move |reg: &'static Registration| {
                 let ptr = callsites
                     .next()
