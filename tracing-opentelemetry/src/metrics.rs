@@ -18,6 +18,7 @@ const INSTRUMENTATION_LIBRARY_NAME: &str = "tracing/tracing-opentelemetry";
 const METRIC_PREFIX_MONOTONIC_COUNTER: &str = "MONOTONIC_COUNTER_";
 const METRIC_PREFIX_COUNTER: &str = "COUNTER_";
 const METRIC_PREFIX_VALUE: &str = "VALUE_";
+const I64_MAX: u64 = i64::MAX as u64;
 
 #[derive(Default)]
 pub(crate) struct Instruments {
@@ -107,7 +108,6 @@ pub(crate) struct MetricVisitor<'a> {
     pub(crate) meter: &'a Meter,
 }
 
-// impl<'a> Visit for MetricVisitor<'a> {
 impl<'a> Visit for MetricVisitor<'a> {
     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
         // Do nothing
@@ -120,6 +120,20 @@ impl<'a> Visit for MetricVisitor<'a> {
                 InstrumentType::CounterU64(value),
                 field.name().to_string(),
             );
+        } else if field.name().starts_with(METRIC_PREFIX_COUNTER) {
+            if value <= I64_MAX {
+                self.instruments.write().unwrap().init_metric_for(
+                    self.meter,
+                    InstrumentType::UpDownCounterI64(value as i64),
+                    field.name().to_string(),
+                );
+            } else {
+                eprintln!(
+                    "[tracing-opentelemetry]: Received Counter metric, but \
+                    provided u64: {value} is greater than i64::MAX. Ignoring \
+                    this metric."
+                );
+            }
         } else if field.name().starts_with(METRIC_PREFIX_VALUE) {
             self.instruments.write().unwrap().init_metric_for(
                 self.meter,
@@ -152,7 +166,13 @@ impl<'a> Visit for MetricVisitor<'a> {
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
-        if field.name().starts_with(METRIC_PREFIX_COUNTER) {
+        if field.name().starts_with(METRIC_PREFIX_MONOTONIC_COUNTER) {
+            self.instruments.write().unwrap().init_metric_for(
+                self.meter,
+                InstrumentType::CounterU64(value as u64),
+                field.name().to_string(),
+            );
+        } else if field.name().starts_with(METRIC_PREFIX_COUNTER) {
             self.instruments.write().unwrap().init_metric_for(
                 self.meter,
                 InstrumentType::UpDownCounterI64(value),
@@ -168,12 +188,105 @@ impl<'a> Visit for MetricVisitor<'a> {
     }
 }
 
+/// A subscriber that publishes metrics via the OpenTelemetry SDK.
+///
+/// # Usage
+///
+/// No configuration is needed for this Subscriber, as it's only responsible for
+/// pushing data out to the `tracing-opentelemetry` crate, which has its own set
+/// of configuration options already.
+///
+/// To publish a new metric from your instrumentation point, all that is needed
+/// is to add a key-value pair to your `tracing::Event` that contains a specific
+/// prefix. One of the following:
+/// - `MONOTONIC_COUNTER_` (non-negative numbers): Used when the counter should
+///   only ever increase
+/// - `COUNTER_`: Used when the counter can go up or down
+/// - `VALUE_`: Used for discrete data points (i.e., summing them does not make
+///   semantic sense)
+///
+/// Examples:
+/// ```
+/// # use tracing::info;
+/// info!(MONOTONIC_COUNTER_FOO = 1);
+/// info!(MONOTONIC_COUNTER_BAR = 1.1);
+///
+/// info!(COUNTER_BAZ = 1);
+/// info!(COUNTER_BAZ = -1);
+/// info!(COUNTER_XYZ = 1.1);
+///
+/// info!(VALUE_QUX = 1);
+/// info!(VALUE_ABC = -1);
+/// info!(VALUE_DEF = 1.1);
+/// ```
+///
+/// # Mixing data types
+///
+/// ## Floating-point numbers
+///
+/// Do not mix floating-point and non-floating-point numbers for the same
+/// metric. Instead, if you are ever going to use floating-point numbers for a
+/// metric, cast any other usages of that metric to `f64`.
+///
+/// Don't do this:
+/// ```
+/// # use tracing::info;
+/// info!(MONOTONIC_COUNTER_FOO = 1);
+/// info!(MONOTONIC_COUNTER_FOO = 1.0);
+/// ```
+///
+/// Do this:
+/// ```
+/// # use tracing::info;
+/// info!(MONOTONIC_COUNTER_FOO = 1 as f64);
+/// info!(MONOTONIC_COUNTER_FOO = 1.1);
+/// ```
+///
+/// This is because all data published for a given metric name must be the same
+/// numeric type.
+///
+/// ## Integers
+///
+/// Positive and negative integers can be mixed freely. The instrumentation
+/// provided by `tracing` assumes that all integers are `i64` unless explicitly
+/// cast to something else. In the case that an integer *is* cast to `u64`, this
+/// subscriber will handle the conversion internally.
+///
+/// To illustrate this:
+/// ```
+/// # use tracing::info;
+/// // The subscriber receives an i64
+/// info!(COUNTER_BAZ = 1);
+///
+/// // The subscriber receives an i64
+/// info!(COUNTER_BAZ = -1);
+///
+/// // The subscriber receives a u64, but casts it to i64 internally
+/// info!(COUNTER_BAZ = 1 as u64);
+///
+/// // The subscriber receives a u64, but cannot cast it to i64 because of
+/// // overflow. An error is printed to stderr, and the metric is dropped.
+/// info!(COUNTER_BAZ = (i64::MAX as u64) + 1)
+/// ```
+///
+/// # Under-the-hood
+///
+/// This subscriber holds a set of maps, each map corresponding to a type of
+/// metric supported by OpenTelemetry. These maps are populated lazily. The
+/// first time that a metric is emitted by the instrumentation, a `Metric`
+/// instance will be created and added to the corresponding map. This means that
+/// any time a metric is emitted by the instrumentation, one map lookup has to
+/// be performed.
+///
+/// In the future, this can be improved by associating each Metric instance to
+/// its callsite. However, per-callsite storage is not yet supported by tracing.
 pub struct OpenTelemetryMetricsSubscriber {
     meter: Meter,
     instruments: Arc<RwLock<Instruments>>,
 }
 
 impl OpenTelemetryMetricsSubscriber {
+    /// Create a new instance of OpenTelemetryMetricsSubscriber.
     pub fn new(push_controller: PushController) -> Self {
         let inner: Instruments = Default::default();
         let instruments = Arc::new(RwLock::new(inner));
