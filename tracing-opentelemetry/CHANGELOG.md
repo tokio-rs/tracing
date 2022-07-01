@@ -1,3 +1,22 @@
+# 0.17.4 (July 1, 2022)
+
+This release adds optional support for recording `std::error::Error`s using
+[OpenTelemetry's semantic conventions for exceptions][exn-semconv].
+
+### Added
+
+- `Layer::with_exception_fields` to enable emitting `exception.message` and
+  `exception.backtrace` semantic-convention fields when an `Error` is recorded
+  as a span or event field ([#2135])
+- `Layer::with_exception_field_propagation` to enable setting `exception.message` and
+  `exception.backtrace` semantic-convention fields on the current span when an
+  event with an `Error` field is recorded ([#2135])
+
+Thanks to @lilymara-onesignal for contributing to this release!
+
+[thread-semconv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
+[#2135]: https://github.com/tokio-rs/tracing/pull/2135
+
 # 0.17.3 (June 7, 2022)
 
 This release adds support for emitting thread names and IDs to OpenTelemetry, as
