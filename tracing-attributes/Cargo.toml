@@ -46,6 +46,7 @@ quote = "1"
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.1" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
 tokio-test = { version = "0.3.0" }
 tracing-core = { path = "../tracing-core", version = "0.1"}
 async-trait = "0.1.44"
