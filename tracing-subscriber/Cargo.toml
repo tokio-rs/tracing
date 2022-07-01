@@ -74,6 +74,7 @@ tracing-futures = { path = "../tracing-futures", version = "0.3", default-featur
 tokio = { version = "1", features = ["rt", "macros"] }
 # Enable the `time` crate's `macros` feature, for examples.
 time = { version = "0.3", features = ["formatting", "macros"] }
+backtrace-on-stack-overflow = "0.2"
 
 [badges]
 maintenance = { status = "experimental" }

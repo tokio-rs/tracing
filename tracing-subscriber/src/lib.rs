@@ -220,3 +220,20 @@ feature! {
 mod sealed {
     pub trait Sealed<A = ()> {}
 }
+
+#[test]
+fn over_the_stack() {
+    unsafe { backtrace_on_stack_overflow::enable() }
+
+    crate::fmt()
+        .with_target(false)
+        .with_timer(crate::fmt::time::uptime())
+        .with_level(true)
+        .with_span_events(fmt::format::FmtSpan::ENTER)
+        .init();
+    let n = 100_000;
+    let mut span = tracing::info_span!("lol");
+    for _ in 0..n {
+        span = tracing::info_span!(parent: &span, "lol");
+    }
+}
