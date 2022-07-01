@@ -437,7 +437,7 @@ where
             // (rather than calling into the inner type), clear the current
             // per-layer filter interest state.
             #[cfg(feature = "registry")]
-            drop(filter::FilterState::take_interest());
+            filter::FilterState::take_interest();
 
             return outer;
         }
