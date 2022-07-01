@@ -1,11 +1,15 @@
-#![cfg(feature = "reload")]
+#![cfg(feature = "registry")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     collect::Interest,
     span::{Attributes, Id, Record},
-    Collect, Event, Metadata,
+    Collect, Event, LevelFilter, Metadata,
 };
 use tracing_subscriber::{prelude::*, reload::*, subscribe};
+
+fn event() {
+    tracing::info!("my event");
+}
 
 pub struct NopCollector;
 
@@ -67,9 +71,13 @@ fn reload_handle() {
             };
             true
         }
-    }
-    fn event() {
-        tracing::trace!("my event");
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
     }
 
     let (subscriber, handle) = Subscriber::new(Filter::One);
@@ -85,7 +93,9 @@ fn reload_handle() {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
 
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
         handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
 
         event();
 
@@ -113,9 +123,13 @@ fn reload_filter() {
             };
             true
         }
-    }
-    fn event() {
-        tracing::trace!("my event");
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
     }
 
     let (filter, handle) = Subscriber::new(Filter::One);
@@ -133,7 +147,9 @@ fn reload_filter() {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
 
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
         handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
 
         event();
 
