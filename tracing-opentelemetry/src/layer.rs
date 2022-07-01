@@ -483,7 +483,7 @@ where
     /// These attributes follow the [OpenTelemetry semantic conventions for
     /// exceptions][conv].
     ///
-    /// By default, these fields are enabled
+    /// By default, these attributes are not recorded.
     ///
     /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
     pub fn with_exception_fields(self, exception_fields: bool) -> Self {
@@ -506,7 +506,7 @@ where
     /// These attributes follow the [OpenTelemetry semantic conventions for
     /// exceptions][conv].
     ///
-    /// By default, this is enabled
+    /// By default, these attributes are not propagated to the span.
     ///
     /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
     pub fn with_exception_field_propagation(self, exception_field_propagation: bool) -> Self {
