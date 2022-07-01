@@ -1490,7 +1490,11 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         match self {
             Some(ref inner) => inner.max_level_hint(),
-            None => None,
+            None => {
+                // There is no inner layer, so this layer will
+                // never enable anything.
+                Some(LevelFilter::OFF)
+            }
         }
     }
 
@@ -1512,7 +1516,7 @@ where
     fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
         match self {
             Some(ref inner) => inner.event_enabled(event, ctx),
-            None => false,
+            None => true,
         }
     }
 
@@ -1701,7 +1705,8 @@ feature! {
         }
 
         fn max_level_hint(&self) -> Option<LevelFilter> {
-            let mut max_level = LevelFilter::ERROR;
+            // Default to `OFF` if there are no inner layers.
+            let mut max_level = LevelFilter::OFF;
             for l in self {
                 // NOTE(eliza): this is slightly subtle: if *any* layer
                 // returns `None`, we have to return `None`, assuming there is
