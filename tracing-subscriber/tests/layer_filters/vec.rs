@@ -111,3 +111,10 @@ fn all_filtered_max_level_hint() {
 
     assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
 }
+
+#[test]
+fn empty_vec() {
+    // Just a None means everything is off
+    let subscriber = tracing_subscriber::registry().with(Vec::<ExpectLayer>::new());
+    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::OFF));
+}
