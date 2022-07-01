@@ -1,13 +1,16 @@
-#![cfg(feature = "std")]
+#![cfg(feature = "registry")]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing_core::{
     span::{Attributes, Id, Record},
     subscriber::Interest,
-    Event, Metadata, Subscriber,
+    Event, LevelFilter, Metadata, Subscriber,
 };
 use tracing_subscriber::{layer, prelude::*, reload::*};
 
 pub struct NopSubscriber;
+fn event() {
+    tracing::info!("my event");
+}
 
 impl Subscriber for NopSubscriber {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
@@ -53,9 +56,13 @@ fn reload_handle() {
             };
             true
         }
-    }
-    fn event() {
-        tracing::trace!("my event");
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
     }
 
     let (layer, handle) = Layer::new(Filter::One);
@@ -71,7 +78,9 @@ fn reload_handle() {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
 
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
         handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
 
         event();
 
@@ -81,7 +90,6 @@ fn reload_handle() {
 }
 
 #[test]
-#[cfg(feature = "registry")]
 fn reload_filter() {
     struct NopLayer;
     impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
@@ -111,9 +119,13 @@ fn reload_filter() {
             };
             true
         }
-    }
-    fn event() {
-        tracing::trace!("my event");
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
     }
 
     let (filter, handle) = Layer::new(Filter::One);
@@ -131,7 +143,9 @@ fn reload_filter() {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
 
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
         handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
 
         event();
 
