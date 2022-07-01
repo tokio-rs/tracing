@@ -3,10 +3,17 @@ use std::{
     fmt,
     sync::{Arc, RwLock},
 };
-use tracing::field::Visit;
+use tracing::{field::Visit, Collect};
 use tracing_core::Field;
 
-use opentelemetry::metrics::{Counter, Meter, UpDownCounter, ValueRecorder};
+use opentelemetry::{
+    metrics::{Counter, Meter, MeterProvider, UpDownCounter, ValueRecorder},
+    sdk::metrics::PushController,
+};
+use tracing_subscriber::{registry::LookupSpan, subscribe::Context, Subscribe};
+
+const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
+const INSTRUMENTATION_LIBRARY_NAME: &str = "tracing/tracing-opentelemetry";
 
 const METRIC_PREFIX_MONOTONIC_COUNTER: &str = "MONOTONIC_COUNTER_";
 const METRIC_PREFIX_COUNTER: &str = "COUNTER_";
@@ -158,5 +165,34 @@ impl<'a> Visit for MetricVisitor<'a> {
                 field.name().to_string(),
             );
         }
+    }
+}
+
+pub struct OpenTelemetryMetricsSubscriber {
+    meter: Meter,
+    instruments: Arc<RwLock<Instruments>>,
+}
+
+impl OpenTelemetryMetricsSubscriber {
+    pub fn new(push_controller: PushController) -> Self {
+        let inner: Instruments = Default::default();
+        let instruments = Arc::new(RwLock::new(inner));
+        let meter = push_controller
+            .provider()
+            .meter(INSTRUMENTATION_LIBRARY_NAME, Some(CARGO_PKG_VERSION));
+        OpenTelemetryMetricsSubscriber { meter, instruments }
+    }
+}
+
+impl<C> Subscribe<C> for OpenTelemetryMetricsSubscriber
+where
+    C: Collect + for<'span> LookupSpan<'span>,
+{
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, C>) {
+        let mut metric_visitor = MetricVisitor {
+            instruments: &self.instruments,
+            meter: &self.meter,
+        };
+        event.record(&mut metric_visitor);
     }
 }
