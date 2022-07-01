@@ -1,4 +1,25 @@
-# 0.3.13 (Jun 30, 2022)
+# 0.3.14 (Jul 1, 2022)
+
+This release fixes multiple filtering bugs in the `Layer` implementations for
+`Option<impl Layer>` and `Vec<impl Layer>`.
+
+### Fixed
+
+- **layer**: `Layer::event_enabled` implementation for `Option<impl Layer<S>>`
+  returning `false` when the `Option` is `None`, disabling all events globally
+  ([#2193])
+- **layer**: `Layer::max_level_hint` implementation for `Option<impl Layer<S>>`
+  incorrectly disabling max level filtering when the option is `None` ([#2195])
+- **layer**: `Layer::max_level_hint` implementation for `Vec<impl Layer<S>>`
+  returning `LevelFilter::ERROR` rather than `LevelFilter::OFF` when the `Vec`
+  is empty ([#2195])
+
+Thanks to @CAD97 and @guswynn for contributing to this release!
+
+[#2193]: https://github.com/tokio-rs/tracing/pull/2193
+[#2195]: https://github.com/tokio-rs/tracing/pull/2195
+
+# 0.3.13 (Jun 30, 2022) (YANKED)
 
 This release of `tracing-subscriber` fixes a compilation failure due to an
 incorrect `tracing-core` dependency that was introduced in v0.3.12.
@@ -9,7 +30,7 @@ incorrect `tracing-core` dependency that was introduced in v0.3.12.
 
 [#2190]: https://github.com/tokio-rs/tracing/pull/2190
 
-# 0.3.12 (Jun 29, 2022)
+# 0.3.12 (Jun 29, 2022) (YANKED)
 
 This release of `tracing-subscriber` adds a new `Layer::event_enabled` method,
 which allows `Layer`s to filter events *after* their field values are recorded;
