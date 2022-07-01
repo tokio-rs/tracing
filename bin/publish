@@ -119,8 +119,6 @@ release() {
     "${CARGO_PACKAGE[@]}"
     "${CARGO_PUBLISH[@]}"
 
-    cargo publish "$VERBOSE" "$DRY_RUN"
-
     status "Tagging" "$TAG"
     if [[ "$DRY_RUN" ]]; then
         echo "# git tag $TAG && git push --tags"
