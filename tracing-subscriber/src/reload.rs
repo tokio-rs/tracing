@@ -30,7 +30,7 @@ use std::{
 use tracing_core::{
     callsite,
     collect::{Collect, Interest},
-    span, Event, Metadata,
+    span, Event, LevelFilter, Metadata,
 };
 
 /// Wraps a `Filter` or `Subscribe`, allowing it to be reloaded dynamically at runtime.
@@ -135,6 +135,11 @@ where
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_id_change(old, new, ctx)
     }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        try_lock!(self.inner.read(), else return None).max_level_hint()
+    }
 }
 
 #[cfg(all(feature = "registry", feature = "std"))]
@@ -187,6 +192,11 @@ where
     #[inline]
     fn on_close(&self, id: span::Id, ctx: subscribe::Context<'_, C>) {
         try_lock!(self.inner.read()).on_close(id, ctx)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        try_lock!(self.inner.read(), else return None).max_level_hint()
     }
 }
 
