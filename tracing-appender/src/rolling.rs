@@ -66,7 +66,7 @@ use time::{format_description, Duration, OffsetDateTime, Time};
 /// use tracing_subscriber::fmt::writer::MakeWriterExt;
 ///
 /// // Log all events to a rolling log file.
-/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
+/// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs").expect("Unable to create hourly appender");
 
 /// // Log `INFO` and above to stdout.
 /// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
@@ -127,22 +127,22 @@ impl RollingFileAppender {
     /// ```rust
     /// # fn docs() {
     /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
-    /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
+    /// let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log").expect("Unable to create a rolling appender");
     /// # }
     /// ```
     pub fn new(
         rotation: Rotation,
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
-    ) -> RollingFileAppender {
+    ) -> io::Result<RollingFileAppender> {
         let now = OffsetDateTime::now_utc();
-        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
-        Self {
+        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix)?;
+        Ok(Self {
             state,
             writer,
             #[cfg(test)]
             now: Box::new(OffsetDateTime::now_utc),
-        }
+        })
     }
 
     #[inline]
@@ -215,7 +215,7 @@ impl fmt::Debug for RollingFileAppender {
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::minutely("/some/path", "rolling.log").expect("Unable to create a rolling appender");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -231,7 +231,7 @@ impl fmt::Debug for RollingFileAppender {
 pub fn minutely(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::MINUTELY, directory, file_name_prefix)
 }
 
@@ -250,7 +250,7 @@ pub fn minutely(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::hourly("/some/path", "rolling.log").expect("Unable to create a rolling appender");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -266,7 +266,7 @@ pub fn minutely(
 pub fn hourly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
@@ -286,7 +286,7 @@ pub fn hourly(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::daily("/some/path", "rolling.log").expect("Unable to create a rolling appender");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -302,7 +302,7 @@ pub fn hourly(
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
-) -> RollingFileAppender {
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
@@ -320,7 +320,7 @@ pub fn daily(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
+///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log").expect("Unable to create a rolling appender");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
 ///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
@@ -333,7 +333,10 @@ pub fn daily(
 /// ```
 ///
 /// This will result in a log file located at `/some/path/non-rolling.log`.
-pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> RollingFileAppender {
+pub fn never(
+    directory: impl AsRef<Path>,
+    file_name: impl AsRef<Path>,
+) -> io::Result<RollingFileAppender> {
     RollingFileAppender::new(Rotation::NEVER, directory, file_name)
 }
 
@@ -481,15 +484,13 @@ impl Inner {
         rotation: Rotation,
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
-    ) -> (Self, RwLock<File>) {
+    ) -> io::Result<(Self, RwLock<File>)> {
         let log_directory = directory.as_ref().to_str().unwrap();
         let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
 
         let filename = rotation.join_date(log_filename_prefix, &now);
         let next_date = rotation.next_date(&now);
-        let writer = RwLock::new(
-            create_writer(log_directory, &filename).expect("failed to create appender"),
-        );
+        let writer = RwLock::new(create_writer(log_directory, &filename)?);
 
         let inner = Inner {
             log_directory: log_directory.to_string(),
@@ -501,7 +502,7 @@ impl Inner {
             ),
             rotation,
         };
-        (inner, writer)
+        Ok((inner, writer))
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
@@ -599,7 +600,8 @@ mod test {
 
     fn test_appender(rotation: Rotation, file_prefix: &str) {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix);
+        let mut appender = RollingFileAppender::new(rotation, directory.path(), file_prefix)
+            .expect("Failed to initialize appender");
 
         let expected_value = "Hello";
         write_to_log(&mut appender, expected_value);
@@ -703,7 +705,8 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) =
-            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer");
+            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer")
+                .expect("Unable to create inner rolling appender");
 
         let clock = Arc::new(Mutex::new(now));
         let now = {
