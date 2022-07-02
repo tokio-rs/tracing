@@ -130,8 +130,9 @@ impl<'a> Visit for MetricVisitor<'a> {
             } else {
                 eprintln!(
                     "[tracing-opentelemetry]: Received Counter metric, but \
-                    provided u64: {value} is greater than i64::MAX. Ignoring \
-                    this metric."
+                    provided u64: {} is greater than i64::MAX. Ignoring \
+                    this metric.",
+                    value
                 );
             }
         } else if field.name().starts_with(METRIC_PREFIX_VALUE) {
