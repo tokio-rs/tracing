@@ -194,8 +194,25 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// # Usage
 ///
 /// No configuration is needed for this Subscriber, as it's only responsible for
-/// pushing data out to the `tracing-opentelemetry` crate, which has its own set
-/// of configuration options already.
+/// pushing data out to the `opentelemetry` family of crates. For example, when
+/// using `opentelemetry-otlp`, that crate will provide its own set of
+/// configuration options for setting up the duration metrics will be collected
+/// before exporting to the OpenTelemetry Collector, aggregation of data points,
+/// etc.
+///
+/// ```no_run
+/// use tracing_opentelemetry::OpenTelemetryMetricsSubscriber;
+/// use tracing_subscriber::subscribe::CollectExt;
+/// use tracing_subscriber::Registry;
+///
+/// // Constructing a PushController is out-of-scope for the docs here, but there
+/// // are examples in the opentelemetry repository. See:
+/// // https://github.com/open-telemetry/opentelemetry-rust/blob/c13a11e62a68eacd8c41a0742a0d097808e28fbd/examples/basic-otlp/src/main.rs#L39-L53
+///
+/// let opentelemetry_metrics =  OpenTelemetryMetricsSubscriber::new(push_controller);
+/// let collector = Registry::default().with(opentelemetry_metrics);
+/// tracing::collect::set_global_default(collector).unwrap();
+/// ```
 ///
 /// To publish a new metric from your instrumentation point, all that is needed
 /// is to add a key-value pair to your `tracing::Event` that contains a specific
