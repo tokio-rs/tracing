@@ -204,10 +204,12 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// use tracing_opentelemetry::OpenTelemetryMetricsSubscriber;
 /// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing_subscriber::Registry;
+/// # use opentelemetry::sdk::metrics::PushController;
 ///
 /// // Constructing a PushController is out-of-scope for the docs here, but there
 /// // are examples in the opentelemetry repository. See:
 /// // https://github.com/open-telemetry/opentelemetry-rust/blob/c13a11e62a68eacd8c41a0742a0d097808e28fbd/examples/basic-otlp/src/main.rs#L39-L53
+/// # let push_controller: PushController = unimplemented!();
 ///
 /// let opentelemetry_metrics =  OpenTelemetryMetricsSubscriber::new(push_controller);
 /// let collector = Registry::default().with(opentelemetry_metrics);
