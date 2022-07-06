@@ -284,7 +284,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// Do this:
 /// ```
 /// # use tracing::info;
-/// info!(MONOTONIC_COUNTER_FOO = 1 as f64);
+/// info!(MONOTONIC_COUNTER_FOO = 1_f64);
 /// info!(MONOTONIC_COUNTER_FOO = 1.1);
 /// ```
 ///
@@ -308,7 +308,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// info!(COUNTER_BAZ = -1);
 ///
 /// // The subscriber receives a u64, but casts it to i64 internally
-/// info!(COUNTER_BAZ = 1 as u64);
+/// info!(COUNTER_BAZ = 1_u64);
 ///
 /// // The subscriber receives a u64, but cannot cast it to i64 because of
 /// // overflow. An error is printed to stderr, and the metric is dropped.
