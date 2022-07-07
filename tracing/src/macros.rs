@@ -873,6 +873,20 @@ macro_rules! span_enabled {
     )
 }
 
+/// Checks whether a log message with the provided level and target would be logged.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! log_enabled {
+    (target: $target:expr, $lvl:expr) => {{
+        $crate::if_log_enabled! { $lvl, {
+            let level = $crate::level_to_log!($lvl);
+            log::log_enabled!(target: $target, level)
+        } else {
+            false
+        }}
+    }};
+}
+
 /// Checks whether a span or event is [enabled] based on the provided [metadata].
 ///
 /// [enabled]: crate::Collect::enabled
@@ -983,12 +997,12 @@ macro_rules! enabled {
             let interest = CALLSITE.interest();
             if !interest.is_never() && CALLSITE.is_enabled(interest)  {
                 let meta = CALLSITE.metadata();
-                $crate::dispatch::get_default(|current| current.enabled(meta))
+                $crate::dispatch::get_default(|current| current.enabled(meta)) || $crate::log_enabled!(target: $target, $lvl)
             } else {
-                false
+                $crate::log_enabled!(target: $target, $lvl)
             }
         } else {
-            false
+            $crate::log_enabled!(target: $target, $lvl)
         }
     });
     // Just target and level
