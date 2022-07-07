@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, fmt, sync::RwLock};
 use tracing::{field::Visit, Collect};
 use tracing_core::Field;
 
@@ -22,16 +18,18 @@ const I64_MAX: u64 = i64::MAX as u64;
 
 #[derive(Default)]
 pub(crate) struct Instruments {
-    pub(crate) u64_counter: HashMap<&'static str, Counter<u64>>,
-    pub(crate) f64_counter: HashMap<&'static str, Counter<f64>>,
-    pub(crate) i64_up_down_counter: HashMap<&'static str, UpDownCounter<i64>>,
-    pub(crate) f64_up_down_counter: HashMap<&'static str, UpDownCounter<f64>>,
-    pub(crate) u64_value_recorder: HashMap<&'static str, ValueRecorder<u64>>,
-    pub(crate) i64_value_recorder: HashMap<&'static str, ValueRecorder<i64>>,
-    pub(crate) f64_value_recorder: HashMap<&'static str, ValueRecorder<f64>>,
+    u64_counter: MetricsMap<Counter<u64>>,
+    f64_counter: MetricsMap<Counter<f64>>,
+    i64_up_down_counter: MetricsMap<UpDownCounter<i64>>,
+    f64_up_down_counter: MetricsMap<UpDownCounter<f64>>,
+    u64_value_recorder: MetricsMap<ValueRecorder<u64>>,
+    i64_value_recorder: MetricsMap<ValueRecorder<i64>>,
+    f64_value_recorder: MetricsMap<ValueRecorder<f64>>,
 }
 
-#[derive(Debug)]
+type MetricsMap<T> = RwLock<HashMap<String, T>>;
+
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum InstrumentType {
     CounterU64(u64),
     CounterF64(f64),
@@ -43,68 +41,96 @@ pub(crate) enum InstrumentType {
 }
 
 impl Instruments {
-    pub(crate) fn init_metric_for(
-        &mut self,
+    pub(crate) fn update_metric(
+        &self,
         meter: &Meter,
         instrument_type: InstrumentType,
-        metric_name: &'static str,
+        metric_name: &str,
     ) {
+        fn update_or_insert<T>(
+            map: &MetricsMap<T>,
+            name: &str,
+            insert: impl FnOnce() -> T,
+            update: impl FnOnce(&T),
+        ) {
+            let lock = map.read().unwrap();
+            if let Some(metric) = lock.get(name) {
+                update(metric);
+                return;
+            }
+
+            // that metric did not already exist, so we have to acquire a write lock to
+            // create it.
+            let mut lock = map.write().unwrap();
+            // handle the case where the entry was created while we were waiting to
+            // acquire the write lock
+            let metric = lock.entry(name.to_owned()).or_insert_with(insert);
+            update(metric)
+        }
+
         match instrument_type {
             InstrumentType::CounterU64(value) => {
-                let ctr = self
-                    .u64_counter
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.u64_counter(metric_name).init());
-                ctr.add(value, &[]);
+                update_or_insert(
+                    &self.u64_counter,
+                    metric_name,
+                    || meter.u64_counter(metric_name).init(),
+                    |ctr| ctr.add(value, &[]),
+                );
             }
             InstrumentType::CounterF64(value) => {
-                let ctr = self
-                    .f64_counter
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.f64_counter(metric_name).init());
-                ctr.add(value, &[]);
+                update_or_insert(
+                    &self.f64_counter,
+                    metric_name,
+                    || meter.f64_counter(metric_name).init(),
+                    |ctr| ctr.add(value, &[]),
+                );
             }
             InstrumentType::UpDownCounterI64(value) => {
-                let ctr = self
-                    .i64_up_down_counter
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.i64_up_down_counter(metric_name).init());
-                ctr.add(value, &[]);
+                update_or_insert(
+                    &self.i64_up_down_counter,
+                    metric_name,
+                    || meter.i64_up_down_counter(metric_name).init(),
+                    |ctr| ctr.add(value, &[]),
+                );
             }
             InstrumentType::UpDownCounterF64(value) => {
-                let ctr = self
-                    .f64_up_down_counter
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.f64_up_down_counter(metric_name).init());
-                ctr.add(value, &[]);
+                update_or_insert(
+                    &self.f64_up_down_counter,
+                    metric_name,
+                    || meter.f64_up_down_counter(metric_name).init(),
+                    |ctr| ctr.add(value, &[]),
+                );
             }
             InstrumentType::ValueRecorderU64(value) => {
-                let rec = self
-                    .u64_value_recorder
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.u64_value_recorder(metric_name).init());
-                rec.record(value, &[]);
+                update_or_insert(
+                    &self.u64_value_recorder,
+                    metric_name,
+                    || meter.u64_value_recorder(metric_name).init(),
+                    |rec| rec.record(value, &[]),
+                );
             }
             InstrumentType::ValueRecorderI64(value) => {
-                let rec = self
-                    .i64_value_recorder
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.i64_value_recorder(metric_name).init());
-                rec.record(value, &[]);
+                update_or_insert(
+                    &self.i64_value_recorder,
+                    metric_name,
+                    || meter.i64_value_recorder(metric_name).init(),
+                    |rec| rec.record(value, &[]),
+                );
             }
             InstrumentType::ValueRecorderF64(value) => {
-                let rec = self
-                    .f64_value_recorder
-                    .entry(metric_name)
-                    .or_insert_with(|| meter.f64_value_recorder(metric_name).init());
-                rec.record(value, &[]);
+                update_or_insert(
+                    &self.f64_value_recorder,
+                    metric_name,
+                    || meter.f64_value_recorder(metric_name).init(),
+                    |rec| rec.record(value, &[]),
+                );
             }
         };
     }
 }
 
 pub(crate) struct MetricVisitor<'a> {
-    pub(crate) instruments: &'a Arc<RwLock<Instruments>>,
+    pub(crate) instruments: &'a Instruments,
     pub(crate) meter: &'a Meter,
 }
 
@@ -115,14 +141,14 @@ impl<'a> Visit for MetricVisitor<'a> {
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         if field.name().starts_with(METRIC_PREFIX_MONOTONIC_COUNTER) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::CounterU64(value),
                 field.name(),
             );
         } else if field.name().starts_with(METRIC_PREFIX_COUNTER) {
             if value <= I64_MAX {
-                self.instruments.write().unwrap().init_metric_for(
+                self.instruments.update_metric(
                     self.meter,
                     InstrumentType::UpDownCounterI64(value as i64),
                     field.name(),
@@ -136,7 +162,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 );
             }
         } else if field.name().starts_with(METRIC_PREFIX_VALUE) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::ValueRecorderU64(value),
                 field.name(),
@@ -146,19 +172,19 @@ impl<'a> Visit for MetricVisitor<'a> {
 
     fn record_f64(&mut self, field: &Field, value: f64) {
         if field.name().starts_with(METRIC_PREFIX_MONOTONIC_COUNTER) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::CounterF64(value),
                 field.name(),
             );
         } else if field.name().starts_with(METRIC_PREFIX_COUNTER) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::UpDownCounterF64(value),
                 field.name(),
             );
         } else if field.name().starts_with(METRIC_PREFIX_VALUE) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::ValueRecorderF64(value),
                 field.name(),
@@ -168,19 +194,19 @@ impl<'a> Visit for MetricVisitor<'a> {
 
     fn record_i64(&mut self, field: &Field, value: i64) {
         if field.name().starts_with(METRIC_PREFIX_MONOTONIC_COUNTER) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::CounterU64(value as u64),
                 field.name(),
             );
         } else if field.name().starts_with(METRIC_PREFIX_COUNTER) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::UpDownCounterI64(value),
                 field.name(),
             );
         } else if field.name().starts_with(METRIC_PREFIX_VALUE) {
-            self.instruments.write().unwrap().init_metric_for(
+            self.instruments.update_metric(
                 self.meter,
                 InstrumentType::ValueRecorderI64(value),
                 field.name(),
@@ -302,18 +328,19 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// its callsite. However, per-callsite storage is not yet supported by tracing.
 pub struct OpenTelemetryMetricsSubscriber {
     meter: Meter,
-    instruments: Arc<RwLock<Instruments>>,
+    instruments: Instruments,
 }
 
 impl OpenTelemetryMetricsSubscriber {
     /// Create a new instance of OpenTelemetryMetricsSubscriber.
     pub fn new(push_controller: PushController) -> Self {
-        let inner: Instruments = Default::default();
-        let instruments = Arc::new(RwLock::new(inner));
         let meter = push_controller
             .provider()
             .meter(INSTRUMENTATION_LIBRARY_NAME, Some(CARGO_PKG_VERSION));
-        OpenTelemetryMetricsSubscriber { meter, instruments }
+        OpenTelemetryMetricsSubscriber {
+            meter,
+            instruments: Default::default(),
+        }
     }
 }
 
