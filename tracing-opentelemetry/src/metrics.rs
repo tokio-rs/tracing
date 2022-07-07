@@ -53,10 +53,12 @@ impl Instruments {
             insert: impl FnOnce() -> T,
             update: impl FnOnce(&T),
         ) {
-            let lock = map.read().unwrap();
-            if let Some(metric) = lock.get(name) {
-                update(metric);
-                return;
+            {
+                let lock = map.read().unwrap();
+                if let Some(metric) = lock.get(name) {
+                    update(metric);
+                    return;
+                }
             }
 
             // that metric did not already exist, so we have to acquire a write lock to
