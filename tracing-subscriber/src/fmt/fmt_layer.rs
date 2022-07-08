@@ -930,7 +930,7 @@ where
                 let res = io::Write::write_all(&mut writer, buf.as_bytes());
                 if !self.silence_errors {
                     if let Err(e) = res {
-                        eprintln!("Unable to write an event to the Writer for this Subscriber! Error: {}\n", e);
+                        eprintln!("[tracing_subscriber] Unable to write an event to the Writer for this Subscriber! Error: {}\n", e);
                     }
                 }
             } else if !self.silence_errors {
@@ -939,7 +939,7 @@ where
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let res = io::Write::write_all(&mut writer, err_msg.as_bytes());
                 if let Err(e) = res {
-                    eprintln!("Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);
+                    eprintln!("[tracing_subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);
                 }
             }
 
