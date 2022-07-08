@@ -283,10 +283,12 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
-    /// Sets whether to write errors from [`FormatEvent`] to the writer. Defaults to true.
+    /// Sets whether to write errors from [`FormatEvent`] to the writer.
+    /// Defaults to true.
     ///
-    /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors. These errors
-    /// are unlikely and will only occur if there is a bug in the `FormatEvent` implementation.
+    /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors.
+    /// These errors are unlikely and will only occur if there is a bug in the
+    /// `FormatEvent` implementation.
     /// 
     /// [`FormatEvent`]: crate::fmt::FormatEvent
     pub fn with_silence_errors(self, silence_errors: bool) -> Self {

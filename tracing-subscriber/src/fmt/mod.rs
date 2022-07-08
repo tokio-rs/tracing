@@ -615,12 +615,14 @@ where
         }
     }
 
-     /// Whether to write errors to the Writer, or ignore them.
-     ///
-     /// An error in this case refers to errors which may occur within the
-     /// Subscriber implementation itself, or in code that it depends on.
-     ///
-     /// It does not refer to traces set to the level of Error.
+    /// Sets whether to write errors from [`FormatEvent`] to the writer.
+    /// Defaults to true.
+    ///
+    /// By default, `fmt::Subscriber` will write any `FormatEvent`-internal
+    /// errors. These errors are unlikely and will only occur if there is a bug
+    /// in the `FormatEvent` implementation.
+    /// 
+    /// [`FormatEvent`]: crate::fmt::FormatEvent
     pub fn with_silence_errors(self, silence_errors: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         SubscriberBuilder {
             inner: self.inner.with_silence_errors(silence_errors),
