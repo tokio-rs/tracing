@@ -27,7 +27,7 @@ pub(crate) struct Instruments {
     f64_value_recorder: MetricsMap<ValueRecorder<f64>>,
 }
 
-type MetricsMap<T> = RwLock<HashMap<String, T>>;
+type MetricsMap<T> = RwLock<HashMap<&'static str, T>>;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum InstrumentType {
@@ -45,11 +45,11 @@ impl Instruments {
         &self,
         meter: &Meter,
         instrument_type: InstrumentType,
-        metric_name: &str,
+        metric_name: &'static str,
     ) {
         fn update_or_insert<T>(
             map: &MetricsMap<T>,
-            name: &str,
+            name: &'static str,
             insert: impl FnOnce() -> T,
             update: impl FnOnce(&T),
         ) {
@@ -66,7 +66,7 @@ impl Instruments {
             let mut lock = map.write().unwrap();
             // handle the case where the entry was created while we were waiting to
             // acquire the write lock
-            let metric = lock.entry(name.to_owned()).or_insert_with(insert);
+            let metric = lock.entry(name).or_insert_with(insert);
             update(metric)
         }
 
