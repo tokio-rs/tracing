@@ -1,3 +1,4 @@
+use opentelemetry::global;
 use std::{error::Error, thread, time::Duration};
 use tracing::{span, trace, warn};
 use tracing_attributes::instrument;
@@ -26,16 +27,23 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         .with(opentelemetry)
         .try_init()?;
 
-    let root = span!(tracing::Level::INFO, "app_start", work_units = 2);
-    let _enter = root.enter();
+    {
+        let root = span!(tracing::Level::INFO, "app_start", work_units = 2);
+        let _enter = root.enter();
 
-    let work_result = expensive_work();
+        let work_result = expensive_work();
 
-    span!(tracing::Level::INFO, "faster_work")
-        .in_scope(|| thread::sleep(Duration::from_millis(10)));
+        span!(tracing::Level::INFO, "faster_work")
+            .in_scope(|| thread::sleep(Duration::from_millis(10)));
 
-    warn!("About to exit!");
-    trace!("status: {}", work_result);
+        warn!("About to exit!");
+        trace!("status: {}", work_result);
+    } // Once this scope is closed, all spans inside are closed as well
+
+    // Shut down the current tracer provider. This will invoke the shutdown
+    // method on all span processors. span processors should export remaining
+    // spans before return.
+    global::shutdown_tracer_provider();
 
     Ok(())
 }

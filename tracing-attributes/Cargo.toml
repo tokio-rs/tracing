@@ -8,7 +8,7 @@ name = "tracing-attributes"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag.
-version = "0.1.21"
+version = "0.1.22"
 authors = [
     "Tokio Contributors <team@tokio.rs>",
     "Eliza Weisman <eliza@buoyant.io>",
@@ -46,7 +46,8 @@ quote = "1"
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.1" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
-tokio-test = { version = "0.2.0" }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
+tokio-test = { version = "0.3.0" }
 tracing-core = { path = "../tracing-core", version = "0.1"}
 async-trait = "0.1.44"
 

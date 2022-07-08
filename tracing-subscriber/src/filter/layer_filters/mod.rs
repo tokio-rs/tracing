@@ -529,7 +529,7 @@ impl<L, F, S> Filtered<L, F, S> {
     /// #
     /// # // specifying the Registry type is required
     /// # let _: &reload::Handle<filter::Filtered<fmt::Layer<Registry, _, _, fn() -> std::io::Stdout>,
-    /// # filter::LevelFilter, Registry>, _>
+    /// # filter::LevelFilter, Registry>, Registry>
     /// # = &reload_handle;
     /// #
     /// info!("This will be logged to stderr");

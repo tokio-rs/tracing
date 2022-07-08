@@ -1,6 +1,6 @@
 [package]
 name = "tracing-subscriber"
-version = "0.3.11"
+version = "0.3.14"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "David Barsky <me@davidbarsky.com>",
@@ -27,7 +27,7 @@ rust-version = "1.49.0"
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
 alloc = []
 std = ["alloc", "tracing-core/std"]
-env-filter = ["matchers", "regex", "lazy_static", "tracing", "std", "thread_local"]
+env-filter = ["matchers", "regex", "once_cell", "tracing", "std", "thread_local"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "ansi_term"]
 registry = ["sharded-slab", "thread_local", "std"]
@@ -38,14 +38,14 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 local-time = ["time/local-offset"]
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.22" }
+tracing-core = { path = "../tracing-core", version = "0.1.28", default-features = false }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1", default-features = false }
 matchers = { optional = true, version = "0.1.0" }
 regex = { optional = true, version = "1", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1.2.0" }
-lazy_static = { optional = true, version = "1" }
+once_cell = { optional = true, version = "1.12" }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.1.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
@@ -76,7 +76,7 @@ tracing-log = { path = "../tracing-log", version = "0.1.2" }
 criterion = { version = "0.3", default_features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.2", default-features = false, features = ["std-future", "std"] }
-tokio = { version = "0.2", features = ["rt-core", "macros"] }
+tokio = { version = "1", features = ["rt", "macros"] }
 # Enable the `time` crate's `macros` feature, for examples.
 time = { version = "0.3", features = ["formatting", "macros"] }
 

@@ -254,14 +254,7 @@ macro_rules! metadata {
     };
 }
 
-// when `std` is enabled, use the `lazy_static` crate from crates.io
-#[cfg(feature = "std")]
-pub(crate) use lazy_static::lazy_static;
-
-// Facade module: `no_std` uses spinlocks, `std` uses the mutexes in the standard library
-#[cfg(not(feature = "std"))]
-#[macro_use]
-mod lazy_static;
+pub(crate) mod lazy;
 
 // Trimmed-down vendored version of spin 0.5.2 (0387621)
 // Dependency of no_std lazy_static, not required in a std build

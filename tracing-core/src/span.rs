@@ -225,6 +225,14 @@ impl<'a> Record<'a> {
         self.values.record(visitor)
     }
 
+    /// Returns the number of fields that would be visited from this `Record`
+    /// when [`Record::record()`] is called
+    ///
+    /// [`Record::record()`]: Record::record()
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
     /// Returns `true` if this `Record` contains a value for the given `Field`.
     pub fn contains(&self, field: &field::Field) -> bool {
         self.values.contains(field)

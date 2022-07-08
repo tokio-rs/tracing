@@ -68,6 +68,22 @@
 //! configuration changes infrequently, it may be more efficient than calling
 //! [`Subscriber::enabled`] frequently.
 //!
+//! # Implementing Callsites
+//!
+//! In most cases, instrumenting code using `tracing` should *not* require
+//! implementing the [`Callsite`] trait directly. When using the [`tracing`
+//! crate's macros][macros] or the [`#[instrument]` attribute][instrument], a
+//! `Callsite` is automatically generated.
+//!
+//! However, code which provides alternative forms of `tracing` instrumentation
+//! may need to interact with the callsite system directly. If
+//! instrumentation-side code needs to produce a `Callsite` to emit spans or
+//! events, the [`DefaultCallsite`] struct provided in this module is a
+//! ready-made `Callsite` implementation that is suitable for most uses. When
+//! possible, the use of `DefaultCallsite` should be preferred over implementing
+//! [`Callsite`] for user types, as `DefaultCallsite` may benefit from
+//! additional performance optimizations.
+//!
 //! [^1]: Returned by the [`Subscriber::register_callsite`][`register_callsite`]
 //!     method.
 //!
@@ -80,6 +96,8 @@
 //! [sometimes]: crate::subscriber::Interest::sometimes
 //! [never]: crate::subscriber::Interest::never
 //! [`Dispatch`]: crate::dispatch::Dispatch
+//! [macros]: https://docs.rs/tracing/latest/tracing/#macros
+//! [instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 use crate::stdlib::{
     any::TypeId,
     fmt,
@@ -93,6 +111,7 @@ use crate::stdlib::{
 };
 use crate::{
     dispatcher::Dispatch,
+    lazy::Lazy,
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
 };
@@ -235,9 +254,7 @@ static CALLSITES: Callsites = Callsites {
 
 static DISPATCHERS: Dispatchers = Dispatchers::new();
 
-crate::lazy_static! {
-    static ref LOCKED_CALLSITES: Mutex<Vec<&'static dyn Callsite>> = Mutex::new(Vec::new());
-}
+static LOCKED_CALLSITES: Lazy<Mutex<Vec<&'static dyn Callsite>>> = Lazy::new(Default::default);
 
 struct Callsites {
     list_head: AtomicPtr<DefaultCallsite>,
@@ -491,7 +508,7 @@ mod private {
 
 #[cfg(feature = "std")]
 mod dispatchers {
-    use crate::dispatcher;
+    use crate::{dispatcher, lazy::Lazy};
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
@@ -501,9 +518,8 @@ mod dispatchers {
         has_just_one: AtomicBool,
     }
 
-    crate::lazy_static! {
-        static ref LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
-    }
+    static LOCKED_DISPATCHERS: Lazy<RwLock<Vec<dispatcher::Registrar>>> =
+        Lazy::new(Default::default);
 
     pub(super) enum Rebuilder<'a> {
         JustOne,

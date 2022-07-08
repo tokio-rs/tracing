@@ -12,7 +12,11 @@ use crate::{
 };
 #[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
-use core::{any::TypeId, cmp, fmt, marker::PhantomData};
+use core::{
+    any::{Any, TypeId},
+    cmp, fmt,
+    marker::PhantomData,
+};
 
 /// A [`Subscriber`] composed of a `Subscriber` wrapped by one or more
 /// [`Layer`]s.
@@ -63,6 +67,30 @@ pub struct Layered<L, I, S = I> {
 
 // === impl Layered ===
 
+impl<L, S> Layered<L, S>
+where
+    L: Layer<S>,
+    S: Subscriber,
+{
+    /// Returns `true` if this [`Subscriber`] is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this [`Subscriber`] value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            if raw.is_null() {
+                None
+            } else {
+                Some(&*(raw as *const T))
+            }
+        }
+    }
+}
+
 impl<L, S> Subscriber for Layered<L, S>
 where
     L: Layer<S>,
@@ -109,6 +137,16 @@ where
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.inner.record_follows_from(span, follows);
         self.layer.on_follows_from(span, follows, self.ctx());
+    }
+
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        if self.layer.event_enabled(event, self.ctx()) {
+            // if the outer layer enables the event, ask the inner subscriber.
+            self.inner.event_enabled(event)
+        } else {
+            // otherwise, the event is disabled by this layer
+            false
+        }
     }
 
     fn event(&self, event: &Event<'_>) {
@@ -251,6 +289,17 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
+        if self.layer.event_enabled(event, ctx.clone()) {
+            // if the outer layer enables the event, ask the inner subscriber.
+            self.inner.event_enabled(event, ctx)
+        } else {
+            // otherwise, the event is disabled by this layer
+            false
+        }
+    }
+
+    #[inline]
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         self.inner.on_event(event, ctx.clone());
         self.layer.on_event(event, ctx);
@@ -386,7 +435,7 @@ where
             // (rather than calling into the inner type), clear the current
             // per-layer filter interest state.
             #[cfg(feature = "registry")]
-            drop(filter::FilterState::take_interest());
+            filter::FilterState::take_interest();
 
             return outer;
         }

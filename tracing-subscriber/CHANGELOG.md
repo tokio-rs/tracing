@@ -1,3 +1,77 @@
+# 0.3.14 (Jul 1, 2022)
+
+This release fixes multiple filtering bugs in the `Layer` implementations for
+`Option<impl Layer>` and `Vec<impl Layer>`.
+
+### Fixed
+
+- **layer**: `Layer::event_enabled` implementation for `Option<impl Layer<S>>`
+  returning `false` when the `Option` is `None`, disabling all events globally
+  ([#2193])
+- **layer**: `Layer::max_level_hint` implementation for `Option<impl Layer<S>>`
+  incorrectly disabling max level filtering when the option is `None` ([#2195])
+- **layer**: `Layer::max_level_hint` implementation for `Vec<impl Layer<S>>`
+  returning `LevelFilter::ERROR` rather than `LevelFilter::OFF` when the `Vec`
+  is empty ([#2195])
+
+Thanks to @CAD97 and @guswynn for contributing to this release!
+
+[#2193]: https://github.com/tokio-rs/tracing/pull/2193
+[#2195]: https://github.com/tokio-rs/tracing/pull/2195
+
+# 0.3.13 (Jun 30, 2022) (YANKED)
+
+This release of `tracing-subscriber` fixes a compilation failure due to an
+incorrect `tracing-core` dependency that was introduced in v0.3.12.
+
+### Changed
+
+- **tracing_core**: Updated minimum dependency version to 0.1.28 ([#2190])
+
+[#2190]: https://github.com/tokio-rs/tracing/pull/2190
+
+# 0.3.12 (Jun 29, 2022) (YANKED)
+
+This release of `tracing-subscriber` adds a new `Layer::event_enabled` method,
+which allows `Layer`s to filter events *after* their field values are recorded;
+a `Filter` implementation for `reload::Layer`, to make using `reload` with
+per-layer filtering more ergonomic, and additional inherent method downcasting
+APIs for the `Layered` type. In addition, it includes dependency updates, and
+minor fixes for documentation and feature flagging.
+
+### Added
+
+- **layer**: `Layer::event_enabled` method, which can be implemented to filter
+  events based on their field values ([#2008])
+- **reload**: `Filter` implementation for `reload::Layer` ([#2159])
+- **layer**: `Layered::downcast_ref` and `Layered::is` inherent methods
+  ([#2160])
+
+### Changed
+
+- **parking_lot**: Updated dependency on `parking_lot` to 0.13.0 ([#2143])
+- Replaced `lazy_static` dependency with `once_cell` ([#2147])
+
+### Fixed
+
+- Don't enable `tracing-core` features by default ([#2107])
+- Several documentation link and typo fixes ([#2064], [#2068], #[2077], [#2161],
+  [#1088])
+
+Thanks to @ben0x539, @jamesmunns, @georgemp, @james7132, @jswrenn, @CAD97, and
+@guswynn for contributing to this release!
+
+[#2008]: https://github.com/tokio-rs/tracing/pull/2008
+[#2159]: https://github.com/tokio-rs/tracing/pull/2159
+[#2160]: https://github.com/tokio-rs/tracing/pull/2160
+[#2143]: https://github.com/tokio-rs/tracing/pull/2143
+[#2107]: https://github.com/tokio-rs/tracing/pull/2107
+[#2064]: https://github.com/tokio-rs/tracing/pull/2064
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+[#2077]: https://github.com/tokio-rs/tracing/pull/2077
+[#2161]: https://github.com/tokio-rs/tracing/pull/2161
+[#1088]: https://github.com/tokio-rs/tracing/pull/1088
+
 # 0.3.11 (Apr 9, 2022)
 
 This is a bugfix release for the `Filter` implementation for `EnvFilter` added

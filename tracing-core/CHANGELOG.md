@@ -1,9 +1,66 @@
+# 0.1.28 (June 23, 2022)
+
+This release of `tracing-core` adds new `Value` implementations, including one
+for `String`, to allow recording `&String` as a value without having to call
+`as_str()` or similar, and for 128-bit integers (`i128` and `u128`). In
+addition, it adds new methods and trait implementations for `Subscriber`s.
+
+### Added
+
+- `Value` implementation for `String` ([#2164])
+- `Value` implementation for `u128` and `i28` ([#2166])
+- `downcast_ref` and `is` methods for `dyn Subscriber + Sync`,
+  `dyn Subscriber + Send`, and `dyn Subscriber + Send + Sync` ([#2160])
+- `Subscriber::event_enabled` method to enable filtering based on `Event` field
+  values ([#2008])
+- `Subscriber` implementation for `Box<S: Subscriber + ?Sized>` and
+  `Arc<S: Subscriber + ?Sized>` ([#2161])
+
+Thanks to @jswrenn and @CAD97 for contributing to this release!
+
+[#2164]: https://github.com/tokio-rs/tracing/pull/2164
+[#2166]: https://github.com/tokio-rs/tracing/pull/2166
+[#2160]: https://github.com/tokio-rs/tracing/pull/2160
+[#2008]: https://github.com/tokio-rs/tracing/pull/2008
+[#2161]: https://github.com/tokio-rs/tracing/pull/2161
+
+# 0.1.27 (June 7, 2022)
+
+This release of `tracing-core` introduces a new `DefaultCallsite` type, which
+can be used by instrumentation crates rather than implementing their own
+callsite types. Using `DefaultCallsite` may offer reduced overhead from callsite
+registration.
+
+### Added
+
+- `DefaultCallsite`, a pre-written `Callsite` implementation for use in
+  instrumentation crates ([#2083])
+- `ValueSet::len` and `Record::len` methods returning the number of fields in a
+  `ValueSet` or `Record` ([#2152])
+
+### Changed
+
+- Replaced `lazy_static` dependency with `once_cell` ([#2147])
+
+### Documented
+
+- Added documentation to the `callsite` module ([#2088], [#2149])
+
+Thanks to new contributors @jamesmunns and @james7132 for contributing to this
+release!
+
+[#2083]: https://github.com/tokio-rs/tracing/pull/2083
+[#2152]: https://github.com/tokio-rs/tracing/pull/2152
+[#2147]: https://github.com/tokio-rs/tracing/pull/2147
+[#2088]: https://github.com/tokio-rs/tracing/pull/2088
+[#2149]: https://github.com/tokio-rs/tracing/pull/2149
+
 # 0.1.26 (April 14, 2022)
 
 This release adds a `Value` implementation for `Box<T: Value>` to allow
 recording boxed values more conveniently. In particular, this should improve
 the ergonomics of the implementations for `dyn std::error::Error` trait objects,
-including those added in [v0.1.25]. 
+including those added in [v0.1.25].
 
 ### Added
 

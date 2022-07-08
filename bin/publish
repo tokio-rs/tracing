@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 USAGE="Publish a new release of a tokio crate
 
 USAGE:
@@ -10,11 +9,15 @@ OPTIONS:
     -d, --dry-run   Perform a dry run (do not publish or tag the release)
     -h, --help      Show this help text and exit"
 
+set -euo pipefail
+
+cd "$(dirname "$0")"/..
+
 DRY_RUN=""
 VERBOSE=""
 
 err() {
-    echo -e "\e[31m\e[1merror:\e[0m $@" 1>&2;
+    echo -e "\e[31m\e[1merror:\e[0m" "$@" 1>&2;
 }
 
 status() {
@@ -31,20 +34,40 @@ verify() {
         exit 1
     fi
 
-    if ! cargo list | grep -q "hack"; then
-        status "Installing" "cargo-hack"
-        cargo install cargo-hack
+    if ! cargo --list | grep -q "hack"; then
+        err "missing cargo-hack executable"
+        read -r -p "install it? [Y/n] " INPUT
+
+        case "$INPUT" in
+            [yY][eE][sS]|[yY])
+                status "Installing" "cargo-hack"
+                cargo install cargo-hack
+                ;;
+            [nN][oO]|[nN])
+                echo "okay, exiting"
+                exit 1
+                ;;
+            *)
+                err "invalid input $INPUT"
+                exit 1
+                ;;
+        esac
     fi
 
     status "Checking" "if $CRATE builds across feature combinations"
 
-    CARGO_HACK=(cargo hack check $VERBOSE --feature-powerset  --no-dev-deps)
+    CARGO_HACK=(cargo hack check --feature-powerset  --no-dev-deps)
+
+    if [[ "$VERBOSE" ]]; then
+        CARGO_HACK+=("$VERBOSE")
+    fi
+
     case "$CRATE" in
         tracing-subscriber)
             # for tracing-subscriber, don't test a complete powerset because
             # there are lots of feature flags
             INCLUDE_FEATURES=(fmt ansi json registry env-filter)
-            ${CARGO_HACK[@]} --include-features "${INCLUDE_FEATURES[*]}"
+            "${CARGO_HACK[@]}" --include-features "${INCLUDE_FEATURES[*]}"
             CARGO_HACK_STATUS="$?"
             ;;
         tracing)
@@ -58,17 +81,17 @@ verify() {
                 release_max_level_info release_max_level_debug
                 release_max_level_trace
             )
-            ${CARGO_HACK[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            "${CARGO_HACK[@]}" --exclude-features "${EXCLUDE_FEATURES[*]}"
             CARGO_HACK_STATUS="$?"
             ;;
         *)
-            ${CARGO_HACK[@]}
+            "${CARGO_HACK[@]}"
             CARGO_HACK_STATUS="$?"
             ;;
     esac
 
-    if "$CARGO_HACK_STATUS" ; then
-        err "$CRATE did not build with all feature combinations!"
+    if [[ "$CARGO_HACK_STATUS" != "0" ]] ; then
+        err "$CRATE did not build with all feature combinations (cargo hack exited with $CARGO_HACK_STATUS)!"
         exit 1
     fi
 
@@ -81,11 +104,23 @@ verify() {
 
 release() {
     status "Releasing" "$CRATE v$VERSION"
-    cargo package $VERBOSE
-    cargo publish $VERBOSE $DRY_RUN
+    local CARGO_PACKAGE=(cargo package)
+    local CARGO_PUBLISH=(cargo publish)
+
+    if [[ "$VERBOSE" ]]; then
+        CARGO_PACKAGE+=("$VERBOSE")
+        CARGO_PUBLISH+=("$VERBOSE")
+    fi
+
+    if [[ "$DRY_RUN" ]]; then
+        CARGO_PUBLISH+=("$DRY_RUN")
+    fi
+
+    "${CARGO_PACKAGE[@]}"
+    "${CARGO_PUBLISH[@]}"
 
     status "Tagging" "$TAG"
-    if [ -n "$DRY_RUN" ]; then
+    if [[ "$DRY_RUN" ]]; then
         echo "# git tag $TAG && git push --tags"
     else
         git tag "$TAG" && git push --tags
@@ -111,9 +146,9 @@ case "$1" in
     exit 1
     ;;
     *) # crate or version
-    if [ -z "$CRATE" ]; then
+    if [[ -z "${CRATE+crate}" ]]; then
         CRATE="$1"
-    elif [ -z "$VERSION" ]; then
+    elif [[ -z "${VERSION+version}" ]]; then
         VERSION="$1"
     else
         err "unknown positional argument \"$1\""
@@ -126,19 +161,19 @@ esac
 done
 # set -- "${POSITIONAL[@]}"
 
-if [ -z "$VERSION" ]; then
+if [[ -z "${VERSION+version}" ]]; then
     err "no version specified!"
     HELP=1
 fi
 
-if [ -n "$CRATE" ]; then
+if [[ "${CRATE+crate}" ]]; then
     TAG="$CRATE-$VERSION"
 else
     err "no crate specified!"
     HELP=1
 fi
 
-if [ -n "$HELP" ]; then
+if [[ "${HELP+help}" ]]; then
     echo "$USAGE"
     exit 1
 fi

@@ -1,3 +1,63 @@
+# 0.17.4 (July 1, 2022)
+
+This release adds optional support for recording `std::error::Error`s using
+[OpenTelemetry's semantic conventions for exceptions][exn-semconv].
+
+### Added
+
+- `Layer::with_exception_fields` to enable emitting `exception.message` and
+  `exception.backtrace` semantic-convention fields when an `Error` is recorded
+  as a span or event field ([#2135])
+- `Layer::with_exception_field_propagation` to enable setting `exception.message` and
+  `exception.backtrace` semantic-convention fields on the current span when an
+  event with an `Error` field is recorded ([#2135])
+
+Thanks to @lilymara-onesignal for contributing to this release!
+
+[thread-semconv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
+[#2135]: https://github.com/tokio-rs/tracing/pull/2135
+
+# 0.17.3 (June 7, 2022)
+
+This release adds support for emitting thread names and IDs to OpenTelemetry, as
+well as recording `std::error::Error` values in a structured manner with their
+source chain included. Additionally, this release fixes issues related to event
+and span source code locations.
+
+### Added
+
+- `Layer::with_threads` to enable recording thread names/IDs according to
+  [OpenTelemetry semantic conventions][thread-semconv] ([#2134])
+- `Error::source` chain when recording `std::error::Error` values ([#2122])
+- `Layer::with_location` method (replaces `Layer::with_event_location`)
+  ([#2124])
+
+### Changed
+
+- `std::error::Error` values are now recorded using `fmt::Display` rather than
+  `fmt::Debug` ([#2122])
+
+### Fixed
+
+- Fixed event source code locations overwriting the parent span's source
+  location ([#2099])
+- Fixed `Layer::with_event_location` not controlling whether locations are
+  emitted for spans as well as events ([#2124])
+
+### Deprecated
+
+- `Layer::with_event_location`: renamed to `Layer::with_location`, as it now
+  controls both span and event locations ([#2124])
+
+Thanks to new contributors @lilymara-onesignal, @hubertbudzynski, and @DevinCarr
+for contributing to this release!
+
+[thread-semconv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#source-code-attributes
+[#2134]: https://github.com/tokio-rs/tracing/pull/2134
+[#2122]: https://github.com/tokio-rs/tracing/pull/2122
+[#2124]: https://github.com/tokio-rs/tracing/pull/2124
+[#2099]: https://github.com/tokio-rs/tracing/pull/2099
+
 # 0.17.2 (February 21, 2022)
 
 This release fixes [an issue][#1944] introduced in v0.17.1 where
