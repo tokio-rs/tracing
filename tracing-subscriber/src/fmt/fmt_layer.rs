@@ -1261,7 +1261,7 @@ mod test {
         let actual = sanitize_timings(make_writer.get_string());
 
         // Only assert the start because the line number and callsite may change.
-        let expected = "Unable to format the following event. Name: event tracing-subscriber/src/fmt/fmt_layer.rs:";
+        let expected = concat!("Unable to format the following event. Name: event ", file!(), ":");
         assert!(actual.as_str().starts_with(expected), "\nactual = {}\nshould start with expected = {}\n", actual, expected);
     }
 
