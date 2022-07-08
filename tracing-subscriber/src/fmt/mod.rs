@@ -620,17 +620,19 @@ where
         }
     }
 
-    /// Sets whether to write errors from [`FormatEvent`] to the writer.
-    /// Defaults to true.
+    /// Silently ignore [`FormatEvent`]-internal errors. Defaults to false.
     ///
-    /// By default, `fmt::Subscriber` will write any `FormatEvent`-internal
-    /// errors. These errors are unlikely and will only occur if there is a bug
-    /// in the `FormatEvent` implementation.
+    /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
+    /// the writer. These errors are unlikely and will only occur if there is a
+    /// bug in the `FormatEvent` implementation or its dependencies.
+    /// 
+    /// If writing to the writer fails, the error message is printed to stderr
+    /// as a fallback.
     /// 
     /// [`FormatEvent`]: crate::fmt::FormatEvent
-    pub fn with_silence_errors(self, silence_errors: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+    pub fn with_silence_internal_errors(self, silence_internal_errors: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         SubscriberBuilder {
-            inner: self.inner.with_silence_errors(silence_errors),
+            inner: self.inner.with_silence_internal_errors(silence_internal_errors),
             ..self
         }
     }
