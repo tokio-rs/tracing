@@ -311,15 +311,15 @@ impl<'a> Visit for MetricVisitor<'a> {
 ///
 /// # Implementation Details
 ///
-/// This subscriber holds a set of maps, each map corresponding to a type of
-/// metric supported by OpenTelemetry. These maps are populated lazily. The
-/// first time that a metric is emitted by the instrumentation, a `Metric`
+/// `MetricsSubscriber` holds a set of maps, with each map corresponding to a
+/// type of metric supported by OpenTelemetry. These maps are populated lazily.
+/// The first time that a metric is emitted by the instrumentation, a `Metric`
 /// instance will be created and added to the corresponding map. This means that
 /// any time a metric is emitted by the instrumentation, one map lookup has to
 /// be performed.
 ///
-/// In the future, this can be improved by associating each Metric instance to
-/// its callsite. However, per-callsite storage is not yet supported by tracing.
+/// In the future, this can be improved by associating each `Metric` instance to
+/// its callsite, eliminating the need for any maps.
 pub struct MetricsSubscriber {
     meter: Meter,
     instruments: Instruments,
