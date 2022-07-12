@@ -99,6 +99,9 @@
 )]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
 
+/// Implementation of the trace::Layer trait; publishes OpenTelemetry metrics.
+mod metrics;
+
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.
 mod layer;
 /// Span extension which enables OpenTelemetry context management.
@@ -107,6 +110,8 @@ mod span_ext;
 mod tracer;
 
 pub use layer::{layer, OpenTelemetryLayer};
+
+pub use metrics::MetricsLayer;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use tracer::PreSampledTracer;
 
