@@ -21,7 +21,7 @@ use opentelemetry::{
 use std::cmp::Ordering;
 use std::time::Duration;
 use tracing::Collect;
-use tracing_opentelemetry::OpenTelemetryMetricsSubscriber;
+use tracing_opentelemetry::MetricsSubscriber;
 use tracing_subscriber::prelude::*;
 
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -175,7 +175,7 @@ fn init_subscriber(
     )
     .build();
 
-    tracing_subscriber::registry().with(OpenTelemetryMetricsSubscriber::new(push_controller))
+    tracing_subscriber::registry().with(MetricsSubscriber::new(push_controller))
 }
 
 #[derive(Clone, Debug)]

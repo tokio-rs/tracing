@@ -108,7 +108,7 @@ mod subscriber;
 /// Protocols for OpenTelemetry Tracers that are compatible with Tracing
 mod tracer;
 
-pub use metrics::OpenTelemetryMetricsSubscriber;
+pub use metrics::MetricsSubscriber;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;

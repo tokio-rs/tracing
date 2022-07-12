@@ -229,7 +229,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// etc.
 ///
 /// ```no_run
-/// use tracing_opentelemetry::OpenTelemetryMetricsSubscriber;
+/// use tracing_opentelemetry::MetricsSubscriber;
 /// use tracing_subscriber::subscribe::CollectExt;
 /// use tracing_subscriber::Registry;
 /// # use opentelemetry::sdk::metrics::PushController;
@@ -239,7 +239,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// // https://github.com/open-telemetry/opentelemetry-rust/blob/c13a11e62a68eacd8c41a0742a0d097808e28fbd/examples/basic-otlp/src/main.rs#L39-L53
 /// # let push_controller: PushController = unimplemented!();
 ///
-/// let opentelemetry_metrics =  OpenTelemetryMetricsSubscriber::new(push_controller);
+/// let opentelemetry_metrics =  MetricsSubscriber::new(push_controller);
 /// let collector = Registry::default().with(opentelemetry_metrics);
 /// tracing::collect::set_global_default(collector).unwrap();
 /// ```
@@ -328,25 +328,25 @@ impl<'a> Visit for MetricVisitor<'a> {
 ///
 /// In the future, this can be improved by associating each Metric instance to
 /// its callsite. However, per-callsite storage is not yet supported by tracing.
-pub struct OpenTelemetryMetricsSubscriber {
+pub struct MetricsSubscriber {
     meter: Meter,
     instruments: Instruments,
 }
 
-impl OpenTelemetryMetricsSubscriber {
-    /// Create a new instance of OpenTelemetryMetricsSubscriber.
+impl MetricsSubscriber {
+    /// Create a new instance of MetricsSubscriber.
     pub fn new(push_controller: PushController) -> Self {
         let meter = push_controller
             .provider()
             .meter(INSTRUMENTATION_LIBRARY_NAME, Some(CARGO_PKG_VERSION));
-        OpenTelemetryMetricsSubscriber {
+        MetricsSubscriber {
             meter,
             instruments: Default::default(),
         }
     }
 }
 
-impl<C> Subscribe<C> for OpenTelemetryMetricsSubscriber
+impl<C> Subscribe<C> for MetricsSubscriber
 where
     C: Collect + for<'span> LookupSpan<'span>,
 {
