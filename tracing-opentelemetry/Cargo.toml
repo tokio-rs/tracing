@@ -23,7 +23,7 @@ rust-version = "1.46.0"
 default = ["tracing-log"]
 
 [dependencies]
-opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.17", default-features = false, features = ["trace", "metrics"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry", "std"] }
@@ -34,6 +34,9 @@ once_cell = "1"
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
 opentelemetry-jaeger = "0.16"
+futures-util = { version = "0.3", default-features = false }
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
 
 [lib]
 bench = false
