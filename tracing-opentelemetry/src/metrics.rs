@@ -244,9 +244,8 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// tracing::collect::set_global_default(collector).unwrap();
 /// ```
 ///
-/// To publish a new metric from your instrumentation point, all that is needed
-/// is to add a key-value pair to your `tracing::Event` that contains a specific
-/// prefix. One of the following:
+/// To publish a new metric, add a key-value pair to your `tracing::Event` that
+/// contains following prefixes:
 /// - `monotonic_counter.` (non-negative numbers): Used when the counter should
 ///   only ever increase
 /// - `counter.`: Used when the counter can go up or down
@@ -275,13 +274,6 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// Do not mix floating point and non-floating point numbers for the same
 /// metric. If a floating point number will be used for a given metric, be sure
 /// to cast any other usages of that metric to a floating point number.
-///
-/// Don't do this:
-/// ```
-/// # use tracing::info;
-/// info!(monotonic_counter.foo = 1);
-/// info!(monotonic_counter.foo = 1.0);
-/// ```
 ///
 /// Do this:
 /// ```
