@@ -30,126 +30,126 @@ const INSTRUMENTATION_LIBRARY_NAME: &str = "tracing/tracing-opentelemetry";
 #[tokio::test]
 async fn u64_counter_is_exported() {
     let subscriber = init_subscriber(
-        "MONOTONIC_COUNTER_HELLO_WORLD".to_string(),
+        "hello_world".to_string(),
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(MONOTONIC_COUNTER_HELLO_WORLD = 1_u64);
+        tracing::info!(monotonic_counter.hello_world = 1_u64);
     });
 }
 
 #[tokio::test]
 async fn u64_counter_is_exported_i64_at_instrumentation_point() {
     let subscriber = init_subscriber(
-        "MONOTONIC_COUNTER_HELLO_WORLD2".to_string(),
+        "hello_world2".to_string(),
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(MONOTONIC_COUNTER_HELLO_WORLD2 = 1_i64);
+        tracing::info!(monotonic_counter.hello_world2 = 1_i64);
     });
 }
 
 #[tokio::test]
 async fn f64_counter_is_exported() {
     let subscriber = init_subscriber(
-        "MONOTONIC_COUNTER_FLOAT_HELLO_WORLD".to_string(),
+        "float_hello_world".to_string(),
         InstrumentKind::Counter,
         NumberKind::F64,
         Number::from(1.000000123_f64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(MONOTONIC_COUNTER_FLOAT_HELLO_WORLD = 1.000000123_f64);
+        tracing::info!(monotonic_counter.float_hello_world = 1.000000123_f64);
     });
 }
 
 #[tokio::test]
 async fn i64_up_down_counter_is_exported() {
     let subscriber = init_subscriber(
-        "COUNTER_PEBCAK".to_string(),
+        "pebcak".to_string(),
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(-5_i64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(COUNTER_PEBCAK = -5_i64);
+        tracing::info!(counter.pebcak = -5_i64);
     });
 }
 
 #[tokio::test]
 async fn i64_up_down_counter_is_exported_u64_at_instrumentation_point() {
     let subscriber = init_subscriber(
-        "COUNTER_PEBCAK2".to_string(),
+        "pebcak2".to_string(),
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(5_i64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(COUNTER_PEBCAK2 = 5_u64);
+        tracing::info!(counter.pebcak2 = 5_u64);
     });
 }
 
 #[tokio::test]
 async fn f64_up_down_counter_is_exported() {
     let subscriber = init_subscriber(
-        "COUNTER_PEBCAK_BLAH".to_string(),
+        "pebcak_blah".to_string(),
         InstrumentKind::UpDownCounter,
         NumberKind::F64,
         Number::from(99.123_f64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(COUNTER_PEBCAK_BLAH = 99.123_f64);
+        tracing::info!(counter.pebcak_blah = 99.123_f64);
     });
 }
 
 #[tokio::test]
 async fn u64_value_is_exported() {
     let subscriber = init_subscriber(
-        "VALUE_ABCDEFG".to_string(),
+        "abcdefg".to_string(),
         InstrumentKind::ValueRecorder,
         NumberKind::U64,
         Number::from(9_u64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(VALUE_ABCDEFG = 9_u64);
+        tracing::info!(value.abcdefg = 9_u64);
     });
 }
 
 #[tokio::test]
 async fn i64_value_is_exported() {
     let subscriber = init_subscriber(
-        "VALUE_ABCDEFG_AUENATSOU".to_string(),
+        "abcdefg_auenatsou".to_string(),
         InstrumentKind::ValueRecorder,
         NumberKind::I64,
         Number::from(-19_i64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(VALUE_ABCDEFG_AUENATSOU = -19_i64);
+        tracing::info!(value.abcdefg_auenatsou = -19_i64);
     });
 }
 
 #[tokio::test]
 async fn f64_value_is_exported() {
     let subscriber = init_subscriber(
-        "VALUE_ABCDEFG_RACECAR".to_string(),
+        "abcdefg_racecar".to_string(),
         InstrumentKind::ValueRecorder,
         NumberKind::F64,
         Number::from(777.0012_f64),
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(VALUE_ABCDEFG_RACECAR = 777.0012_f64);
+        tracing::info!(value.abcdefg_racecar = 777.0012_f64);
     });
 }
 
