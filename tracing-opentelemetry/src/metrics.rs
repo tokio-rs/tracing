@@ -300,7 +300,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// cast to something else. In the case that an integer *is* cast to `u64`, this
 /// subscriber will handle the conversion internally.
 ///
-/// To illustrate this:
+/// For example:
 /// ```
 /// # use tracing::info;
 /// // The subscriber receives an i64
@@ -317,7 +317,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// info!(counter.baz = (i64::MAX as u64) + 1)
 /// ```
 ///
-/// # Under-the-hood
+/// # Implementation Details
 ///
 /// This subscriber holds a set of maps, each map corresponding to a type of
 /// metric supported by OpenTelemetry. These maps are populated lazily. The
