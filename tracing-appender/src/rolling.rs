@@ -135,7 +135,17 @@ impl RollingFileAppender {
         directory: impl AsRef<Path>,
         file_name_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
+        #[cfg(not(feature = "local_offset"))]
         let now = OffsetDateTime::now_utc();
+
+        #[cfg(feature = "local_offset")]
+        let now = match OffsetDateTime::now_local() {
+            Ok(now) => now,
+            Err(err) => {
+                panic!("try to disable the feature `local_offset` of crate tracing-appender: {}", err)
+            }
+        };
+
         let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
         Self {
             state,
