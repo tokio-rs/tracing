@@ -272,9 +272,9 @@ impl<'a> Visit for MetricVisitor<'a> {
 ///
 /// ## Floating-point numbers
 ///
-/// Do not mix floating-point and non-floating-point numbers for the same
-/// metric. Instead, if you are ever going to use floating-point numbers for a
-/// metric, cast any other usages of that metric to `f64`.
+/// Do not mix floating point and non-floating point numbers for the same
+/// metric. If a floating point number will be used for a given metric, be sure
+/// to cast any other usages of that metric to a floating point number.
 ///
 /// Don't do this:
 /// ```
