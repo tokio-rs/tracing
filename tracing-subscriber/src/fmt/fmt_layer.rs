@@ -70,7 +70,7 @@ pub struct Layer<
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
-    silence_internal_errors: bool,
+    log_internal_errors: bool,
     _inner: PhantomData<fn(S)>,
 }
 
@@ -120,7 +120,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -150,7 +150,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -183,7 +183,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             make_writer,
             _inner: self._inner,
         }
@@ -267,7 +267,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             make_writer: TestWriter::default(),
             _inner: self._inner,
         }
@@ -283,7 +283,8 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
-    /// Silently ignore [`FormatEvent`]-internal errors. Defaults to false.
+    /// Sets whether to write errors from [`FormatEvent`] to the writer.
+    /// Defaults to true.
     ///
     /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
     /// the writer. These errors are unlikely and will only occur if there is a
@@ -293,9 +294,9 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// as a fallback.
     /// 
     /// [`FormatEvent`]: crate::fmt::FormatEvent
-    pub fn with_silence_internal_errors(self, silence_internal_errors: bool) -> Self {
+    pub fn log_internal_errors(self, log_internal_errors: bool) -> Self {
         Self {
-            silence_internal_errors,
+            log_internal_errors,
             ..self
         }
     }
@@ -328,7 +329,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             make_writer: f(self.make_writer),
             _inner: self._inner,
         }
@@ -360,7 +361,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -373,7 +374,7 @@ where
             fmt_span: self.fmt_span.without_time(),
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -502,7 +503,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -517,7 +518,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -548,7 +549,7 @@ where
             make_writer: self.make_writer,
             // always disable ANSI escapes in JSON mode!
             is_ansi: false,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -615,7 +616,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -646,7 +647,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
-            silence_internal_errors: self.silence_internal_errors,
+            log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
     }
@@ -660,7 +661,7 @@ impl<S> Default for Layer<S> {
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
             is_ansi: cfg!(feature = "ansi"),
-            silence_internal_errors: false,
+            log_internal_errors: false,
             _inner: PhantomData,
         }
     }
@@ -932,12 +933,12 @@ where
             {
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let res = io::Write::write_all(&mut writer, buf.as_bytes());
-                if !self.silence_internal_errors {
+                if self.log_internal_errors {
                     if let Err(e) = res {
                         eprintln!("[tracing-subscriber] Unable to write an event to the Writer for this Subscriber! Error: {}\n", e);
                     }
                 }
-            } else if !self.silence_internal_errors {
+            } else if self.log_internal_errors {
                 let err_msg = format!("Unable to format the following event. Name: {}; Fields: {:?}\n",
                     event.metadata().name(), event.fields());
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
@@ -1270,7 +1271,7 @@ mod test {
     }
 
     #[test]
-    fn format_error_ignore_if_silence_internal_errors_is_true() {
+    fn format_error_ignore_if_log_internal_errors_is_false() {
         struct AlwaysError;
 
         impl std::fmt::Debug for AlwaysError {
@@ -1285,7 +1286,7 @@ mod test {
             .with_level(false)
             .with_ansi(false)
             .with_timer(MockTime)
-            .with_silence_internal_errors(true)
+            .log_internal_errors(false)
             .finish();
 
         with_default(subscriber, || {
