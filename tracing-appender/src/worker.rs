@@ -85,6 +85,6 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
                     }
                 }
             })
-            .expect("failed to spawn thread")
+            .expect("failed to spawn `tracing-appender` non-blocking worker thread")
     }
 }
