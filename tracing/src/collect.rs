@@ -7,6 +7,12 @@ pub use tracing_core::dispatch::DefaultGuard;
 
 /// Sets this collector as the default for the current thread for the duration
 /// of a closure.
+///
+/// The default collector is used when creating a new [`Span`] or
+/// [`Event`].
+///
+/// [`Span`]: super::span::Span
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T, C>(collector: C, f: impl FnOnce() -> T) -> T
@@ -37,6 +43,12 @@ where
 
 /// Sets the collector as the default for the current thread for the duration of
 /// the lifetime of the returned [`DefaultGuard`].
+///
+/// The default collector is used when creating a new [`Span`] or
+/// [`Event`].
+///
+/// [`Span`]: super::span::Span
+/// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the collector."]
