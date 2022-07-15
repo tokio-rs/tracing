@@ -34,7 +34,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Duration, OffsetDateTime, Time};
+use time::{format_description, Duration, OffsetDateTime, Time, UtcOffset};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -85,6 +85,7 @@ pub struct RollingFileAppender {
     writer: RwLock<File>,
     #[cfg(test)]
     now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    offset_time: Option<UtcOffset>,
 }
 
 /// A [writer] that writes to a rolling log file.
@@ -142,16 +143,35 @@ impl RollingFileAppender {
             writer,
             #[cfg(test)]
             now: Box::new(OffsetDateTime::now_utc),
+            offset_time: None,
         }
+    }
+
+    pub fn set_time_offset(&mut self, offset: UtcOffset) {
+        self.offset_time = Some(offset);
+        let now = OffsetDateTime::now_utc().to_offset(offset);
+        let log_directory = self.state.log_directory.clone();
+        let log_filename_prefix = self.state.log_filename_prefix.clone();
+
+        let filename = self.state.rotation.join_date(log_filename_prefix.as_str(), &now);
+        self.writer = RwLock::new(
+            create_writer(log_directory.as_str(), &filename).expect("failed to create appender"),
+        );
     }
 
     #[inline]
     fn now(&self) -> OffsetDateTime {
         #[cfg(test)]
-        return (self.now)();
+        match self.offset_time {
+            None => { (self.now)() }
+            Some(offset_time) => { (self.now)().to_offset(offset_time) }
+        }
 
         #[cfg(not(test))]
-        OffsetDateTime::now_utc()
+        match self.offset_time {
+            None => { OffsetDateTime::now_utc() }
+            Some(offset_time) => { OffsetDateTime::now_utc().to_offset(offset_time) }
+        }
     }
 }
 
@@ -655,7 +675,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
+    expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
     )]
     fn test_never_date_rounding() {
         let now = OffsetDateTime::now_utc();
@@ -668,7 +688,7 @@ mod test {
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
-        .unwrap();
+            .unwrap();
 
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
@@ -698,7 +718,7 @@ mod test {
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
-        .unwrap();
+            .unwrap();
 
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
         let directory = tempfile::tempdir().expect("failed to create tempdir");
@@ -710,7 +730,8 @@ mod test {
             let clock = clock.clone();
             Box::new(move || *clock.lock().unwrap())
         };
-        let appender = RollingFileAppender { state, writer, now };
+        let mut appender = RollingFileAppender { state, writer, now, offset_time: None };
+        appender.set_time_offset(UtcOffset::from_hms(8, 0, 0).unwrap());
         let default = tracing_subscriber::fmt()
             .without_time()
             .with_level(false)
