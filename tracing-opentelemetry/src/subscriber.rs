@@ -1,7 +1,7 @@
 use crate::{OtelData, PreSampledTracer};
 use once_cell::unsync;
 use opentelemetry::{
-    trace::{self as otel, noop, TraceContextExt},
+    trace::{self as otel, noop, TraceContextExt, TraceId},
     Context as OtelContext, Key, KeyValue, Value,
 };
 use std::fmt;
@@ -21,6 +21,7 @@ const SPAN_NAME_FIELD: &str = "otel.name";
 const SPAN_KIND_FIELD: &str = "otel.kind";
 const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
 const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
+const SPAN_TRACE_ID_FIELD: &str = "otel.trace_id";
 
 /// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
@@ -235,6 +236,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
             SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
             SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            SPAN_TRACE_ID_FIELD => self.0.trace_id = TraceId::from_hex(value).ok(),
             _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
@@ -253,6 +255,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_STATUS_MESSAGE_FIELD => {
                 self.0.status_message = Some(format!("{:?}", value).into())
             }
+            SPAN_TRACE_ID_FIELD => self.0.trace_id = TraceId::from_hex(&format!("{value:x?}")).ok(),
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
     }

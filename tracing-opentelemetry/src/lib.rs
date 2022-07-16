@@ -25,9 +25,12 @@
 //! * `otel.kind`: Set the span kind to one of the supported OpenTelemetry [span kinds].
 //! * `otel.status_code`: Set the span status code to one of the supported OpenTelemetry [span status codes].
 //! * `otel.status_message`: Set the span status message.
+//! * `otel.trace_id`: Set the [`TraceId`] of the span. Expects a [lower-hex formatted string].
 //!
 //! [span kinds]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.SpanKind.html
 //! [span status codes]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/enum.StatusCode.html
+//! [`TraceId`]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md#spancontext
+//! [lower-hex formatted string]: https://docs.rs/opentelemetry/latest/opentelemetry/trace/struct.TraceId.html#method.from_hex
 //!
 //! ### Semantic Conventions
 //!
