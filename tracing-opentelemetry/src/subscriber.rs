@@ -922,6 +922,23 @@ mod tests {
     }
 
     #[test]
+    fn trace_id_from_attribute() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+
+        let trace_id = "42";
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request", otel.trace_id = trace_id);
+        });
+
+        let recorded_trace_id = tracer.with_data(|data| data.builder.trace_id);
+        let expected_trace_id = otel::TraceId::from_hex(trace_id).ok();
+        assert_eq!(recorded_trace_id, expected_trace_id)
+    }
+
+    #[test]
     fn trace_id_from_existing_context() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber =
