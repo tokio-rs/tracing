@@ -1188,10 +1188,13 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 /// If the `tracing-log` feature is enabled, this will also install
 /// the LogTracer to convert `Log` records into `tracing` `Event`s.
 ///
-/// This is shorthand for
+/// If the `env-filter` feature is enabled, this is shorthand for
 ///
 /// ```rust
-/// tracing_subscriber::fmt().init()
+/// # use tracing_subscriber::EnvFilter;
+/// tracing_subscriber::fmt()
+///     .with_env_filter(EnvFilter::from_default_env())
+///     .init();
 /// ```
 ///
 /// # Panics
