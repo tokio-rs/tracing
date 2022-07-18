@@ -489,7 +489,19 @@ impl Rotation {
                 date.format(&format)
                     .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
             }
-            Rotation::DAILY | Rotation::NEVER => {
+            Rotation::DAILY => {
+                let format = format_description::parse("[year]-[month]-[day]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+                date.format(&format)
+                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
+            }
+            Rotation::NEVER => {
+                // If there's a name prefix, use that.
+                if let Some(filename) = filename {
+                    return filename.to_owned();
+                }
+
+                // Otherwise, just use the date.
                 let format = format_description::parse("[year]-[month]-[day]")
                     .expect("Unable to create a formatter; this is a bug in tracing-appender");
                 date.format(&format)
