@@ -40,7 +40,7 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     ///
     /// [`rotation`]: Self::rotation
-    /// [`directory`]: Self::directory
+    /// [`filename_prefix`]: Self::filename_prefix
     #[must_use]
     pub const fn new() -> Self {
         Self {
