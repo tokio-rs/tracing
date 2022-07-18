@@ -141,7 +141,7 @@ impl Builder {
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::DAILY) // rotate log files once per day
-    ///     .prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
+    ///     .filename_prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
     ///     .build("/var/log/myapp") // write log files to the '/var/log/myapp' directory
     ///     .expect("failed to initialize rolling file appender");
     /// # drop(appender);
