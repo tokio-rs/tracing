@@ -1137,7 +1137,7 @@ impl Span {
     ///
     /// // Now, record a value for parting as well.
     /// // (note that the field name is passed as a string slice)
-    /// span.record("parting", &"goodbye world!");
+    /// span.record("parting", "goodbye world!");
     /// ```
     /// However, it may also be used to record a _new_ value for a field whose
     /// value was already recorded:
@@ -1155,7 +1155,7 @@ impl Span {
     ///     }
     ///     Err(_) => {
     ///         // Things are no longer okay!
-    ///         span.record("is_okay", &false);
+    ///         span.record("is_okay", false);
     ///     }
     /// }
     /// ```
@@ -1183,17 +1183,17 @@ impl Span {
     /// // Now, you try to record a value for a new field, `new_field`, which was not
     /// // declared as `Empty` or populated when you created `span`.
     /// // You won't get any error, but the assignment will have no effect!
-    /// span.record("new_field", &"interesting_value_you_really_need");
+    /// span.record("new_field", "interesting_value_you_really_need");
     ///
     /// // Instead, all fields that may be recorded after span creation should be declared up front,
     /// // using field::Empty when a value is not known, as we did for `parting`.
     /// // This `record` call will indeed replace field::Empty with "you will be remembered".
-    /// span.record("parting", &"you will be remembered");
+    /// span.record("parting", "you will be remembered");
     /// ```
     ///
     /// [`field::Empty`]: super::field::Empty
     /// [`Metadata`]: super::Metadata
-    pub fn record<Q: ?Sized, V>(&self, field: &Q, value: &V) -> &Self
+    pub fn record<Q: ?Sized, V>(&self, field: &Q, value: V) -> &Self
     where
         Q: field::AsField,
         V: field::Value,
@@ -1203,7 +1203,7 @@ impl Span {
                 self.record_all(
                     &meta
                         .fields()
-                        .value_set(&[(&field, Some(value as &dyn field::Value))]),
+                        .value_set(&[(&field, Some(&value as &dyn field::Value))]),
                 );
             }
         }
@@ -1601,4 +1601,10 @@ mod test {
     impl AssertSync for Span {}
     impl AssertSync for Entered<'_> {}
     impl AssertSync for EnteredSpan {}
+
+    #[test]
+    fn test_record_backwards_compat() {
+        Span::current().record("some-key", &"some text");
+        Span::current().record("some-key", &false);
+    }
 }

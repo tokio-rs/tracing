@@ -68,20 +68,23 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
 
     /// Creates a worker thread that processes a channel until it's disconnected
     pub(crate) fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
-        thread::spawn(move || {
-            loop {
-                match self.work() {
-                    Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
-                    Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
-                        drop(self.writer); // drop now in case it blocks
-                        let _ = self.shutdown.recv();
-                        return;
-                    }
-                    Err(_) => {
-                        // TODO: Expose a metric for IO Errors, or print to stderr
+        thread::Builder::new()
+            .name("tracing-appender".to_string())
+            .spawn(move || {
+                loop {
+                    match self.work() {
+                        Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
+                        Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
+                            drop(self.writer); // drop now in case it blocks
+                            let _ = self.shutdown.recv();
+                            return;
+                        }
+                        Err(_) => {
+                            // TODO: Expose a metric for IO Errors, or print to stderr
+                        }
                     }
                 }
-            }
-        })
+            })
+            .expect("failed to spawn `tracing-appender` non-blocking worker thread")
     }
 }

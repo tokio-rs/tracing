@@ -99,13 +99,16 @@
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 
+/// Implementation of the trace::Subscriber trait; publishes OpenTelemetry metrics.
+mod metrics;
 /// Span extension which enables OpenTelemetry context management.
 mod span_ext;
-/// Implementation of the trace::Subscriber as a source of OpenTelemetry data.
+/// Implementation of the trace::Subscriber trait; publishes OpenTelemetry traces.
 mod subscriber;
 /// Protocols for OpenTelemetry Tracers that are compatible with Tracing
 mod tracer;
 
+pub use metrics::MetricsSubscriber;
 pub use span_ext::OpenTelemetrySpanExt;
 pub use subscriber::{subscriber, OpenTelemetrySubscriber};
 pub use tracer::PreSampledTracer;
