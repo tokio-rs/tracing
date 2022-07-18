@@ -164,12 +164,17 @@ impl RollingFileAppender {
     /// # Examples
     ///
     /// ```rust
+    /// # fn docs() {
     /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
     ///
     /// let file_appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
-    ///     .directory("/some/directory") // log files will be stored in this directory.
-    ///     .
+    ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
+    ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
+    ///     .expect("initializing rolling file appender failed");
+    /// # drop(file_appender);
+    /// # }
+    /// ```
     #[must_use]
     pub fn builder() -> Builder {
         Builder::new()

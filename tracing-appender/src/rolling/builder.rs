@@ -56,15 +56,17 @@ impl Builder {
     /// # Examples
     ///
     /// ```
+    /// # fn docs() {
     /// use tracing_appender::rolling::{Rotation, RollingFileAppender};
     ///
     /// let appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
     ///     // ...
-    ///     .build("myapp.log")
+    ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
     ///
     /// # drop(appender)
+    /// # }
     /// ```
     ///
     /// [rotation strategy]: Rotation
@@ -86,12 +88,14 @@ impl Builder {
     /// ```
     /// use tracing_appender::rolling::RollingFileAppender;
     ///
+    /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
     ///     .filename_prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
     /// # drop(appender)
+    /// # }
     /// ```
     ///
     /// No prefix:
@@ -99,12 +103,14 @@ impl Builder {
     /// ```
     /// use tracing_appender::rolling::RollingFileAppender;
     ///
+    /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
     ///     .filename_prefix("") // log files will have names like "2019-01-01"
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
     /// # drop(appender)
+    /// # }
     /// ```
     ///
     /// [rotation strategy]: Rotation
@@ -132,18 +138,22 @@ impl Builder {
     /// ```
     /// use tracing_appender::rolling::{Rotation, RollingFileAppender};
     ///
+    /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::DAILY) // rotate log files once per day
     ///     .prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
     ///     .build("/var/log/myapp") // write log files to the '/var/log/myapp' directory
     ///     .expect("failed to initialize rolling file appender");
     /// # drop(appender);
+    /// # }
     /// ```
     ///
     /// This is equivalent to
     /// ```
+    /// # fn docs() {
     /// let appender = tracing_appender::rolling::daily("myapp.log", "/var/log/myapp");
     /// # drop(appender);
+    /// # }
     /// ```
     pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender, InitError> {
         RollingFileAppender::from_builder(self, directory)
