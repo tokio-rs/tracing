@@ -60,6 +60,7 @@ impl Builder {
     ///
     /// let appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
+    ///     // ...
     ///     .build("myapp.log")
     ///     .expect("failed to initialize rolling file appender");
     ///
@@ -86,7 +87,7 @@ impl Builder {
     /// use tracing_appender::rolling::RollingFileAppender;
     ///
     /// let appender = RollingFileAppender::builder()
-    ///     .prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
+    ///     .filename_prefix("myapp.log") // log files will have names like "myapp.log.2019-01-01"
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
@@ -99,7 +100,7 @@ impl Builder {
     /// use tracing_appender::rolling::RollingFileAppender;
     ///
     /// let appender = RollingFileAppender::builder()
-    ///     .prefix("") // log files will have names like "2019-01-01"
+    ///     .filename_prefix("") // log files will have names like "2019-01-01"
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
