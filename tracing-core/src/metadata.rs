@@ -35,16 +35,13 @@ use core::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="example-wrap" style="display:inline-block">
-/// <pre class="ignore" style="white-space:normal;font:inherit;">
+/// ## Equality
 ///
-/// **Note**: Although instances of `Metadata` cannot
-/// be compared directly, they provide a method [`callsite`][Metadata::callsite],
-/// returning an opaque [callsite identifier] which uniquely identifies the
-/// callsite where the metadata originated. This can be used to determine if two
-/// `Metadata` correspond to the same callsite.
-///
-/// </pre></div>
+/// In well-behaved applications, two `Metadata` with equal
+/// [callsite identifiers] will be equal in all other ways (i.e., have the same
+/// `name`, `target`, etc.). Consequently, in release builds, [`Metadata::eq`]
+/// *only* checks that its arguments have equal callsites. However, the equality
+/// of `Metadata`'s other fields is checked in debug builds.
 ///
 /// [span]: super::span
 /// [event]: super::event
@@ -56,7 +53,7 @@ use core::{
 /// [line number]: Self::line
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
-/// [callsite identifier]: super::callsite::Identifier
+/// [callsite identifiers]: Self::callsite
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: &'static str,
@@ -441,6 +438,62 @@ impl fmt::Debug for Kind {
         }
 
         f.write_str(")")
+    }
+}
+
+impl<'a> Eq for Metadata<'a> {}
+
+impl<'a> PartialEq for Metadata<'a> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        if core::ptr::eq(&self, &other) {
+            true
+        } else if cfg!(not(debug_assertions)) {
+            // In a well-behaving application, two `Metadata` can be assumed to
+            // be totally equal so long as they share the same callsite.
+            self.callsite() == other.callsite()
+        } else {
+            // However, when debug-assertions are enabled, do not assume that
+            // the application is well-behaving; check every field of `Metadata`
+            // for equality.
+
+            // `Metadata` is destructured here to ensure a compile-error if the
+            // fields of `Metadata` change.
+            let Metadata {
+                name: lhs_name,
+                target: lhs_target,
+                level: lhs_level,
+                module_path: lhs_module_path,
+                file: lhs_file,
+                line: lhs_line,
+                fields: lhs_fields,
+                kind: lhs_kind,
+            } = self;
+
+            let Metadata {
+                name: rhs_name,
+                target: rhs_target,
+                level: rhs_level,
+                module_path: rhs_module_path,
+                file: rhs_file,
+                line: rhs_line,
+                fields: rhs_fields,
+                kind: rhs_kind,
+            } = &other;
+
+            // The initial comparison of callsites is purely an optimization;
+            // it can be removed without affecting the overall semantics of the
+            // expression.
+            self.callsite() == other.callsite()
+                && lhs_name == rhs_name
+                && lhs_target == rhs_target
+                && lhs_level == rhs_level
+                && lhs_module_path == rhs_module_path
+                && lhs_file == rhs_file
+                && lhs_line == rhs_line
+                && lhs_fields == rhs_fields
+                && lhs_kind == rhs_kind
+        }
     }
 }
 
