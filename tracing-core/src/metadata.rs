@@ -35,17 +35,6 @@ use core::{
 /// _significantly_ lower than that of creating the actual span. Therefore,
 /// filtering is based on metadata, rather than on the constructed span.
 ///
-/// <div class="example-wrap" style="display:inline-block">
-/// <pre class="ignore" style="white-space:normal;font:inherit;">
-///
-/// **Note**: Although instances of `Metadata` cannot
-/// be compared directly, they provide a method [`callsite`][Metadata::callsite],
-/// returning an opaque [callsite identifier] which uniquely identifies the
-/// callsite where the metadata originated. This can be used to determine if two
-/// `Metadata` correspond to the same callsite.
-///
-/// </pre></div>
-///
 /// [span]: super::span
 /// [event]: super::event
 /// [name]: Self::name
@@ -57,6 +46,7 @@ use core::{
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
 /// [callsite identifier]: super::callsite::Identifier
+#[derive(Eq, PartialEq)]
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
     name: &'static str,
