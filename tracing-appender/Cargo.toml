@@ -21,10 +21,10 @@ edition = "2018"
 rust-version = "1.53.0"
 
 [dependencies]
-crossbeam-channel = "0.5.0"
-time = { version = "0.3", default-features = false, features = ["formatting"] }
-parking_lot = { optional = true, version = "0.12.0" }
-thiserror = "1"
+crossbeam-channel = "0.5.5"
+time = { version = "0.3.2", default-features = false, features = ["formatting"] }
+parking_lot = { optional = true, version = "0.12.1" }
+thiserror = "1.0.31"
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
@@ -33,10 +33,10 @@ default-features = false
 features = ["fmt", "std"]
 
 [dev-dependencies]
-criterion = { version = "0.3", default_features = false }
+criterion = { version = "0.3.6", default_features = false }
 tracing = { path = "../tracing", version = "0.2" }
-time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
-tempfile = "3"
+time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
+tempfile = "3.3.0"
 
 [[bench]]
 name = "bench"
