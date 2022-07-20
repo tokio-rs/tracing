@@ -5,6 +5,12 @@ use tracing_subscriber::prelude::*;
 #[path = "fmt/yak_shave.rs"]
 mod yak_shave;
 
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    error!("tracing-journald only works on Linux");
+}
+
+#[cfg(target_os = "linux")]
 fn main() {
     let registry = tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::subscriber().with_target(false));
@@ -12,8 +18,8 @@ fn main() {
         Ok(subscriber) => {
             registry.with(subscriber).init();
         }
-        // journald is typically available on Linux systems, but nowhere else. Portable software
-        // should handle its absence gracefully.
+        // Linux systems which do not use systemd will likely not have journald either;
+        // software should handle this gracefully and fallback to another subscriber.
         Err(e) => {
             registry.init();
             error!("couldn't connect to journald: {}", e);

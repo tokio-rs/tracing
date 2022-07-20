@@ -90,36 +90,29 @@ pub struct Subscriber {
 #[cfg(unix)]
 const JOURNALD_PATH: &str = "/run/systemd/journal/socket";
 
+#[cfg(target_os = "linux")]
 impl Subscriber {
     /// Construct a journald subscriber
     ///
     /// Fails if the journald socket couldn't be opened. Returns a `NotFound` error unconditionally
     /// in non-Unix environments.
     pub fn new() -> io::Result<Self> {
-        #[cfg(unix)]
-        {
-            let socket = UnixDatagram::unbound()?;
-            let sub = Self {
-                socket,
-                field_prefix: Some("F".into()),
-                syslog_identifier: std::env::current_exe()
-                    .ok()
-                    .as_ref()
-                    .and_then(|p| p.file_name())
-                    .map(|n| n.to_string_lossy().into_owned())
-                    // If we fail to get the name of the current executable fall back to an empty string.
-                    .unwrap_or_else(String::new),
-            };
-            // Check that we can talk to journald, by sending empty payload which journald discards.
-            // However if the socket didn't exist or if none listened we'd get an error here.
-            sub.send_payload(&[])?;
-            Ok(sub)
-        }
-        #[cfg(not(unix))]
-        Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            "journald does not exist in this environment",
-        ))
+        let socket = UnixDatagram::unbound()?;
+        let sub = Self {
+            socket,
+            field_prefix: Some("F".into()),
+            syslog_identifier: std::env::current_exe()
+                .ok()
+                .as_ref()
+                .and_then(|p| p.file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                // If we fail to get the name of the current executable fall back to an empty string.
+                .unwrap_or_else(String::new),
+        };
+        // Check that we can talk to journald, by sending empty payload which journald discards.
+        // However if the socket didn't exist or if none listened we'd get an error here.
+        sub.send_payload(&[])?;
+        Ok(sub)
     }
 
     /// Sets the prefix to apply to names of user-defined fields other than the event `message`
@@ -155,15 +148,11 @@ impl Subscriber {
         &self.syslog_identifier
     }
 
-    #[cfg(not(unix))]
-    fn send_payload(&self, _opayload: &[u8]) -> io::Result<()> {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "journald not supported on non-Unix",
-        ))
-    }
-
-    #[cfg(unix)]
+    /// Send the given payload to journald.
+    ///
+    /// Try to send `payload` in a single socket datagram, and fallback to
+    /// sending through a memfd (see [`send_large_payload`]) if `payload`
+    /// exceeds the maximum size of a single socket datagram.
     fn send_payload(&self, payload: &[u8]) -> io::Result<usize> {
         self.socket
             .send_to(payload, JOURNALD_PATH)
@@ -176,16 +165,7 @@ impl Subscriber {
             })
     }
 
-    #[cfg(all(unix, not(target_os = "linux")))]
-    fn send_large_payload(&self, _payload: &[u8]) -> io::Result<usize> {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Large payloads not supported on non-Linux OS",
-        ))
-    }
-
     /// Send large payloads to journald via a memfd.
-    #[cfg(target_os = "linux")]
     fn send_large_payload(&self, payload: &[u8]) -> io::Result<usize> {
         // If the payload's too large for a single datagram, send it through a memfd, see
         // https://systemd.io/JOURNAL_NATIVE_PROTOCOL/
@@ -200,6 +180,13 @@ impl Subscriber {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
+impl Subscriber {
+    pub fn new() -> io::Result<Self> {
+        unimplemented!("journald only available on Linux")
+    }
+}
+
 /// Construct a journald subscriber
 ///
 /// Fails if the journald socket couldn't be opened.
@@ -207,6 +194,7 @@ pub fn subscriber() -> io::Result<Subscriber> {
     Subscriber::new()
 }
 
+#[cfg(target_os = "linux")]
 impl<C> tracing_subscriber::Subscribe<C> for Subscriber
 where
     C: Collect + for<'span> LookupSpan<'span>,
