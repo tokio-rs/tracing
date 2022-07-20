@@ -1,3 +1,16 @@
+# 0.3.15 (Jul 20, 2022)
+
+This release fixes a bug where the `reload` layer would fail to pass through
+`max_level_hint` to the underlying layer, potentially breaking filtering.
+
+### Fixed
+
+- **reload**: pass through `max_level_hint` to the inner `Layer` ([#2204])
+
+Thanks to @guswynn for contributing to this release!
+
+[#2204]: https://github.com/tokio-rs/tracing/pull/2204
+
 # 0.3.14 (Jul 1, 2022)
 
 This release fixes multiple filtering bugs in the `Layer` implementations for
