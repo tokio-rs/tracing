@@ -240,6 +240,7 @@ pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
+#[must_use]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
     E = format::Format,
