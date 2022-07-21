@@ -1,3 +1,4 @@
+#![cfg(feature = "metrics")]
 use async_trait::async_trait;
 use futures_util::{Stream, StreamExt as _};
 use opentelemetry::{
