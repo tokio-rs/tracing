@@ -27,8 +27,8 @@ categories = [
     "no-std",
 ]
 keywords = ["logging", "tracing", "metrics", "async"]
-edition = "2018"
-rust-version = "1.49.0"
+edition = "2021"
+rust-version = "1.56.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }

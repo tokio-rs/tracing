@@ -2,7 +2,7 @@
 name = "tracing-log"
 version = "0.2.0"
 authors = ["Tokio Contributors <team@tokio.rs>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
 description = """
@@ -15,7 +15,7 @@ categories = [
 keywords = ["logging", "tracing", "log"]
 license = "MIT"
 readme = "README.md"
-rust-version = "1.49.0"
+rust-version = "1.56.0"
 
 [features]
 default = ["log-tracer", "std"]

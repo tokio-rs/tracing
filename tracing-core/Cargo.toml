@@ -23,8 +23,8 @@ categories = [
     "asynchronous",
 ]
 keywords = ["logging", "tracing", "profiling"]
-edition = "2018"
-rust-version = "1.49.0"
+edition = "2021"
+rust-version = "1.56.0"
 
 [features]
 default = ["std"]

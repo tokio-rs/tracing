@@ -2,7 +2,7 @@
 name = "tracing-futures"
 version = "0.3.0"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/tokio-rs/tracing"
 readme = "README.md"
 homepage = "https://tokio.rs"
@@ -16,7 +16,7 @@ categories = [
 ]
 keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
-rust-version = "1.49.0"
+rust-version = "1.56.0"
 
 [features]
 default = ["std-future", "std"]
