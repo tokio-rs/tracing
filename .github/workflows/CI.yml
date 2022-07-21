@@ -39,16 +39,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
+    - uses: dtolnay/rust-toolchain@stable
     - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --all --tests --benches
+      run: cargo check --all --tests --benches
 
   style:
     # Check style.
@@ -57,17 +50,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
         components: rustfmt
-        profile: minimal
-        override: true
     - name: rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run: cargo fmt --all -- --check
 
   warnings:
     # Check for any warnings. This is informational and thus is allowed to fail.
@@ -75,45 +62,14 @@ jobs:
     needs: check
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
         components: clippy
-        profile: minimal
     - name: Clippy
       uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --examples --tests --benches -- -D warnings
-
-  minimal-versions:
-    # Check for minimal-versions errors where a dependency is too
-    # underconstrained to build on the minimal supported version of all
-    # dependencies in the dependency graph.
-    name: cargo check (-Zminimal-versions)
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-      - name: install cargo-hack
-        uses: taiki-e/install-action@cargo-hack
-      - name: "check --all-features -Z minimal-versions"
-        run: |
-          # Remove dev-dependencies from Cargo.toml to prevent the next `cargo update`
-          # from determining minimal versions based on dev-dependencies.
-          cargo hack --remove-dev-deps --workspace
-          # Update Cargo.lock to minimal version dependencies.
-          cargo update -Z minimal-versions
-          cargo hack check \
-            --package tracing \
-            --package tracing-core \
-            --package tracing-subscriber \
-            --all-features --ignore-private
 
   cargo-hack:
     needs: check
@@ -137,11 +93,7 @@ jobs:
         - tracing-subscriber
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
+    - uses: dtolnay/rust-toolchain@stable
 
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
@@ -175,76 +127,40 @@ jobs:
 
   check-msrv:
     # Run `cargo check` on our minimum supported Rust version (1.49.0).
-    name: "cargo check (MSRV on ubuntu-latest)"
+    name: "cargo check (+MSRV -Zminimal-versions) (ubuntu-latest)"
     needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: install Rust nightly
+      uses: dtolnay/rust-toolchain@nightly
     - name: "install Rust ${{ env.MSRV }}"
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.MSRV }}
-        profile: minimal
-    - name: "install Rust nightly"
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-    - name: Select minimal versions
-      uses: actions-rs/cargo@v1
-      with:
-        command: update
-        args: -Z minimal-versions
-        toolchain: nightly
-    - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        # skip the following crates:
-        # - tracing-appender, as it has its own MSRV.
-        #   TODO(eliza): remove this when appender is on the same MSRV as
-        #   everything else
-        # - the examples, as they are not published & we don't care about
-        #   MSRV support for them.
-        # - tracing-futures, as it depends on ancient tokio versions.
-        #   TODO(eliza): remove this when the ancient tokio deps are dropped
-        args: >-
-          --workspace --all-features --locked
-          --exclude=tracing-appender
-          --exclude=tracing-examples
-          --exclude=tracing-futures
-        toolchain: ${{ env.MSRV }}
-
-  # TODO: remove this once tracing's MSRV is bumped.
-  check-msrv-appender:
-    # Run `cargo check` on our minimum supported Rust version (1.53.0).
-    name: "cargo check (tracing-appender MSRV)"
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
     - name: "install Rust ${{ env.APPENDER_MSRV }}"
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.APPENDER_MSRV }}
-        profile: minimal
-    - name: "install Rust nightly"
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-    - name: Select minimal versions
-      uses: actions-rs/cargo@v1
-      with:
-        command: update
-        args: -Z minimal-versions
-        toolchain: nightly
+    - name: install cargo-hack
+      uses: taiki-e/install-action@cargo-hack
+    - name: install cargo-minimal-versions
+      uses: taiki-e/install-action@cargo-minimal-versions
     - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --all-features --locked -p tracing-appender
-        toolchain: ${{ env.APPENDER_MSRV }}
+      # the following crates are handled specially:
+      # - unpublished crates (examples, mock); we don't care about their MSRV
+      # - tracing-futures; it depends on ancient tokio versions.
+      #   TODO(eliza): remove this when the ancient tokio deps are dropped
+      # - tracing-appender; it has its own MSRV.
+      #   TODO(eliza): remove this when appender is on the same MSRV.
+      run: >-
+        cargo +${{ env.MSRV }} hack --workspace --ignore-private
+        --exclude tracing-appender --exclude tracing-futures
+        minimal-versions check --all-features &&
+        cargo +${{ env.MSRV }} hack --package tracing-futures
+        minimal-versions check --features futures-03 &&
+        cargo +${{ env.APPENDER_MSRV }} hack --package tracing-appender
+        minimal-versions check --all-features
 
   ### test jobs #############################################################
 
@@ -268,11 +184,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - name: "install Rust ${{ matrix.rust }}"
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
-        profile: minimal
-        override: true
     - name: install cargo-nextest
       uses: taiki-e/install-action@nextest
     - name: Run tests
@@ -312,16 +227,11 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
-        toolchain: stable
-        override: true
     - name: build all tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --no-run -p ${{ matrix.subcrate }}
+      run: cargo test --no-run -p ${{ matrix.subcrate }}
 
   test-wasm:
     name: cargo test (wasm)
@@ -333,11 +243,9 @@ jobs:
         - tracing
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
-        toolchain: stable
-        override: true
     - name: install test runner for wasm
       uses: taiki-e/install-action@wasm-pack
     - name: run wasm tests
@@ -353,11 +261,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
+    - uses: dtolnay/rust-toolchain@stable
     - name: "Test log support"
       run: cargo test
       working-directory: "tracing/test-log-support"
@@ -386,10 +290,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - style
-      - minimal-versions
       - cargo-hack
       - check-msrv
-      - check-msrv-appender
       - test-build-wasm
       - test-wasm
       - test-features-stable
