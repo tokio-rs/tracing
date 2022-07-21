@@ -34,17 +34,17 @@ rust-version = "1.49.0"
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1"
-syn = { version = "1.0.43", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
-quote = "1"
+proc-macro2 = "1.0.40"
+syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+quote = "1.0.20"
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
-tokio-test = { version = "0.3.0" }
+tokio-test = "0.4.2"
 tracing-core = { path = "../tracing-core", version = "0.2"}
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
-async-trait = "0.1.44"
+async-trait = "0.1.56"
 
 [badges]
 maintenance = { status = "experimental" }
