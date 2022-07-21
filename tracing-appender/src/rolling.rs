@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Duration, OffsetDateTime, Time};
+use time::{error::InvalidFormatDescription, format_description, Duration, OffsetDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -494,7 +494,9 @@ impl Rotation {
         date: &OffsetDateTime,
         suffix: Option<&str>,
     ) -> String {
-        let format = self.get_date_format();
+        let format = self
+            .get_date_format()
+            .expect("Unable to create a formatter; this is a bug in tracing-appender");
         let date = date
             .format(&format)
             .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
@@ -510,16 +512,15 @@ impl Rotation {
         }
     }
 
-    fn get_date_format<'a>(&self) -> Vec<format_description::FormatItem<'a>> {
+    fn get_date_format(
+        &self,
+    ) -> std::result::Result<Vec<format_description::FormatItem<'_>>, InvalidFormatDescription>
+    {
         match *self {
-            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
-                .expect("Unable to create a formatter; this is a bug in tracing-appender"),
-            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]")
-                .expect("Unable to create a formatter; this is a bug in tracing-appender"),
-            Rotation::DAILY => format_description::parse("[year]-[month]-[day]")
-                .expect("Unable to create a formatter; this is a bug in tracing-appender"),
-            Rotation::NEVER => format_description::parse("[year]-[month]-[day]")
-                .expect("Unable to create a formatter; this is a bug in tracing-appender"),
+            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
+            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
+            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
     }
 }
