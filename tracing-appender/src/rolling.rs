@@ -103,6 +103,7 @@ pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
 struct Inner {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
+    log_filename_suffix: Option<String>,
     rotation: Rotation,
     next_date: AtomicUsize,
 }
@@ -170,6 +171,7 @@ impl RollingFileAppender {
     /// let file_appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
     ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
+    ///     .filename_suffix("log") // log file names will be suffixed with `.log`
     ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
     ///     .expect("initializing rolling file appender failed");
     /// # drop(file_appender);
@@ -184,11 +186,17 @@ impl RollingFileAppender {
         let Builder {
             ref rotation,
             ref prefix,
+            ref suffix,
         } = builder;
-        let filename_prefix = prefix.clone();
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
-        let (state, writer) = Inner::new(now, rotation.clone(), directory, filename_prefix)?;
+        let (state, writer) = Inner::new(
+            now,
+            rotation.clone(),
+            directory,
+            prefix.clone(),
+            suffix.clone(),
+        )?;
         Ok(Self {
             state,
             writer,
@@ -480,42 +488,31 @@ impl Rotation {
         }
     }
 
-    pub(crate) fn join_date(&self, filename: Option<&str>, date: &OffsetDateTime) -> String {
-        let date = match *self {
-            Rotation::MINUTELY => {
-                let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-                date.format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
-            }
-            Rotation::HOURLY => {
-                let format = format_description::parse("[year]-[month]-[day]-[hour]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-                date.format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
-            }
-            Rotation::DAILY => {
-                let format = format_description::parse("[year]-[month]-[day]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-                date.format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
-            }
-            Rotation::NEVER => {
-                // If there's a name prefix, use that.
-                if let Some(filename) = filename {
-                    return filename.to_owned();
-                }
+    pub(crate) fn join_date(
+        &self,
+        filename: Option<&str>,
+        date: &OffsetDateTime,
+        suffix: Option<&str>,
+    ) -> String {
+        let format = match *self {
+            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
+            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
+            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+        }
+        .expect("Unable to create a formatter; this is a bug in tracing-appender");
+        let date = date
+            .format(&format)
+            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
 
-                // Otherwise, just use the date.
-                let format = format_description::parse("[year]-[month]-[day]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-                date.format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
-            }
-        };
-        match filename {
-            Some(filename) => format!("{}.{}", filename, date),
-            None => date,
+        match (self, filename, suffix) {
+            (&Rotation::NEVER, Some(filename), None) => filename.to_string(),
+            (&Rotation::NEVER, Some(filename), Some(suffix)) => format!("{}.{}", filename, suffix),
+            (&Rotation::NEVER, None, Some(suffix)) => suffix.to_string(),
+            (_, Some(filename), Some(suffix)) => format!("{}.{}.{}", filename, date, suffix),
+            (_, Some(filename), None) => format!("{}.{}", filename, date),
+            (_, None, Some(suffix)) => format!("{}.{}", date, suffix),
+            (_, None, None) => date,
         }
     }
 }
@@ -540,15 +537,21 @@ impl Inner {
         rotation: Rotation,
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
+        log_filename_suffix: Option<String>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
-        let filename = rotation.join_date(log_filename_prefix.as_deref(), &now);
+        let filename = rotation.join_date(
+            log_filename_prefix.as_deref(),
+            &now,
+            log_filename_suffix.as_deref(),
+        );
         let next_date = rotation.next_date(&now);
         let writer = RwLock::new(create_writer(log_directory.as_ref(), &filename)?);
 
         let inner = Inner {
             log_directory,
             log_filename_prefix,
+            log_filename_suffix,
             next_date: AtomicUsize::new(
                 next_date
                     .map(|date| date.unix_timestamp() as usize)
@@ -560,9 +563,11 @@ impl Inner {
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
-        let filename = self
-            .rotation
-            .join_date(self.log_filename_prefix.as_deref(), &now);
+        let filename = self.rotation.join_date(
+            self.log_filename_prefix.as_deref(),
+            &now,
+            self.log_filename_suffix.as_deref(),
+        );
 
         match create_writer(&self.log_directory, &filename) {
             Ok(new_file) => {
@@ -732,19 +737,51 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
         // per-minute
-        let path = Rotation::MINUTELY.join_date(Some("app.log"), &now);
+        let path = Rotation::MINUTELY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01-10-01", path);
 
         // per-hour
-        let path = Rotation::HOURLY.join_date(Some("app.log"), &now);
+        let path = Rotation::HOURLY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01-10", path);
 
         // per-day
-        let path = Rotation::DAILY.join_date(Some("app.log"), &now);
+        let path = Rotation::DAILY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01", path);
 
         // never
-        let path = Rotation::NEVER.join_date(Some("app.log"), &now);
+        let path = Rotation::NEVER.join_date(Some("app.log"), &now, None);
+        assert_eq!("app.log", path);
+
+        // per-minute with suffix
+        let path = Rotation::MINUTELY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01-10-01.log", path);
+
+        // per-hour with suffix
+        let path = Rotation::HOURLY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01-10.log", path);
+
+        // per-day with suffix
+        let path = Rotation::DAILY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01.log", path);
+
+        // never with suffix
+        let path = Rotation::NEVER.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.log", path);
+
+        // per-minute without prefix
+        let path = Rotation::MINUTELY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01-10-01.app.log", path);
+
+        // per-hour without prefix
+        let path = Rotation::HOURLY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01-10.app.log", path);
+
+        // per-day without prefix
+        let path = Rotation::DAILY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01.app.log", path);
+
+        // never without prefix
+        let path = Rotation::NEVER.join_date(None, &now, Some("app.log"));
         assert_eq!("app.log", path);
     }
 
@@ -766,6 +803,7 @@ mod test {
             Rotation::HOURLY,
             directory.path(),
             Some("test_make_writer".to_string()),
+            None,
         )
         .unwrap();
 
