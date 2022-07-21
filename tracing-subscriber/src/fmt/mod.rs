@@ -243,6 +243,7 @@ pub type Formatter<
 /// Configures and constructs `Subscriber`s.
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[derive(Debug)]
+#[must_use]
 pub struct SubscriberBuilder<
     N = format::DefaultFields,
     E = format::Format<format::Full>,
@@ -465,7 +466,8 @@ impl Default for SubscriberBuilder {
         SubscriberBuilder {
             filter: Subscriber::DEFAULT_MAX_LEVEL,
             inner: Default::default(),
-        }.log_internal_errors(true)
+        }
+        .log_internal_errors(true)
     }
 }
 
@@ -626,12 +628,15 @@ where
     /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
     /// the writer. These errors are unlikely and will only occur if there is a
     /// bug in the `FormatEvent` implementation or its dependencies.
-    /// 
+    ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
-    /// 
+    ///
     /// [`FormatEvent`]: crate::fmt::FormatEvent
-    pub fn log_internal_errors(self, log_internal_errors: bool) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+    pub fn log_internal_errors(
+        self,
+        log_internal_errors: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
         SubscriberBuilder {
             inner: self.inner.log_internal_errors(log_internal_errors),
             ..self

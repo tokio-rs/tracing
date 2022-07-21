@@ -11,6 +11,7 @@ use tracing::level_filters::STATIC_MAX_LEVEL;
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct Builder {
     regex: bool,
     env: Option<String>,
