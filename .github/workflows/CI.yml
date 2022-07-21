@@ -26,9 +26,7 @@ env:
   RUSTUP_MAX_RETRIES: 10
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
-  MSRV: 1.49.0
-  # TODO: remove this once tracing's MSRV is bumped.
-  APPENDER_MSRV: 1.53.0
+  MSRV: 1.56.0
 
 jobs:
   ### check jobs ###
@@ -174,7 +172,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.49.0).
+    # Run `cargo check` on our minimum supported Rust version (1.56.0).
     name: "cargo check (MSRV on ubuntu-latest)"
     needs: check
     runs-on: ubuntu-latest
@@ -201,50 +199,16 @@ jobs:
       with:
         command: check
         # skip the following crates:
-        # - tracing-appender, as it has its own MSRV.
-        #   TODO(eliza): remove this when appender is on the same MSRV as
-        #   everything else
-        # - the examples, as they are not published & we don't care about
-        #   MSRV support for them.
+        # - mock and the examples, as they are not published &
+        #   we don't care about MSRV support for them.
         # - tracing-futures, as it depends on ancient tokio versions.
         #   TODO(eliza): remove this when the ancient tokio deps are dropped
         args: >-
           --workspace --all-features --locked
-          --exclude=tracing-appender
+          --exclude=tracing-mock
           --exclude=tracing-examples
           --exclude=tracing-futures
         toolchain: ${{ env.MSRV }}
-
-  # TODO: remove this once tracing's MSRV is bumped.
-  check-msrv-appender:
-    # Run `cargo check` on our minimum supported Rust version (1.53.0).
-    name: "cargo check (tracing-appender MSRV)"
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: "install Rust ${{ env.APPENDER_MSRV }}"
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.APPENDER_MSRV }}
-        profile: minimal
-    - name: "install Rust nightly"
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-    - name: Select minimal versions
-      uses: actions-rs/cargo@v1
-      with:
-        command: update
-        args: -Z minimal-versions
-        toolchain: nightly
-    - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --all-features --locked -p tracing-appender
-        toolchain: ${{ env.APPENDER_MSRV }}
 
   ### test jobs #############################################################
 
@@ -389,7 +353,6 @@ jobs:
       - minimal-versions
       - cargo-hack
       - check-msrv
-      - check-msrv-appender
       - test-build-wasm
       - test-wasm
       - test-features-stable
