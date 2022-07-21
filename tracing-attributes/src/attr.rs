@@ -335,7 +335,7 @@ impl ToTokens for Field {
             let name = &self.name;
             let kind = &self.kind;
             tokens.extend(quote! {
-                #name = #kind#value
+                #name = #kind #value
             })
         } else if self.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce

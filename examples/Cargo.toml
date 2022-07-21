@@ -2,7 +2,7 @@
 name = "tracing-examples"
 version = "0.0.0"
 publish = false
-edition = "2018"
+edition = "2021"
 rust-version = "1.56.0"
 
 [features]

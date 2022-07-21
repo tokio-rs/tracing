@@ -4,7 +4,7 @@
 name = "test-log-support"
 version = "0.1.0"
 publish = false
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 tracing-core = { path= "../../tracing-core"}
