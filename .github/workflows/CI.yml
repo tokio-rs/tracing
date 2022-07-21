@@ -126,41 +126,80 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.49.0).
-    name: "cargo check (+MSRV -Zminimal-versions) (ubuntu-latest)"
+    # Run `cargo check` on our minimum supported Rust version (1.49.0). This
+    # checks with minimal versions; maximal versions are checked above.
+    name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # cargo hack --feature-powerset will have a significant permutation
+        # number, we can't just use --all as it increases the runtime
+        # further than what we would like to
+        subcrate:
+        - tracing-attributes
+        - tracing-core
+        - tracing-futures
+        - tracing-log
+        - tracing-macros
+        - tracing-serde
+        - tracing-tower
+        - tracing-opentelemetry
+        - tracing
+        - tracing-subscriber
+        toolchain:
+        - ${{ env.MSRV }}
+        - stable
+        # TODO(eliza): remove this when appender is on the same MSRV.
+        exclude:
+        - subcrate: tracing-appender
+          toolchain: ${{ env.MSRV }}
+        include:
+        - subcrate: tracing-appender
+          toolchain: ${{ env.APPENDER_MSRV }}
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
-    - name: "install Rust ${{ env.MSRV }}"
+    - name: "install Rust ${{ matrix.toolchain }}"
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: ${{ env.MSRV }}
-    - name: "install Rust ${{ env.APPENDER_MSRV }}"
-      uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ env.APPENDER_MSRV }}
+        toolchain: ${{ matrix.toolchain }}
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
     - name: install cargo-minimal-versions
       uses: taiki-e/install-action@cargo-minimal-versions
-    - name: Check
-      # the following crates are handled specially:
-      # - unpublished crates (examples, mock); we don't care about their MSRV
-      # - tracing-futures; it depends on ancient tokio versions.
-      #   TODO(eliza): remove this when the ancient tokio deps are dropped
-      # - tracing-appender; it has its own MSRV.
-      #   TODO(eliza): remove this when appender is on the same MSRV.
-      run: >-
-        cargo +${{ env.MSRV }} hack --workspace --ignore-private
-        --exclude tracing-appender --exclude tracing-futures
-        minimal-versions check --all-features &&
-        cargo +${{ env.MSRV }} hack --package tracing-futures
-        minimal-versions check --features futures-03 &&
-        cargo +${{ env.APPENDER_MSRV }} hack --package tracing-appender
-        minimal-versions check --all-features
+    - name: cargo minimal-versions check
+      working-directory: ${{ matrix.subcrate }}
+      # tracing and tracing-subscriber have too many features to be checked by
+      # cargo-hack --feature-powerset with all features in the powerset, so
+      # exclude some
+      run: |
+        CARGO_MINVER=(cargo minimal-versions check --feature-powerset --no-dev-deps)
+        case "${{ matrix.subcrate }}" in
+          tracing)
+            EXCLUDE_FEATURES=(
+              max_level_off max_level_error max_level_warn max_level_info
+              max_level_debug max_level_trace release_max_level_off
+              release_max_level_error release_max_level_warn
+              release_max_level_info release_max_level_debug
+              release_max_level_trace
+            )
+            ${CARGO_MINVER[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            ;;
+          tracing-subscriber)
+            INCLUDE_FEATURES=(fmt ansi json registry env-filter)
+            ${CARGO_MINVER[@]} --include-features "${INCLUDE_FEATURES[*]}"
+            ;;
+          tracing-futures)
+            EXCLUDE_FEATURES=(futures-01 futures_01 tokio tokio_01)
+            ${CARGO_MINVER[@]} --exclude-features "${EXCLUDE_FEATURES[*]}"
+            ;;
+          *)
+            ${CARGO_MINVER[@]}
+            ;;
+        esac
+      shell: bash
 
   ### test jobs #############################################################
 
