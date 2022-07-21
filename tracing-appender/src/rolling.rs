@@ -494,9 +494,13 @@ impl Rotation {
         date: &OffsetDateTime,
         suffix: Option<&str>,
     ) -> String {
-        let format = self
-            .get_date_format()
-            .expect("Unable to create a formatter; this is a bug in tracing-appender");
+        let format = match *self {
+            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
+            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
+            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+        }
+        .expect("Unable to create a formatter; this is a bug in tracing-appender");
         let date = date
             .format(&format)
             .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
@@ -509,18 +513,6 @@ impl Rotation {
             (_, Some(filename), None) => format!("{}.{}", filename, date),
             (_, None, Some(suffix)) => format!("{}.{}", date, suffix),
             (_, None, None) => date,
-        }
-    }
-
-    fn get_date_format(
-        &self,
-    ) -> std::result::Result<Vec<format_description::FormatItem<'_>>, InvalidFormatDescription>
-    {
-        match *self {
-            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
-            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
-            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
     }
 }
