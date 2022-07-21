@@ -9,6 +9,7 @@ use thiserror::Error;
 pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
+    pub(super) suffix: Option<String>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -46,6 +47,7 @@ impl Builder {
         Self {
             rotation: Rotation::NEVER,
             prefix: None,
+            suffix: None,
         }
     }
 
@@ -125,6 +127,58 @@ impl Builder {
             Some(prefix)
         };
         Self { prefix, ..self }
+    }
+
+    /// Sets the suffix for log filenames. The suffix is output after the
+    /// timestamp in the file name, and if it is non-empty, it is preceded by a
+    /// dot (`.`).
+    ///
+    /// By default, log files do not have a suffix.
+    ///
+    /// # Examples
+    ///
+    /// Setting a suffix:
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .filename_suffix("myapp.log") // log files will have names like "2019-01-01.myapp.log"
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    ///
+    /// No suffix:
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .filename_suffix("") // log files will have names like "2019-01-01"
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    ///
+    /// [rotation strategy]: Rotation
+    #[must_use]
+    pub fn filename_suffix(self, suffix: impl Into<String>) -> Self {
+        let suffix = suffix.into();
+        // If the configured suffix is the empty string, then don't include a
+        // separator character.
+        let suffix = if suffix.is_empty() {
+            None
+        } else {
+            Some(suffix)
+        };
+        Self { suffix, ..self }
     }
 
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
