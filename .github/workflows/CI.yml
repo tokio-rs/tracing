@@ -26,9 +26,6 @@ env:
   RUSTUP_MAX_RETRIES: 10
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
-  MSRV: 1.49.0
-  # TODO: remove this once tracing's MSRV is bumped.
-  APPENDER_MSRV: 1.53.0
 
 jobs:
   ### check jobs ###
@@ -148,15 +145,15 @@ jobs:
         - tracing
         - tracing-subscriber
         toolchain:
-        - ${{ env.MSRV }}
+        - 1.49.0
         - stable
         # TODO(eliza): remove this when appender is on the same MSRV.
         exclude:
         - subcrate: tracing-appender
-          toolchain: ${{ env.MSRV }}
+          toolchain: 1.49.0
         include:
         - subcrate: tracing-appender
-          toolchain: ${{ env.APPENDER_MSRV }}
+          toolchain: 1.53.0
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly
