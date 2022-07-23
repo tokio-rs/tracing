@@ -295,11 +295,13 @@ impl Targets {
     /// assert_eq!(default_level, LevelFilter::OFF);
     /// ```
     pub fn default_level(&self) -> Option<LevelFilter> {
-        self.0
-            .directives()
-            .into_iter()
-            .find(|d| d.target.is_none())
-            .map(|d| d.level)
+        self.0.directives().into_iter().find_map(|d| {
+            if d.target.is_none() {
+                Some(d.level)
+            } else {
+                None
+            }
+        })
     }
 
     /// Returns an iterator over the [target]-[`LevelFilter`] pairs in this filter.
