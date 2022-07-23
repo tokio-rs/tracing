@@ -277,6 +277,31 @@ impl Targets {
         self
     }
 
+    /// Returns the explicitly set default level for this filter, if any.
+    ///
+    /// If a default level was set explicitly using [`with_default`](Self::with_default), that level
+    /// will be returned. Otherwise `None` will be returned.
+    ///
+    /// A return value of `None` is behaviourly equivalent to [`LevelFilter::OFF`], but
+    /// distinguishes between an explicitly set default level or the default one. If you only care
+    /// about the behaviour you can use `unwrap_or`:
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{LevelFilter, Targets};
+    ///
+    /// let filter = Targets::new();
+    /// let default_level = filter.default_level().unwrap_or(LevelFilter::OFF);
+    ///
+    /// assert_eq!(default_level, LevelFilter::OFF);
+    /// ```
+    pub fn default_level(&self) -> Option<LevelFilter> {
+        self.0
+            .directives()
+            .into_iter()
+            .find(|d| d.target.is_none())
+            .map(|d| d.level)
+    }
+
     /// Returns an iterator over the [target]-[`LevelFilter`] pairs in this filter.
     ///
     /// The order of iteration is undefined.
@@ -683,6 +708,21 @@ mod tests {
                 ("crate3".to_string(), LevelFilter::OFF),
             ]
         );
+    }
+
+    #[test]
+    fn targets_default_level() {
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
+        assert_eq!(filter.default_level(), None);
+
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .with_default(LevelFilter::OFF);
+        assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
+
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .with_default(LevelFilter::OFF)
+            .with_default(LevelFilter::INFO);
+        assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
     }
 
     #[test]
