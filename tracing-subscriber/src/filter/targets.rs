@@ -277,22 +277,48 @@ impl Targets {
         self
     }
 
-    /// Returns the explicitly set default level for this filter, if any.
+    /// Returns the default level for this filter, if set.
     ///
-    /// If a default level was set explicitly using [`with_default`](Self::with_default), that level
-    /// will be returned. Otherwise `None` will be returned.
+    /// The default level can be set for a filter either by using
+    /// [`with_default`](Self::with_default) or when parsing from a filter string that includes a
+    /// level without a target (e.g. `"trace"`).
     ///
-    /// A return value of `None` is behaviourly equivalent to [`LevelFilter::OFF`], but
-    /// distinguishes between an explicitly set default level or the default one. If you only care
-    /// about the behaviour you can use `unwrap_or`:
+    /// # Examples
     ///
     /// ```
     /// use tracing_subscriber::filter::{LevelFilter, Targets};
     ///
-    /// let filter = Targets::new();
-    /// let default_level = filter.default_level().unwrap_or(LevelFilter::OFF);
+    /// let filter = Targets::new().with_default(LevelFilter::INFO);
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
     ///
-    /// assert_eq!(default_level, LevelFilter::OFF);
+    /// let filter: Targets = "info".parse().unwrap();
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
+    /// ```
+    ///
+    /// The default level is `None` if no default is set:
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::Targets;
+    ///
+    /// let filter = Targets::new();
+    /// assert_eq!(filter.default_level(), None);
+    ///
+    /// let filter: Targets = "my_crate=info".parse().unwrap();
+    /// assert_eq!(filter.default_level(), None);
+    /// ```
+    ///
+    /// Note that an unset default level (`None`) behaves like `LevelFilter::OFF` when the filter is
+    /// used, but it could also be set explicitly which may be useful to distinguish (such as when
+    /// merging multiple `Targets`).
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{LevelFilter, Targets};
+    ///
+    /// let filter = Targets::new().with_default(LevelFilter::OFF);
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
+    ///
+    /// let filter: Targets = "off".parse().unwrap();
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
     /// ```
     pub fn default_level(&self) -> Option<LevelFilter> {
         self.0.directives().into_iter().find_map(|d| {
