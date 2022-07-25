@@ -277,7 +277,10 @@ impl Targets {
         self
     }
 
-    /// Returns the default level for this filter, if set.
+    /// Returns the default level for this filter, if one is set.
+    ///
+    /// The default level is used to filter any spans or events with targets
+    /// that do not match any of the configured set of prefixes.
     ///
     /// The default level can be set for a filter either by using
     /// [`with_default`](Self::with_default) or when parsing from a filter string that includes a
@@ -307,7 +310,7 @@ impl Targets {
     /// assert_eq!(filter.default_level(), None);
     /// ```
     ///
-    /// Note that an unset default level (`None`) behaves like `LevelFilter::OFF` when the filter is
+    /// Note that an unset default level (`None`) behaves like [`LevelFilter::OFF`] when the filter is
     /// used, but it could also be set explicitly which may be useful to distinguish (such as when
     /// merging multiple `Targets`).
     ///
