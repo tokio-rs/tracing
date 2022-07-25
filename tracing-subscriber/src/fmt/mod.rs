@@ -463,6 +463,7 @@ impl Default for CollectorBuilder {
             filter: Collector::DEFAULT_MAX_LEVEL,
             inner: Default::default(),
         }
+        .log_internal_errors(true)
     }
 }
 
@@ -615,6 +616,27 @@ where
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_ansi(ansi),
+            ..self
+        }
+    }
+
+    /// Sets whether to write errors from [`FormatEvent`] to the writer.
+    /// Defaults to true.
+    ///
+    /// By default, `fmt::Collector` will write any `FormatEvent`-internal errors to
+    /// the writer. These errors are unlikely and will only occur if there is a
+    /// bug in the `FormatEvent` implementation or its dependencies.
+    ///
+    /// If writing to the writer fails, the error message is printed to stderr
+    /// as a fallback.
+    ///
+    /// [`FormatEvent`]: crate::fmt::FormatEvent
+    pub fn log_internal_errors(
+        self,
+        log_internal_errors: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.log_internal_errors(log_internal_errors),
             ..self
         }
     }
