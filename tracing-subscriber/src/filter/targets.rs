@@ -277,6 +277,62 @@ impl Targets {
         self
     }
 
+    /// Returns the default level for this filter, if one is set.
+    ///
+    /// The default level is used to filter any spans or events with targets
+    /// that do not match any of the configured set of prefixes.
+    ///
+    /// The default level can be set for a filter either by using
+    /// [`with_default`](Self::with_default) or when parsing from a filter string that includes a
+    /// level without a target (e.g. `"trace"`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{LevelFilter, Targets};
+    ///
+    /// let filter = Targets::new().with_default(LevelFilter::INFO);
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
+    ///
+    /// let filter: Targets = "info".parse().unwrap();
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
+    /// ```
+    ///
+    /// The default level is `None` if no default is set:
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::Targets;
+    ///
+    /// let filter = Targets::new();
+    /// assert_eq!(filter.default_level(), None);
+    ///
+    /// let filter: Targets = "my_crate=info".parse().unwrap();
+    /// assert_eq!(filter.default_level(), None);
+    /// ```
+    ///
+    /// Note that an unset default level (`None`) behaves like [`LevelFilter::OFF`] when the filter is
+    /// used, but it could also be set explicitly which may be useful to distinguish (such as when
+    /// merging multiple `Targets`).
+    ///
+    /// ```
+    /// use tracing_subscriber::filter::{LevelFilter, Targets};
+    ///
+    /// let filter = Targets::new().with_default(LevelFilter::OFF);
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
+    ///
+    /// let filter: Targets = "off".parse().unwrap();
+    /// assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
+    /// ```
+    pub fn default_level(&self) -> Option<LevelFilter> {
+        self.0.directives().into_iter().find_map(|d| {
+            if d.target.is_none() {
+                Some(d.level)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Returns an iterator over the [target]-[`LevelFilter`] pairs in this filter.
     ///
     /// The order of iteration is undefined.
@@ -683,6 +739,21 @@ mod tests {
                 ("crate3".to_string(), LevelFilter::OFF),
             ]
         );
+    }
+
+    #[test]
+    fn targets_default_level() {
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
+        assert_eq!(filter.default_level(), None);
+
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .with_default(LevelFilter::OFF);
+        assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
+
+        let filter = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
+            .with_default(LevelFilter::OFF)
+            .with_default(LevelFilter::INFO);
+        assert_eq!(filter.default_level(), Some(LevelFilter::INFO));
     }
 
     #[test]
