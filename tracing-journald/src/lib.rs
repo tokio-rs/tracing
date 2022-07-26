@@ -156,7 +156,7 @@ impl Layer {
     #[cfg(not(unix))]
     fn send_payload(&self, _opayload: &[u8]) -> io::Result<()> {
         Err(io::Error::new(
-            io::ErrorKind::Unsupported,
+            io::ErrorKind::Other,
             "journald not supported on non-Unix",
         ))
     }
@@ -177,7 +177,7 @@ impl Layer {
     #[cfg(all(unix, not(target_os = "linux")))]
     fn send_large_payload(&self, _payload: &[u8]) -> io::Result<usize> {
         Err(io::Error::new(
-            io::ErrorKind::Unsupported,
+            io::ErrorKind::Other,
             "Large payloads not supported on non-Linux OS",
         ))
     }

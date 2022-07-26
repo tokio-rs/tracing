@@ -40,16 +40,16 @@ async-await = []
 
 [dependencies]
 proc-macro2 = "1"
-syn = { version = "1.0.43", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1"
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1" }
+tracing = { path = "../tracing", version = "0.1.35" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", features = ["env-filter"] }
 tokio-test = { version = "0.3.0" }
-tracing-core = { path = "../tracing-core", version = "0.1"}
-async-trait = "0.1.44"
+tracing-core = { path = "../tracing-core", version = "0.1.28"}
+async-trait = "0.1.56"
 
 [badges]
 maintenance = { status = "experimental" }

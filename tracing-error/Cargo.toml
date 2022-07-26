@@ -39,8 +39,8 @@ default = ["traced-error"]
 traced-error = []
 
 [dependencies]
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry", "fmt"] }
-tracing = { path = "../tracing", version = "0.1.12", default-features = false, features = ["std"] }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", default-features = false, features = ["registry", "fmt"] }
+tracing = { path = "../tracing", version = "0.1.35", default-features = false, features = ["std"] }
 
 [badges]
 maintenance = { status = "experimental" }
