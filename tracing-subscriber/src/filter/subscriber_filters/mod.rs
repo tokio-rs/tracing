@@ -639,6 +639,22 @@ where
         }
     }
 
+    fn event_enabled(&self, event: &Event<'_>, cx: Context<'_, C>) -> bool {
+        let cx = cx.with_filter(self.id());
+        let enabled = FILTERING
+            .with(|filtering| filtering.and(self.id(), || self.filter.event_enabled(event, &cx)));
+
+        if enabled {
+            // If the filter enabled this event, ask the wrapped subscriber if
+            // _it_ wants it --- it might have a global filter.
+            self.subscriber.event_enabled(event, cx)
+        } else {
+            // Otherwise, return `true`. See the comment in `enabled` for why this
+            // is necessary.
+            true
+        }
+    }
+
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, C>) {
         self.did_enable(|| {
             self.subscriber.on_event(event, cx.with_filter(self.id()));
@@ -1004,6 +1020,18 @@ impl FilterState {
                 "if we are in a filter pass, we must not be in an interest pass."
             )
         }
+    }
+
+    /// Run a second filtering pass, e.g. for Subscribe::event_enabled.
+    fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
+        let map = self.enabled.get();
+        let enabled = if self.enabled.get().is_enabled(filter) {
+            f()
+        } else {
+            false
+        };
+        self.enabled.set(map.set(filter, enabled));
+        enabled
     }
 
     /// Clears the current in-progress filter state.

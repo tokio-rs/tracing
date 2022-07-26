@@ -138,6 +138,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        self.a.event_enabled(event, cx) && self.b.event_enabled(event, cx)
+    }
+
+    #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
@@ -325,6 +330,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        self.a.event_enabled(event, cx) || self.b.event_enabled(event, cx)
+    }
+
+    #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
@@ -419,6 +429,14 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // TODO(eliza): figure this out???
         None
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        // Never disable based on event_enabled; we "disabled" it in `enabled`,
+        // so the `not` has already been applied and filtered this not out.
+        let _ = (event, cx);
+        true
     }
 
     #[inline]

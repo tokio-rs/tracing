@@ -1382,6 +1382,18 @@ pub trait Filter<S> {
         None
     }
 
+    /// Called before the filtered subscribers' [`on_event`], to determine if
+    /// `on_event` should be called.
+    ///
+    /// This gives a chance to filter events based on their fields.
+    ///
+    /// [`on_event`]: crate::subscribe::Subscribe::on_event
+    #[inline] // collapse this to a constant please mrs optimizer
+    fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+        let _ = (event, cx);
+        true
+    }
+
     /// Notifies this filter that a new span was constructed with the given
     /// `Attributes` and `Id`.
     ///
