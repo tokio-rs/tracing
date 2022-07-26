@@ -1569,7 +1569,7 @@ where
 feature! {
     #![any(feature = "std", feature = "alloc")]
     #[cfg(not(feature = "std"))]
-    use alloc::vec::Vec;
+    use alloc::{vec::Vec, boxed::Box};
 
     macro_rules! layer_impl_body {
         () => {
