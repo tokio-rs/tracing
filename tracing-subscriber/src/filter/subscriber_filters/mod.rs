@@ -298,6 +298,17 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
 
     /// Inverts `self`, returning a filter that enables spans and events only if
     /// `self` would *not* enable them.
+    ///
+    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
+    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
+    /// implementing that method is optional, and filters which do not implement
+    /// filtering on event field values will return `true` even for events that their
+    /// [`enabled`] method would disable.
+    ///
+    /// [`Filter`]: crate::subscribe::Filter
+    /// [`enabled`]: crate::subscribe::Filter::enabled
+    /// [`event_enabled`]: crate::subscribe::Filter::event_enabled
+    /// [`callsite_enabled`]: crate::subscribe::Filter::callsite_enabled
     fn not(self) -> combinator::Not<Self, S>
     where
         Self: Sized,
@@ -636,6 +647,22 @@ where
         if cx.is_enabled_for(span, self.id()) && cx.is_enabled_for(follows, self.id()) {
             self.subscriber
                 .on_follows_from(span, follows, cx.with_filter(self.id()))
+        }
+    }
+
+    fn event_enabled(&self, event: &Event<'_>, cx: Context<'_, C>) -> bool {
+        let cx = cx.with_filter(self.id());
+        let enabled = FILTERING
+            .with(|filtering| filtering.and(self.id(), || self.filter.event_enabled(event, &cx)));
+
+        if enabled {
+            // If the filter enabled this event, ask the wrapped subscriber if
+            // _it_ wants it --- it might have a global filter.
+            self.subscriber.event_enabled(event, cx)
+        } else {
+            // Otherwise, return `true`. See the comment in `enabled` for why this
+            // is necessary.
+            true
         }
     }
 
@@ -1004,6 +1031,14 @@ impl FilterState {
                 "if we are in a filter pass, we must not be in an interest pass."
             )
         }
+    }
+
+    /// Run a second filtering pass, e.g. for Subscribe::event_enabled.
+    fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
+        let map = self.enabled.get();
+        let enabled = map.is_enabled(filter) && f();
+        self.enabled.set(map.set(filter, enabled));
+        enabled
     }
 
     /// Clears the current in-progress filter state.
