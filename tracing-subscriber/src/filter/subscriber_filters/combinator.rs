@@ -40,11 +40,11 @@ pub struct Or<A, B, S> {
 /// If the wrapped filter would enable a span or event, it will be disabled. If
 /// it would disable a span or event, that span or event will be enabled.
 ///
-/// This type is typically returned by the [`FilterExt::or`] method. See that
+/// This type is typically returned by the [`FilterExt::not`] method. See that
 /// method's documentation for details.
 ///
 /// [`Filter`]: crate::subscribe::Filter
-/// [`FilterExt::or`]: crate::filter::FilterExt::or
+/// [`FilterExt::not`]: crate::filter::FilterExt::not
 pub struct Not<A, S> {
     a: A,
     _s: PhantomData<fn(S)>,
