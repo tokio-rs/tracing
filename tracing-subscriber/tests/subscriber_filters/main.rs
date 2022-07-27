@@ -3,6 +3,7 @@
 mod support;
 use self::support::*;
 mod filter_scopes;
+mod per_event;
 mod targets;
 mod trees;
 mod vec;
