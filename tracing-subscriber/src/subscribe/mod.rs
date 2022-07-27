@@ -1385,7 +1385,14 @@ pub trait Filter<S> {
     /// Called before the filtered subscribers' [`on_event`], to determine if
     /// `on_event` should be called.
     ///
-    /// This gives a chance to filter events based on their fields.
+    /// This gives a chance to filter events based on their fields. Note,
+    /// however, that this *does not* override [`enabled`], and is not even
+    /// called if [`enabled`] returns `false`.
+    ///
+    /// ## Default Implementation
+    ///
+    /// By default, this method returns `true`, indicating that no events are
+    /// filtered out based on their fields.
     ///
     /// [`on_event`]: crate::subscribe::Subscribe::on_event
     #[inline] // collapse this to a constant please mrs optimizer
