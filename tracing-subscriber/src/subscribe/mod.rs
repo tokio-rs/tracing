@@ -1394,6 +1394,7 @@ pub trait Filter<S> {
     /// By default, this method returns `true`, indicating that no events are
     /// filtered out based on their fields.
     ///
+    /// [`enabled`]: crate::subscribe::Filter::enabled
     /// [`on_event`]: crate::subscribe::Subscribe::on_event
     #[inline] // collapse this to a constant please mrs optimizer
     fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
