@@ -101,6 +101,12 @@ $ firefox http://localhost:16686/
 
 ![Jaeger UI](trace.png)
 
+## Feature Flags
+
+ - `metrics`: Enables the [`MetricsSubscriber`] type, a [subscriber] that
+   exports OpenTelemetry metrics from specifically-named events. This enables
+   the `metrics` feature flag on the `opentelemetry` crate.
+
 ## Supported Rust Versions
 
 Tracing Opentelemetry is built against the latest stable release. The minimum

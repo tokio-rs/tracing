@@ -20,10 +20,12 @@ edition = "2018"
 rust-version = "1.46.0"
 
 [features]
-default = ["tracing-log"]
+default = ["tracing-log", "metrics"]
+# Enables support for exporting OpenTelemetry metrics
+metrics = ["opentelemetry/metrics"]
 
 [dependencies]
-opentelemetry = { version = "0.17.0", default-features = false, features = ["trace", "metrics"] }
+opentelemetry = { version = "0.17.0", default-features = false, features = ["trace"] }
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry", "std"] }
@@ -47,3 +49,7 @@ bench = false
 [[bench]]
 name = "trace"
 harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

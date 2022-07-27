@@ -320,6 +320,7 @@ impl<'a> Visit for MetricVisitor<'a> {
 ///
 /// In the future, this can be improved by associating each `Metric` instance to
 /// its callsite, eliminating the need for any maps.
+#[cfg_attr(docsrs, doc(cfg(feature = "metrics")))]
 pub struct MetricsSubscriber {
     meter: Meter,
     instruments: Instruments,
