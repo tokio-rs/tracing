@@ -299,11 +299,16 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// Inverts `self`, returning a filter that enables spans and events only if
     /// `self` would *not* enable them.
     ///
-    /// Inverts [`enabled`] but ignores [`event_enabled`],
-    /// as most filters do not use `event_enabled`.
+    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
+    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
+    /// implementing that method is optional, and filters which do not implement
+    /// filtering on event field values will return `true` even for events that their
+    /// [`enabled`] method would disable.
     ///
+    /// [`Filter`]: crate::subscribe::Filter
     /// [`enabled`]: crate::subscribe::Filter::enabled
     /// [`event_enabled`]: crate::subscribe::Filter::event_enabled
+    /// [`callsite_enabled`]: crate::subscribe::Filter::callsite_enabled
     fn not(self) -> combinator::Not<Self, S>
     where
         Self: Sized,

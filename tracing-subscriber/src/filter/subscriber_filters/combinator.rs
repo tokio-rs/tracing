@@ -403,12 +403,16 @@ where
     /// If the wrapped filter would enable a span or event, it will be disabled. If
     /// it would disable a span or event, that span or event will be enabled.
     ///
-    /// This inversion only considers the [`enabled`] filter;
-    /// it does not call the [`event_enabled`] filter.
+    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
+    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
+    /// implementing that method is optional, and filters which do not implement
+    /// filtering on event field values will return `true` even for events that their
+    /// [`enabled`] method would disable.
     ///
     /// [`Filter`]: crate::subscribe::Filter
     /// [`enabled`]: crate::subscribe::Filter::enabled
     /// [`event_enabled`]: crate::subscribe::Filter::event_enabled
+    /// [`callsite_enabled`]: crate::subscribe::Filter::callsite_enabled
     pub(crate) fn new(a: A) -> Self {
         Self { a, _s: PhantomData }
     }
