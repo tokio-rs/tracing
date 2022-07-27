@@ -1668,7 +1668,7 @@ feature! {
     }
 
 
-    impl<C, S> Subscribe<C> for Vec<S>
+    impl<C, S> Subscribe<C> for alloc::vec::Vec<S>
     where
         S: Subscribe<C>,
         C: Collect,
