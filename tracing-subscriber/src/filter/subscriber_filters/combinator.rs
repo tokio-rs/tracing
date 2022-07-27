@@ -403,11 +403,53 @@ where
     /// If the wrapped filter would enable a span or event, it will be disabled. If
     /// it would disable a span or event, that span or event will be enabled.
     ///
-    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
-    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
-    /// implementing that method is optional, and filters which do not implement
-    /// filtering on event field values will return `true` even for events that their
-    /// [`enabled`] method would disable.
+    /// The wrapped filter's [`callsite_enabled`] and [`enabled`] are inverted,
+    /// but [`event_enabled`] is ignored, as most filters always return `true`
+    /// from `event_enabled` and rely on `[callsite_]enabled` for filtering.
+    ///
+    /// A proper inversion would do `!(enabled() && event_enabled())` (or
+    /// equivalently `!enabled() || !event_enabled()`), but because of the
+    /// implicit `&&` relation between `enabled` and `event_enabled`, it is
+    /// not possible to short circuit and not call `event_enabled` from the
+    /// combinator.
+    ///
+    /// Essentially, where a normal filter is roughly
+    ///
+    /// ```ignore (psuedo-code)
+    /// // for spans
+    /// match callsite_enabled() {
+    ///     ALWAYS => on_span(),
+    ///     SOMETIMES => if enabled() { on_span() },
+    ///     NEVER => (),
+    /// }
+    /// // for events
+    /// match callsite_enabled() {
+    ///    ALWAYS => on_event(),
+    ///    SOMETIMES => if enabled() && event_enabled() { on_event() },
+    ///    NEVER => (),
+    /// }
+    /// ```
+    ///
+    /// an inverted filter is roughly
+    ///
+    /// ```ignore (psuedo-code)
+    /// // for spans
+    /// match callsite_enabled() {
+    ///     ALWAYS => (),
+    ///     SOMETIMES => if !enabled() { on_span() },
+    ///     NEVER => on_span(),
+    /// }
+    /// // for events
+    /// match callsite_enabled() {
+    ///     ALWAYS => (),
+    ///     SOMETIMES => if !enabled() { on_event() },
+    ///     NEVER => on_event(),
+    /// }
+    /// ```
+    ///
+    /// A combinator which remembers the result of `enabled` in order to call
+    /// `event_enabled` only when `enabled() == true` is possible, but requires
+    /// additional state and locking to support a very niche use case.
     ///
     /// [`Filter`]: crate::subscribe::Filter
     /// [`enabled`]: crate::subscribe::Filter::enabled
