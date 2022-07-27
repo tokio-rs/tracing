@@ -1352,6 +1352,26 @@ feature! {
             Interest::sometimes()
         }
 
+        /// Called before the filtered [`Layer]'s [`on_event`], to determine if
+        /// `on_event` should be called.
+        ///
+        /// This gives a chance to filter events based on their fields. Note,
+        /// however, that this *does not* override [`enabled`], and is not even
+        /// called if [`enabled`] returns `false`.
+        ///
+        /// ## Default Implementation
+        ///
+        /// By default, this method returns `true`, indicating that no events are
+        /// filtered out based on their fields.
+        ///
+        /// [`enabled`]: crate::layer::Filter::enabled
+        /// [`on_event`]: crate::layer::Layer::on_event
+        #[inline] // collapse this to a constant please mrs optimizer
+        fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+            let _ = (event, cx);
+            true
+        }
+
         /// Returns an optional hint of the highest [verbosity level][level] that
         /// this `Filter` will enable.
         ///
