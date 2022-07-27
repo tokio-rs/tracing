@@ -1025,11 +1025,7 @@ impl FilterState {
     /// Run a second filtering pass, e.g. for Subscribe::event_enabled.
     fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
         let map = self.enabled.get();
-        let enabled = if self.enabled.get().is_enabled(filter) {
-            f()
-        } else {
-            false
-        };
+        let enabled = map.is_enabled(filter) && f();
         self.enabled.set(map.set(filter, enabled));
         enabled
     }
