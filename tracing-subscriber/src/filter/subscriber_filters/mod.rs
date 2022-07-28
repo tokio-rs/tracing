@@ -299,11 +299,12 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// Inverts `self`, returning a filter that enables spans and events only if
     /// `self` would *not* enable them.
     ///
-    /// The wrapped filter's [`callsite_enabled`] and [`enabled`] are inverted,
-    /// but [`event_enabled`] is ignored, as most filters always return `true`
-    /// from `event_enabled` and rely on `[callsite_]enabled` for filtering.
+    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
+    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
+    /// filters which do not implement filtering on event field values will return
+    /// the default `true` even for events that their [`enabled`] method disables.
     ///
-    /// Essentially, where a normal filter is roughly
+    /// Consider a normal filter defined as:
     ///
     /// ```ignore (psuedo-code)
     /// // for spans
@@ -320,7 +321,7 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// }
     /// ```
     ///
-    /// an inverted filter is roughly
+    /// and an inverted filter defined as:
     ///
     /// ```ignore (psuedo-code)
     /// // for spans
@@ -338,9 +339,9 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// ```
     ///
     /// A proper inversion would do `!(enabled() && event_enabled())` (or
-    /// equivalently `!enabled() || !event_enabled()`), but because of the
-    /// implicit `&&` relation between `enabled` and `event_enabled`, it is
-    /// difficult to short circuit and not call the wrapped `event_enabled`.
+    /// `!enabled() || !event_enabled()`), but because of the implicit `&&`
+    /// relation between `enabled` and `event_enabled`, it is difficult to
+    /// short circuit and not call the wrapped `event_enabled`.
     ///
     /// A combinator which remembers the result of `enabled` in order to call
     /// `event_enabled` only when `enabled() == true` is possible, but requires
