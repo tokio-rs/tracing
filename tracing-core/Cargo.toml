@@ -34,10 +34,10 @@ std = ["once_cell"]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-once_cell = { version = "1.12", optional = true }
+once_cell = { version = "1.13.0", optional = true }
 
 [target.'cfg(tracing_unstable)'.dependencies]
-valuable = { version = "0.1.0", optional = true, default_features = false }
+valuable = { version = "0.1.0", optional = true, default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true
