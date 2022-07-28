@@ -1185,6 +1185,9 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 /// Install a global tracing subscriber that listens for events and
 /// filters based on the value of the [`RUST_LOG` environment variable].
 ///
+/// The configuration of the subscriber initialized by this function
+/// depends on what [feature flags](crate#feature-flags) are enabled.
+///
 /// If the `tracing-log` feature is enabled, this will also install
 /// the LogTracer to convert `Log` records into `tracing` `Event`s.
 ///
