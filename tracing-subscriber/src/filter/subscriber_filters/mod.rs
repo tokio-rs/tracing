@@ -306,7 +306,7 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     ///
     /// Consider a normal filter defined as:
     ///
-    /// ```ignore (psuedo-code)
+    /// ```ignore (pseudo-code)
     /// // for spans
     /// match callsite_enabled() {
     ///     ALWAYS => on_span(),
@@ -323,7 +323,7 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     ///
     /// and an inverted filter defined as:
     ///
-    /// ```ignore (psuedo-code)
+    /// ```ignore (pseudo-code)
     /// // for spans
     /// match callsite_enabled() {
     ///     ALWAYS => (),

@@ -410,7 +410,7 @@ where
     ///
     /// Consider a normal filter defined as:
     ///
-    /// ```ignore (psuedo-code)
+    /// ```ignore (pseudo-code)
     /// // for spans
     /// match callsite_enabled() {
     ///     ALWAYS => on_span(),
@@ -427,7 +427,7 @@ where
     ///
     /// and an inverted filter defined as:
     ///
-    /// ```ignore (psuedo-code)
+    /// ```ignore (pseudo-code)
     /// // for spans
     /// match callsite_enabled() {
     ///     ALWAYS => (),
