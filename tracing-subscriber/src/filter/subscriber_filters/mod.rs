@@ -303,12 +303,6 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// but [`event_enabled`] is ignored, as most filters always return `true`
     /// from `event_enabled` and rely on `[callsite_]enabled` for filtering.
     ///
-    /// A proper inversion would do `!(enabled() && event_enabled())` (or
-    /// equivalently `!enabled() || !event_enabled()`), but because of the
-    /// implicit `&&` relation between `enabled` and `event_enabled`, it is
-    /// not possible to short circuit and not call `event_enabled` from the
-    /// combinator.
-    ///
     /// Essentially, where a normal filter is roughly
     ///
     /// ```ignore (psuedo-code)
@@ -343,9 +337,18 @@ pub trait FilterExt<S>: subscribe::Filter<S> {
     /// }
     /// ```
     ///
+    /// A proper inversion would do `!(enabled() && event_enabled())` (or
+    /// equivalently `!enabled() || !event_enabled()`), but because of the
+    /// implicit `&&` relation between `enabled` and `event_enabled`, it is
+    /// difficult to short circuit and not call the wrapped `event_enabled`.
+    ///
     /// A combinator which remembers the result of `enabled` in order to call
     /// `event_enabled` only when `enabled() == true` is possible, but requires
-    /// additional state and locking to support a very niche use case.
+    /// additional thread-local mutable state to support a very niche use case.
+    //
+    //  Also, it'd mean the wrapped layer's `enabled()` always gets called and
+    //  globally applied to events where it doesn't today, since we can't know
+    //  what `event_enabled` will say until we have the event to call it with.
     ///
     /// [`Filter`]: crate::subscribe::Filter
     /// [`enabled`]: crate::subscribe::Filter::enabled
