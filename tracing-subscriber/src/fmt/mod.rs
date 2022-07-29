@@ -227,15 +227,20 @@ pub struct Collector<
     E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
+    T = time::SystemTime,
 > {
-    inner: subscribe::Layered<F, Formatter<N, E, W>>,
+    inner: subscribe::Layered<F, Formatter<N, E, W, T>>,
 }
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
-pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
-    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<
+    N = format::DefaultFields,
+    E = format::Format,
+    W = fn() -> io::Stdout,
+    T = time::SystemTime,
+> = subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W, T>, Registry>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
@@ -246,9 +251,10 @@ pub struct CollectorBuilder<
     E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
+    T = time::SystemTime,
 > {
     filter: F,
-    inner: Subscriber<Registry, N, E, W>,
+    inner: Subscriber<Registry, N, E, W, T>,
 }
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
@@ -360,14 +366,15 @@ impl Default for Collector {
 
 // === impl Collector ===
 
-impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
+impl<N, E, F, W, T> tracing_core::Collect for Collector<N, E, F, W, T>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
+    F: subscribe::Subscribe<Formatter<N, E, W, T>> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
+    T: time::FormatTime + 'static,
+    subscribe::Layered<F, Formatter<N, E, W, T>>: tracing_core::Collect,
+    fmt_subscriber::Subscriber<Registry, N, E, W, T>: subscribe::Subscribe<Registry>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -444,11 +451,11 @@ where
     }
 }
 
-impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
+impl<'a, N, E, F, W, T> LookupSpan<'a> for Collector<N, E, F, W, T>
 where
-    subscribe::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    subscribe::Layered<F, Formatter<N, E, W, T>>: LookupSpan<'a>,
 {
-    type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <subscribe::Layered<F, Formatter<N, E, W, T>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -466,17 +473,18 @@ impl Default for CollectorBuilder {
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, F, W>
+impl<N, E, F, W, T> CollectorBuilder<N, E, F, W, T>
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
+    F: subscribe::Subscribe<Formatter<N, E, W, T>> + Send + Sync + 'static,
+    T: time::FormatTime + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W, T>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtCollector`.
-    pub fn finish(self) -> Collector<N, E, F, W> {
+    pub fn finish(self) -> Collector<N, E, F, W, T> {
         let collector = self.inner.with_collector(Registry::default());
         Collector {
             inner: self.filter.with_collector(collector),
@@ -513,16 +521,17 @@ where
     }
 }
 
-impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
+impl<N, E, F, W, T> From<CollectorBuilder<N, E, F, W, T>> for tracing_core::Dispatch
 where
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<Registry, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
+    F: subscribe::Subscribe<Formatter<N, E, W, T>> + Send + Sync + 'static,
+    T: time::FormatTime + 'static,
+    fmt_subscriber::Subscriber<Registry, N, E, W, T>:
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
-    fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
+    fn from(builder: CollectorBuilder<N, E, F, W, T>) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(builder.finish())
     }
 }
@@ -545,73 +554,27 @@ where
     /// [`UtcTime`]: time::UtcTime
     /// [`LocalTime`]: time::LocalTime
     /// [`time` crate]: https://docs.rs/time/0.3
+    #[deprecated(
+        since = "0.3.12",
+        note = "use `CollectorBuilder::with_timestamp_format` instead"
+    )]
     pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
+        #[allow(deprecated)]
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_timer(timer),
         }
     }
+}
 
-    /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
-        CollectorBuilder {
-            filter: self.filter,
-            inner: self.inner.without_time(),
-        }
-    }
-
-    /// Configures how synthesized events are emitted at points in the [span
-    /// lifecycle][lifecycle].
-    ///
-    /// The following options are available:
-    ///
-    /// - `FmtSpan::NONE`: No events will be synthesized when spans are
-    ///    created, entered, exited, or closed. Data from spans will still be
-    ///    included as the context for formatted events. This is the default.
-    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
-    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
-    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
-    /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
-    ///    [timestamps are enabled][time] for this formatter, the generated
-    ///    event will contain fields with the span's _busy time_ (the total
-    ///    time for which it was entered) and _idle time_ (the total time that
-    ///    the span existed but was not entered).
-    /// - `FmtSpan::ACTIVE`: An event will be synthesized when spans are entered
-    ///    or exited.
-    /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
-    ///    created, entered, exited, or closed. If timestamps are enabled, the
-    ///    close event will contain the span's busy and idle time, as
-    ///    described above.
-    ///
-    /// The options can be enabled in any combination. For instance, the following
-    /// will synthesize events whenever spans are created and closed:
-    ///
-    /// ```rust
-    /// use tracing_subscriber::fmt::format::FmtSpan;
-    /// use tracing_subscriber::fmt;
-    ///
-    /// let subscriber = fmt()
-    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-    ///     .finish();
-    /// ```
-    ///
-    /// Note that the generated events will only be part of the log output by
-    /// this formatter; they will not be recorded by other `Collector`s or by
-    /// `Subscriber`s added to this subscriber.
-    ///
-    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
-    /// [time]: CollectorBuilder::without_time()
-    pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
-        CollectorBuilder {
-            inner: self.inner.with_span_events(kind),
-            ..self
-        }
-    }
-
+impl<N, L, T, T2, F, W> CollectorBuilder<N, format::Format<L, T2>, F, W, T>
+where
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_ansi(ansi),
             ..self
@@ -622,7 +585,7 @@ where
     pub fn with_target(
         self,
         display_target: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_target(display_target),
             ..self
@@ -636,7 +599,7 @@ where
     pub fn with_file(
         self,
         display_filename: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_file(display_filename),
             ..self
@@ -650,7 +613,7 @@ where
     pub fn with_line_number(
         self,
         display_line_number: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_line_number(display_line_number),
             ..self
@@ -661,7 +624,7 @@ where
     pub fn with_level(
         self,
         display_level: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_level(display_level),
             ..self
@@ -675,7 +638,7 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_thread_names(display_thread_names),
             ..self
@@ -689,7 +652,7 @@ where
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<N, format::Format<L, T2>, F, W, T> {
         CollectorBuilder {
             inner: self.inner.with_thread_ids(display_thread_ids),
             ..self
@@ -699,7 +662,7 @@ where
     /// Sets the collector being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
-    pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
+    pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T2>, F, W, T>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -714,7 +677,7 @@ where
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(
         self,
-    ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {
+    ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T2>, F, W, T> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.pretty(),
@@ -726,7 +689,9 @@ where
     /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    pub fn json(
+        self,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T2>, F, W, T>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -739,14 +704,14 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+impl<T, T2, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T2>, F, W, T> {
     /// Sets the json collector being built to flatten event metadata.
     ///
     /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T2>, F, W, T> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.flatten_event(flatten_event),
@@ -760,7 +725,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T2>, F, W, T> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_current_span(display_current_span),
@@ -774,7 +739,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T2>, F, W, T> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_span_list(display_span_list),
@@ -782,9 +747,9 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
+impl<N, E, F, W, T> CollectorBuilder<N, E, reload::Subscriber<F>, W, T>
 where
-    Formatter<N, E, W>: tracing_core::Collect + 'static,
+    Formatter<N, E, W, T>: tracing_core::Collect + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed collector's
     /// filter.
@@ -793,7 +758,7 @@ where
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
+impl<N, E, F, W, T> CollectorBuilder<N, E, F, W, T> {
     /// Sets the Visitor that the collector being built will use to record
     /// fields.
     ///
@@ -814,7 +779,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .finish();
     /// # drop(collector)
     /// ```
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W, T>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -877,9 +842,9 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     pub fn with_env_filter(
         self,
         filter: impl Into<crate::EnvFilter>,
-    ) -> CollectorBuilder<N, E, crate::EnvFilter, W>
+    ) -> CollectorBuilder<N, E, crate::EnvFilter, W, T>
     where
-        Formatter<N, E, W>: tracing_core::Collect + 'static,
+        Formatter<N, E, W, T>: tracing_core::Collect + 'static,
     {
         let filter = filter.into();
         CollectorBuilder {
@@ -918,7 +883,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
-    ) -> CollectorBuilder<N, E, LevelFilter, W> {
+    ) -> CollectorBuilder<N, E, LevelFilter, W, T> {
         let filter = filter.into();
         CollectorBuilder {
             filter,
@@ -963,7 +928,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [`reload_handle`]: CollectorBuilder::reload_handle
     /// [`reload::Handle`]: crate::reload::Handle
-    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W> {
+    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W, T> {
         let (filter, _) = reload::Subscriber::new(self.filter);
         CollectorBuilder {
             filter,
@@ -973,7 +938,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
 
     /// Sets the function that the collector being built should use to format
     /// events that occur.
-    pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
+    pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W, T>
     where
         E2: FormatEvent<Registry, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -1000,7 +965,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .init();
     /// ```
     ///
-    pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2, T>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
     {
@@ -1034,10 +999,76 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: writer::TestWriter
-    pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
+    pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter, T> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
+        }
+    }
+
+    /// Configures how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// The following options are available:
+    ///
+    /// - `FmtSpan::NONE`: No events will be synthesized when spans are
+    ///    created, entered, exited, or closed. Data from spans will still be
+    ///    included as the context for formatted events. This is the default.
+    /// - `FmtSpan::NEW`: An event will be synthesized when spans are created.
+    /// - `FmtSpan::ENTER`: An event will be synthesized when spans are entered.
+    /// - `FmtSpan::EXIT`: An event will be synthesized when spans are exited.
+    /// - `FmtSpan::CLOSE`: An event will be synthesized when a span closes. If
+    ///    [timestamps are enabled][time] for this formatter, the generated
+    ///    event will contain fields with the span's _busy time_ (the total
+    ///    time for which it was entered) and _idle time_ (the total time that
+    ///    the span existed but was not entered).
+    /// - `FmtSpan::ACTIVE`: An event will be synthesized when spans are entered
+    ///    or exited.
+    /// - `FmtSpan::FULL`: Events will be synthesized whenever a span is
+    ///    created, entered, exited, or closed. If timestamps are enabled, the
+    ///    close event will contain the span's busy and idle time, as
+    ///    described above.
+    ///
+    /// The options can be enabled in any combination. For instance, the following
+    /// will synthesize events whenever spans are created and closed:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format::FmtSpan;
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let subscriber = fmt()
+    ///     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    ///     .finish();
+    /// ```
+    ///
+    /// Note that the generated events will only be part of the log output by
+    /// this formatter; they will not be recorded by other `Collector`s or by
+    /// `Subscriber`s added to this subscriber.
+    ///
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
+    /// [time]: CollectorBuilder::without_time()
+    pub fn with_span_events(self, kind: format::FmtSpan) -> Self {
+        CollectorBuilder {
+            inner: self.inner.with_span_events(kind),
+            ..self
+        }
+    }
+
+    pub fn with_timestamp_format<T2>(self, timer: T2) -> CollectorBuilder<N, E, F, W, T2>
+    where
+        T2: time::FormatTime,
+    {
+        CollectorBuilder {
+            inner: self.inner.with_timestamp_format(timer),
+            filter: self.filter,
+        }
+    }
+
+    /// Do not emit timestamps with log messages.
+    pub fn without_time(self) -> Self {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.without_time(),
         }
     }
 }
@@ -1181,8 +1212,11 @@ mod test {
 
     #[test]
     fn impls() {
-        let f = Format::default().with_timer(time::Uptime::default());
-        let subscriber = Collector::builder().event_format(f).finish();
+        let f = Format::default();
+        let subscriber = Collector::builder()
+            .event_format(f)
+            .with_timestamp_format(time::Uptime::default())
+            .finish();
         let _dispatch = Dispatch::new(subscriber);
 
         let f = format::Format::default();

@@ -186,7 +186,10 @@ where
         let meta = event.metadata();
         write!(&mut writer, "  ")?;
 
-        self.format_timestamp(&mut writer)?;
+        if let Some(timestamp) = ctx.timestamp() {
+            self.format_timestamp(timestamp, &mut writer)?;
+            writer.write_char(' ')?;
+        }
 
         let style = if self.display_level && writer.has_ansi_escapes() {
             Pretty::style_for(meta.level())

@@ -28,7 +28,7 @@
 //!   for production use with systems where structured logs are consumed as JSON
 //!   by analysis and viewing tools. The JSON output is not optimized for human
 //!   readability. See [here](Json#example-output) for sample output.
-use super::time::{FormatTime, SystemTime};
+use super::time::{self, FormatTime, SystemTime};
 use crate::{
     field::{MakeOutput, MakeVisitor, RecordFields, VisitFmt, VisitOutput},
     fmt::fmt_subscriber::{FmtContext, FormattedFields},
@@ -414,6 +414,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    // XXX(eliza): annoying backwards-compatibility cruft.
+    has_overridden_timer: bool,
 }
 
 // === impl Writer ===
@@ -592,6 +594,7 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            has_overridden_timer: false,
         }
     }
 }
@@ -612,6 +615,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -651,6 +655,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -683,6 +688,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: self.has_overridden_timer,
         }
     }
 
@@ -700,6 +706,10 @@ impl<F, T> Format<F, T> {
     /// [`UtcTime`]: super::time::UtcTime
     /// [`LocalTime`]: super::time::LocalTime
     /// [`time` crate]: https://docs.rs/time/0.3
+    #[deprecated(
+        since = "0.3.12",
+        note = "use `fmt::Subscriber::with_timestamp_format` instead"
+    )]
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
@@ -712,6 +722,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: true,
         }
     }
 
@@ -728,6 +739,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            has_overridden_timer: true,
         }
     }
 
@@ -831,7 +843,11 @@ impl<F, T> Format<F, T> {
     }
 
     #[inline]
-    fn format_timestamp(&self, writer: &mut Writer<'_>) -> fmt::Result
+    fn format_timestamp<'a>(
+        &'a self,
+        mut timestamp: time::Timestamp<'a>,
+        writer: &mut Writer<'_>,
+    ) -> fmt::Result
     where
         T: FormatTime,
     {
@@ -840,32 +856,23 @@ impl<F, T> Format<F, T> {
             return Ok(());
         }
 
+        // XXX(eliza): ugly backwards-compatibility cruft, remove in 0.4
+        if self.has_overridden_timer {
+            timestamp.timer = &self.timer;
+        }
+
         // If ANSI color codes are enabled, format the timestamp with ANSI
         // colors.
         #[cfg(feature = "ansi")]
         {
             if writer.has_ansi_escapes() {
                 let style = Style::new().dimmed();
-                write!(writer, "{}", style.prefix())?;
-
-                // If getting the timestamp failed, don't bail --- only bail on
-                // formatting errors.
-                if self.timer.format_time(writer).is_err() {
-                    writer.write_str("<unknown time>")?;
-                }
-
-                write!(writer, "{} ", style.suffix())?;
-                return Ok(());
+                write!(writer, "{}{}{}", style.prefix(), timestamp, style.suffix())?;
             }
         }
 
         // Otherwise, just format the timestamp without ANSI formatting.
-        // If getting the timestamp failed, don't bail --- only bail on
-        // formatting errors.
-        if self.timer.format_time(writer).is_err() {
-            writer.write_str("<unknown time>")?;
-        }
-        writer.write_char(' ')
+        write!(writer, "{}", timestamp)
     }
 }
 
@@ -937,7 +944,11 @@ where
             writer = writer.with_ansi(ansi);
         }
 
-        self.format_timestamp(&mut writer)?;
+        if let Some(timestamp) = ctx.timestamp() {
+            self.format_timestamp(timestamp, &mut writer)?;
+            writer.write_char(' ')?;
+        }
+
         self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
@@ -1044,7 +1055,12 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
-        self.format_timestamp(&mut writer)?;
+        if let Some(timestamp) = ctx.timestamp() {
+            self.format_timestamp(timestamp, &mut writer)?;
+            writer.write_char(' ')?;
+        }
+
+        writer.write_char(' ')?;
         self.format_level(*meta.level(), &mut writer)?;
 
         if self.display_thread_name {
@@ -1690,7 +1706,7 @@ pub(super) mod test {
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer.clone())
             .with_ansi(is_ansi)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         assert_info_hello(subscriber, make_writer, expected)
     }
 
@@ -1701,7 +1717,7 @@ pub(super) mod test {
         let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
         let subscriber = crate::fmt::Collector::builder()
             .with_writer(make_writer)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         assert_info_hello(subscriber, make_writer, expected);
     }
 
@@ -1712,7 +1728,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = "fake time tracing_subscriber::fmt::format::test: hello\n";
 
         assert_info_hello(subscriber, make_writer, expected);
@@ -1727,7 +1743,7 @@ pub(super) mod test {
             .with_line_number(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
 
         let expected = Regex::new(&format!(
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
@@ -1751,7 +1767,7 @@ pub(super) mod test {
             .with_line_number(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
 
         let expected =
             Regex::new("^fake time tracing_subscriber::fmt::format::test: [0-9]+: hello\n$")
@@ -1770,7 +1786,7 @@ pub(super) mod test {
             .with_file(true)
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = &format!(
             "fake time tracing_subscriber::fmt::format::test: {}: hello\n",
             current_path(),
@@ -1785,7 +1801,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_thread_ids(true)
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected =
             "fake time  INFO ThreadId(NUMERIC) tracing_subscriber::fmt::format::test: hello\n";
 
@@ -1799,7 +1815,7 @@ pub(super) mod test {
             .pretty()
             .with_writer(make_writer.clone())
             .with_ansi(false)
-            .with_timer(MockTime);
+            .with_timestamp_format(MockTime);
         let expected = format!(
             r#"  fake time  INFO tracing_subscriber::fmt::format::test: hello
     at {}:NUMERIC
@@ -1843,7 +1859,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(collector, || {
@@ -1864,7 +1880,7 @@ pub(super) mod test {
             .with_writer(make_writer.clone())
             .with_level(false)
             .with_ansi(false)
-            .with_timer(MockTime)
+            .with_timestamp_format(MockTime)
             .finish();
 
         with_default(subscriber, || {

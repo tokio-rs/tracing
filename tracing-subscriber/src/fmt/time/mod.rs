@@ -90,6 +90,13 @@ impl FormatTime for fn(&mut Writer<'_>) -> fmt::Result {
     }
 }
 
+/// A timestamp implementing [`std::fmt::Display`].
+#[derive(Clone)]
+pub struct Timestamp<'a> {
+    pub(in crate::fmt) timer: &'a dyn FormatTime,
+    pub(in crate::fmt) is_ansi: bool,
+}
+
 /// Retrieve and print the current wall-clock time.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct SystemTime;
@@ -130,5 +137,34 @@ impl FormatTime for Uptime {
     fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
         let e = self.epoch.elapsed();
         write!(w, "{:4}.{:09}s", e.as_secs(), e.subsec_nanos())
+    }
+}
+
+// === impl Timestamp ===
+
+impl fmt::Display for Timestamp<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.timer
+            .format_time(&mut Writer::new(f).with_ansi(self.is_ansi))
+            .or_else(|_| {
+                // if writing the timestamp failed because of the timer
+                // implementation, indicate that the time is unknown. if the problem
+                // is with the formatter, this write_str call will also error, so
+                // the error is propagated.
+                f.write_str("<unknown time>")
+            })
+    }
+}
+
+impl fmt::Debug for Timestamp<'_> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl FormatTime for Timestamp<'_> {
+    fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
+        self.timer.format_time(w)
     }
 }
