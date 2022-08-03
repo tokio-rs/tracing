@@ -35,6 +35,8 @@
 //! [`new_span`]: super::collect::Collect::new_span
 //! [`record`]: super::collect::Collect::record
 //! [`event`]:  super::collect::Collect::event
+use valuable::{Structable, NamedField};
+
 use crate::callsite;
 use core::{
     borrow::Borrow,
@@ -82,14 +84,14 @@ pub struct Empty;
 /// [callsite identifiers]: callsite::Identifier
 pub struct FieldSet {
     /// The names of each field on the described span.
-    names: &'static [&'static str],
+    names: &'static [NamedField<'static>],
     /// The callsite where the described span originates.
     callsite: callsite::Identifier,
 }
 
 /// A set of fields and values for a span.
 pub struct ValueSet<'a> {
-    values: &'a [(&'a Field, Option<&'a (dyn Value + 'a)>)],
+    values: &'a dyn Structable,
     fields: &'a FieldSet,
 }
 
@@ -637,7 +639,7 @@ impl Field {
 
     /// Returns a string representing the name of the field.
     pub fn name(&self) -> &'static str {
-        self.fields.names[self.i]
+        self.fields.names[self.i].name()
     }
 }
 
@@ -687,7 +689,7 @@ impl Clone for Field {
 
 impl FieldSet {
     /// Constructs a new `FieldSet` with the given array of field names and callsite.
-    pub const fn new(names: &'static [&'static str], callsite: callsite::Identifier) -> Self {
+    pub const fn new(names: &'static [NamedField<'static>], callsite: callsite::Identifier) -> Self {
         Self { names, callsite }
     }
 
@@ -707,8 +709,8 @@ impl FieldSet {
     where
         Q: Borrow<str>,
     {
-        let name = &name.borrow();
-        self.names.iter().position(|f| f == name).map(|i| Field {
+        let name = name.borrow();
+        self.names.iter().position(|f| f.name() == name).map(|i| Field {
             i,
             fields: FieldSet {
                 names: self.names,
@@ -751,11 +753,11 @@ impl FieldSet {
     #[doc(hidden)]
     pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
     where
-        V: ValidLen<'v>,
+        V: ValidLen<'v> + Structable,
     {
         ValueSet {
             fields: self,
-            values: values.borrow(),
+            values,
         }
     }
 
@@ -793,7 +795,7 @@ impl fmt::Debug for FieldSet {
 impl fmt::Display for FieldSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set()
-            .entries(self.names.iter().map(display))
+            .entries(self.names.iter().map(|n| display(n.name())))
             .finish()
     }
 }
