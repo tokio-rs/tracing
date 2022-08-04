@@ -35,7 +35,7 @@
 //! [`new_span`]: super::collect::Collect::new_span
 //! [`record`]: super::collect::Collect::record
 //! [`event`]:  super::collect::Collect::event
-use valuable::{Structable, NamedField};
+use valuable::{Structable, NamedField, Visit as ValuableVisit, NamedValues, Value as ValuableValue};
 
 use crate::callsite;
 use core::{
@@ -90,6 +90,7 @@ pub struct FieldSet {
 }
 
 /// A set of fields and values for a span.
+#[derive(Debug)]
 pub struct ValueSet<'a> {
     values: &'a dyn Structable,
     fields: &'a FieldSet,
@@ -866,33 +867,30 @@ impl<'a> ValueSet<'a> {
     /// Visits all the fields in this `ValueSet` with the provided [visitor].
     ///
     /// [visitor]: Visit
-    pub fn record(&self, visitor: &mut dyn Visit) {
-        let my_callsite = self.callsite();
-        for (field, value) in self.values {
-            if field.callsite() != my_callsite {
-                continue;
-            }
-            if let Some(value) = value {
-                value.record(field, visitor);
-            }
-        }
+    pub fn record(&self, visitor: &mut dyn ValuableVisit) {
+        self.values.visit(visitor);
     }
 
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite()
-            && self
-                .values
-                .iter()
-                .any(|(key, val)| *key == field && val.is_some())
+            && {
+                let mut visitor = KeyContainsVisitor {
+                    field: NamedField::new(field.name()),
+                    res: false,
+                };
+                self.values.visit(&mut visitor);
+                visitor.res
+            }
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let my_callsite = self.callsite();
-        self.values
-            .iter()
-            .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+        let mut visitor = IsEmptyVisitor {
+            res: false,
+        };
+        self.values.visit(&mut visitor);
+        visitor.res
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
@@ -900,32 +898,44 @@ impl<'a> ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ValueSet<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_struct("ValueSet"), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .field("callsite", &self.callsite())
-            .finish()
+struct KeyContainsVisitor<'a> {
+    field: NamedField<'a>,
+    res: bool,
+}
+
+impl ValuableVisit for KeyContainsVisitor<'_> {
+    fn visit_named_fields(&mut self, named_values: &NamedValues<'_>) {
+        self.res = named_values.iter().any(|(key, _val)| *key == self.field)
+    }
+
+    fn visit_value(&mut self, value: ValuableValue<'_>) {
+        match value {
+            ValuableValue::Structable(v) => v.visit(self),
+            _ => {} // do nothing for other types
+        }
+    }
+}
+
+struct IsEmptyVisitor {
+    res: bool,
+}
+
+impl ValuableVisit for IsEmptyVisitor {
+    fn visit_named_fields(&mut self, named_values: &NamedValues<'_>) {
+        self.res = named_values.is_empty()
+    }
+
+    fn visit_value(&mut self, value: ValuableValue<'_>) {
+        match value {
+            ValuableValue::Structable(v) => v.visit(self),
+            _ => {} // do nothing for other types
+        }
     }
 }
 
 impl<'a> fmt::Display for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_map(), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .finish()
+        write!(f, "callsite: {:?}, values: {:?}", self.callsite(), self.values)
     }
 }
 
@@ -960,6 +970,8 @@ impl_valid_len! {
 
 #[cfg(test)]
 mod test {
+    use valuable::Valuable;
+
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
 
@@ -969,7 +981,7 @@ mod test {
         name: "field_test1",
         target: module_path!(),
         level: Level::INFO,
-        fields: &["foo", "bar", "baz"],
+        fields: &[NamedField::new("foo"), NamedField::new("bar"), NamedField::new("baz")],
         callsite: &TEST_CALLSITE_1,
         kind: Kind::SPAN,
     };
@@ -990,7 +1002,7 @@ mod test {
         name: "field_test2",
         target: module_path!(),
         level: Level::INFO,
-        fields: &["foo", "bar", "baz"],
+        fields: &[NamedField::new("foo"), NamedField::new("bar"), NamedField::new("baz")],
         callsite: &TEST_CALLSITE_2,
         kind: Kind::SPAN,
     };
@@ -1003,25 +1015,6 @@ mod test {
         fn metadata(&self) -> &Metadata<'_> {
             &TEST_META_2
         }
-    }
-
-    #[test]
-    fn value_set_with_no_values_is_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (&fields.field("bar").unwrap(), None),
-            (&fields.field("baz").unwrap(), None),
-        ];
-        let valueset = fields.value_set(values);
-        assert!(valueset.is_empty());
-    }
-
-    #[test]
-    fn empty_value_set_is_empty() {
-        let fields = TEST_META_1.fields();
-        let valueset = fields.value_set(&[]);
-        assert!(valueset.is_empty());
     }
 
     #[test]
