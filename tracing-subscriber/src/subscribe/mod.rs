@@ -682,7 +682,7 @@ use crate::filter;
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Dispatch, Event, LevelFilter,
 };
 
 use core::{any::TypeId, ptr::NonNull};
@@ -716,6 +716,14 @@ where
     C: Collect,
     Self: 'static,
 {
+    /// Performs late initialization when installing this subscriber as a
+    /// [collector].
+    ///
+    /// [collector]: tracing_core::Collect
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        let _ = collector;
+    }
+
     /// Performs late initialization when attaching a subscriber to a
     /// [collector].
     ///
@@ -1472,6 +1480,12 @@ where
     S: Subscribe<C>,
     C: Collect,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        if let Some(ref subscriber) = self {
+            subscriber.on_register_dispatch(collector)
+        }
+    }
+
     fn on_subscribe(&mut self, collector: &mut C) {
         if let Some(ref mut subscriber) = self {
             subscriber.on_subscribe(collector)
@@ -1584,6 +1598,10 @@ where
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! subscriber_impl_body {
     () => {
+        fn on_register_dispatch(&self, collector: &Dispatch) {
+            self.deref().on_register_dispatch(collector);
+        }
+
         #[inline]
         fn on_subscribe(&mut self, collect: &mut C) {
             self.deref_mut().on_subscribe(collect);
@@ -1681,6 +1699,11 @@ feature! {
         S: Subscribe<C>,
         C: Collect,
     {
+        fn on_register_dispatch(&self, collector: &Dispatch) {
+            for s in self {
+                s.on_register_dispatch(collector);
+            }
+        }
 
         fn on_subscribe(&mut self, collector: &mut C) {
             for s in self {

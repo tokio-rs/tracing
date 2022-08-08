@@ -1,7 +1,7 @@
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Dispatch, Event, LevelFilter,
 };
 
 use crate::{
@@ -244,6 +244,11 @@ where
     B: Subscribe<C>,
     C: Collect,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        self.subscriber.on_register_dispatch(collector);
+        self.inner.on_register_dispatch(collector);
+    }
+
     fn on_subscribe(&mut self, collect: &mut C) {
         self.subscriber.on_subscribe(collect);
         self.inner.on_subscribe(collect);

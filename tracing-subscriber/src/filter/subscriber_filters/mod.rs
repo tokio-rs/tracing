@@ -44,7 +44,7 @@ use std::{
 };
 use tracing_core::{
     collect::{Collect, Interest},
-    span, Event, Metadata,
+    span, Dispatch, Event, Metadata,
 };
 pub mod combinator;
 
@@ -603,6 +603,10 @@ where
     F: subscribe::Filter<C> + 'static,
     S: Subscribe<C>,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        self.subscriber.on_register_dispatch(collector);
+    }
+
     fn on_subscribe(&mut self, collector: &mut C) {
         self.id = MagicPsfDowncastMarker(collector.register_filter());
         self.subscriber.on_subscribe(collector);

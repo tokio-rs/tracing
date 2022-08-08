@@ -587,7 +587,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(feature = "alloc")]
-    fn collector(&self) -> &(dyn Collect + Send + Sync) {
+    pub(crate) fn collector(&self) -> &(dyn Collect + Send + Sync) {
         match self.collector {
             Kind::Scoped(ref s) => Arc::deref(s),
             Kind::Global(s) => s,
@@ -596,7 +596,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(not(feature = "alloc"))]
-    fn collector(&self) -> &(dyn Collect + Send + Sync) {
+    pub(crate) fn collector(&self) -> &(dyn Collect + Send + Sync) {
         self.collector
     }
 
