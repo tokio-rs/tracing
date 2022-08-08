@@ -45,6 +45,8 @@ tokio-test = "0.4.2"
 tracing-core = { path = "../tracing-core", version = "0.2"}
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
 async-trait = "0.1.56"
+trybuild = "1.0.64"
+rustversion = "1.0.9"
 
 [badges]
 maintenance = { status = "experimental" }
