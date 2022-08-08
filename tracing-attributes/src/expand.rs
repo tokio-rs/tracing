@@ -55,10 +55,11 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         // Install a fake return statement as the first thing in the function
         // body, so that we eagerly infer that the return type is what we
         // declared in the async fn signature.
-        // The `#[allow(unreachable_code)]` is given because the return
-        // statement is unreachable, but does affect inference.
+        // The `#[allow(..)]` is given because the return statement is
+        // unreachable, but does affect inference, so it needs to be written
+        // exactly that way for it to do its magic.
         let fake_return_edge = quote_spanned! {return_type.span()=>
-            #[allow(unreachable_code)]
+            #[allow(unreachable_code, clippy::diverging_sub_expression)]
             if false {
                 let __tracing_attr_fake_return: #return_type =
                     unreachable!("this is just for type inference, and is unreachable code");
