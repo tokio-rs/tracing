@@ -23,9 +23,24 @@ async fn mismatch_with_opaque() -> Wrapper<impl std::fmt::Display> {
     ""
 }
 
-fn main() {
-    let _ = unit();
-    let _ = simple_mismatch();
-    let _ = opaque_unsatisfied();
-    let _ = mismatch_with_opaque();
+#[tracing::instrument]
+async fn early_return_unit() {
+    if true {
+        return "";
+    }
 }
+
+#[tracing::instrument]
+async fn early_return() -> String {
+    if true {
+        return "";
+    }
+    String::new()
+}
+
+#[tracing::instrument]
+async fn extra_semicolon() -> i32 {
+    1;
+}
+
+fn main() {}

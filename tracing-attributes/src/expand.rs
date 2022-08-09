@@ -50,33 +50,30 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     let warnings = args.warnings();
 
-    let block = if let ReturnType::Type(_, return_type) = &output {
-        let return_type = erase_impl_trait(return_type);
-        // Install a fake return statement as the first thing in the function
-        // body, so that we eagerly infer that the return type is what we
-        // declared in the async fn signature.
-        // The `#[allow(..)]` is given because the return statement is
-        // unreachable, but does affect inference, so it needs to be written
-        // exactly that way for it to do its magic.
-        let fake_return_edge = quote_spanned! {return_type.span()=>
-            #[allow(unreachable_code, clippy::diverging_sub_expression)]
-            if false {
-                let __tracing_attr_fake_return: #return_type =
-                    unreachable!("this is just for type inference, and is unreachable code");
-                return __tracing_attr_fake_return;
-            }
-        };
-        quote! {
-            {
-                #fake_return_edge
-                #block
-            }
-        }
+    let (return_type, return_span) = if let ReturnType::Type(_, return_type) = &output {
+        (erase_impl_trait(return_type), return_type.span())
     } else {
-        quote! {
-            {
-                let _: () = #block;
-            }
+        // Point at function name if we don't have an explicit return type
+        (syn::parse_quote! { () }, ident.span())
+    };
+    // Install a fake return statement as the first thing in the function
+    // body, so that we eagerly infer that the return type is what we
+    // declared in the async fn signature.
+    // The `#[allow(..)]` is given because the return statement is
+    // unreachable, but does affect inference, so it needs to be written
+    // exactly that way for it to do its magic.
+    let fake_return_edge = quote_spanned! {return_span=>
+        #[allow(unreachable_code, clippy::diverging_sub_expression)]
+        if false {
+            let __tracing_attr_fake_return: #return_type =
+                unreachable!("this is just for type inference, and is unreachable code");
+            return __tracing_attr_fake_return;
+        }
+    };
+    let block = quote! {
+        {
+            #fake_return_edge
+            #block
         }
     };
 
