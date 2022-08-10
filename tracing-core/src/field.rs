@@ -35,7 +35,9 @@
 //! [`new_span`]: super::collect::Collect::new_span
 //! [`record`]: super::collect::Collect::record
 //! [`event`]:  super::collect::Collect::event
-use valuable::{Structable, NamedField, Visit as ValuableVisit, NamedValues, Value as ValuableValue};
+use valuable::{
+    NamedField, NamedValues, Structable, Value as ValuableValue, Visit as ValuableVisit,
+};
 
 use crate::callsite;
 use core::{
@@ -690,7 +692,10 @@ impl Clone for Field {
 
 impl FieldSet {
     /// Constructs a new `FieldSet` with the given array of field names and callsite.
-    pub const fn new(names: &'static [NamedField<'static>], callsite: callsite::Identifier) -> Self {
+    pub const fn new(
+        names: &'static [NamedField<'static>],
+        callsite: callsite::Identifier,
+    ) -> Self {
         Self { names, callsite }
     }
 
@@ -711,13 +716,16 @@ impl FieldSet {
         Q: Borrow<str>,
     {
         let name = name.borrow();
-        self.names.iter().position(|f| f.name() == name).map(|i| Field {
-            i,
-            fields: FieldSet {
-                names: self.names,
-                callsite: self.callsite(),
-            },
-        })
+        self.names
+            .iter()
+            .position(|f| f.name() == name)
+            .map(|i| Field {
+                i,
+                fields: FieldSet {
+                    names: self.names,
+                    callsite: self.callsite(),
+                },
+            })
     }
 
     /// Returns `true` if `self` contains the given `field`.
@@ -754,7 +762,7 @@ impl FieldSet {
     #[doc(hidden)]
     pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
     where
-        V: ValidLen<'v> + Structable,
+        V: Structable,
     {
         ValueSet {
             fields: self,
@@ -873,22 +881,19 @@ impl<'a> ValueSet<'a> {
 
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite()
-            && {
-                let mut visitor = KeyContainsVisitor {
-                    field: NamedField::new(field.name()),
-                    res: false,
-                };
-                self.values.visit(&mut visitor);
-                visitor.res
-            }
+        field.callsite() == self.callsite() && {
+            let mut visitor = KeyContainsVisitor {
+                field: NamedField::new(field.name()),
+                res: false,
+            };
+            self.values.visit(&mut visitor);
+            visitor.res
+        }
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let mut visitor = IsEmptyVisitor {
-            res: false,
-        };
+        let mut visitor = IsEmptyVisitor { res: false };
         self.values.visit(&mut visitor);
         visitor.res
     }
@@ -935,7 +940,12 @@ impl ValuableVisit for IsEmptyVisitor {
 
 impl<'a> fmt::Display for ValueSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "callsite: {:?}, values: {:?}", self.callsite(), self.values)
+        write!(
+            f,
+            "callsite: {:?}, values: {:?}",
+            self.callsite(),
+            self.values
+        )
     }
 }
 
@@ -1017,106 +1027,95 @@ mod test {
         }
     }
 
-    #[test]
-    fn value_sets_with_fields_from_other_callsites_are_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
-        ];
-        let valueset = TEST_META_2.fields().value_set(values);
-        assert!(valueset.is_empty())
+    struct WriteToStringVisitor {
+        result: String,
     }
 
-    #[test]
-    fn sparse_value_sets_are_not_empty() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
-            (&fields.field("baz").unwrap(), None),
-        ];
-        let valueset = fields.value_set(values);
-        assert!(!valueset.is_empty());
-    }
-
-    #[test]
-    fn fields_from_other_callsets_are_skipped() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), None),
-            (
-                &TEST_META_2.fields().field("bar").unwrap(),
-                Some(&57 as &dyn Value),
-            ),
-            (&fields.field("baz").unwrap(), None),
-        ];
-
-        struct MyVisitor;
-        impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
-                assert_eq!(field.callsite(), TEST_META_1.callsite())
+    impl ValuableVisit for WriteToStringVisitor {
+        fn visit_named_fields(&mut self, named_values: &NamedValues<'_>) {
+            for (field, value) in named_values.iter() {
+                use core::fmt::Write;
+                write!(&mut self.result, "{:?}", value).unwrap();
             }
         }
-        let valueset = fields.value_set(values);
-        valueset.record(&mut MyVisitor);
-    }
 
-    #[test]
-    fn empty_fields_are_skipped() {
-        let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&Empty as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&57 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
-        ];
-
-        struct MyVisitor;
-        impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
-                assert_eq!(field.name(), "bar")
+        fn visit_value(&mut self, value: ValuableValue<'_>) {
+            match value {
+                ValuableValue::Structable(v) => v.visit(self),
+                _ => {} // do nothing for other types
             }
         }
-        let valueset = fields.value_set(values);
-        valueset.record(&mut MyVisitor);
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn record_debug_fn() {
         let fields = TEST_META_1.fields();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&1 as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&2 as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&3 as &dyn Value)),
-        ];
-        let valueset = fields.value_set(values);
-        let mut result = String::new();
-        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
-        });
-        assert_eq!(result, String::from("123"));
+        #[derive(Valuable)]
+        struct MyStruct {
+            foo: u32,
+            bar: u32,
+            baz: u32,
+        }
+
+        let my_struct = MyStruct {
+            foo: 1,
+            bar: 2,
+            baz: 3,
+        };
+
+        let valueset = fields.value_set(&my_struct);
+        let mut visitor = WriteToStringVisitor {
+            result: String::new(),
+        };
+        valueset.record(&mut visitor);
+        // valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+        //     use core::fmt::Write;
+        //     write!(&mut result, "{:?}", value).unwrap();
+        // });
+
+        assert_eq!(visitor.result, String::from("123"));
+    }
+
+    struct WriteErrorToStringVisitor {
+        result: String,
+    }
+
+    impl ValuableVisit for WriteErrorToStringVisitor {
+        fn visit_named_fields(&mut self, named_values: &NamedValues<'_>) {
+            for (_field, value) in named_values.iter() {
+                if let ValuableValue::Error(e) = value {
+                    use core::fmt::Write;
+                    write!(&mut self.result, "{}", e).unwrap();
+                }
+            }
+        }
+
+        fn visit_value(&mut self, value: ValuableValue<'_>) {
+            match value {
+                ValuableValue::Structable(v) => v.visit(self),
+                _ => {} // do nothing for other types
+            }
+        }
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn record_error() {
+        #[derive(Valuable)]
+        struct ErrStruct<'a> {
+            err: &'a (dyn std::error::Error + 'static),
+        }
+        let err_struct = ErrStruct {
+            err: &std::io::Error::new(std::io::ErrorKind::Other, "lol"),
+        };
         let fields = TEST_META_1.fields();
-        let err: Box<dyn std::error::Error + Send + Sync + 'static> =
-            std::io::Error::new(std::io::ErrorKind::Other, "lol").into();
-        let values = &[
-            (&fields.field("foo").unwrap(), Some(&err as &dyn Value)),
-            (&fields.field("bar").unwrap(), Some(&Empty as &dyn Value)),
-            (&fields.field("baz").unwrap(), Some(&Empty as &dyn Value)),
-        ];
-        let valueset = fields.value_set(values);
-        let mut result = String::new();
-        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
-        });
-        assert_eq!(result, format!("{}", err));
+
+        let valueset = fields.value_set(&err_struct);
+        let mut visitor = WriteErrorToStringVisitor {
+            result: String::new(),
+        };
+        valueset.record(&mut visitor);
+        assert_eq!(visitor.result, format!("{}", err_struct.err));
     }
 }

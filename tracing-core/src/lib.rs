@@ -210,6 +210,7 @@ macro_rules! identify_callsite {
 /// # use tracing_core::{callsite::Callsite, collect::Interest};
 /// use tracing_core::metadata;
 /// use tracing_core::metadata::{Kind, Level, Metadata};
+/// use valuable::NamedField;
 /// # fn main() {
 /// # pub struct MyCallsite { }
 /// # impl Callsite for MyCallsite {
@@ -217,6 +218,9 @@ macro_rules! identify_callsite {
 /// # fn metadata(&self) -> &Metadata { unimplemented!() }
 /// # }
 /// #
+/// const BAR: NamedField = NamedField::new("bar");
+/// const BAZ: NamedField = NamedField::new("baz");
+///
 /// static FOO_CALLSITE: MyCallsite = MyCallsite {
 ///     // ...
 /// };
@@ -225,7 +229,7 @@ macro_rules! identify_callsite {
 ///     name: "foo",
 ///     target: module_path!(),
 ///     level: Level::DEBUG,
-///     fields: &["bar", "baz"],
+///     fields: &[BAR, BAZ],
 ///     callsite: &FOO_CALLSITE,
 ///     kind: Kind::SPAN,
 /// };
