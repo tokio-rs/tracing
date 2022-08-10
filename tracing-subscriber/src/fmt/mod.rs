@@ -476,6 +476,7 @@ where
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtCollector`.
+    #[must_use = "you may want to use `try_init` or similar to actually install the collector."]
     pub fn finish(self) -> Collector<N, E, F, W> {
         let collector = self.inner.with_collector(Registry::default());
         Collector {
