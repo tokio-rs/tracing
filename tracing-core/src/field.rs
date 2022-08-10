@@ -1069,11 +1069,6 @@ mod test {
             result: String::new(),
         };
         valueset.record(&mut visitor);
-        // valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-        //     use core::fmt::Write;
-        //     write!(&mut result, "{:?}", value).unwrap();
-        // });
-
         assert_eq!(visitor.result, String::from("123"));
     }
 
