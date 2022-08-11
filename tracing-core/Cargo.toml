@@ -39,7 +39,7 @@ once_cell = { version = "1.13.0", optional = true }
 valuable = { git = "https://github.com/bryangarza/valuable", branch = "partialeq-namedfield" }
 
 [dev-dependencies]
-valuable = { path = "../../valuable/valuable", features = ["derive"] }
+valuable = { git = "https://github.com/bryangarza/valuable", branch = "partialeq-namedfield", features = ["derive"] }
 
 [package.metadata.docs.rs]
 all-features = true
