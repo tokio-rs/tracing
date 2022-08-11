@@ -50,7 +50,7 @@ To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 ```
 
 Then create and install a collector, for example using [`init()`]:
