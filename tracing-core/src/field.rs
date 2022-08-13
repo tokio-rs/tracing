@@ -258,10 +258,12 @@ pub trait Value: crate::sealed::Sealed {
 /// Uses `record_debug` in the `Value` implementation to
 /// avoid an unnecessary evaluation.
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct DisplayValue<T: fmt::Display>(T);
 
 /// A `Value` which serializes as a string using `fmt::Debug`.
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
@@ -280,6 +282,16 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+/// Wraps a type behind a refererence implementing `fmt::Debug` as a
+/// `Value` that can be recorded using its `Debug` implementation.
+pub fn debug_ref<T>(t: &T) -> &DebugValue<T>
+where
+    T: fmt::Debug,
+{
+    // SAFETY: DebugValue is a repr(transparent) wrapper of T
+    unsafe { &*(t as *const T as *const DebugValue<T>) }
 }
 
 // ===== impl Visit =====

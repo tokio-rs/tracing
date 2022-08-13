@@ -2395,6 +2395,16 @@ macro_rules! fieldset {
 
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __tracing_capture_value {
+    ($e:expr) => {{
+        #[allow(unused_imports)]
+        use $crate::__macro_support::__tracing_capture_value_by::*;
+        (&&$e).__tracing_capture_value()
+    }};
+}
+
 #[cfg(feature = "log")]
 #[doc(hidden)]
 #[macro_export]
