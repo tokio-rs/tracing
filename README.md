@@ -241,7 +241,7 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
