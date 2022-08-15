@@ -411,7 +411,7 @@ impl RecordType {
                 RecordType::Value
             }
             syn::Type::Reference(syn::TypeReference { elem, .. }) => {
-                RecordType::parse_from_ty(&*elem)
+                RecordType::parse_from_ty(elem)
             }
             _ => RecordType::Debug,
         }
