@@ -86,7 +86,7 @@ pub struct Args {
     server_addr: SocketAddr,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum LogFormat {
     Plain,
     Json,
