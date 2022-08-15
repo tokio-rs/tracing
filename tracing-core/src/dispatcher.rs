@@ -631,14 +631,14 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        <dyn Subscriber>::is::<T>(&*self.subscriber)
+        <dyn Subscriber>::is::<T>(&self.subscriber)
     }
 
     /// Returns some reference to the `Subscriber` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        <dyn Subscriber>::downcast_ref(&*self.subscriber)
+        <dyn Subscriber>::downcast_ref(&self.subscriber)
     }
 }
 
