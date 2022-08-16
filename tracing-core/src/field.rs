@@ -36,7 +36,8 @@
 //! [`record`]: super::collect::Collect::record
 //! [`event`]:  super::collect::Collect::event
 use valuable::{
-    NamedField, NamedValues, Structable, Value as ValuableValue, Visit as ValuableVisit,
+    Fields, NamedField, NamedValues, StructDef, Structable, Value as ValuableValue,
+    Visit as ValuableVisit,
 };
 
 use crate::callsite;
@@ -879,45 +880,30 @@ impl<'a> ValueSet<'a> {
         self.values.visit(visitor);
     }
 
-    /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
+    /// Returns `true` if the top level of this `ValueSet` contains a value for
+    /// the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite() && {
-            let mut visitor = KeyContainsVisitor {
-                field: NamedField::new(field.name()),
-                res: false,
-            };
-            self.values.visit(&mut visitor);
-            visitor.res
+        if let StructDef::Static { fields, .. } = self.values.definition() {
+            if let Fields::Named(named_fields) = fields {
+                for named_field in named_fields.into_iter() {
+                    if named_field.name() == field.name() {
+                        return true;
+                    }
+                }
+            }
         }
+        false
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub(crate) fn is_empty(&self) -> bool {
-        let mut visitor = IsEmptyVisitor { res: false };
+        let mut visitor = IsEmptyVisitor { res: true };
         self.values.visit(&mut visitor);
         visitor.res
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
         self.fields
-    }
-}
-
-struct KeyContainsVisitor<'a> {
-    field: NamedField<'a>,
-    res: bool,
-}
-
-impl ValuableVisit for KeyContainsVisitor<'_> {
-    fn visit_named_fields(&mut self, named_values: &NamedValues<'_>) {
-        self.res = named_values.iter().any(|(key, _val)| *key == self.field)
-    }
-
-    fn visit_value(&mut self, value: ValuableValue<'_>) {
-        match value {
-            ValuableValue::Structable(v) => v.visit(self),
-            _ => {} // do nothing for other types
-        }
     }
 }
 
@@ -1027,6 +1013,27 @@ mod test {
         }
     }
 
+    struct TestCallsiteEmpty;
+    static TEST_CALLSITE_EMPTY: TestCallsiteEmpty = TestCallsiteEmpty;
+    static TEST_META_EMPTY: Metadata<'static> = metadata! {
+        name: "field_test_empty",
+        target: module_path!(),
+        level: Level::INFO,
+        fields: &[],
+        callsite: &TEST_CALLSITE_EMPTY,
+        kind: Kind::SPAN,
+    };
+
+    impl crate::callsite::Callsite for TestCallsiteEmpty {
+        fn set_interest(&self, _: crate::collect::Interest) {
+            unimplemented!()
+        }
+
+        fn metadata(&self) -> &Metadata<'_> {
+            &TEST_META_2
+        }
+    }
+
     struct WriteToStringVisitor {
         result: String,
     }
@@ -1045,6 +1052,90 @@ mod test {
                 _ => {} // do nothing for other types
             }
         }
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn value_set_contains_true() {
+        let fields = TEST_META_1.fields();
+        #[derive(Valuable)]
+        struct MyStruct {
+            foo: u32,
+            bar: u32,
+            baz: u32,
+        }
+
+        let my_struct = MyStruct {
+            foo: 1,
+            bar: 2,
+            baz: 3,
+        };
+
+        let valueset = fields.value_set(&my_struct);
+        let field = Field {
+            i: 0,
+            fields: FieldSet::new(fields.names, crate::identify_callsite!(&TEST_CALLSITE_1)),
+        };
+        assert!(valueset.contains(&field));
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn value_set_contains_false() {
+        let fields = TEST_META_2.fields();
+        #[derive(Valuable)]
+        struct MyStruct {
+            foo1: u32,
+            bar1: u32,
+            baz1: u32,
+        }
+
+        let my_struct = MyStruct {
+            foo1: 1,
+            bar1: 2,
+            baz1: 3,
+        };
+
+        let valueset = fields.value_set(&my_struct);
+        let field = Field {
+            i: 0,
+            fields: FieldSet::new(fields.names, crate::identify_callsite!(&TEST_CALLSITE_1)),
+        };
+        assert!(!valueset.contains(&field));
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn value_set_is_empty() {
+        let fields = TEST_META_EMPTY.fields();
+        #[derive(Valuable)]
+        struct MyStruct;
+
+        let my_struct = MyStruct;
+
+        let valueset = fields.value_set(&my_struct);
+        assert!(valueset.is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn value_set_is_not_empty() {
+        let fields = TEST_META_1.fields();
+        #[derive(Valuable)]
+        struct MyStruct {
+            foo: u32,
+            bar: u32,
+            baz: u32,
+        }
+
+        let my_struct = MyStruct {
+            foo: 1,
+            bar: 2,
+            baz: 3,
+        };
+
+        let valueset = fields.value_set(&my_struct);
+        assert!(!valueset.is_empty());
     }
 
     #[test]
