@@ -36,10 +36,10 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 once_cell = { version = "1.13.0", optional = true }
-valuable = { git = "https://github.com/bryangarza/valuable", branch = "partialeq-namedfield" }
+valuable = "0.1.0"
 
 [dev-dependencies]
-valuable = { git = "https://github.com/bryangarza/valuable", branch = "partialeq-namedfield", features = ["derive"] }
+valuable = { version = "0.1.0", features = ["derive"] }
 
 [package.metadata.docs.rs]
 all-features = true
