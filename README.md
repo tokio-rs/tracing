@@ -50,7 +50,7 @@ To use `tracing-subscriber`, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 ```
 
 Then create and install a collector, for example using [`init()`]:
@@ -243,7 +243,7 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
@@ -405,6 +405,7 @@ are not maintained by the `tokio` project. These include:
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
+- [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -443,6 +444,7 @@ please let us know!)
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
 [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
+[`tracing-chrome`]: https://crates.io/crates/tracing-chrome
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
