@@ -4,6 +4,11 @@ use tracing_core::{
     metadata,
     metadata::{Kind, Level, Metadata},
 };
+use valuable::NamedField;
+
+const FOO: NamedField = NamedField::new("foo");
+const BAR: NamedField = NamedField::new("bar");
+const BAZ: NamedField = NamedField::new("baz");
 
 #[test]
 fn metadata_macro_api() {
@@ -25,7 +30,7 @@ fn metadata_macro_api() {
         name: "test_metadata",
         target: "test_target",
         level: Level::DEBUG,
-        fields: &["foo", "bar", "baz"],
+        fields: &[FOO, BAR, BAZ],
         callsite: &CALLSITE,
         kind: Kind::SPAN,
     };

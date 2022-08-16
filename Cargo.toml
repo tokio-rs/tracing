@@ -18,3 +18,6 @@ members = [
     "tracing-journald",
     "examples"
 ]
+
+[patch.crates-io]
+valuable = { git = "https://github.com/bryangarza/valuable", branch = "partialeq-namedfield" }

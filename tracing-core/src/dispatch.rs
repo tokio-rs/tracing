@@ -960,6 +960,7 @@ mod test {
         collect::Interest,
         metadata::{Kind, Level, Metadata},
     };
+    use valuable::Valuable;
 
     #[test]
     fn dispatch_is() {
@@ -994,6 +995,8 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn events_dont_infinite_loop() {
+        #[derive(Valuable)]
+        struct EmptyStruct;
         // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
         struct TestCollector;
@@ -1017,7 +1020,7 @@ mod test {
                     0,
                     "event method called twice!"
                 );
-                Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
+                Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
             }
 
             fn enter(&self, _: &span::Id) {}
@@ -1030,13 +1033,16 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestCollector), || {
-            Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
+            Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
         })
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn spans_dont_infinite_loop() {
+        #[derive(Valuable)]
+        struct EmptyStruct;
+
         // This test ensures that a span created within a collector
         // won't cause an infinite loop of new spans.
 
@@ -1044,7 +1050,7 @@ mod test {
             get_default(|current| {
                 current.new_span(&span::Attributes::new(
                     &TEST_META,
-                    &TEST_META.fields().value_set(&[]),
+                    &TEST_META.fields().value_set(&EmptyStruct),
                 ))
             });
         }
