@@ -12,6 +12,15 @@ use tracing::{
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn span_with_reserved_name() {
+    let debug = 1;
+    let display = 1;
+    span!(target: "foo_events", Level::DEBUG, "foo", debug);
+    span!(target: "foo_events", Level::DEBUG, "foo", display);
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn span() {
     span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4);
     span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 3);

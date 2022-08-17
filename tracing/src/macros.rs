@@ -2196,14 +2196,14 @@ macro_rules! valueset {
     // };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &Value)) },
             $next,
             $($rest)*
         )
@@ -2224,27 +2224,27 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$($k).+) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &Value)) },
             $next,
         )
     };
@@ -2262,13 +2262,13 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$($k).+) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$($k).+) as &Value)) },
             $next,
         )
     };
@@ -2276,14 +2276,14 @@ macro_rules! valueset {
     // Handle literal names
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &Value)) },
             $next,
             $($rest)*
         )
@@ -2297,13 +2297,13 @@ macro_rules! valueset {
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &Value)) },
             $next,
         )
     };
@@ -2323,7 +2323,7 @@ macro_rules! valueset {
     ($fields:expr, $($kvs:tt)+) => {
         {
             #[allow(unused_imports)]
-            use $crate::field::{debug, display, Value};
+            use $crate::field::Value;
             let mut iter = $fields.iter();
             $fields.value_set($crate::valueset!(
                 @ { },
