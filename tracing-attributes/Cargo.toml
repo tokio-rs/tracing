@@ -50,6 +50,8 @@ tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", featur
 tokio-test = { version = "0.3.0" }
 tracing-core = { path = "../tracing-core", version = "0.1.28"}
 async-trait = "0.1.56"
+trybuild = "1.0.64"
+rustversion = "1.0.9"
 
 [badges]
 maintenance = { status = "experimental" }
