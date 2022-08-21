@@ -429,7 +429,7 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
-[`tracing-web`]: https://docs.rs/tracing-web
+[`tracing-web`]: https://crates.io/crates/tracing-web
 [`test-log`]: https://crates.io/crates/test-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
