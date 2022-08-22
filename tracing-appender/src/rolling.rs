@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -106,6 +106,7 @@ struct Inner {
     log_filename_suffix: Option<String>,
     rotation: Rotation,
     next_date: AtomicUsize,
+    keep_last: Option<usize>,
 }
 
 // === impl RollingFileAppender ===
@@ -150,6 +151,13 @@ impl RollingFileAppender {
             .filename_prefix(filename_prefix)
             .build(directory)
             .expect("initializing rolling file appender failed")
+    }
+
+    /// Keep the last `n` log entries on disk.
+    ///
+    /// If no value is supplied, `RollingAppender` will not remove any files.
+    pub fn keep_last_n_logs(&mut self, n: usize) {
+        self.state.keep_last = Some(n);
     }
 
     /// Returns a new [`Builder`] for configuring a `RollingFileAppender`.
@@ -558,8 +566,77 @@ impl Inner {
                     .unwrap_or(0),
             ),
             rotation,
+            keep_last: None,
         };
         Ok((inner, writer))
+    }
+
+    fn prune_old_logs(&self, keep_last: usize) {
+        let format;
+        match self.rotation {
+            Rotation::MINUTELY => {
+                format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::HOURLY => {
+                format = format_description::parse("[year]-[month]-[day]-[hour]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::DAILY => {
+                format = format_description::parse("[year]-[month]-[day]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::NEVER => {
+                unreachable!("keep last N files feature is not available for `Rotation::NEVER`!")
+            }
+        }
+
+        let files = fs::read_dir(&self.log_directory).map(|dir| {
+            dir.filter_map(Result::ok)
+                .filter(|entry| {
+                    entry.file_name().to_string_lossy().contains(
+                        &self
+                            .log_filename_prefix
+                            .clone()
+                            .expect("prefix is always present"),
+                    )
+                })
+                .collect::<Vec<_>>()
+        });
+
+        match files {
+            Ok(files) => {
+                if files.len() >= keep_last {
+                    let mut sorted_files = vec![];
+                    for file in files {
+                        let filename = file.file_name().to_string_lossy().to_string();
+                        match filename.rfind('.') {
+                            Some(date_index) => {
+                                let date_str = filename[(date_index + 1)..].to_string();
+                                match Date::parse(&date_str, &format) {
+                                    Ok(date) => sorted_files.push((file.path(), date)),
+                                    Err(error) => eprintln!("error parsing the date: {error}"),
+                                }
+                            }
+                            None => {
+                                eprintln!("Filename do not meet the expected format!");
+                                continue;
+                            }
+                        }
+                    }
+                    sorted_files.sort_by_key(|item| item.1);
+                    // delete files, so that (n-1) files remain, because we will create another log file
+                    for (file, _) in &sorted_files[..sorted_files.len() - (keep_last - 1)] {
+                        if let Err(error) = fs::remove_file(file) {
+                            eprintln!("Failed to remove old log file: {error}");
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("Error reading the log directory/files: {error}")
+            }
+        }
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
@@ -568,6 +645,10 @@ impl Inner {
             &now,
             self.log_filename_suffix.as_deref(),
         );
+
+        if let Some(keep_last) = self.keep_last {
+            self.prune_old_logs(keep_last);
+        }
 
         match create_writer(&self.log_directory, &filename) {
             Ok(new_file) => {
