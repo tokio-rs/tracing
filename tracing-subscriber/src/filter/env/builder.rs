@@ -282,7 +282,7 @@ impl Builder {
             };
             let (feature, earlier_level) = help_msg();
             ctx_help(&format!(
-                "to enable {}logging, remove the `{}` feature",
+                "to enable {}logging, remove the `{}` feature from the `tracing` crate",
                 earlier_level, feature
             ));
         }
