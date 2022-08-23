@@ -1,5 +1,5 @@
-//! Subscribers collect and record trace data.
-use crate::{span, Event, LevelFilter, Metadata};
+//! Collectors collect and record trace data.
+use crate::{span, Dispatch, Event, LevelFilter, Metadata};
 
 use crate::stdlib::{
     any::{Any, TypeId},
@@ -81,7 +81,10 @@ use crate::stdlib::{
 /// [`event`]: Subscriber::event
 /// [`event_enabled`]: Subscriber::event_enabled
 pub trait Subscriber: 'static {
-    // === Span registry methods ==============================================
+    /// Invoked when this subscriber becomes a [`Dispatch`].
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        let _ = subscriber;
+    }
 
     /// Registers a new [callsite] with this subscriber, returning whether or not
     /// the subscriber is interested in being notified about the callsite.
