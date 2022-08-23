@@ -1,9 +1,4 @@
-use tracing_core::{
-    metadata::Metadata,
-    span,
-    subscriber::{Interest, Subscriber},
-    Event, LevelFilter,
-};
+use tracing_core::{metadata::Metadata, span, Dispatch, Event, Interest, LevelFilter, Subscriber};
 
 use crate::{
     filter,
@@ -245,6 +240,11 @@ where
     B: Layer<S>,
     S: Subscriber,
 {
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        self.layer.on_register_dispatch(subscriber);
+        self.inner.on_register_dispatch(subscriber);
+    }
+
     fn on_layer(&mut self, subscriber: &mut S) {
         self.layer.on_layer(subscriber);
         self.inner.on_layer(subscriber);

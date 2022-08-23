@@ -430,8 +430,23 @@ impl Dispatch {
         Registrar(Arc::downgrade(&self.subscriber))
     }
 
-    /// Registers a new callsite with this subscriber, returning whether or not
-    /// the subscriber is interested in being notified about the callsite.
+    #[inline(always)]
+    #[cfg(feature = "alloc")]
+    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
+        match self.subscriber {
+            Kind::Scoped(ref s) => Arc::deref(s),
+            Kind::Global(s) => s,
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(not(feature = "alloc"))]
+    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
+        &self.subscriber
+    }
+
+    /// Registers a new callsite with this collector, returning whether or not
+    /// the collector is interested in being notified about the callsite.
     ///
     /// This calls the [`register_callsite`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
