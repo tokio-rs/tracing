@@ -30,7 +30,7 @@ use std::{
 use tracing_core::{
     callsite,
     collect::{Collect, Interest},
-    span, Event, LevelFilter, Metadata,
+    span, Dispatch, Event, LevelFilter, Metadata,
 };
 
 /// Wraps a `Filter` or `Subscribe`, allowing it to be reloaded dynamically at runtime.
@@ -71,6 +71,10 @@ where
     S: crate::Subscribe<C> + 'static,
     C: Collect,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        try_lock!(self.inner.read()).on_register_dispatch(collector);
+    }
+
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)

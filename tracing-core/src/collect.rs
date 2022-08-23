@@ -1,5 +1,5 @@
 //! Collectors collect and record trace data.
-use crate::{span, Event, LevelFilter, Metadata};
+use crate::{span, Dispatch, Event, LevelFilter, Metadata};
 
 use core::any::{Any, TypeId};
 use core::ptr::NonNull;
@@ -78,6 +78,11 @@ use core::ptr::NonNull;
 /// [`event`]: Collect::event
 /// [`event_enabled`]: Collect::event_enabled
 pub trait Collect: 'static {
+    /// Invoked when this collector becomes a [`Dispatch`].
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        let _ = collector;
+    }
+
     // === Span registry methods ==============================================
 
     /// Registers a new [callsite] with this collector, returning whether or not
