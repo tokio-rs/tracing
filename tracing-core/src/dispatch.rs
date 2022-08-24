@@ -652,7 +652,7 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     /// [`record`]: super::collect::Collect::record
     #[inline]
-    pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    pub fn record(&self, span: &span::Id, values: valuable::NamedValues<'_>) {
         self.collector().record(span, values)
     }
 
@@ -995,8 +995,8 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn events_dont_infinite_loop() {
-        #[derive(Valuable)]
-        struct EmptyStruct;
+        const EMPTY_VALUES: valuable::NamedValues<'static> = valuable::NamedValues::new(&[], &[]);
+
         // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
         struct TestCollector;
@@ -1009,7 +1009,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
@@ -1020,7 +1020,7 @@ mod test {
                     0,
                     "event method called twice!"
                 );
-                Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
+                Event::dispatch(&TEST_META, EMPTY_VALUES)
             }
 
             fn enter(&self, _: &span::Id) {}
@@ -1033,15 +1033,14 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestCollector), || {
-            Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
+            Event::dispatch(&TEST_META, EMPTY_VALUES)
         })
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn spans_dont_infinite_loop() {
-        #[derive(Valuable)]
-        struct EmptyStruct;
+        const EMPTY_VALUES: valuable::NamedValues<'static> = valuable::NamedValues::new(&[], &[]);
 
         // This test ensures that a span created within a collector
         // won't cause an infinite loop of new spans.
@@ -1050,7 +1049,7 @@ mod test {
             get_default(|current| {
                 current.new_span(&span::Attributes::new(
                     &TEST_META,
-                    &TEST_META.fields().value_set(&EmptyStruct),
+                    EMPTY_VALUES,
                 ))
             });
         }
@@ -1072,7 +1071,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
@@ -1109,7 +1108,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 

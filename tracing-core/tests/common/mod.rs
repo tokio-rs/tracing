@@ -8,7 +8,7 @@ impl Collect for TestCollectorA {
     fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
         span::Id::from_u64(1)
     }
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+    fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}
@@ -25,7 +25,7 @@ impl Collect for TestCollectorB {
     fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
         span::Id::from_u64(1)
     }
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+    fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
     fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
     fn event(&self, _: &Event<'_>) {}
     fn enter(&self, _: &span::Id) {}

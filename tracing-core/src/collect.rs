@@ -271,7 +271,7 @@ pub trait Collect: 'static {
     /// [visitor]: super::field::Visit
     /// [`record`]: super::span::Attributes::record
     /// [`record` method]: super::span::Record::record
-    fn record(&self, span: &span::Id, values: &span::Record<'_>);
+    fn record(&self, span: &span::Id, values: valuable::NamedValues<'_>);
 
     /// Adds an indication that `span` follows from the span with the id
     /// `follows`.
@@ -652,7 +652,7 @@ impl Collect for NoCollector {
 
     fn event(&self, _event: &Event<'_>) {}
 
-    fn record(&self, _span: &span::Id, _values: &span::Record<'_>) {}
+    fn record(&self, _span: &span::Id, _values: valuable::NamedValues<'_>) {}
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
@@ -695,7 +695,7 @@ where
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    fn record(&self, span: &span::Id, values: valuable::NamedValues<'_>) {
         self.as_ref().record(span, values)
     }
 
@@ -774,7 +774,7 @@ where
     }
 
     #[inline]
-    fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    fn record(&self, span: &span::Id, values: valuable::NamedValues<'_>) {
         self.as_ref().record(span, values)
     }
 

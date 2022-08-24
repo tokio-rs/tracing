@@ -272,7 +272,7 @@ macro_rules! metadata {
             Some(file!()),
             Some(line!()),
             Some(module_path!()),
-            $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
+            $fields,
             $kind,
         )
     };
@@ -296,7 +296,6 @@ pub mod callsite;
 pub mod collect;
 pub mod dispatch;
 pub mod event;
-pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
@@ -307,7 +306,6 @@ pub use self::{
     collect::Collect,
     dispatch::Dispatch,
     event::Event,
-    field::Field,
     metadata::{Level, LevelFilter, Metadata},
 };
 

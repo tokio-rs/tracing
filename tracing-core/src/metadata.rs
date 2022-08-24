@@ -1,5 +1,6 @@
 //! Metadata describing trace data.
-use super::{callsite, field};
+use valuable::NamedField;
+
 use core::{
     cmp, fmt,
     str::FromStr,
@@ -79,7 +80,7 @@ pub struct Metadata<'a> {
 
     /// The names of the key-value fields attached to the described span or
     /// event.
-    fields: field::FieldSet,
+    fields: &'a [NamedField<'a>],
 
     /// The kind of the callsite.
     kind: Kind,
@@ -258,7 +259,7 @@ impl<'a> Metadata<'a> {
         file: Option<&'a str>,
         line: Option<u32>,
         module_path: Option<&'a str>,
-        fields: field::FieldSet,
+        fields: &'a [NamedField<'a>],
         kind: Kind,
     ) -> Self {
         Metadata {
@@ -274,7 +275,7 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the names of the fields on the described span or event.
-    pub fn fields(&self) -> &field::FieldSet {
+    pub fn fields(&self) -> &[NamedField<'_>] {
         &self.fields
     }
 
@@ -315,13 +316,6 @@ impl<'a> Metadata<'a> {
         self.line
     }
 
-    /// Returns an opaque `Identifier` that uniquely identifies the callsite
-    /// this `Metadata` originated from.
-    #[inline]
-    pub fn callsite(&self) -> callsite::Identifier {
-        self.fields.callsite()
-    }
-
     /// Returns true if the callsite kind is `Event`.
     pub fn is_event(&self) -> bool {
         self.kind.is_event()
@@ -359,8 +353,7 @@ impl<'a> fmt::Debug for Metadata<'a> {
             (None, None) => {}
         };
 
-        meta.field("fields", &format_args!("{}", self.fields))
-            .field("callsite", &self.callsite())
+        meta.field("fields", &format_args!("{:?}", self.fields))
             .field("kind", &self.kind)
             .finish()
     }
@@ -448,15 +441,7 @@ impl<'a> PartialEq for Metadata<'a> {
     fn eq(&self, other: &Self) -> bool {
         if core::ptr::eq(&self, &other) {
             true
-        } else if cfg!(not(debug_assertions)) {
-            // In a well-behaving application, two `Metadata` can be assumed to
-            // be totally equal so long as they share the same callsite.
-            self.callsite() == other.callsite()
         } else {
-            // However, when debug-assertions are enabled, do not assume that
-            // the application is well-behaving; check every field of `Metadata`
-            // for equality.
-
             // `Metadata` is destructured here to ensure a compile-error if the
             // fields of `Metadata` change.
             let Metadata {
@@ -481,10 +466,10 @@ impl<'a> PartialEq for Metadata<'a> {
                 kind: rhs_kind,
             } = &other;
 
-            // The initial comparison of callsites is purely an optimization;
+            // The initial comparison of fields is purely an optimization;
             // it can be removed without affecting the overall semantics of the
             // expression.
-            self.callsite() == other.callsite()
+            lhs_fields == rhs_fields
                 && lhs_name == rhs_name
                 && lhs_target == rhs_target
                 && lhs_level == rhs_level
