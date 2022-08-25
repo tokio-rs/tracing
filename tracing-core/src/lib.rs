@@ -166,43 +166,6 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-/// Statically constructs an [`Identifier`] for the provided [`Callsite`].
-///
-/// This may be used in contexts, such as static initializers, where the
-/// [`Metadata::callsite`] function is not currently usable.
-///
-/// For example:
-/// ```rust
-/// use tracing_core::{callsite, identify_callsite};
-/// # use tracing_core::{Metadata, collect::Interest};
-/// # fn main() {
-/// pub struct MyCallsite {
-///    // ...
-/// }
-/// impl callsite::Callsite for MyCallsite {
-/// # fn set_interest(&self, _: Interest) { unimplemented!() }
-/// # fn metadata(&self) -> &Metadata { unimplemented!() }
-///     // ...
-/// }
-///
-/// static CALLSITE: MyCallsite = MyCallsite {
-///     // ...
-/// };
-///
-/// static CALLSITE_ID: callsite::Identifier = identify_callsite!(&CALLSITE);
-/// # }
-/// ```
-///
-/// [`Identifier`]: callsite::Identifier
-/// [`Callsite`]: callsite::Callsite
-/// [`Metadata::callsite`]: metadata::Metadata::callsite
-#[macro_export]
-macro_rules! identify_callsite {
-    ($callsite:expr) => {
-        $crate::callsite::Identifier($callsite)
-    };
-}
-
 /// Statically constructs new span [metadata].
 ///
 /// /// For example:
@@ -273,6 +236,7 @@ macro_rules! metadata {
             Some(line!()),
             Some(module_path!()),
             $fields,
+            $callsite,
             $kind,
         )
     };
@@ -310,7 +274,3 @@ pub use self::{
 };
 
 pub use self::{collect::Interest, metadata::Kind};
-
-mod sealed {
-    pub trait Sealed {}
-}

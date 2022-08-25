@@ -132,18 +132,7 @@ pub trait Callsite: Sync {
 ///
 /// [`Callsite`]: super::callsite::Callsite
 #[derive(Clone)]
-pub struct Identifier(
-    /// **Warning**: The fields on this type are currently `pub` because it must
-    /// be able to be constructed statically by macros. However, when `const
-    /// fn`s are available on stable Rust, this will no longer be necessary.
-    /// Thus, these fields are *not* considered stable public API, and they may
-    /// change warning. Do not rely on any fields on `Identifier`. When
-    /// constructing new `Identifier`s, use the `identify_callsite!` macro or
-    /// the `Callsite::id` function instead.
-    // TODO: When `Callsite::id` is a const fn, this need no longer be `pub`.
-    #[doc(hidden)]
-    pub &'static dyn Callsite,
-);
+pub struct Identifier(pub(crate) &'static dyn Callsite);
 
 /// A registration with the callsite registry.
 ///

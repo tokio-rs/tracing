@@ -109,7 +109,10 @@ impl<'a> Attributes<'a> {
 
     /// Returns `Attributes` describing a new span at the root of its own trace
     /// tree, with the provided metadata and values.
-    pub fn new_root(metadata: &'static Metadata<'static>, values: valuable::NamedValues<'a>) -> Self {
+    pub fn new_root(
+        metadata: &'static Metadata<'static>,
+        values: valuable::NamedValues<'a>,
+    ) -> Self {
         Attributes {
             metadata,
             values,
@@ -138,8 +141,8 @@ impl<'a> Attributes<'a> {
 
     /// Returns a reference to a `ValueSet` containing any values the new span
     /// was created with.
-    pub fn values(&self) -> valuable::NamedValues<'a> {
-        self.values
+    pub fn values(&self) -> &valuable::NamedValues<'a> {
+        &self.values
     }
 
     /// Returns true if the new span should be a root.
@@ -201,7 +204,7 @@ impl<'a> Attributes<'a> {
     /// [`FieldSet`]: crate::field::FieldSet
     pub fn fields(&self) -> &[valuable::NamedField<'_>] {
         // TODO, this method doesn't exist yet:
-        self.values.fields()
+        todo!("self.values.fields()")
     }
 }
 

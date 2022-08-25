@@ -1,5 +1,5 @@
 //! Metadata describing trace data.
-use valuable::NamedField;
+use super::callsite;
 
 use core::{
     cmp, fmt,
@@ -56,6 +56,9 @@ use core::{
 /// [collector]: super::collect::Collect
 /// [callsite identifiers]: Self::callsite
 pub struct Metadata<'a> {
+    /// Uniquely identifies the callsite associated with this metadata.
+    pub(crate) callsite: callsite::Identifier,
+
     /// The name of the span described by this metadata.
     name: &'static str,
 
@@ -80,7 +83,7 @@ pub struct Metadata<'a> {
 
     /// The names of the key-value fields attached to the described span or
     /// event.
-    fields: &'a [NamedField<'a>],
+    fields: &'a [valuable::NamedField<'a>],
 
     /// The kind of the callsite.
     kind: Kind,
@@ -151,7 +154,7 @@ pub struct Kind(u8);
 ///
 /// ```
 /// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata};
-/// # use tracing_core::span::{Id, Record, Current};
+/// # use tracing_core::span::{Id, Current};
 ///
 /// #[derive(Debug)]
 /// pub struct MyCollector {
@@ -201,7 +204,7 @@ pub struct Kind(u8);
 ///     // ...
 ///     # fn enter(&self, _: &Id) {}
 ///     # fn exit(&self, _: &Id) {}
-///     # fn record(&self, _: &Id, _: &Record<'_>) {}
+///     # fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
 ///     # fn record_follows_from(&self, _: &Id, _: &Id) {}
 ///     # fn current_span(&self) -> Current { Current::unknown() }
 /// }
@@ -259,9 +262,11 @@ impl<'a> Metadata<'a> {
         file: Option<&'a str>,
         line: Option<u32>,
         module_path: Option<&'a str>,
-        fields: &'a [NamedField<'a>],
+        fields: &'a [valuable::NamedField<'a>],
+        callsite: &'static dyn callsite::Callsite,
         kind: Kind,
     ) -> Self {
+        let callsite = callsite::Identifier(callsite);
         Metadata {
             name,
             target,
@@ -270,12 +275,13 @@ impl<'a> Metadata<'a> {
             file,
             line,
             fields,
+            callsite,
             kind,
         }
     }
 
     /// Returns the names of the fields on the described span or event.
-    pub fn fields(&self) -> &[NamedField<'_>] {
+    pub fn fields(&self) -> &[valuable::NamedField<'_>] {
         &self.fields
     }
 
@@ -314,6 +320,13 @@ impl<'a> Metadata<'a> {
     /// occurred, or `None` if the line number is unknown.
     pub fn line(&self) -> Option<u32> {
         self.line
+    }
+
+    /// Returns an opaque `Identifier` that uniquely identifies the callsite
+    /// this `Metadata` originated from.
+    #[inline]
+    pub const fn callsite(&self) -> callsite::Identifier {
+        callsite::Identifier(self.callsite.0)
     }
 
     /// Returns true if the callsite kind is `Event`.
@@ -452,6 +465,7 @@ impl<'a> PartialEq for Metadata<'a> {
                 file: lhs_file,
                 line: lhs_line,
                 fields: lhs_fields,
+                callsite: lhs_callsite,
                 kind: lhs_kind,
             } = self;
 
@@ -463,13 +477,14 @@ impl<'a> PartialEq for Metadata<'a> {
                 file: rhs_file,
                 line: rhs_line,
                 fields: rhs_fields,
+                callsite: rhs_callsite,
                 kind: rhs_kind,
             } = &other;
 
             // The initial comparison of fields is purely an optimization;
             // it can be removed without affecting the overall semantics of the
             // expression.
-            lhs_fields == rhs_fields
+            lhs_callsite == rhs_callsite
                 && lhs_name == rhs_name
                 && lhs_target == rhs_target
                 && lhs_level == rhs_level
