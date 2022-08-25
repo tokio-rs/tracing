@@ -7,7 +7,6 @@
 //! callsite is a small `static` value that is responsible for the following:
 //!
 //! * Storing the span or event's [`Metadata`],
-//! * Uniquely [identifying](Identifier) the span or event definition,
 //! * Caching the collector's [`Interest`][^1] in that span or event, to avoid
 //!   re-evaluating filters,
 //! * Storing a [`Registration`] that allows the callsite to be part of a global
@@ -116,23 +115,14 @@ pub trait Callsite: Sync {
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
-    /// **Note:** Implementations of this method should not produce [`Metadata`]
-    /// that share the same callsite [`Identifier`] but otherwise differ in any
-    /// way (e.g., have different `name`s).
+    /// **Note:** Implementations of this method should not produce different
+    /// [`Metadata`] in successive invocations of this method.
     ///
     /// </pre></div>
     ///
     /// [metadata]: super::metadata::Metadata
     fn metadata(&self) -> &Metadata<'_>;
 }
-
-/// Uniquely identifies a [`Callsite`]
-///
-/// Two `Identifier`s are equal if they both refer to the same callsite.
-///
-/// [`Callsite`]: super::callsite::Callsite
-#[derive(Clone)]
-pub struct Identifier(pub(crate) &'static dyn Callsite);
 
 /// A registration with the callsite registry.
 ///
@@ -339,31 +329,28 @@ mod inner {
     }
 }
 
-// ===== impl Identifier =====
+// ===== impl Callsite =====
 
-impl PartialEq for Identifier {
-    fn eq(&self, other: &Identifier) -> bool {
-        core::ptr::eq(
-            self.0 as *const _ as *const (),
-            other.0 as *const _ as *const (),
-        )
+impl PartialEq for dyn Callsite {
+    fn eq(&self, other: &Self) -> bool {
+        core::ptr::eq(self, other)
     }
 }
 
-impl Eq for Identifier {}
+impl Eq for dyn Callsite {}
 
-impl fmt::Debug for Identifier {
+impl fmt::Debug for dyn Callsite {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Identifier({:p})", self.0)
+        write!(f, "dyn Callsite({:p})", self)
     }
 }
 
-impl Hash for Identifier {
+impl Hash for dyn Callsite {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        (self.0 as *const dyn Callsite).hash(state)
+        (self as *const dyn Callsite).hash(state)
     }
 }
 

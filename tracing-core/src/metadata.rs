@@ -1,6 +1,4 @@
 //! Metadata describing trace data.
-use super::callsite;
-
 use core::{
     cmp, fmt,
     str::FromStr,
@@ -39,10 +37,8 @@ use core::{
 /// ## Equality
 ///
 /// In well-behaved applications, two `Metadata` with equal
-/// [callsite identifiers] will be equal in all other ways (i.e., have the same
-/// `name`, `target`, etc.). Consequently, in release builds, [`Metadata::eq`]
-/// *only* checks that its arguments have equal callsites. However, the equality
-/// of `Metadata`'s other fields is checked in debug builds.
+/// [callsites] will be equal in all other ways (i.e., have the same
+/// `name`, `target`, etc.).
 ///
 /// [span]: super::span
 /// [event]: super::event
@@ -54,10 +50,11 @@ use core::{
 /// [line number]: Self::line
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
-/// [callsite identifiers]: Self::callsite
+/// [callsites]: Self::callsite
+#[derive(Eq, PartialEq)]
 pub struct Metadata<'a> {
-    /// Uniquely identifies the callsite associated with this metadata.
-    pub(crate) callsite: callsite::Identifier,
+    /// The callsite associated with this metadata.
+    callsite: &'static dyn crate::Callsite,
 
     /// The name of the span described by this metadata.
     name: &'static str,
@@ -263,10 +260,9 @@ impl<'a> Metadata<'a> {
         line: Option<u32>,
         module_path: Option<&'a str>,
         fields: &'a [valuable::NamedField<'a>],
-        callsite: &'static dyn callsite::Callsite,
+        callsite: &'static dyn crate::Callsite,
         kind: Kind,
     ) -> Self {
-        let callsite = callsite::Identifier(callsite);
         Metadata {
             name,
             target,
@@ -322,11 +318,10 @@ impl<'a> Metadata<'a> {
         self.line
     }
 
-    /// Returns an opaque `Identifier` that uniquely identifies the callsite
-    /// this `Metadata` originated from.
+    /// Returns the callsite this `Metadata` originated from.
     #[inline]
-    pub const fn callsite(&self) -> callsite::Identifier {
-        callsite::Identifier(self.callsite.0)
+    pub const fn callsite(&self) -> &dyn crate::Callsite {
+        self.callsite
     }
 
     /// Returns true if the callsite kind is `Event`.
@@ -444,56 +439,6 @@ impl fmt::Debug for Kind {
         }
 
         f.write_str(")")
-    }
-}
-
-impl<'a> Eq for Metadata<'a> {}
-
-impl<'a> PartialEq for Metadata<'a> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if core::ptr::eq(&self, &other) {
-            true
-        } else {
-            // `Metadata` is destructured here to ensure a compile-error if the
-            // fields of `Metadata` change.
-            let Metadata {
-                name: lhs_name,
-                target: lhs_target,
-                level: lhs_level,
-                module_path: lhs_module_path,
-                file: lhs_file,
-                line: lhs_line,
-                fields: lhs_fields,
-                callsite: lhs_callsite,
-                kind: lhs_kind,
-            } = self;
-
-            let Metadata {
-                name: rhs_name,
-                target: rhs_target,
-                level: rhs_level,
-                module_path: rhs_module_path,
-                file: rhs_file,
-                line: rhs_line,
-                fields: rhs_fields,
-                callsite: rhs_callsite,
-                kind: rhs_kind,
-            } = &other;
-
-            // The initial comparison of fields is purely an optimization;
-            // it can be removed without affecting the overall semantics of the
-            // expression.
-            lhs_callsite == rhs_callsite
-                && lhs_name == rhs_name
-                && lhs_target == rhs_target
-                && lhs_level == rhs_level
-                && lhs_module_path == rhs_module_path
-                && lhs_file == rhs_file
-                && lhs_line == rhs_line
-                && lhs_fields == rhs_fields
-                && lhs_kind == rhs_kind
-        }
     }
 }
 
