@@ -232,6 +232,7 @@ mod inner {
         let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
 
+        dispatch.collector().on_register_dispatch(dispatch);
         dispatchers.push(dispatch.registrar());
 
         rebuild_interest(callsites, &mut dispatchers);
