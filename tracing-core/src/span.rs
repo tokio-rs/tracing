@@ -1,11 +1,8 @@
 //! Spans represent periods of time in the execution of a program.
 use core::num::NonZeroU64;
 
-use crate::field::FieldSet;
 use crate::parent::Parent;
-use crate::{field, Metadata};
-
-use valuable::Visit as ValuableVisit;
+use crate::Metadata;
 
 /// Identifies a span within the context of a collector.
 ///
@@ -23,14 +20,8 @@ pub struct Id(NonZeroU64);
 #[derive(Debug)]
 pub struct Attributes<'a> {
     metadata: &'static Metadata<'static>,
-    values: &'a field::ValueSet<'a>,
+    values: valuable::NamedValues<'a>,
     parent: Parent,
-}
-
-/// A set of fields recorded by a span.
-#[derive(Debug)]
-pub struct Record<'a> {
-    values: &'a field::ValueSet<'a>,
 }
 
 /// Indicates what [the collector considers] the "current" span.
@@ -108,7 +99,7 @@ impl<'a> From<&'a Id> for Option<Id> {
 impl<'a> Attributes<'a> {
     /// Returns `Attributes` describing a new child span of the current span,
     /// with the provided metadata and values.
-    pub fn new(metadata: &'static Metadata<'static>, values: &'a field::ValueSet<'a>) -> Self {
+    pub fn new(metadata: &'static Metadata<'static>, values: valuable::NamedValues<'a>) -> Self {
         Attributes {
             metadata,
             values,
@@ -118,7 +109,10 @@ impl<'a> Attributes<'a> {
 
     /// Returns `Attributes` describing a new span at the root of its own trace
     /// tree, with the provided metadata and values.
-    pub fn new_root(metadata: &'static Metadata<'static>, values: &'a field::ValueSet<'a>) -> Self {
+    pub fn new_root(
+        metadata: &'static Metadata<'static>,
+        values: valuable::NamedValues<'a>,
+    ) -> Self {
         Attributes {
             metadata,
             values,
@@ -131,7 +125,7 @@ impl<'a> Attributes<'a> {
     pub fn child_of(
         parent: Id,
         metadata: &'static Metadata<'static>,
-        values: &'a field::ValueSet<'a>,
+        values: valuable::NamedValues<'a>,
     ) -> Self {
         Attributes {
             metadata,
@@ -147,8 +141,8 @@ impl<'a> Attributes<'a> {
 
     /// Returns a reference to a `ValueSet` containing any values the new span
     /// was created with.
-    pub fn values(&self) -> &field::ValueSet<'a> {
-        self.values
+    pub fn values(&self) -> &valuable::NamedValues<'a> {
+        &self.values
     }
 
     /// Returns true if the new span should be a root.
@@ -182,14 +176,14 @@ impl<'a> Attributes<'a> {
     /// [Visitor].
     ///
     /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn ValuableVisit) {
-        self.values.record(visitor)
+    pub fn record(&self, visitor: &mut dyn valuable::Visit) {
+        visitor.visit_named_fields(&self.values)
     }
 
     /// Returns `true` if this set of `Attributes` contains a value for the
     /// given `Field`.
-    pub fn contains(&self, field: &field::Field) -> bool {
-        self.values.contains(field)
+    pub fn contains(&self, field: &valuable::NamedField<'_>) -> bool {
+        self.values.get(field).is_some()
     }
 
     /// Returns true if this set of `Attributes` contains _no_ values.
@@ -208,34 +202,9 @@ impl<'a> Attributes<'a> {
     /// [record]: Attributes::record()
     /// [`Metadata`]: crate::metadata::Metadata
     /// [`FieldSet`]: crate::field::FieldSet
-    pub fn fields(&self) -> &FieldSet {
-        self.values.field_set()
-    }
-}
-
-// ===== impl Record =====
-
-impl<'a> Record<'a> {
-    /// Constructs a new `Record` from a `ValueSet`.
-    pub fn new(values: &'a field::ValueSet<'a>) -> Self {
-        Self { values }
-    }
-
-    /// Records all the fields in this `Record` with the provided [Visitor].
-    ///
-    /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn ValuableVisit) {
-        self.values.record(visitor)
-    }
-
-    /// Returns `true` if this `Record` contains a value for the given `Field`.
-    pub fn contains(&self, field: &field::Field) -> bool {
-        self.values.contains(field)
-    }
-
-    /// Returns true if this `Record` contains _no_ values.
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
+    pub fn fields(&self) -> &[valuable::NamedField<'_>] {
+        // TODO, this method doesn't exist yet:
+        todo!("self.values.fields()")
     }
 }
 

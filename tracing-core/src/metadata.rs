@@ -1,5 +1,4 @@
 //! Metadata describing trace data.
-use super::{callsite, field};
 use core::{
     cmp, fmt,
     str::FromStr,
@@ -38,10 +37,8 @@ use core::{
 /// ## Equality
 ///
 /// In well-behaved applications, two `Metadata` with equal
-/// [callsite identifiers] will be equal in all other ways (i.e., have the same
-/// `name`, `target`, etc.). Consequently, in release builds, [`Metadata::eq`]
-/// *only* checks that its arguments have equal callsites. However, the equality
-/// of `Metadata`'s other fields is checked in debug builds.
+/// [callsites] will be equal in all other ways (i.e., have the same
+/// `name`, `target`, etc.).
 ///
 /// [span]: super::span
 /// [event]: super::event
@@ -53,8 +50,12 @@ use core::{
 /// [line number]: Self::line
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
-/// [callsite identifiers]: Self::callsite
+/// [callsites]: Self::callsite
+#[derive(Eq, PartialEq)]
 pub struct Metadata<'a> {
+    /// The callsite associated with this metadata.
+    callsite: &'static dyn crate::Callsite,
+
     /// The name of the span described by this metadata.
     name: &'static str,
 
@@ -79,7 +80,7 @@ pub struct Metadata<'a> {
 
     /// The names of the key-value fields attached to the described span or
     /// event.
-    fields: field::FieldSet,
+    fields: &'a [valuable::NamedField<'a>],
 
     /// The kind of the callsite.
     kind: Kind,
@@ -150,7 +151,7 @@ pub struct Kind(u8);
 ///
 /// ```
 /// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata};
-/// # use tracing_core::span::{Id, Record, Current};
+/// # use tracing_core::span::{Id, Current};
 ///
 /// #[derive(Debug)]
 /// pub struct MyCollector {
@@ -200,7 +201,7 @@ pub struct Kind(u8);
 ///     // ...
 ///     # fn enter(&self, _: &Id) {}
 ///     # fn exit(&self, _: &Id) {}
-///     # fn record(&self, _: &Id, _: &Record<'_>) {}
+///     # fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
 ///     # fn record_follows_from(&self, _: &Id, _: &Id) {}
 ///     # fn current_span(&self) -> Current { Current::unknown() }
 /// }
@@ -258,7 +259,8 @@ impl<'a> Metadata<'a> {
         file: Option<&'a str>,
         line: Option<u32>,
         module_path: Option<&'a str>,
-        fields: field::FieldSet,
+        fields: &'a [valuable::NamedField<'a>],
+        callsite: &'static dyn crate::Callsite,
         kind: Kind,
     ) -> Self {
         Metadata {
@@ -269,12 +271,13 @@ impl<'a> Metadata<'a> {
             file,
             line,
             fields,
+            callsite,
             kind,
         }
     }
 
     /// Returns the names of the fields on the described span or event.
-    pub fn fields(&self) -> &field::FieldSet {
+    pub fn fields(&self) -> &[valuable::NamedField<'_>] {
         &self.fields
     }
 
@@ -315,11 +318,10 @@ impl<'a> Metadata<'a> {
         self.line
     }
 
-    /// Returns an opaque `Identifier` that uniquely identifies the callsite
-    /// this `Metadata` originated from.
+    /// Returns the callsite this `Metadata` originated from.
     #[inline]
-    pub fn callsite(&self) -> callsite::Identifier {
-        self.fields.callsite()
+    pub const fn callsite(&self) -> &dyn crate::Callsite {
+        self.callsite
     }
 
     /// Returns true if the callsite kind is `Event`.
@@ -359,8 +361,7 @@ impl<'a> fmt::Debug for Metadata<'a> {
             (None, None) => {}
         };
 
-        meta.field("fields", &format_args!("{}", self.fields))
-            .field("callsite", &self.callsite())
+        meta.field("fields", &format_args!("{:?}", self.fields))
             .field("kind", &self.kind)
             .finish()
     }
@@ -438,62 +439,6 @@ impl fmt::Debug for Kind {
         }
 
         f.write_str(")")
-    }
-}
-
-impl<'a> Eq for Metadata<'a> {}
-
-impl<'a> PartialEq for Metadata<'a> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if core::ptr::eq(&self, &other) {
-            true
-        } else if cfg!(not(debug_assertions)) {
-            // In a well-behaving application, two `Metadata` can be assumed to
-            // be totally equal so long as they share the same callsite.
-            self.callsite() == other.callsite()
-        } else {
-            // However, when debug-assertions are enabled, do not assume that
-            // the application is well-behaving; check every field of `Metadata`
-            // for equality.
-
-            // `Metadata` is destructured here to ensure a compile-error if the
-            // fields of `Metadata` change.
-            let Metadata {
-                name: lhs_name,
-                target: lhs_target,
-                level: lhs_level,
-                module_path: lhs_module_path,
-                file: lhs_file,
-                line: lhs_line,
-                fields: lhs_fields,
-                kind: lhs_kind,
-            } = self;
-
-            let Metadata {
-                name: rhs_name,
-                target: rhs_target,
-                level: rhs_level,
-                module_path: rhs_module_path,
-                file: rhs_file,
-                line: rhs_line,
-                fields: rhs_fields,
-                kind: rhs_kind,
-            } = &other;
-
-            // The initial comparison of callsites is purely an optimization;
-            // it can be removed without affecting the overall semantics of the
-            // expression.
-            self.callsite() == other.callsite()
-                && lhs_name == rhs_name
-                && lhs_target == rhs_target
-                && lhs_level == rhs_level
-                && lhs_module_path == rhs_module_path
-                && lhs_file == rhs_file
-                && lhs_line == rhs_line
-                && lhs_fields == rhs_fields
-                && lhs_kind == rhs_kind
-        }
     }
 }
 

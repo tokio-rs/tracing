@@ -29,11 +29,11 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Current, Id, Record}
+//! #   span::{Attributes, Current, Id}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-//! #   fn record(&self, _: &Id, _: &Record) {}
+//! #   fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
 //! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
@@ -56,11 +56,11 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Current, Id, Record}
+//! #   span::{Attributes, Current, Id}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-//! #   fn record(&self, _: &Id, _: &Record) {}
+//! #   fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
 //! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
@@ -93,11 +93,11 @@
 //! # pub struct FooCollector;
 //! # use tracing_core::{
 //! #   dispatch, Event, Metadata,
-//! #   span::{Attributes, Current, Id, Record}
+//! #   span::{Attributes, Current, Id}
 //! # };
 //! # impl tracing_core::Collect for FooCollector {
 //! #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-//! #   fn record(&self, _: &Id, _: &Record) {}
+//! #   fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
 //! #   fn event(&self, _: &Event) {}
 //! #   fn record_follows_from(&self, _: &Id, _: &Id) {}
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
@@ -529,11 +529,11 @@ impl Dispatch {
     ///    // ...
     /// }
     ///
-    /// # use tracing_core::{span::{Id, Attributes, Current, Record}, Event, Metadata};
+    /// # use tracing_core::{span::{Id, Attributes, Current}, Event, Metadata};
     /// impl tracing_core::Collect for MyCollector {
     ///     // ...
     /// #   fn new_span(&self, _: &Attributes) -> Id { Id::from_u64(0) }
-    /// #   fn record(&self, _: &Id, _: &Record) {}
+    /// #   fn record(&self, _: &Id, _: valuable::NamedValues<'_>) {}
     /// #   fn event(&self, _: &Event) {}
     /// #   fn record_follows_from(&self, _: &Id, _: &Id) {}
     /// #   fn enabled(&self, _: &Metadata) -> bool { false }
@@ -652,7 +652,7 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     /// [`record`]: super::collect::Collect::record
     #[inline]
-    pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
+    pub fn record(&self, span: &span::Id, values: valuable::NamedValues<'_>) {
         self.collector().record(span, values)
     }
 
@@ -960,7 +960,6 @@ mod test {
         collect::Interest,
         metadata::{Kind, Level, Metadata},
     };
-    use valuable::Valuable;
 
     #[test]
     fn dispatch_is() {
@@ -995,8 +994,6 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn events_dont_infinite_loop() {
-        #[derive(Valuable)]
-        struct EmptyStruct;
         // This test ensures that an event triggered within a collector
         // won't cause an infinite loop of events.
         struct TestCollector;
@@ -1009,7 +1006,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
@@ -1020,7 +1017,9 @@ mod test {
                     0,
                     "event method called twice!"
                 );
-                Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
+                let empty_values: valuable::NamedValues<'static> =
+                    valuable::NamedValues::new(&[], &[]);
+                Event::dispatch(&TEST_META, empty_values)
             }
 
             fn enter(&self, _: &span::Id) {}
@@ -1033,25 +1032,22 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestCollector), || {
-            Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&EmptyStruct))
+            let empty_values: valuable::NamedValues<'static> = valuable::NamedValues::new(&[], &[]);
+            Event::dispatch(&TEST_META, empty_values)
         })
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn spans_dont_infinite_loop() {
-        #[derive(Valuable)]
-        struct EmptyStruct;
-
         // This test ensures that a span created within a collector
         // won't cause an infinite loop of new spans.
 
         fn mk_span() {
             get_default(|current| {
-                current.new_span(&span::Attributes::new(
-                    &TEST_META,
-                    &TEST_META.fields().value_set(&EmptyStruct),
-                ))
+                let empty_values: valuable::NamedValues<'static> =
+                    valuable::NamedValues::new(&[], &[]);
+                current.new_span(&span::Attributes::new(&TEST_META, empty_values))
             });
         }
 
@@ -1072,7 +1068,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 
@@ -1109,7 +1105,7 @@ mod test {
                 span::Id::from_u64(0xAAAA)
             }
 
-            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record(&self, _: &span::Id, _: valuable::NamedValues<'_>) {}
 
             fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
 

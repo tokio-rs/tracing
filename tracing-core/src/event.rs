@@ -1,8 +1,7 @@
 //! Events represent single points in time during the execution of a program.
 use crate::parent::Parent;
 use crate::span::Id;
-use crate::{field, Metadata};
-use valuable::Visit as ValuableVisit;
+use crate::Metadata;
 
 /// `Event`s represent single points in time where something occurred during the
 /// execution of a program.
@@ -22,7 +21,7 @@ use valuable::Visit as ValuableVisit;
 /// [fields]: super::field
 #[derive(Debug)]
 pub struct Event<'a> {
-    fields: &'a field::ValueSet<'a>,
+    fields: valuable::NamedValues<'a>,
     metadata: &'static Metadata<'static>,
     parent: Parent,
 }
@@ -30,7 +29,7 @@ pub struct Event<'a> {
 impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current collector.
-    pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
+    pub fn dispatch(metadata: &'static Metadata<'static>, fields: valuable::NamedValues<'a>) {
         let event = Event::new(metadata, fields);
         crate::dispatch::get_default(|current| {
             current.event(&event);
@@ -40,7 +39,7 @@ impl<'a> Event<'a> {
     /// Returns a new `Event` in the current span, with the specified metadata
     /// and set of values.
     #[inline]
-    pub fn new(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'a>) -> Self {
+    pub fn new(metadata: &'static Metadata<'static>, fields: valuable::NamedValues<'a>) -> Self {
         Event {
             fields,
             metadata,
@@ -54,7 +53,7 @@ impl<'a> Event<'a> {
     pub fn new_child_of(
         parent: impl Into<Option<Id>>,
         metadata: &'static Metadata<'static>,
-        fields: &'a field::ValueSet<'a>,
+        fields: valuable::NamedValues<'a>,
     ) -> Self {
         let parent = match parent.into() {
             Some(p) => Parent::Explicit(p),
@@ -72,7 +71,7 @@ impl<'a> Event<'a> {
     pub fn child_of(
         parent: impl Into<Option<Id>>,
         metadata: &'static Metadata<'static>,
-        fields: &'a field::ValueSet<'_>,
+        fields: valuable::NamedValues<'a>,
     ) {
         let event = Self::new_child_of(parent, metadata, fields);
         crate::dispatch::get_default(|current| {
@@ -84,13 +83,13 @@ impl<'a> Event<'a> {
     ///
     /// [visitor]: super::field::Visit
     #[inline]
-    pub fn record(&self, visitor: &mut dyn ValuableVisit) {
-        self.fields.record(visitor);
+    pub fn record(&self, visitor: &mut dyn valuable::Visit) {
+        visitor.visit_named_fields(&self.fields)
     }
 
     /// Returns an iterator over the set of values on this `Event`.
-    pub fn fields(&self) -> field::Iter {
-        self.fields.field_set().iter()
+    pub fn fields(&self) -> impl Iterator + '_ {
+        self.fields.iter()
     }
 
     /// Returns [metadata] describing this `Event`.
