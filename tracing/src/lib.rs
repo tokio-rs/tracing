@@ -824,6 +824,7 @@
 //! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 //! [bunyan]: https://github.com/trentm/node-bunyan
 //! [`tracing-wasm`]: https://docs.rs/tracing-wasm
+//! [`tracing-web`]: https://docs.rs/tracing-web
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
