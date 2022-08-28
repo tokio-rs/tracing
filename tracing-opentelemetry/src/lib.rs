@@ -24,7 +24,7 @@
 //! in your span name.
 //! * `otel.kind`: Set the span kind to one of the supported OpenTelemetry [span kinds].
 //! * `otel.status_code`: Set the span status code to one of the supported OpenTelemetry [span status codes].
-//! * `otel.status_message`: Set the span status message.
+//! * `otel.error_description`: Set the span error description when the status code is "error".
 //!
 //! [span kinds]: opentelemetry::trace::SpanKind
 //! [span status codes]: opentelemetry::trace::StatusCode

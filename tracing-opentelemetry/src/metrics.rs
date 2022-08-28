@@ -3,8 +3,8 @@ use tracing::{field::Visit, Subscriber};
 use tracing_core::Field;
 
 use opentelemetry::{
-    metrics::{Counter, Meter, MeterProvider, UpDownCounter, ValueRecorder},
-    sdk::metrics::PushController,
+    metrics::{Counter, Histogram, Meter, MeterProvider, UpDownCounter},
+    sdk::metrics::controllers::BasicController,
 };
 use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
 
@@ -22,9 +22,9 @@ pub(crate) struct Instruments {
     f64_counter: MetricsMap<Counter<f64>>,
     i64_up_down_counter: MetricsMap<UpDownCounter<i64>>,
     f64_up_down_counter: MetricsMap<UpDownCounter<f64>>,
-    u64_value_recorder: MetricsMap<ValueRecorder<u64>>,
-    i64_value_recorder: MetricsMap<ValueRecorder<i64>>,
-    f64_value_recorder: MetricsMap<ValueRecorder<f64>>,
+    u64_histogram: MetricsMap<Histogram<u64>>,
+    i64_histogram: MetricsMap<Histogram<i64>>,
+    f64_histogram: MetricsMap<Histogram<f64>>,
 }
 
 type MetricsMap<T> = RwLock<HashMap<&'static str, T>>;
@@ -35,9 +35,9 @@ pub(crate) enum InstrumentType {
     CounterF64(f64),
     UpDownCounterI64(i64),
     UpDownCounterF64(f64),
-    ValueRecorderU64(u64),
-    ValueRecorderI64(i64),
-    ValueRecorderF64(f64),
+    HistogramU64(u64),
+    HistogramI64(i64),
+    HistogramF64(f64),
 }
 
 impl Instruments {
@@ -70,13 +70,15 @@ impl Instruments {
             update(metric)
         }
 
+        let cx = opentelemetry::Context::default();
+
         match instrument_type {
             InstrumentType::CounterU64(value) => {
                 update_or_insert(
                     &self.u64_counter,
                     metric_name,
                     || meter.u64_counter(metric_name).init(),
-                    |ctr| ctr.add(value, &[]),
+                    |ctr| ctr.add(&cx, value, &[]),
                 );
             }
             InstrumentType::CounterF64(value) => {
@@ -84,7 +86,7 @@ impl Instruments {
                     &self.f64_counter,
                     metric_name,
                     || meter.f64_counter(metric_name).init(),
-                    |ctr| ctr.add(value, &[]),
+                    |ctr| ctr.add(&cx, value, &[]),
                 );
             }
             InstrumentType::UpDownCounterI64(value) => {
@@ -92,7 +94,7 @@ impl Instruments {
                     &self.i64_up_down_counter,
                     metric_name,
                     || meter.i64_up_down_counter(metric_name).init(),
-                    |ctr| ctr.add(value, &[]),
+                    |ctr| ctr.add(&cx, value, &[]),
                 );
             }
             InstrumentType::UpDownCounterF64(value) => {
@@ -100,31 +102,31 @@ impl Instruments {
                     &self.f64_up_down_counter,
                     metric_name,
                     || meter.f64_up_down_counter(metric_name).init(),
-                    |ctr| ctr.add(value, &[]),
+                    |ctr| ctr.add(&cx, value, &[]),
                 );
             }
-            InstrumentType::ValueRecorderU64(value) => {
+            InstrumentType::HistogramU64(value) => {
                 update_or_insert(
-                    &self.u64_value_recorder,
+                    &self.u64_histogram,
                     metric_name,
-                    || meter.u64_value_recorder(metric_name).init(),
-                    |rec| rec.record(value, &[]),
+                    || meter.u64_histogram(metric_name).init(),
+                    |rec| rec.record(&cx, value, &[]),
                 );
             }
-            InstrumentType::ValueRecorderI64(value) => {
+            InstrumentType::HistogramI64(value) => {
                 update_or_insert(
-                    &self.i64_value_recorder,
+                    &self.i64_histogram,
                     metric_name,
-                    || meter.i64_value_recorder(metric_name).init(),
-                    |rec| rec.record(value, &[]),
+                    || meter.i64_histogram(metric_name).init(),
+                    |rec| rec.record(&cx, value, &[]),
                 );
             }
-            InstrumentType::ValueRecorderF64(value) => {
+            InstrumentType::HistogramF64(value) => {
                 update_or_insert(
-                    &self.f64_value_recorder,
+                    &self.f64_histogram,
                     metric_name,
-                    || meter.f64_value_recorder(metric_name).init(),
-                    |rec| rec.record(value, &[]),
+                    || meter.f64_histogram(metric_name).init(),
+                    |rec| rec.record(&cx, value, &[]),
                 );
             }
         };
@@ -166,7 +168,7 @@ impl<'a> Visit for MetricVisitor<'a> {
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_VALUE) {
             self.instruments.update_metric(
                 self.meter,
-                InstrumentType::ValueRecorderU64(value),
+                InstrumentType::HistogramU64(value),
                 metric_name,
             );
         }
@@ -188,7 +190,7 @@ impl<'a> Visit for MetricVisitor<'a> {
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_VALUE) {
             self.instruments.update_metric(
                 self.meter,
-                InstrumentType::ValueRecorderF64(value),
+                InstrumentType::HistogramF64(value),
                 metric_name,
             );
         }
@@ -210,7 +212,7 @@ impl<'a> Visit for MetricVisitor<'a> {
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_VALUE) {
             self.instruments.update_metric(
                 self.meter,
-                InstrumentType::ValueRecorderI64(value),
+                InstrumentType::HistogramI64(value),
                 metric_name,
             );
         }
@@ -232,14 +234,14 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// use tracing_opentelemetry::MetricsLayer;
 /// use tracing_subscriber::layer::SubscriberExt;
 /// use tracing_subscriber::Registry;
-/// # use opentelemetry::sdk::metrics::PushController;
+/// # use opentelemetry::sdk::metrics::controllers::BasicController;
 ///
-/// // Constructing a PushController is out-of-scope for the docs here, but there
+/// // Constructing a BasicController is out-of-scope for the docs here, but there
 /// // are examples in the opentelemetry repository. See:
 /// // https://github.com/open-telemetry/opentelemetry-rust/blob/c13a11e62a68eacd8c41a0742a0d097808e28fbd/examples/basic-otlp/src/main.rs#L39-L53
-/// # let push_controller: PushController = unimplemented!();
+/// # let basic_controller: BasicController = unimplemented!();
 ///
-/// let opentelemetry_metrics =  MetricsLayer::new(push_controller);
+/// let opentelemetry_metrics =  MetricsLayer::new(basic_controller);
 /// let subscriber = Registry::default().with(opentelemetry_metrics);
 /// tracing::subscriber::set_global_default(subscriber).unwrap();
 /// ```
@@ -329,10 +331,9 @@ pub struct MetricsLayer {
 
 impl MetricsLayer {
     /// Create a new instance of MetricsLayer.
-    pub fn new(push_controller: PushController) -> Self {
-        let meter = push_controller
-            .provider()
-            .meter(INSTRUMENTATION_LIBRARY_NAME, Some(CARGO_PKG_VERSION));
+    pub fn new(controller: BasicController) -> Self {
+        let meter =
+            controller.versioned_meter(INSTRUMENTATION_LIBRARY_NAME, Some(CARGO_PKG_VERSION), None);
         MetricsLayer {
             meter,
             instruments: Default::default(),

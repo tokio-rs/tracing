@@ -1,4 +1,5 @@
-use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, TracerProvider};
+use opentelemetry::sdk::trace::{Tracer, TracerProvider};
+use opentelemetry::trace::{OrderMap, SamplingDecision, SamplingResult};
 use opentelemetry::{
     trace as otel,
     trace::{
@@ -86,7 +87,7 @@ impl PreSampledTracer for Tracer {
                 trace_id,
                 &builder.name,
                 builder.span_kind.as_ref().unwrap_or(&SpanKind::Internal),
-                builder.attributes.as_deref().unwrap_or(&[]),
+                builder.attributes.as_ref().unwrap_or(&OrderMap::new()),
                 builder.links.as_deref().unwrap_or(&[]),
                 self.instrumentation_library(),
             ));
@@ -203,7 +204,7 @@ mod tests {
             // Existing sampling result defers
             ("previous_drop_result_always_on", Sampler::AlwaysOn, OtelContext::new(), Some(SamplingResult { decision: SamplingDecision::Drop, attributes: vec![], trace_state: Default::default() }), false),
             ("previous_record_and_sample_result_always_off", Sampler::AlwaysOff, OtelContext::new(), Some(SamplingResult { decision: SamplingDecision::RecordAndSample, attributes: vec![], trace_state: Default::default() }), true),
- 
+
             // Existing local parent, defers
             ("previous_drop_result_always_on", Sampler::AlwaysOn, OtelContext::new(), Some(SamplingResult { decision: SamplingDecision::Drop, attributes: vec![], trace_state: Default::default() }), false),
             ("previous_record_and_sample_result_always_off", Sampler::AlwaysOff, OtelContext::new(), Some(SamplingResult { decision: SamplingDecision::RecordAndSample, attributes: vec![], trace_state: Default::default() }), true),

@@ -1,23 +1,20 @@
 #![cfg(feature = "metrics")]
-use async_trait::async_trait;
-use futures_util::{Stream, StreamExt as _};
+use futures_util::{Stream, StreamExt as _, future::BoxFuture};
 use opentelemetry::{
-    metrics::{Descriptor, InstrumentKind},
-    metrics::{Number, NumberKind},
     sdk::{
         export::{
             metrics::{
-                CheckpointSet, ExportKind, ExportKindFor, ExportKindSelector,
-                Exporter as MetricsExporter, Points, Sum,
+                MetricsExporter,
+                aggregation::{TemporalitySelector, AggregationKind, Temporality, Histogram, Sum}, InstrumentationLibraryReader,
             },
             trace::{SpanData, SpanExporter},
         },
         metrics::{
-            aggregators::{ArrayAggregator, SumAggregator},
-            selectors::simple::Selector,
-        },
+            aggregators::{SumAggregator, HistogramAggregator},
+            sdk_api::{Descriptor, InstrumentKind, Number, NumberKind},
+        }, Resource,
     },
-    Key, Value,
+    Key, Value, Context,
 };
 use std::cmp::Ordering;
 use std::time::Duration;
@@ -116,7 +113,7 @@ async fn f64_up_down_counter_is_exported() {
 async fn u64_value_is_exported() {
     let subscriber = init_subscriber(
         "abcdefg".to_string(),
-        InstrumentKind::ValueRecorder,
+        InstrumentKind::Histogram,
         NumberKind::U64,
         Number::from(9_u64),
     );
@@ -130,7 +127,7 @@ async fn u64_value_is_exported() {
 async fn i64_value_is_exported() {
     let subscriber = init_subscriber(
         "abcdefg_auenatsou".to_string(),
-        InstrumentKind::ValueRecorder,
+        InstrumentKind::Histogram,
         NumberKind::I64,
         Number::from(-19_i64),
     );
@@ -144,7 +141,7 @@ async fn i64_value_is_exported() {
 async fn f64_value_is_exported() {
     let subscriber = init_subscriber(
         "abcdefg_racecar".to_string(),
-        InstrumentKind::ValueRecorder,
+        InstrumentKind::Histogram,
         NumberKind::F64,
         Number::from(777.0012_f64),
     );
@@ -167,7 +164,7 @@ fn init_subscriber(
         expected_value,
     };
 
-    let push_controller = opentelemetry::sdk::metrics::controllers::push(
+    let push_controller = opentelemetry::sdk::metrics::controllers::basic(
         Selector::Exact,
         ExportKindSelector::Stateless,
         exporter,
@@ -187,85 +184,85 @@ struct TestExporter {
     expected_value: Number,
 }
 
-#[async_trait]
 impl SpanExporter for TestExporter {
-    async fn export(
+    fn export(
         &mut self,
         mut _batch: Vec<SpanData>,
-    ) -> opentelemetry::sdk::export::trace::ExportResult {
-        Ok(())
+    ) -> BoxFuture<'static, opentelemetry::sdk::export::trace::ExportResult> {
+        Box::pin(async { Ok(()) })
     }
 }
 
 impl MetricsExporter for TestExporter {
-    fn export(&self, checkpoint_set: &mut dyn CheckpointSet) -> opentelemetry::metrics::Result<()> {
-        checkpoint_set.try_for_each(self, &mut |record| {
-            assert_eq!(self.expected_metric_name, record.descriptor().name());
-            assert_eq!(
-                self.expected_instrument_kind,
-                *record.descriptor().instrument_kind()
-            );
-            assert_eq!(
-                self.expected_number_kind,
-                *record.descriptor().number_kind()
-            );
-            let number = match self.expected_instrument_kind {
-                InstrumentKind::Counter | InstrumentKind::UpDownCounter => record
-                    .aggregator()
-                    .unwrap()
-                    .as_any()
-                    .downcast_ref::<SumAggregator>()
-                    .unwrap()
-                    .sum()
-                    .unwrap(),
-                InstrumentKind::ValueRecorder => record
-                    .aggregator()
-                    .unwrap()
-                    .as_any()
-                    .downcast_ref::<ArrayAggregator>()
-                    .unwrap()
-                    .points()
-                    .unwrap()[0]
-                    .clone(),
-                _ => panic!(
-                    "InstrumentKind {:?} not currently supported!",
-                    self.expected_instrument_kind
-                ),
-            };
-            assert_eq!(
-                Ordering::Equal,
-                number
-                    .partial_cmp(&NumberKind::U64, &self.expected_value)
-                    .unwrap()
-            );
+    fn export(&self, _cx: &Context, res: &Resource, reader: &dyn InstrumentationLibraryReader) -> opentelemetry::metrics::Result<()> {
+        reader.try_for_each(&mut |library, reader| {
+            reader.try_for_each(self, &mut |record| {
+                assert_eq!(self.expected_metric_name, record.descriptor().name());
+                assert_eq!(
+                    self.expected_instrument_kind,
+                    *record.descriptor().instrument_kind()
+                );
+                assert_eq!(
+                    self.expected_number_kind,
+                    *record.descriptor().number_kind()
+                );
+                let number = match self.expected_instrument_kind {
+                    InstrumentKind::Counter | InstrumentKind::UpDownCounter => record
+                        .aggregator()
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref::<SumAggregator>()
+                        .unwrap()
+                        .sum()
+                        .unwrap(),
+                    InstrumentKind::Histogram => record
+                        .aggregator()
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref::<HistogramAggregator>()
+                        .unwrap()
+                        .histogram()
+                        .unwrap()
+                        .clone(),
+                    _ => panic!(
+                        "InstrumentKind {:?} not currently supported!",
+                        self.expected_instrument_kind
+                    ),
+                };
+                assert_eq!(
+                    Ordering::Equal,
+                    number
+                        .partial_cmp(&NumberKind::U64, &self.expected_value)
+                        .unwrap()
+                );
 
-            // The following are the same regardless of the individual metric.
-            assert_eq!(
-                INSTRUMENTATION_LIBRARY_NAME,
-                record.descriptor().instrumentation_library().name
-            );
-            assert_eq!(
-                CARGO_PKG_VERSION,
-                record.descriptor().instrumentation_version().unwrap()
-            );
-            assert_eq!(
-                Value::String("unknown_service".into()),
-                record
-                    .resource()
-                    .get(Key::new("service.name".to_string()))
-                    .unwrap()
-            );
+                // The following are the same regardless of the individual metric.
+                assert_eq!(
+                    INSTRUMENTATION_LIBRARY_NAME,
+                    library.name
+                );
+                assert_eq!(
+                    CARGO_PKG_VERSION,
+                    library.version.unwrap()
+                );
+                assert_eq!(
+                    Value::String("unknown_service".into()),
+                    res
+                        .get(Key::new("service.name".to_string()))
+                        .unwrap()
+                );
 
-            opentelemetry::metrics::Result::Ok(())
+                opentelemetry::metrics::Result::Ok(())
+            })
         })
     }
 }
 
-impl ExportKindFor for TestExporter {
-    fn export_kind_for(&self, _descriptor: &Descriptor) -> ExportKind {
+impl TemporalitySelector for TestExporter {
+    fn temporality_for(&self, _descriptor: &Descriptor, kind: &AggregationKind) -> Temporality {
         // I don't think the value here makes a difference since
         // we are just testing a single metric.
-        ExportKind::Cumulative
+        Temporality::Cumulative
     }
 }
 
