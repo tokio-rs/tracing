@@ -171,8 +171,11 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
+/// The global default dispatch that should be used by [`Enter::with_current`]
+static GLOBAL_DEFAULT_DISPATCH: Lazy<std::sync::atomic::AtomicPtr<Dispatch>> =
+    Lazy::new(|| std::sync::atomic::AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
 
-static NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch::new(NoSubscriber::default()));
+static mut NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch::new(NoSubscriber::default()));
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
@@ -278,6 +281,10 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     {
         unsafe {
             GLOBAL_DISPATCH = Some(dispatcher);
+            GLOBAL_DEFAULT_DISPATCH.store(
+                GLOBAL_DISPATCH.as_mut().unwrap() as *mut _,
+                Ordering::SeqCst,
+            );
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
@@ -342,9 +349,9 @@ where
                 return entered.with_current(|current| f(current));
             }
 
-            f(&NO_DISPATCH)
+            f(unsafe { &NO_DISPATCH })
         })
-        .unwrap_or_else(|_| f(&NO_DISPATCH))
+        .unwrap_or_else(|_| f(unsafe { &NO_DISPATCH }))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -411,7 +418,7 @@ impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
     #[inline]
     pub fn none() -> Self {
-        NO_DISPATCH.clone()
+        unsafe { NO_DISPATCH.clone() }
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
@@ -715,16 +722,9 @@ impl State {
 impl<'a> Entered<'a> {
     #[inline]
     fn with_current<T>(&self, f: impl FnOnce(&Dispatch) -> T) -> T {
-        let mut default = self.0.default.borrow_mut();
-        match &*default {
+        match &*self.0.default.borrow_mut() {
             Some(default) => f(default),
-            None => match get_global() {
-                Some(global) => {
-                    *default = Some(global.clone());
-                    f(global)
-                }
-                None => f(&NO_DISPATCH),
-            },
+            None => unsafe { f(&*GLOBAL_DEFAULT_DISPATCH.load(Ordering::SeqCst)) },
         }
     }
 }
