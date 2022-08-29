@@ -46,7 +46,7 @@ use tracing_core::{
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
-use ansi_term::{Colour, Style};
+use nu_ansi_term::{Color, Style};
 
 #[cfg(feature = "json")]
 mod json;
@@ -101,7 +101,7 @@ pub use pretty::*;
 ///   does not support ANSI escape codes (such as a log file), and they should
 ///   not be emitted.
 ///
-///   Crates like [`ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   Crates like [`nu_ansi_term`] and [`owo-colors`] can be used to add ANSI
 ///   escape codes to formatted output.
 ///
 /// * The actual [`Event`] to be formatted.
@@ -189,7 +189,7 @@ pub use pretty::*;
 /// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
 /// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
-/// [`ansi_term`]: https://crates.io/crates/ansi_term
+/// [`nu_ansi_term`]: https://crates.io/crates/nu_ansi_term
 /// [`owo-colors`]: https://crates.io/crates/owo-colors
 /// [default formatter]: Full
 pub trait FormatEvent<S, N>
@@ -1484,11 +1484,11 @@ impl<'a> fmt::Display for FmtLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.ansi {
             match *self.level {
-                Level::TRACE => write!(f, "{}", Colour::Purple.paint(TRACE_STR)),
-                Level::DEBUG => write!(f, "{}", Colour::Blue.paint(DEBUG_STR)),
-                Level::INFO => write!(f, "{}", Colour::Green.paint(INFO_STR)),
-                Level::WARN => write!(f, "{}", Colour::Yellow.paint(WARN_STR)),
-                Level::ERROR => write!(f, "{}", Colour::Red.paint(ERROR_STR)),
+                Level::TRACE => write!(f, "{}", Color::Purple.paint(TRACE_STR)),
+                Level::DEBUG => write!(f, "{}", Color::Blue.paint(DEBUG_STR)),
+                Level::INFO => write!(f, "{}", Color::Green.paint(INFO_STR)),
+                Level::WARN => write!(f, "{}", Color::Yellow.paint(WARN_STR)),
+                Level::ERROR => write!(f, "{}", Color::Red.paint(ERROR_STR)),
             }
         } else {
             match *self.level {

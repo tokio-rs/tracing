@@ -14,7 +14,7 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-use ansi_term::{Colour, Style};
+use nu_ansi_term::{Color, Style};
 
 /// An excessively pretty, human-readable event formatter.
 ///
@@ -143,11 +143,11 @@ impl Default for Pretty {
 impl Pretty {
     fn style_for(level: &Level) -> Style {
         match *level {
-            Level::TRACE => Style::new().fg(Colour::Purple),
-            Level::DEBUG => Style::new().fg(Colour::Blue),
-            Level::INFO => Style::new().fg(Colour::Green),
-            Level::WARN => Style::new().fg(Colour::Yellow),
-            Level::ERROR => Style::new().fg(Colour::Red),
+            Level::TRACE => Style::new().fg(Color::Purple),
+            Level::DEBUG => Style::new().fg(Color::Blue),
+            Level::INFO => Style::new().fg(Color::Green),
+            Level::WARN => Style::new().fg(Color::Yellow),
+            Level::ERROR => Style::new().fg(Color::Red),
         }
     }
 

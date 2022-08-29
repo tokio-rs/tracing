@@ -10,7 +10,7 @@
 //!
 //! [`slog-term`]: https://docs.rs/slog-term/2.4.0/slog_term/
 //! [`slog` README]: https://github.com/slog-rs/slog#terminal-output-example
-use ansi_term::{Color, Style};
+use nu_ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
     Id, Level, Subscriber,
@@ -129,7 +129,7 @@ impl<'a> Visit for Event<'a> {
             write!(
                 &mut self.stderr,
                 "{}",
-                // Have to alloc here due to `ansi_term`'s API...
+                // Have to alloc here due to `nu_ansi_term`'s API...
                 Style::new().bold().paint(format!("{:?}", value))
             )
             .unwrap();
