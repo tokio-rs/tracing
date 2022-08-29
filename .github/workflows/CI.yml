@@ -134,12 +134,14 @@ jobs:
         # number, we can't just use --all as it increases the runtime
         # further than what we would like to
         subcrate:
+        - tracing-appender
         - tracing-attributes
         - tracing-core
         - tracing-futures
         - tracing-log
         - tracing-macros
         - tracing-serde
+        - tracing-subscriber
         - tracing-tower
         - tracing-opentelemetry
         - tracing
