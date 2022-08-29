@@ -134,26 +134,32 @@ jobs:
         # number, we can't just use --all as it increases the runtime
         # further than what we would like to
         subcrate:
+        - tracing-appender
         - tracing-attributes
         - tracing-core
         - tracing-futures
         - tracing-log
         - tracing-macros
         - tracing-serde
+        - tracing-subscriber
         - tracing-tower
         - tracing-opentelemetry
         - tracing
-        - tracing-subscriber
         toolchain:
         - 1.49.0
         - stable
         # TODO(eliza): remove this when appender is on the same MSRV.
+        #              same for tracing subscriber
         exclude:
         - subcrate: tracing-appender
+          toolchain: 1.49.0
+        - subcrate: tracing-subscriber
           toolchain: 1.49.0
         include:
         - subcrate: tracing-appender
           toolchain: 1.53.0
+        - subcrate: tracing-subscriber
+          toolchain: 1.50.0
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly
