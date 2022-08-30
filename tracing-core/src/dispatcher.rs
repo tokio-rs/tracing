@@ -171,10 +171,15 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
-/// The global default dispatch that should be used by [`Enter::with_current`]
+// The global default dispatch that should be used by [`Enter::with_current`]
+// when there is no explicit local dispatch set.
+//
+// By default this is initialized to [`NO_DISPATCH`] and will be set to
+// [`GLOBAL_DISPATCH`] when this is being set.
 static GLOBAL_DEFAULT_DISPATCH: Lazy<std::sync::atomic::AtomicPtr<Dispatch>> =
     Lazy::new(|| std::sync::atomic::AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
 
+// This is only `mut` to make it work as default value of [`GLOBAL_DEFAULT_DISPATCH`].
 static mut NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch::new(NoSubscriber::default()));
 
 /// The dispatch state of a thread.
@@ -394,20 +399,7 @@ where
     if let Some(d) = get_global() {
         f(d)
     } else {
-        f(&NO_DISPATCH)
-    }
-}
-
-fn get_global() -> Option<&'static Dispatch> {
-    if GLOBAL_INIT.load(Ordering::SeqCst) != INITIALIZED {
-        return None;
-    }
-    unsafe {
-        // This is safe given the invariant that setting the global dispatcher
-        // also sets `GLOBAL_INIT` to `INITIALIZED`.
-        Some(GLOBAL_DISPATCH.as_ref().expect(
-            "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
-        ))
+        f(unsafe { &NO_DISPATCH })
     }
 }
 
