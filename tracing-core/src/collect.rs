@@ -79,6 +79,16 @@ use core::ptr::NonNull;
 /// [`event_enabled`]: Collect::event_enabled
 pub trait Collect: 'static {
     /// Invoked when this collector becomes a [`Dispatch`].
+    ///
+    /// ## Avoiding Memory Leaks
+    ///
+    /// Collectors should not store their own [`Dispatch`]. Doing so will prevent
+    /// them from being dropped. Instead, you may call [`Dispatch::downgrade`]
+    /// to construct a [`WeakDispatch`] (analogous to [`std::sync::Weak`]) that is
+    /// safe to stash, and can be [upgraded][`WeakDispatch::upgrade`] into a `Dispatch`.
+    ///
+    /// [`WeakDispatch`]: crate::dispatch::WeakDispatch
+    /// [`WeakDispatch::upgrade`]: crate::dispatch::WeakDispatch::upgrade
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
     }

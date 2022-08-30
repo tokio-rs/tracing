@@ -169,6 +169,18 @@ pub struct Dispatch {
     collector: &'static (dyn Collect + Send + Sync),
 }
 
+/// `WeakDispatch` is a version of [`Dispatch`] that holds a non-owning reference
+/// to a collector. This collector is accessed calling [`WeakDispatch::upgrade`],
+/// which returns an `Option<Dispatch>`.
+#[derive(Clone)]
+pub struct WeakDispatch {
+    #[cfg(feature = "alloc")]
+    collector: Kind<Weak<dyn Collect + Send + Sync>>,
+
+    #[cfg(not(feature = "alloc"))]
+    collector: &'static (dyn Collect + Send + Sync),
+}
+
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 enum Kind<T> {
@@ -577,6 +589,20 @@ impl Dispatch {
         me
     }
 
+    /// Creates a [`WeakDispatch`] from this `Dispatch`.
+    #[cfg(feature = "alloc")]
+    pub fn downgrade(&self) -> WeakDispatch {
+        #[cfg(feature = "alloc")]
+        let collector = match &self.collector {
+            Kind::Global(dispatch) => Kind::Global(*dispatch),
+            Kind::Scoped(dispatch) => Kind::Scoped(Arc::downgrade(dispatch)),
+        };
+        #[cfg(not(feature = "alloc"))]
+        let collector = &self.collector;
+
+        WeakDispatch { collector }
+    }
+
     #[cfg(feature = "std")]
     pub(crate) fn registrar(&self) -> Registrar {
         Registrar(match self.collector {
@@ -856,6 +882,45 @@ where
     #[inline]
     fn from(collector: C) -> Self {
         Dispatch::new(collector)
+    }
+}
+
+impl WeakDispatch {
+    /// Attempts to upgrade the `WeakDispatch` to a `Dispatch`.
+    pub fn upgrade(&self) -> Option<Dispatch> {
+        #[cfg(feature = "alloc")]
+        let collector = match &self.collector {
+            Kind::Global(dispatch) => Some(Kind::Global(*dispatch)),
+            Kind::Scoped(dispatch) => dispatch.upgrade().map(Kind::Scoped),
+        };
+        #[cfg(not(feature = "alloc"))]
+        let collector = Some(self.collector);
+
+        collector.map(|collector| Dispatch { collector })
+    }
+}
+
+impl fmt::Debug for WeakDispatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.collector {
+            #[cfg(feature = "alloc")]
+            Kind::Global(collector) => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(feature = "alloc")]
+            Kind::Scoped(collector) => f
+                .debug_tuple("Dispatch::Scoped")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(not(feature = "alloc"))]
+            collector => f
+                .debug_tuple("Dispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+        }
     }
 }
 

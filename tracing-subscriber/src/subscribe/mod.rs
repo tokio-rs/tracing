@@ -719,6 +719,16 @@ where
     /// Performs late initialization when installing this subscriber as a
     /// [collector].
     ///
+    /// ## Avoiding Memory Leaks
+    ///
+    /// Subscribers should not store their own [`Dispatch`]. Doing so will prevent
+    /// them from being dropped. Instead, you may call [`Dispatch::downgrade`]
+    /// to construct a [`WeakDispatch`] (analogous to [`std::sync::Weak`]) that is
+    /// safe to stash, and can be [upgraded][`WeakDispatch::upgrade`] into a `Dispatch`.
+    ///
+    /// [`WeakDispatch`]: tracing::dispatch::WeakDispatch
+    /// [`WeakDispatch::upgrade`]: tracing::dispatch::WeakDispatch::upgrade
+    ///
     /// [collector]: tracing_core::Collect
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
