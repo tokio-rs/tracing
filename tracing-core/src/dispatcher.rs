@@ -407,6 +407,20 @@ where
     }
 }
 
+#[cfg(not(feature = "std"))]
+fn get_global() -> Option<&'static Dispatch> {
+    if GLOBAL_INIT.load(Ordering::SeqCst) != INITIALIZED {
+        return None;
+    }
+    unsafe {
+        // This is safe given the invariant that setting the global dispatcher
+        // also sets `GLOBAL_INIT` to `INITIALIZED`.
+        Some(GLOBAL_DISPATCH.as_ref().expect(
+            "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
+        ))
+    }
+}
+
 #[cfg(feature = "std")]
 pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
 
@@ -718,7 +732,7 @@ impl State {
 impl<'a> Entered<'a> {
     #[inline]
     fn with_current<T>(&self, f: impl FnOnce(&Dispatch) -> T) -> T {
-        match &*self.0.default.borrow_mut() {
+        match &*self.0.default.borrow() {
             Some(default) => f(default),
             None => unsafe { f(&*GLOBAL_DEFAULT_DISPATCH.load(Ordering::SeqCst)) },
         }
