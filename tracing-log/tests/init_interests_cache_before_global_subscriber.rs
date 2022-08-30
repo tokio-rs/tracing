@@ -61,7 +61,7 @@ impl Subscriber for TestSubscriber {
 }
 
 #[test]
-fn normalized_metadata() {
+fn interests_cache_works() {
     LogTracer::builder()
         .with_interest_cache(tracing_log::InterestCacheConfig::default())
         .init()

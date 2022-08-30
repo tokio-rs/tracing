@@ -180,7 +180,11 @@ static GLOBAL_DEFAULT_DISPATCH: Lazy<std::sync::atomic::AtomicPtr<Dispatch>> =
     Lazy::new(|| std::sync::atomic::AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
 
 // This is only `mut` to make it work as default value of [`GLOBAL_DEFAULT_DISPATCH`].
-static mut NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch::new(NoSubscriber::default()));
+//
+// We can not use `new` as we don't want this to be registered at the callsites.
+static mut NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch {
+    subscriber: Arc::new(NoSubscriber::default()),
+});
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
