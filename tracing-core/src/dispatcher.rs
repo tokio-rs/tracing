@@ -136,7 +136,7 @@ use crate::stdlib::{
     any::Any,
     fmt,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -176,8 +176,8 @@ static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
 //
 // By default this is initialized to [`NO_DISPATCH`] and will be set to
 // [`GLOBAL_DISPATCH`] when this is being set.
-static GLOBAL_DEFAULT_DISPATCH: Lazy<std::sync::atomic::AtomicPtr<Dispatch>> =
-    Lazy::new(|| std::sync::atomic::AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
+static GLOBAL_DEFAULT_DISPATCH: Lazy<AtomicPtr<Dispatch>> =
+    Lazy::new(|| AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
 
 // This is only `mut` to make it work as default value of [`GLOBAL_DEFAULT_DISPATCH`].
 //
