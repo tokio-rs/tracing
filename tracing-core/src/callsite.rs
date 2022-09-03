@@ -98,19 +98,21 @@
 //! [`Dispatch`]: crate::dispatch::Dispatch
 //! [macros]: https://docs.rs/tracing/latest/tracing/#macros
 //! [instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
-use crate::stdlib::{
-    any::TypeId,
-    fmt,
-    hash::{Hash, Hasher},
-    ptr,
-    sync::{
-        atomic::{AtomicBool, AtomicPtr, AtomicU8, Ordering},
-        Mutex,
+use crate::{
+    dispatcher::Registrar,
+    stdlib::{
+        any::TypeId,
+        fmt,
+        hash::{Hash, Hasher},
+        ptr,
+        sync::{
+            atomic::{AtomicBool, AtomicPtr, AtomicU8, Ordering},
+            Mutex,
+        },
+        vec::Vec,
     },
-    vec::Vec,
 };
 use crate::{
-    dispatcher::Dispatch,
     lazy::Lazy,
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
@@ -485,8 +487,8 @@ impl Callsites {
     }
 }
 
-pub(crate) fn register_dispatch(dispatch: &Dispatch) {
-    let dispatchers = DISPATCHERS.register_dispatch(dispatch);
+pub(crate) fn register_dispatch(registrar: Registrar) {
+    let dispatchers = DISPATCHERS.register_dispatch(registrar);
     CALLSITES.rebuild_interest(dispatchers);
 }
 
@@ -517,7 +519,10 @@ mod private {
 
 #[cfg(feature = "std")]
 mod dispatchers {
-    use crate::{dispatcher, lazy::Lazy};
+    use crate::{
+        dispatcher::{self, Registrar},
+        lazy::Lazy,
+    };
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
@@ -550,10 +555,10 @@ mod dispatchers {
             Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
         }
 
-        pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder<'_> {
+        pub(super) fn register_dispatch(&self, registrar: Registrar) -> Rebuilder<'_> {
             let mut dispatchers = LOCKED_DISPATCHERS.write().unwrap();
             dispatchers.retain(|d| d.upgrade().is_some());
-            dispatchers.push(dispatch.registrar());
+            dispatchers.push(registrar);
             self.has_just_one
                 .store(dispatchers.len() <= 1, Ordering::SeqCst);
             Rebuilder::Write(dispatchers)

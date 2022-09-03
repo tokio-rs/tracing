@@ -125,10 +125,8 @@
 //!
 
 use crate::{
-    callsite,
-    lazy::Lazy,
-    span,
-    subscriber::{self, NoSubscriber, Subscriber},
+    callsite, span,
+    subscriber::{self, Subscriber},
     Event, LevelFilter, Metadata,
 };
 
@@ -136,7 +134,7 @@ use crate::stdlib::{
     any::Any,
     fmt,
     sync::{
-        atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -152,13 +150,13 @@ use crate::stdlib::{
 ///
 #[derive(Clone)]
 pub struct Dispatch {
-    subscriber: Arc<dyn Subscriber + Send + Sync>,
+    subscriber: Option<Arc<dyn Subscriber + Send + Sync>>,
 }
 
 #[cfg(feature = "std")]
 thread_local! {
     static CURRENT_STATE: State = State {
-        default: RefCell::new(None),
+        default: RefCell::new(DefaultDispatch::None),
         can_enter: Cell::new(true),
     };
 }
@@ -171,26 +169,20 @@ const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
 
 static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
-// The global default dispatch that should be used by [`Enter::with_current`]
-// when there is no explicit local dispatch set.
-//
-// By default this is initialized to [`NO_DISPATCH`] and will be set to
-// [`GLOBAL_DISPATCH`] when this is being set.
-static GLOBAL_DEFAULT_DISPATCH: Lazy<AtomicPtr<Dispatch>> =
-    Lazy::new(|| AtomicPtr::new(unsafe { &mut *NO_DISPATCH as *mut _ }));
 
-// This is only `mut` to make it work as default value of [`GLOBAL_DEFAULT_DISPATCH`].
-//
-// We can not use `new` as we don't want this to be registered at the callsites.
-static mut NO_DISPATCH: Lazy<Dispatch> = Lazy::new(|| Dispatch {
-    subscriber: Arc::new(NoSubscriber::default()),
-});
+/// The current local default dispatch.
+#[derive(Debug)]
+enum DefaultDispatch {
+    Default(Dispatch),
+    Global(&'static Dispatch),
+    None,
+}
 
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
 struct State {
     /// This thread's current default dispatcher.
-    default: RefCell<Option<Dispatch>>,
+    default: RefCell<DefaultDispatch>,
     /// Whether or not we can currently begin dispatching a trace event.
     ///
     /// This is set to `false` when functions such as `enter`, `exit`, `event`,
@@ -212,7 +204,7 @@ struct Entered<'a>(&'a State);
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
-pub struct DefaultGuard(Option<Dispatch>);
+pub struct DefaultGuard(Option<DefaultDispatch>);
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -290,10 +282,6 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     {
         unsafe {
             GLOBAL_DISPATCH = Some(dispatcher);
-            GLOBAL_DEFAULT_DISPATCH.store(
-                GLOBAL_DISPATCH.as_mut().unwrap() as *mut _,
-                Ordering::SeqCst,
-            );
         }
         GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
         EXISTS.store(true, Ordering::Release);
@@ -358,9 +346,9 @@ where
                 return entered.with_current(|current| f(current));
             }
 
-            f(unsafe { &NO_DISPATCH })
+            f(&Dispatch::none())
         })
-        .unwrap_or_else(|_| f(unsafe { &NO_DISPATCH }))
+        .unwrap_or_else(|_| f(&Dispatch::none()))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -379,7 +367,8 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
             let entered = state.enter()?;
             Some(entered.with_current(f))
         })
-        .ok()?
+        .ok()
+        .flatten()
 }
 
 /// Executes a closure with a reference to the current [dispatcher].
@@ -403,7 +392,7 @@ where
     if let Some(d) = get_global() {
         f(d)
     } else {
-        f(unsafe { &NO_DISPATCH })
+        f(&Dispatch::none())
     }
 }
 
@@ -427,8 +416,8 @@ pub(crate) struct Registrar(Weak<dyn Subscriber + Send + Sync>);
 impl Dispatch {
     /// Returns a new `Dispatch` that discards events and spans.
     #[inline]
-    pub fn none() -> Self {
-        unsafe { NO_DISPATCH.clone() }
+    pub const fn none() -> Self {
+        Self { subscriber: None }
     }
 
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
@@ -438,16 +427,12 @@ impl Dispatch {
     where
         S: Subscriber + Send + Sync + 'static,
     {
-        let me = Dispatch {
-            subscriber: Arc::new(subscriber),
-        };
-        callsite::register_dispatch(&me);
-        me
-    }
+        let subscriber = Arc::new(subscriber) as Arc<_>;
+        callsite::register_dispatch(Registrar(Arc::downgrade(&subscriber)));
 
-    #[cfg(feature = "std")]
-    pub(crate) fn registrar(&self) -> Registrar {
-        Registrar(Arc::downgrade(&self.subscriber))
+        Self {
+            subscriber: Some(subscriber),
+        }
     }
 
     /// Registers a new callsite with this subscriber, returning whether or not
@@ -460,7 +445,10 @@ impl Dispatch {
     /// [`register_callsite`]: super::subscriber::Subscriber::register_callsite
     #[inline]
     pub fn register_callsite(&self, metadata: &'static Metadata<'static>) -> subscriber::Interest {
-        self.subscriber.register_callsite(metadata)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.register_callsite(metadata))
+            .unwrap_or_else(|| subscriber::Interest::never())
     }
 
     /// Returns the highest [verbosity level][level] that this [`Subscriber`] will
@@ -476,7 +464,7 @@ impl Dispatch {
     // TODO(eliza): consider making this a public API?
     #[inline]
     pub(crate) fn max_level_hint(&self) -> Option<LevelFilter> {
-        self.subscriber.max_level_hint()
+        self.subscriber.as_ref().and_then(|s| s.max_level_hint())
     }
 
     /// Record the construction of a new span, returning a new [ID] for the
@@ -490,7 +478,10 @@ impl Dispatch {
     /// [`new_span`]: super::subscriber::Subscriber::new_span
     #[inline]
     pub fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
-        self.subscriber.new_span(span)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.new_span(span))
+            .unwrap_or_else(|| span::Id::from_u64(1))
     }
 
     /// Record a set of values on a span.
@@ -502,7 +493,9 @@ impl Dispatch {
     /// [`record`]: super::subscriber::Subscriber::record
     #[inline]
     pub fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.subscriber.record(span, values)
+        if let Some(subscriber) = &self.subscriber {
+            subscriber.record(span, values);
+        }
     }
 
     /// Adds an indication that `span` follows from the span with the id
@@ -515,7 +508,9 @@ impl Dispatch {
     /// [`record_follows_from`]: super::subscriber::Subscriber::record_follows_from
     #[inline]
     pub fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
-        self.subscriber.record_follows_from(span, follows)
+        if let Some(subscriber) = &self.subscriber {
+            subscriber.record_follows_from(span, follows);
+        }
     }
 
     /// Returns true if a span with the specified [metadata] would be
@@ -529,7 +524,10 @@ impl Dispatch {
     /// [`enabled`]: super::subscriber::Subscriber::enabled
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber.enabled(metadata)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.enabled(metadata))
+            .unwrap_or_default()
     }
 
     /// Records that an [`Event`] has occurred.
@@ -542,8 +540,10 @@ impl Dispatch {
     /// [`event`]: super::subscriber::Subscriber::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if self.subscriber.event_enabled(event) {
-            self.subscriber.event(event);
+        if let Some(subscriber) = &self.subscriber {
+            if subscriber.event_enabled(event) {
+                subscriber.event(event);
+            }
         }
     }
 
@@ -555,7 +555,9 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`enter`]: super::subscriber::Subscriber::enter
     pub fn enter(&self, span: &span::Id) {
-        self.subscriber.enter(span);
+        if let Some(subscriber) = &self.subscriber {
+            subscriber.enter(span);
+        }
     }
 
     /// Records that a span has been exited.
@@ -566,7 +568,9 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`exit`]: super::subscriber::Subscriber::exit
     pub fn exit(&self, span: &span::Id) {
-        self.subscriber.exit(span);
+        if let Some(subscriber) = &self.subscriber {
+            subscriber.exit(span);
+        }
     }
 
     /// Notifies the subscriber that a [span ID] has been cloned.
@@ -585,7 +589,10 @@ impl Dispatch {
     /// [`new_span`]: super::subscriber::Subscriber::new_span
     #[inline]
     pub fn clone_span(&self, id: &span::Id) -> span::Id {
-        self.subscriber.clone_span(id)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.clone_span(id))
+            .unwrap_or_else(|| id.clone())
     }
 
     /// Notifies the subscriber that a [span ID] has been dropped.
@@ -613,8 +620,10 @@ impl Dispatch {
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {
-        #[allow(deprecated)]
-        self.subscriber.drop_span(id);
+        if let Some(subscriber) = &self.subscriber {
+            #[allow(deprecated)]
+            subscriber.drop_span(id);
+        }
     }
 
     /// Notifies the subscriber that a [span ID] has been dropped, and returns
@@ -633,7 +642,10 @@ impl Dispatch {
     /// [`try_close`]: super::subscriber::Subscriber::try_close
     /// [`new_span`]: super::subscriber::Subscriber::new_span
     pub fn try_close(&self, id: span::Id) -> bool {
-        self.subscriber.try_close(id)
+        self.subscriber
+            .as_ref()
+            .map(|s| s.try_close(id))
+            .unwrap_or_else(|| true)
     }
 
     /// Returns a type representing this subscriber's view of the current span.
@@ -644,21 +656,30 @@ impl Dispatch {
     /// [`current`]: super::subscriber::Subscriber::current_span
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber.current_span()
+        self.subscriber
+            .as_ref()
+            .map(|s| s.current_span())
+            .unwrap_or_else(|| span::Current::unknown())
     }
 
     /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        <dyn Subscriber>::is::<T>(&*self.subscriber)
+        self.subscriber
+            .as_ref()
+            .map(|s| <dyn Subscriber>::is::<T>(&*s))
+            .unwrap_or_default()
     }
 
     /// Returns some reference to the `Subscriber` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        <dyn Subscriber>::downcast_ref(&*self.subscriber)
+        self.subscriber
+            .as_ref()
+            .map(|s| <dyn Subscriber>::downcast_ref(&*s))
+            .unwrap_or_default()
     }
 }
 
@@ -671,9 +692,14 @@ impl Default for Dispatch {
 
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Dispatch")
-            .field(&format_args!("{:p}", self.subscriber))
-            .finish()
+        let mut debug = f.debug_tuple("Dispatch");
+
+        if let Some(subscriber) = &self.subscriber {
+            debug.field(&format_args!("{:p}", subscriber))
+        } else {
+            debug.field(&"None")
+        }
+        .finish()
     }
 }
 
@@ -690,7 +716,9 @@ where
 #[cfg(feature = "std")]
 impl Registrar {
     pub(crate) fn upgrade(&self) -> Option<Dispatch> {
-        self.0.upgrade().map(|subscriber| Dispatch { subscriber })
+        self.0.upgrade().map(|subscriber| Dispatch {
+            subscriber: Some(subscriber),
+        })
     }
 }
 
@@ -708,10 +736,9 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state.default.replace(Some(new_dispatch))
+                state.default.replace(DefaultDispatch::Default(new_dispatch))
             })
-            .ok()
-            .flatten();
+            .ok();
         EXISTS.store(true, Ordering::Release);
         DefaultGuard(prior)
     }
@@ -732,9 +759,25 @@ impl State {
 impl<'a> Entered<'a> {
     #[inline]
     fn with_current<T>(&self, f: impl FnOnce(&Dispatch) -> T) -> T {
-        match &*self.0.default.borrow() {
-            Some(default) => f(default),
-            None => unsafe { f(&*GLOBAL_DEFAULT_DISPATCH.load(Ordering::SeqCst)) },
+        let mut default = self.0.default.borrow_mut();
+        match &*default {
+            DefaultDispatch::Default(default) => f(default),
+            DefaultDispatch::Global(global) => f(global),
+            DefaultDispatch::None => {
+                let global_state = GLOBAL_INIT.load(Ordering::SeqCst);
+                if global_state == INITIALIZING || global_state == UNINITIALIZED {
+                    const NONE: Dispatch = Dispatch::none();
+                    f(&NONE)
+                } else {
+                    let global = unsafe {
+                        GLOBAL_DISPATCH.as_ref().expect(
+                        "invariant violated: GLOBAL_DISPATCH must be initialized before GLOBAL_INIT is set",
+                    )
+                    };
+                    *default = DefaultDispatch::Global(global);
+                    f(&global)
+                }
+            }
         }
     }
 }
@@ -758,7 +801,11 @@ impl Drop for DefaultGuard {
         // lead to the drop of a subscriber which, in the process,
         // could then also attempt to access the same thread local
         // state -- causing a clash.
-        let prev = CURRENT_STATE.try_with(|state| state.default.replace(self.0.take()));
+        let prev = CURRENT_STATE.try_with(|state| {
+            if let Some(default) = self.0.take() {
+                state.default.replace(default);
+            }
+        });
         drop(prev)
     }
 }
