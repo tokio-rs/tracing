@@ -153,10 +153,7 @@ use std::{
 };
 
 #[cfg(feature = "alloc")]
-use alloc::sync::{
-    Arc,
-    Weak,
-};
+use alloc::sync::{Arc, Weak};
 
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
