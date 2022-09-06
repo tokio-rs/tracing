@@ -150,11 +150,13 @@ use core::{
 use std::{
     cell::{Cell, RefCell, RefMut},
     error,
-    sync::Weak,
 };
 
 #[cfg(feature = "alloc")]
-use alloc::sync::Arc;
+use alloc::sync::{
+    Arc,
+    Weak,
+};
 
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
