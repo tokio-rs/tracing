@@ -260,11 +260,34 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
+    Raw,
 }
 
 impl Default for FormatMode {
     fn default() -> Self {
         FormatMode::Default
+    }
+}
+
+impl Parse for FormatMode {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        if !input.peek(syn::token::Paren) {
+            return Ok(FormatMode::default());
+        }
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let maybe_mode: Option<Ident> = content.parse()?;
+        maybe_mode.map_or(Ok(FormatMode::default()), |ident| {
+            match ident.to_string().as_str() {
+                "Debug" => Ok(FormatMode::Debug),
+                "Display" => Ok(FormatMode::Display),
+                "Raw" => Ok(FormatMode::Raw),
+                _ => Err(syn::Error::new(
+                    ident.span(),
+                    "unknown error mode, must be Debug or Display",
+                )),
+            }
+        })
     }
 }
 

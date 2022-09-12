@@ -258,6 +258,17 @@ mod expand;
 ///     42
 /// }
 /// ```
+/// 
+/// If the value being returned implements [`tracing::field::Value`], you can optionally record it
+/// in its raw form using `ret(Raw)`:
+/// 
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(Raw))]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
 ///
 /// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
 /// `err` or `err(Display)` will emit error events when the function returns `Err`:
@@ -294,6 +305,17 @@ mod expand;
 ///     Ok(())
 /// }
 /// ```
+/// 
+/// If you're returning a `Result<T, E>` and `E` implements [`std::error::Error`], you can
+/// record the raw error value using `err(Raw)`. This can be useful when paired with a subscriber
+/// which specially handles errors, like [`tracing_opentelemetry`]:
+/// 
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(Raw))]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///    Ok(())
+/// }
 ///
 /// If a `target` is specified, both the `ret` and `err` arguments will emit outputs to
 /// the declared target (or the default channel if `target` is not specified).
