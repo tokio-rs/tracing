@@ -736,7 +736,9 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state.default.replace(DefaultDispatch::Default(new_dispatch))
+                state
+                    .default
+                    .replace(DefaultDispatch::Default(new_dispatch))
             })
             .ok();
         EXISTS.store(true, Ordering::Release);
@@ -818,7 +820,7 @@ mod test {
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},
-        subscriber::Interest,
+        subscriber::{Interest, NoSubscriber},
     };
 
     #[test]
