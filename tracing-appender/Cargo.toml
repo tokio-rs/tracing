@@ -32,7 +32,7 @@ default-features = false
 features = ["fmt", "std"]
 
 [dev-dependencies]
-criterion = { version = "0.3", default_features = false }
+criterion = { version = "0.4", default_features = false }
 tracing = { path = "../tracing", version = "0.2" }
 time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
 tempfile = "3"
