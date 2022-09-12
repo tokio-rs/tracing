@@ -259,13 +259,13 @@ fn gen_block<B: ToTokens>(
             let level_tokens = event_args.level(args_level);
             match event_args.mode {
                 FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = %x)
+                    tracing::event!(target: #target, #level_tokens, return = %x, "{}", x)
                 )),
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = ?x)
+                    tracing::event!(target: #target, #level_tokens, return = ?x, "{}", x)
                 )),
                 FormatMode::Raw => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = x)
+                    tracing::event!(target: #target, #level_tokens, return = x, "{}", x)
                 )),
             }
         }
