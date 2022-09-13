@@ -99,7 +99,7 @@
 //! [macros]: https://docs.rs/tracing/latest/tracing/#macros
 //! [instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 use crate::{
-    dispatcher::Registrar,
+    dispatcher::Dispatch,
     stdlib::{
         any::TypeId,
         fmt,
@@ -487,8 +487,8 @@ impl Callsites {
     }
 }
 
-pub(crate) fn register_dispatch(registrar: Registrar) {
-    let dispatchers = DISPATCHERS.register_dispatch(registrar);
+pub(crate) fn register_dispatch(dispatch: &Dispatch) {
+    let dispatchers = DISPATCHERS.register_dispatch(dispatch);
     CALLSITES.rebuild_interest(dispatchers);
 }
 
@@ -520,7 +520,7 @@ mod private {
 #[cfg(feature = "std")]
 mod dispatchers {
     use crate::{
-        dispatcher::{self, Registrar},
+        dispatcher::{self, Dispatch},
         lazy::Lazy,
     };
     use std::sync::{
@@ -555,10 +555,13 @@ mod dispatchers {
             Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
         }
 
-        pub(super) fn register_dispatch(&self, registrar: Registrar) -> Rebuilder<'_> {
+        pub(super) fn register_dispatch(&self, dispatch: &Dispatch) -> Rebuilder<'_> {
             let mut dispatchers = LOCKED_DISPATCHERS.write().unwrap();
             dispatchers.retain(|d| d.upgrade().is_some());
-            dispatchers.push(registrar);
+
+            if let Some(registrar) = dispatch.registrar() {
+                dispatchers.push(registrar);
+            }
             self.has_just_one
                 .store(dispatchers.len() <= 1, Ordering::SeqCst);
             Rebuilder::Write(dispatchers)

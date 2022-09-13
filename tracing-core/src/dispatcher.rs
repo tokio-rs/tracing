@@ -172,6 +172,7 @@ static mut GLOBAL_DISPATCH: Option<Dispatch> = None;
 
 /// The current local default dispatch.
 #[derive(Debug)]
+#[cfg(feature = "std")]
 enum DefaultDispatch {
     Default(Dispatch),
     Global(&'static Dispatch),
@@ -428,11 +429,20 @@ impl Dispatch {
         S: Subscriber + Send + Sync + 'static,
     {
         let subscriber = Arc::new(subscriber) as Arc<_>;
-        callsite::register_dispatch(Registrar(Arc::downgrade(&subscriber)));
-
-        Self {
+        let dispatch = Self {
             subscriber: Some(subscriber),
-        }
+        };
+
+        callsite::register_dispatch(&dispatch);
+
+        dispatch
+    }
+
+    #[cfg(feature = "std")]
+    pub(crate) fn registrar(&self) -> Option<Registrar> {
+        self.subscriber
+            .as_ref()
+            .map(|s| Registrar(Arc::downgrade(s)))
     }
 
     /// Registers a new callsite with this subscriber, returning whether or not
@@ -448,7 +458,7 @@ impl Dispatch {
         self.subscriber
             .as_ref()
             .map(|s| s.register_callsite(metadata))
-            .unwrap_or_else(|| subscriber::Interest::never())
+            .unwrap_or_else(subscriber::Interest::never)
     }
 
     /// Returns the highest [verbosity level][level] that this [`Subscriber`] will
@@ -659,7 +669,7 @@ impl Dispatch {
         self.subscriber
             .as_ref()
             .map(|s| s.current_span())
-            .unwrap_or_else(|| span::Current::unknown())
+            .unwrap_or_else(span::Current::unknown)
     }
 
     /// Returns `true` if this `Dispatch` forwards to a `Subscriber` of type
@@ -668,7 +678,7 @@ impl Dispatch {
     pub fn is<T: Any>(&self) -> bool {
         self.subscriber
             .as_ref()
-            .map(|s| <dyn Subscriber>::is::<T>(&*s))
+            .map(|s| <dyn Subscriber>::is::<T>(s))
             .unwrap_or_default()
     }
 
@@ -678,7 +688,7 @@ impl Dispatch {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         self.subscriber
             .as_ref()
-            .map(|s| <dyn Subscriber>::downcast_ref(&*s))
+            .map(|s| <dyn Subscriber>::downcast_ref(s))
             .unwrap_or_default()
     }
 }
@@ -777,7 +787,7 @@ impl<'a> Entered<'a> {
                     )
                     };
                     *default = DefaultDispatch::Global(global);
-                    f(&global)
+                    f(global)
                 }
             }
         }
@@ -803,11 +813,7 @@ impl Drop for DefaultGuard {
         // lead to the drop of a subscriber which, in the process,
         // could then also attempt to access the same thread local
         // state -- causing a clash.
-        let prev = CURRENT_STATE.try_with(|state| {
-            if let Some(default) = self.0.take() {
-                state.default.replace(default);
-            }
-        });
+        let prev = CURRENT_STATE.try_with(|state| self.0.take().map(|d| state.default.replace(d)));
         drop(prev)
     }
 }
