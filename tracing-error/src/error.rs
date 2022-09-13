@@ -109,7 +109,7 @@ impl ErrorImpl<Erased> {
         // uphold this is UB. since the `From` impl is parameterized over the original error type,
         // the function pointer we construct here will also retain the original type. therefore,
         // when this is consumed by the `error` method, it will be safe to call.
-        unsafe { &*(self.vtable.object_ref)(self) }
+        unsafe { (self.vtable.object_ref)(self) }
     }
 }
 

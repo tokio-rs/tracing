@@ -242,7 +242,7 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
             if self.state.advance_date(now, current_time) {
-                self.state.refresh_writer(now, &mut *self.writer.write());
+                self.state.refresh_writer(now, &mut self.writer.write());
             }
         }
         RollingWriter(self.writer.read())
