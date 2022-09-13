@@ -947,7 +947,7 @@ mod test {
     #[test]
     fn default_no_subscriber() {
         let default_dispatcher = Dispatch::default();
-        assert!(default_dispatcher.is::<NoSubscriber>());
+        assert!(!default_dispatcher.is::<NoSubscriber>());
     }
 
     #[cfg(feature = "std")]
@@ -979,6 +979,6 @@ mod test {
 
         drop(guard);
         let default_dispatcher = Dispatch::default();
-        assert!(default_dispatcher.is::<NoSubscriber>());
+        assert!(!default_dispatcher.is::<NoSubscriber>());
     }
 }
