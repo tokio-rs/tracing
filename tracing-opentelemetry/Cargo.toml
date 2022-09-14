@@ -38,7 +38,7 @@ async-trait = "0.1.20"
 [dev-dependencies]
 async-trait = "0.1.56"
 criterion = { version = "0.3.6", default_features = false }
-opentelemetry-jaeger = "0.16.0"
+opentelemetry-jaeger = "0.17.0"
 futures-util = { version = "0.3.21", default-features = false }
 tokio = { version = "1.20.0", features = ["full"] }
 tokio-stream = "0.1.9"
