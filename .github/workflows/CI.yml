@@ -155,11 +155,15 @@ jobs:
           toolchain: 1.49.0
         - subcrate: tracing-subscriber
           toolchain: 1.49.0
+        - subcrate: tracing-opentelemetry
+          toolchain: 1.49.0
         include:
         - subcrate: tracing-appender
           toolchain: 1.53.0
         - subcrate: tracing-subscriber
           toolchain: 1.50.0
+        - subcrate: tracing-opentelemetry
+          toolchain: 1.56.0
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly

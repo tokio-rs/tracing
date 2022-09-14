@@ -50,7 +50,7 @@ The crate provides the following types:
 [`tracing`]: https://crates.io/crates/tracing
 [OpenTelemetry]: https://opentelemetry.io/
 
-*Compiler support: [requires `rustc` 1.49+][msrv]*
+*Compiler support: [requires `rustc` 1.56+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -110,7 +110,7 @@ $ firefox http://localhost:16686/
 ## Supported Rust Versions
 
 Tracing Opentelemetry is built against the latest stable release. The minimum
-supported version is 1.46. The current Tracing version is not guaranteed to
+supported version is 1.56. The current Tracing version is not guaranteed to
 build on Rust versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
