@@ -52,8 +52,8 @@ inferno = "0.11.6"
 tempfile = "3"
 
 # opentelemetry example
-opentelemetry = { version = "0.17.0", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.16.0"
+opentelemetry = { version = "0.18.0", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.17.0"
 
 # fmt examples
 snafu = "0.6.10"
