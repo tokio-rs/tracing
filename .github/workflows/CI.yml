@@ -214,6 +214,7 @@ jobs:
           --exclude=tracing-appender
           --exclude=tracing-examples
           --exclude=tracing-futures
+          --exclude=tracing-opentelemetry
         toolchain: ${{ env.MSRV }}
 
   # TODO: remove this once tracing's MSRV is bumped.
