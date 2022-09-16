@@ -1,9 +1,10 @@
-use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, TracerProvider};
+use opentelemetry::sdk::trace::{Tracer, TracerProvider};
+use opentelemetry::trace::OrderMap;
 use opentelemetry::{
     trace as otel,
     trace::{
-        noop, SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
-        TraceState,
+        noop, SamplingDecision, SamplingResult, SpanBuilder, SpanContext, SpanId, SpanKind,
+        TraceContextExt, TraceFlags, TraceId, TraceState,
     },
     Context as OtelContext,
 };
@@ -74,19 +75,18 @@ impl PreSampledTracer for Tracer {
         let builder = &mut data.builder;
 
         // Gather trace state
-        let (no_parent, trace_id, remote_parent, parent_trace_flags) =
-            current_trace_state(builder, parent_cx, &provider);
+        let (trace_id, parent_trace_flags) = current_trace_state(builder, parent_cx, &provider);
 
         // Sample or defer to existing sampling decisions
         let (flags, trace_state) = if let Some(result) = &builder.sampling_result {
             process_sampling_result(result, parent_trace_flags)
-        } else if no_parent || remote_parent {
+        } else {
             builder.sampling_result = Some(provider.config().sampler.should_sample(
                 Some(parent_cx),
                 trace_id,
                 &builder.name,
                 builder.span_kind.as_ref().unwrap_or(&SpanKind::Internal),
-                builder.attributes.as_deref().unwrap_or(&[]),
+                builder.attributes.as_ref().unwrap_or(&OrderMap::default()),
                 builder.links.as_deref().unwrap_or(&[]),
                 self.instrumentation_library(),
             ));
@@ -95,12 +95,6 @@ impl PreSampledTracer for Tracer {
                 builder.sampling_result.as_ref().unwrap(),
                 parent_trace_flags,
             )
-        } else {
-            // has parent that is local
-            Some((
-                parent_trace_flags,
-                parent_cx.span().span_context().trace_state().clone(),
-            ))
         }
         .unwrap_or_default();
 
@@ -126,18 +120,16 @@ fn current_trace_state(
     builder: &SpanBuilder,
     parent_cx: &OtelContext,
     provider: &TracerProvider,
-) -> (bool, TraceId, bool, TraceFlags) {
+) -> (TraceId, TraceFlags) {
     if parent_cx.has_active_span() {
         let span = parent_cx.span();
         let sc = span.span_context();
-        (false, sc.trace_id(), sc.is_remote(), sc.trace_flags())
+        (sc.trace_id(), sc.trace_flags())
     } else {
         (
-            true,
             builder
                 .trace_id
                 .unwrap_or_else(|| provider.config().id_generator.new_trace_id()),
-            false,
             Default::default(),
         )
     }

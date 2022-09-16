@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // Install an otel pipeline with a simple span processor that exports data one at a time when
     // spans end. See the `install_batch` option on each exporter's pipeline builder to see how to
     // export in batches.
-    let tracer = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name("report_example")
         .install_simple()?;
     let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
