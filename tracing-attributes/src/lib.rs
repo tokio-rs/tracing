@@ -80,10 +80,12 @@
     while_true
 )]
 
+use std::convert::{TryFrom, TryInto};
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
-use syn::{Attribute, Block, ItemFn, Signature, Visibility};
+use syn::{Attribute, ItemFn, Signature, Visibility};
 
 mod attr;
 mod expand;
@@ -388,11 +390,13 @@ fn instrument_precise(
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
     if let Some(async_like) = expand::AsyncInfo::from_fn(&input) {
-        return Ok(async_like.gen_async(args, instrumented_function_name.as_str()));
+        return Ok(async_like.gen_async(args, instrumented_function_name.as_str())?);
     }
 
+    let input: MaybeItemFn = input.try_into()?;
+
     Ok(expand::gen_function(
-        (&input).into(),
+        input.as_ref(),
         args,
         instrumented_function_name.as_str(),
         None,
@@ -404,7 +408,8 @@ fn instrument_precise(
 /// which's block is just a `TokenStream` (it may contain invalid code).
 #[derive(Debug, Clone)]
 struct MaybeItemFn {
-    attrs: Vec<Attribute>,
+    outer_attrs: Vec<Attribute>,
+    inner_attrs: Vec<Attribute>,
     vis: Visibility,
     sig: Signature,
     block: TokenStream,
@@ -413,7 +418,8 @@ struct MaybeItemFn {
 impl MaybeItemFn {
     fn as_ref(&self) -> MaybeItemFnRef<'_, TokenStream> {
         MaybeItemFnRef {
-            attrs: &self.attrs,
+            outer_attrs: &self.outer_attrs,
+            inner_attrs: &self.inner_attrs,
             vis: &self.vis,
             sig: &self.sig,
             block: &self.block,
@@ -425,12 +431,14 @@ impl MaybeItemFn {
 /// (just like `ItemFn`, but skips parsing the body).
 impl Parse for MaybeItemFn {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let attrs = input.call(syn::Attribute::parse_outer)?;
+        let outer_attrs = input.call(Attribute::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let sig: Signature = input.parse()?;
+        let inner_attrs = input.call(Attribute::parse_inner)?;
         let block: TokenStream = input.parse()?;
         Ok(Self {
-            attrs,
+            outer_attrs,
+            inner_attrs,
             vis,
             sig,
             block,
@@ -442,19 +450,17 @@ impl Parse for MaybeItemFn {
 /// that takes a generic block type `B` that implements `ToTokens` (eg. `TokenStream`, `Block`).
 #[derive(Debug, Clone)]
 struct MaybeItemFnRef<'a, B: ToTokens> {
-    attrs: &'a Vec<Attribute>,
+    outer_attrs: &'a Vec<Attribute>,
+    inner_attrs: &'a Vec<Attribute>,
     vis: &'a Visibility,
     sig: &'a Signature,
     block: &'a B,
 }
 
-impl<'a> From<&'a ItemFn> for MaybeItemFnRef<'a, Box<Block>> {
-    fn from(val: &'a ItemFn) -> Self {
-        MaybeItemFnRef {
-            attrs: &val.attrs,
-            vis: &val.vis,
-            sig: &val.sig,
-            block: &val.block,
-        }
+impl TryFrom<ItemFn> for MaybeItemFn {
+    type Error = syn::Error;
+
+    fn try_from(value: ItemFn) -> Result<Self, Self::Error> {
+        syn::parse2(value.into_token_stream())
     }
 }

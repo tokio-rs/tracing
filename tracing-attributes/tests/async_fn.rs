@@ -30,6 +30,12 @@ async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'
 #[instrument]
 async fn test_async_fn_empty() {}
 
+#[instrument]
+async fn repro_async_2294() {
+    #![allow(unused_variables)]
+    let i = 42;
+}
+
 // Reproduces https://github.com/tokio-rs/tracing/issues/1613
 #[instrument]
 // LOAD-BEARING `#[rustfmt::skip]`! This is necessary to reproduce the bug;
