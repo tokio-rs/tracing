@@ -688,7 +688,7 @@ where
 {
     type Writer = &'a W;
     fn make_writer(&'a self) -> Self::Writer {
-        &*self
+        self
     }
 }
 
