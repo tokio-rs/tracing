@@ -4,6 +4,9 @@
 # tracing-core should include Eliza and Carl.
 /tracing-core/                  @hawkw @carllerche
 
+# tracing-core should include Eliza and Carl.
+/tracing-core/                  @hawkw @carllerche
+
 # tracing-error and tracing-flame were contributed by Jane.
 /tracing-error/                 @yaahc @tokio-rs/tracing
 /tracing-flame/                 @yaahc @tokio-rs/tracing
