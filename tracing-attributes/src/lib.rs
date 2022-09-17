@@ -390,7 +390,7 @@ fn instrument_precise(
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
     if let Some(async_like) = expand::AsyncInfo::from_fn(&input) {
-        return Ok(async_like.gen_async(args, instrumented_function_name.as_str())?);
+        return async_like.gen_async(args, instrumented_function_name.as_str());
     }
 
     let input: MaybeItemFn = input.try_into()?;
