@@ -53,7 +53,7 @@ tempfile = "3"
 
 # opentelemetry example
 opentelemetry = { version = "0.18", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.16"
+opentelemetry-jaeger = "0.17"
 
 # fmt examples
 snafu = "0.7.1"
