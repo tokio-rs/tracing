@@ -38,7 +38,7 @@ cfg-if = "1.0.0"
 pin-project-lite = "0.2"
 
 [dev-dependencies]
-criterion = { version = "0.3", default_features = false }
+criterion = { version = "0.4", default_features = false }
 log = "0.4"
 tracing-mock = { path = "../tracing-mock" }
 
