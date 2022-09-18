@@ -1,3 +1,17 @@
+# 0.18.0 (September 18, 2022)
+
+### Breaking Changes
+
+- Upgrade to `v0.18.0` of `opentelemetry` ([#2303])
+  For list of breaking changes in OpenTelemetry, see the
+  [v0.18.0 changelog](https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry/CHANGELOG.md#v0180).
+
+### Fixed
+
+- `on_event` respects event's explicit parent ([#2296])
+
+Thanks to @wprzytula for contributing to this release!
+
 # 0.17.4 (July 1, 2022)
 
 This release adds optional support for recording `std::error::Error`s using
