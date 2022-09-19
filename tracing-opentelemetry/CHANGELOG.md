@@ -12,6 +12,9 @@
 
 Thanks to @wprzytula for contributing to this release!
 
+[#2303]: https://github.com/tokio-rs/tracing/pull/2303
+[#2296]: https://github.com/tokio-rs/tracing/pull/2296
+
 # 0.17.4 (July 1, 2022)
 
 This release adds optional support for recording `std::error::Error`s using
