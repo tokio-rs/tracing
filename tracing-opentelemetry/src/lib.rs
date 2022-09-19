@@ -100,7 +100,7 @@
 //! [subscriber]: tracing_subscriber::subscribe
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.17.4")]
+#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.18.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
