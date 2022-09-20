@@ -885,7 +885,25 @@ where
 }
 
 impl WeakDispatch {
-    /// Attempts to upgrade the `WeakDispatch` to a `Dispatch`.
+    /// Attempts to upgrade the `WeakDispatch` to a [`Dispatch`].
+    ///
+    /// Returns `None` if the inner `Dispatch` has already been dropped.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use tracing_core::collect::NoCollector;
+    /// # use tracing_core::dispatch::Dispatch;
+    /// static COLLECTOR: NoCollector = NoCollector::new();
+    /// let strong = Dispatch::new(COLLECTOR);
+    /// let weak = strong.downgrade();
+    ///
+    /// // The strong here keeps it alive, so we can still access the object.
+    /// assert!(weak.upgrade().is_some());
+    ///
+    /// drop(strong); // But not any more.
+    /// assert!(weak.upgrade().is_none());
+    /// ```
     pub fn upgrade(&self) -> Option<Dispatch> {
         #[cfg(feature = "alloc")]
         let collector = match &self.collector {
