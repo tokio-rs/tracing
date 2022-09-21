@@ -1,8 +1,8 @@
-use async_trait::async_trait;
+use futures_util::future::BoxFuture;
 use opentelemetry::{
     propagation::TextMapPropagator,
     sdk::{
-        export::trace::{SpanData, SpanExporter},
+        export::trace::{ExportResult, SpanData, SpanExporter},
         propagation::{BaggagePropagator, TextMapCompositePropagator, TraceContextPropagator},
         trace::{Tracer, TracerProvider},
     },
@@ -158,15 +158,14 @@ fn build_sampled_context() -> (Context, impl Subscriber, TestExporter, TracerPro
 #[derive(Clone, Default, Debug)]
 struct TestExporter(Arc<Mutex<Vec<SpanData>>>);
 
-#[async_trait]
 impl SpanExporter for TestExporter {
-    async fn export(
-        &mut self,
-        mut batch: Vec<SpanData>,
-    ) -> opentelemetry::sdk::export::trace::ExportResult {
-        if let Ok(mut inner) = self.0.lock() {
-            inner.append(&mut batch);
-        }
-        Ok(())
+    fn export(&mut self, mut batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
+        let spans = self.0.clone();
+        Box::pin(async move {
+            if let Ok(mut inner) = spans.lock() {
+                inner.append(&mut batch);
+            }
+            Ok(())
+        })
     }
 }

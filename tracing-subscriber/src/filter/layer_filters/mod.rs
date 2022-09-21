@@ -44,7 +44,7 @@ use std::{
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
-    Event, Metadata,
+    Dispatch, Event, Metadata,
 };
 pub mod combinator;
 
@@ -607,6 +607,10 @@ where
     F: layer::Filter<S> + 'static,
     L: Layer<S>,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        self.layer.on_register_dispatch(collector);
+    }
+
     fn on_layer(&mut self, subscriber: &mut S) {
         self.id = MagicPlfDowncastMarker(subscriber.register_filter());
         self.layer.on_layer(subscriber);

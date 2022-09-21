@@ -75,7 +75,7 @@ use std::{
 use tracing_core::{
     callsite, span,
     subscriber::{Interest, Subscriber},
-    Event, LevelFilter, Metadata,
+    Dispatch, Event, LevelFilter, Metadata,
 };
 
 /// Wraps a `Layer` or `Filter`, allowing it to be reloaded dynamically at runtime.
@@ -115,6 +115,10 @@ where
     L: crate::Layer<S> + 'static,
     S: Subscriber,
 {
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        try_lock!(self.inner.read()).on_register_dispatch(subscriber);
+    }
+
     fn on_layer(&mut self, subscriber: &mut S) {
         try_lock!(self.inner.write(), else return).on_layer(subscriber);
     }

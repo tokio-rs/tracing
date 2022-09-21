@@ -241,7 +241,7 @@ my_future
 `Future::instrument` attaches a span to the future, ensuring that the span's lifetime
 is as long as the future's.
 
-Under the hood, the [`#[instrument]`][instrument] macro performs same the explicit span
+Under the hood, the [`#[instrument]`][instrument] macro performs the same explicit span
 attachment that `Future::instrument` does.
 
 [std-future]: https://doc.rust-lang.org/stable/std/future/trait.Future.html
@@ -390,6 +390,8 @@ are not maintained by the `tokio` project. These include:
   _inside_ of functions.
 - [`tracing-wasm`] provides a `Subscriber`/`Layer` implementation that reports
   events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+- [`tracing-web`] provides a layer implementation of level-aware logging of events
+  to web browsers' `console.*` and span events to the [User Timing API (`window.performance`)].
 - [`test-log`] takes care of initializing `tracing` for tests, based on
   environment variables with an `env_logger` compatible syntax.
 - [`tracing-unwrap`] provides convenience methods to report failed unwraps on `Result` or `Option` types to a `Subscriber`.
@@ -403,6 +405,7 @@ are not maintained by the `tokio` project. These include:
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
+- [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -424,6 +427,7 @@ please let us know!)
 [`color-eyre`]: https://docs.rs/color-eyre
 [`spandoc`]: https://docs.rs/spandoc
 [`tracing-wasm`]: https://docs.rs/tracing-wasm
+[`tracing-web`]: https://crates.io/crates/tracing-web
 [`test-log`]: https://crates.io/crates/test-log
 [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 [`tracing-unwrap`]: https://docs.rs/tracing-unwrap
@@ -441,6 +445,7 @@ please let us know!)
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
 [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
+[`tracing-chrome`]: https://crates.io/crates/tracing-chrome
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

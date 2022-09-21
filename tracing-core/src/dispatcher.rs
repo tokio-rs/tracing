@@ -445,8 +445,23 @@ impl Dispatch {
             .map(|s| Registrar(Arc::downgrade(s)))
     }
 
-    /// Registers a new callsite with this subscriber, returning whether or not
-    /// the subscriber is interested in being notified about the callsite.
+    #[inline(always)]
+    #[cfg(feature = "alloc")]
+    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
+        match self.subscriber {
+            Kind::Scoped(ref s) => Arc::deref(s),
+            Kind::Global(s) => s,
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(not(feature = "alloc"))]
+    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
+        &self.subscriber
+    }
+
+    /// Registers a new callsite with this collector, returning whether or not
+    /// the collector is interested in being notified about the callsite.
     ///
     /// This calls the [`register_callsite`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.
@@ -676,20 +691,14 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        self.subscriber
-            .as_ref()
-            .map(|s| <dyn Subscriber>::is::<T>(s))
-            .unwrap_or_default()
+        <dyn Subscriber>::is::<T>(&self.subscriber)
     }
 
     /// Returns some reference to the `Subscriber` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        self.subscriber
-            .as_ref()
-            .map(|s| <dyn Subscriber>::downcast_ref(s))
-            .unwrap_or_default()
+        <dyn Subscriber>::downcast_ref(&self.subscriber)
     }
 }
 
