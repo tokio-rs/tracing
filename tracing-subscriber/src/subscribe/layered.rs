@@ -39,9 +39,8 @@ pub struct Layered<S, I, C = I> {
     // level hints when per-subscriber filters are in use.
     /// Is `self.inner` a `Registry`?
     ///
-    /// If so, when combining `Interest`s, we want to "bubble up" its
-    /// `Interest`.
-    inner_is_registry: bool,
+    /// If so, we ignore the subscriber when returning a `max_level_hint`
+    pub(crate) inner_is_registry: bool,
 
     /// Does `self.subscriber` have per-subscriber filters?
     ///
@@ -482,6 +481,8 @@ where
             return outer_hint;
         }
 
+        // This is the same as the fallthrough, but we want it to happen
+        // before we check the individual cases below.
         if self.has_subscriber_filter && self.inner_has_subscriber_filter {
             return Some(cmp::max(outer_hint?, inner_hint?));
         }
@@ -494,7 +495,9 @@ where
             return None;
         }
 
-        cmp::max(outer_hint, inner_hint)
+        // `None` is basically == `Some(TRACE)` so we have to short
+        // circuit, instead of using `Option`s `PartialOrd` impl.
+        Some(cmp::max(outer_hint?, inner_hint?))
     }
 }
 

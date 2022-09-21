@@ -480,9 +480,9 @@ where
     #[must_use = "you may want to use `try_init` or similar to actually install the collector."]
     pub fn finish(self) -> Collector<N, E, F, W> {
         let collector = self.inner.with_collector(Registry::default());
-        Collector {
-            inner: self.filter.with_collector(collector),
-        }
+        let mut inner = self.filter.with_collector(collector);
+        inner.inner_is_registry = true;
+        Collector { inner }
     }
 
     /// Install this collector as the global default if one is
