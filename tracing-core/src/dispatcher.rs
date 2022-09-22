@@ -446,18 +446,8 @@ impl Dispatch {
     }
 
     #[inline(always)]
-    #[cfg(feature = "alloc")]
-    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
-        match self.subscriber {
-            Kind::Scoped(ref s) => Arc::deref(s),
-            Kind::Global(s) => s,
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(not(feature = "alloc"))]
-    pub(crate) fn subscriber(&self) -> &(dyn Subscriber + Send + Sync) {
-        &self.subscriber
+    pub(crate) fn subscriber(&self) -> Option<&(dyn Subscriber + Send + Sync)> {
+        self.subscriber.as_deref()
     }
 
     /// Registers a new callsite with this collector, returning whether or not
@@ -691,14 +681,19 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        <dyn Subscriber>::is::<T>(&self.subscriber)
+        self.subscriber
+            .as_ref()
+            .map(|s| <dyn Subscriber>::is::<T>(s))
+            .unwrap_or(false)
     }
 
     /// Returns some reference to the `Subscriber` this `Dispatch` forwards to
     /// if it is of type `T`, or `None` if it isn't.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        <dyn Subscriber>::downcast_ref(&self.subscriber)
+        self.subscriber
+            .as_ref()
+            .and_then(|s| <dyn Subscriber>::downcast_ref(s))
     }
 }
 
