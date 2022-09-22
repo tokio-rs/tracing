@@ -190,7 +190,7 @@ impl RollingFileAppender {
         Builder::new()
     }
 
-    fn from_builder(builder: Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
+    fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
         let Builder {
             ref rotation,
             ref prefix,
