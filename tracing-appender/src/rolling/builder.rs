@@ -203,8 +203,11 @@ impl Builder {
     /// ```
     ///
     /// If no value is supplied, `RollingAppender` will not remove any files.
-    pub fn keep_last_n_logs(&mut self, n: usize) {
-        self.keep_last = Some(n);
+    pub fn keep_last_n_logs(self, n: usize) -> Self {
+        Self {
+            keep_last: Some(n),
+            ..self
+        }
     }
 
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
