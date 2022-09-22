@@ -195,6 +195,7 @@ impl RollingFileAppender {
             ref rotation,
             ref prefix,
             ref suffix,
+            ref keep_last,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -204,6 +205,7 @@ impl RollingFileAppender {
             directory,
             prefix.clone(),
             suffix.clone(),
+            keep_last.clone(),
         )?;
         Ok(Self {
             state,
@@ -546,6 +548,7 @@ impl Inner {
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
+        keep_last: Option<usize>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let filename = rotation.join_date(
@@ -566,31 +569,12 @@ impl Inner {
                     .unwrap_or(0),
             ),
             rotation,
-            keep_last: None,
+            keep_last,
         };
         Ok((inner, writer))
     }
 
     fn prune_old_logs(&self, keep_last: usize) {
-        let format;
-        match self.rotation {
-            Rotation::MINUTELY => {
-                format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-            }
-            Rotation::HOURLY => {
-                format = format_description::parse("[year]-[month]-[day]-[hour]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-            }
-            Rotation::DAILY => {
-                format = format_description::parse("[year]-[month]-[day]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-            }
-            Rotation::NEVER => {
-                unreachable!("keep last N files feature is not available for `Rotation::NEVER`!")
-            }
-        }
-
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(Result::ok)
                 .filter(|entry| {
@@ -603,38 +587,40 @@ impl Inner {
                 })
                 .collect::<Vec<_>>()
         });
-
-        match files {
-            Ok(mut files) => {
-                if files.len() >= keep_last {
-                    // sort the files by their creation timestamps.
-                    files.sort_by_key(|file| {
-                        file.metadata()
-                            .and_then(|metadata| metadata.created().map(Some))
-                            .unwrap_or_else(|error| {
-                                eprintln!(
-                                    "Unable to get file creation time for {}: {}",
-                                    file.path().display(),
-                                    error
-                                );
-                                // if we couldn't determine the file's creation
-                                // timestamp for whatever reason, it should
-                                // compare as "less than" other files, so that
-                                // it's not deleted.
-                                None
-                            })
-                    });
-
-                    // delete files, so that (n-1) files remain, because we will create another log file
-                    for file in &files[..files.len() - (keep_last - 1)] {
-                        if let Err(error) = fs::remove_file(file) {
-                            eprintln!("Failed to remove old log file: {}", error);
-                        }
-                    }
-                }
-            }
+        let mut files = match files {
+            Ok(files) => files,
             Err(error) => {
-                eprintln!("Error reading the log directory/files: {}", error)
+                eprintln!("Error reading the log directory/files: {}", error);
+                return;
+            }
+        };
+        if files.len() < keep_last {
+            return;
+        }
+        // sort the files by their creation timestamps.
+        files.sort_by_key(|file| {
+            file.metadata()
+                .and_then(|metadata| metadata.created().map(Some))
+                .unwrap_or_else(|error| {
+                    eprintln!(
+                        "Unable to get file creation time for {}: {}",
+                        file.path().display(),
+                        error
+                    );
+                    // if we couldn't determine the file's creation timestamp
+                    // for whatever reason, it should compare as "less than"
+                    // other files, so that it's not deleted.
+                    None
+                })
+        });
+        // delete files, so that (n-1) files remain, because we will create another log file
+        for file in &files[..files.len() - (keep_last - 1)] {
+            if let Err(error) = fs::remove_file(file.path()) {
+                eprintln!(
+                    "Failed to remove old log file {}: {}",
+                    file.path().display(),
+                    error
+                );
             }
         }
     }
@@ -884,6 +870,7 @@ mod test {
             Rotation::HOURLY,
             directory.path(),
             Some("test_make_writer".to_string()),
+            None,
             None,
         )
         .unwrap();

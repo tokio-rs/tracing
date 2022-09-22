@@ -10,6 +10,7 @@ pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
+    pub(super) keep_last: Option<usize>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -48,6 +49,7 @@ impl Builder {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
+            keep_last: None,
         }
     }
 
@@ -179,6 +181,30 @@ impl Builder {
             Some(suffix)
         };
         Self { suffix, ..self }
+    }
+
+    /// Keep the last `n` log entries on disk.
+    ///
+    /// # Examples
+    ///
+    /// Setting a suffix:
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .keep_last_n_logs(5) // only the most recent 5 logs files will be kept
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    ///
+    /// If no value is supplied, `RollingAppender` will not remove any files.
+    pub fn keep_last_n_logs(&mut self, n: usize) {
+        self.keep_last = Some(n);
     }
 
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
