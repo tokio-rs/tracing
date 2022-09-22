@@ -111,6 +111,7 @@ use crate::{
         },
         vec::Vec,
     },
+    subscriber,
 };
 use crate::{
     lazy::Lazy,
@@ -489,7 +490,9 @@ impl Callsites {
 
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
     let dispatchers = DISPATCHERS.register_dispatch(dispatch);
-    dispatch.subscriber().map(|s| s.on_register_dispatch(dispatch));
+    if let Some(subscriber) = dispatch.subscriber() {
+        subscriber.on_register_dispatch(dispatch);
+    }
     CALLSITES.rebuild_interest(dispatchers);
 }
 
