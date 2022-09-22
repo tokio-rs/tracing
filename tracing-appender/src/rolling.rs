@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Duration, OffsetDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
