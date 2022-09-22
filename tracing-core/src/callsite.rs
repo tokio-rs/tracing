@@ -111,7 +111,6 @@ use crate::{
         },
         vec::Vec,
     },
-    subscriber,
 };
 use crate::{
     lazy::Lazy,
