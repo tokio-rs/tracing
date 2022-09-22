@@ -605,28 +605,28 @@ impl Inner {
         });
 
         match files {
-            Ok(files) => {
+            Ok(mut files) => {
                 if files.len() >= keep_last {
-                    let mut sorted_files = vec![];
-                    for file in files {
-                        let filename = file.file_name().to_string_lossy().to_string();
-                        match filename.rfind('.') {
-                            Some(date_index) => {
-                                let date_str = filename[(date_index + 1)..].to_string();
-                                match Date::parse(&date_str, &format) {
-                                    Ok(date) => sorted_files.push((file.path(), date)),
-                                    Err(error) => eprintln!("error parsing the date: {error}"),
-                                }
-                            }
-                            None => {
-                                eprintln!("Filename do not meet the expected format!");
-                                continue;
-                            }
-                        }
-                    }
-                    sorted_files.sort_by_key(|item| item.1);
+                    // sort the files by their creation timestamps.
+                    files.sort_by_key(|file| {
+                        file.metadata()
+                            .and_then(|metadata| metadata.created().map(Some))
+                            .unwrap_or_else(|error| {
+                                eprintln!(
+                                    "Unable to get file creation time for {}: {}",
+                                    file.path().display(),
+                                    error
+                                );
+                                // if we couldn't determine the file's creation
+                                // timestamp for whatever reason, it should
+                                // compare as "less than" other files, so that
+                                // it's not deleted.
+                                None
+                            })
+                    });
+
                     // delete files, so that (n-1) files remain, because we will create another log file
-                    for (file, _) in &sorted_files[..sorted_files.len() - (keep_last - 1)] {
+                    for file in &files[..files.len() - (keep_last - 1)] {
                         if let Err(error) = fs::remove_file(file) {
                             eprintln!("Failed to remove old log file: {error}");
                         }
