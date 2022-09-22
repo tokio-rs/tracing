@@ -628,7 +628,7 @@ impl Inner {
                     // delete files, so that (n-1) files remain, because we will create another log file
                     for file in &files[..files.len() - (keep_last - 1)] {
                         if let Err(error) = fs::remove_file(file) {
-                            eprintln!("Failed to remove old log file: {error}");
+                            eprintln!("Failed to remove old log file: {}", error);
                         }
                     }
                 }
