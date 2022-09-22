@@ -634,7 +634,7 @@ impl Inner {
                 }
             }
             Err(error) => {
-                eprintln!("Error reading the log directory/files: {error}")
+                eprintln!("Error reading the log directory/files: {}", error)
             }
         }
     }
