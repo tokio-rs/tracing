@@ -1044,6 +1044,11 @@ mod test {
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
 
+        // depending on the filesystem, the creation timestamp's resolution may
+        // be as coarse as one second, so we need to wait a bit here to ensure
+        // that the next file actually is newer than the old one.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
         tracing::info!("file 2");
 
         // advance time by one second
@@ -1053,6 +1058,9 @@ mod test {
 
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
+
+        // again, sleep to ensure that the creation timestamps actually differ.
+        std::thread::sleep(std::time::Duration::from_secs(1));
 
         tracing::info!("file 3");
 
