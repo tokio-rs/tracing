@@ -189,8 +189,6 @@ impl Builder {
     /// existing log files in the directory, the oldest will be deleted.
     /// # Examples
     ///
-    /// Setting a suffix:
-    ///
     /// ```
     /// use tracing_appender::rolling::RollingFileAppender;
     ///
