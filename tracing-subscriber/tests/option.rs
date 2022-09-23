@@ -55,7 +55,7 @@ fn just_option_none_subscriber() {
     assert_eq!(collector.max_level_hint(), Some(LevelFilter::ERROR));
 }
 
-/// lalal
+/// Test that the `None` max level hint only applies if its the only layer
 #[test]
 fn doesnt_override_none() {
     // None means the other layer takes control
@@ -97,7 +97,7 @@ fn doesnt_override_none() {
     assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
 }
 
-/// lalal
+/// Tests that the logic tested in `doesnt_override_none` works through the reload subscriber
 #[test]
 fn reload_works_with_none() {
     let (subscriber1, handle1) = tracing_subscriber::reload::Subscriber::new(None::<BasicLayer>);

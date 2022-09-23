@@ -1479,7 +1479,7 @@ pub struct Identity {
 pub(crate) struct NoneLayerMarker;
 pub(crate) static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker;
 
-/// Does a type implementing `Subscriber` contain any per-subscriber filters?
+/// Is a type implementing `Subscriber` `Option::<_>::None`?
 pub(crate) fn subscriber_is_none<S, C>(subscriber: &S) -> bool
 where
     S: Subscribe<C>,

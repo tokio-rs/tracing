@@ -148,7 +148,7 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
-        // It is generally unsafe to downcast through a reload, because
+        // Safety: It is generally unsafe to downcast through a reload, because
         // the pointer can be invalidated after the lock is dropped.
         // `NoneLayerMarker` is a special case because it
         // is never dereferenced.
