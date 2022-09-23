@@ -578,11 +578,12 @@ impl Inner {
                             .expect("prefix is always present"),
                     )
                 })
-                .filter(|entry| {
-                    entry
+                .filter_map(|entry| {
+                    let created = entry
                         .metadata()
                         .and_then(|metadata| metadata.created())
-                        .is_ok()
+                        .ok()?;
+                    Some((entry, created))
                 })
                 .collect::<Vec<_>>()
         });
