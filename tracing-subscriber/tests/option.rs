@@ -96,3 +96,25 @@ fn doesnt_override_none() {
         .with(None::<LevelFilter>);
     assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
 }
+
+/// lalal
+#[test]
+fn reload_works_with_none() {
+    let (subscriber1, handle1) = tracing_subscriber::reload::Subscriber::new(None::<BasicLayer>);
+    let (subscriber2, _handle2) = tracing_subscriber::reload::Subscriber::new(None::<BasicLayer>);
+
+    let subscriber = tracing_subscriber::registry()
+        .with(subscriber1)
+        .with(subscriber2);
+    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::OFF));
+
+    // reloading one should pass through correctly.
+    handle1.reload(Some(BasicLayer(None))).unwrap();
+    assert_eq!(subscriber.max_level_hint(), None);
+
+    // Check pass-through of an actual level as well
+    handle1
+        .reload(Some(BasicLayer(Some(LevelFilter::DEBUG))))
+        .unwrap();
+    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+}

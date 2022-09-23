@@ -23,6 +23,7 @@
 use crate::subscribe;
 use crate::sync::RwLock;
 
+use core::{any::TypeId, ptr::NonNull};
 use std::{
     error, fmt,
     sync::{Arc, Weak},
@@ -143,6 +144,19 @@ where
     #[inline]
     fn max_level_hint(&self) -> Option<LevelFilter> {
         try_lock!(self.inner.read(), else return None).max_level_hint()
+    }
+
+    #[doc(hidden)]
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        // It is generally unsafe to downcast through a reload, because
+        // the pointer can be invalidated after the lock is dropped.
+        // `NoneLayerMarker` is a special case because it
+        // is never dereferenced.
+        if id == TypeId::of::<subscribe::NoneLayerMarker>() {
+            return try_lock!(self.inner.read(), else return None).downcast_raw(id);
+        }
+
+        None
     }
 }
 
