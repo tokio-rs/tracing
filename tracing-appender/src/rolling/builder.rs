@@ -39,10 +39,14 @@ impl Builder {
     /// | Parameter | Default Value | Notes |
     /// | :-------- | :------------ | :---- |
     /// | [`rotation`] | [`Rotation::NEVER`] | By default, log files will never be rotated. |
-    /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
+    /// | [`prefix`] | `""` | By default, log file names will not have a prefix. |
+    /// | [`suffix`] | `""` | By default, log file names will not have a suffix. |
+    /// | [`max_files`] | `None` | By default, there is no limit for maximum log file count. |
     ///
     /// [`rotation`]: Self::rotation
-    /// [`filename_prefix`]: Self::filename_prefix
+    /// [`prefix`]: Self::filename_prefix
+    /// [`suffix`]: Self::filename_suffix
+    /// [`max_files`]: Self::max_log_files
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -183,12 +187,12 @@ impl Builder {
         Self { suffix, ..self }
     }
 
-    /// Keep the last `n` log files on disk.
+    /// Keeps the last `n` log files on disk.
     ///
     /// When a new log file is created, if there are `n` or more
     /// existing log files in the directory, the oldest will be deleted.
     /// If no value is supplied, the `RollingAppender` will not remove any files.
-    /// 
+    ///
     /// Files are considered candidates for deletion based on the following
     /// criteria:
     ///

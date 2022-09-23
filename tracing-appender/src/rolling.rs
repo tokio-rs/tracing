@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -568,25 +568,57 @@ impl Inner {
     }
 
     fn prune_old_logs(&self, max_files: usize) {
+        let format;
+        match self.rotation {
+            Rotation::MINUTELY => {
+                format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::HOURLY => {
+                format = format_description::parse("[year]-[month]-[day]-[hour]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::DAILY => {
+                format = format_description::parse("[year]-[month]-[day]")
+                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            }
+            Rotation::NEVER => {
+                unreachable!("maximum log files feature is not available for `Rotation::NEVER`!")
+            }
+        }
+
         let files = fs::read_dir(&self.log_directory).map(|dir| {
-            dir.filter_map(Result::ok)
-                .filter(|entry| {
-                    entry.file_name().to_string_lossy().contains(
-                        &self
-                            .log_filename_prefix
-                            .clone()
-                            .expect("prefix is always present"),
-                    )
-                })
-                .filter_map(|entry| {
-                    let created = entry
-                        .metadata()
-                        .and_then(|metadata| metadata.created())
-                        .ok()?;
-                    Some((entry, created))
-                })
-                .collect::<Vec<_>>()
+            dir.filter_map(|entry| {
+                let entry = entry.ok()?;
+
+                if let Some(prefix) = &self.log_filename_prefix {
+                    if !entry.file_name().to_string_lossy().contains(prefix) {
+                        return None;
+                    }
+                }
+
+                if let Some(suffix) = &self.log_filename_suffix {
+                    if !entry.file_name().to_string_lossy().contains(suffix) {
+                        return None;
+                    }
+                }
+
+                if self.log_filename_prefix.is_none()
+                    && self.log_filename_suffix.is_none()
+                    && Date::parse(entry.file_name().to_str().unwrap(), &format).is_err()
+                {
+                    return None;
+                }
+
+                let created = entry
+                    .metadata()
+                    .and_then(|metadata| metadata.created())
+                    .ok()?;
+                Some((entry, created))
+            })
+            .collect::<Vec<_>>()
         });
+
         let mut files = match files {
             Ok(files) => files,
             Err(error) => {
@@ -599,10 +631,10 @@ impl Inner {
         }
 
         // sort the files by their creation timestamps.
-        files.sort_by_key(|(_, created_at)| created_at);
+        files.sort_by_key(|(_, created_at)| *created_at);
 
         // delete files, so that (n-1) files remain, because we will create another log file
-        for (file, _) in &files[..files.len() - (max_files - 1)] {
+        for (file, _) in files.iter().take(files.len() - (max_files - 1)) {
             if let Err(error) = fs::remove_file(file.path()) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
