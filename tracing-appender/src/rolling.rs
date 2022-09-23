@@ -578,6 +578,12 @@ impl Inner {
                             .expect("prefix is always present"),
                     )
                 })
+                .filter(|entry| {
+                    entry
+                        .metadata()
+                        .and_then(|metadata| metadata.created())
+                        .is_ok()
+                })
                 .collect::<Vec<_>>()
         });
         let mut files = match files {
@@ -593,15 +599,9 @@ impl Inner {
 
         // sort the files by their creation timestamps.
         files.sort_by_key(|file| {
-            match file.metadata().and_then(|metadata| metadata.created()) {
-                Ok(val) => val,
-                Err(why) => {
-                    println!("failed reading the timestamp because: {}", why);
-                    // if we couldn't determine the file's creation timestamp
-                    // for whatever reason, we should return early
-                    return;
-                }
-            };
+            file.metadata()
+                .and_then(|metadata| metadata.created())
+                .expect("metadata is already read above")
         });
 
         // delete files, so that (n-1) files remain, because we will create another log file
