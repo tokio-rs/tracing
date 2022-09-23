@@ -188,7 +188,21 @@ impl Builder {
     /// When a new log file is created, if there are `n` or more
     /// existing log files in the directory, the oldest will be deleted.
     /// If no value is supplied, the `RollingAppender` will not remove any files.
+    /// 
+    /// Files are considered candidates for deletion based on the following
+    /// criteria:
     ///
+    /// * The file must not be a directory or symbolic link.
+    /// * If the appender is configured with a [`filename_prefix`], the file
+    ///   name must start with that prefix.
+    /// * If the appender is configured with a [`filename_suffix`], the file
+    ///   name must end with that suffix.
+    /// * If the appender has neither a filename prefix nor a suffix, then the
+    ///   file name must parse as a valid date based on the appender's date
+    ///   format.
+    ///
+    /// Files matching these criteria may be deleted if the maximum number of
+    /// log files in the directory has been reached.
     /// # Examples
     ///
     /// ```
