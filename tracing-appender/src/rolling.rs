@@ -599,14 +599,14 @@ impl Inner {
         }
 
         // sort the files by their creation timestamps.
-        files.sort_by_key(|file| file.1);
+        files.sort_by_key(|(_, created_at)| created_at);
 
         // delete files, so that (n-1) files remain, because we will create another log file
-        for file in &files[..files.len() - (max_files - 1)] {
-            if let Err(error) = fs::remove_file(file.0.path()) {
+        for (file, _) in &files[..files.len() - (max_files - 1)] {
+            if let Err(error) = fs::remove_file(file.path()) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
-                    file.0.path().display(),
+                    file.path().display(),
                     error
                 );
             }
