@@ -599,18 +599,14 @@ impl Inner {
         }
 
         // sort the files by their creation timestamps.
-        files.sort_by_key(|file| {
-            file.metadata()
-                .and_then(|metadata| metadata.created())
-                .expect("metadata is already read above")
-        });
+        files.sort_by_key(|file| file.1);
 
         // delete files, so that (n-1) files remain, because we will create another log file
         for file in &files[..files.len() - (max_files - 1)] {
-            if let Err(error) = fs::remove_file(file.path()) {
+            if let Err(error) = fs::remove_file(file.0.path()) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
-                    file.path().display(),
+                    file.0.path().display(),
                     error
                 );
             }
@@ -786,7 +782,7 @@ mod test {
     }
 
     #[test]
-    fn test_path_concatination() {
+    fn test_path_concatenation() {
         let format = format_description::parse(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
