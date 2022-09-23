@@ -106,7 +106,7 @@ struct Inner {
     log_filename_suffix: Option<String>,
     rotation: Rotation,
     next_date: AtomicUsize,
-    keep_last: Option<usize>,
+    max_files: Option<usize>,
 }
 
 // === impl RollingFileAppender ===
@@ -153,13 +153,6 @@ impl RollingFileAppender {
             .expect("initializing rolling file appender failed")
     }
 
-    /// Keep the last `n` log entries on disk.
-    ///
-    /// If no value is supplied, `RollingAppender` will not remove any files.
-    pub fn keep_last_n_logs(&mut self, n: usize) {
-        self.state.keep_last = Some(n);
-    }
-
     /// Returns a new [`Builder`] for configuring a `RollingFileAppender`.
     ///
     /// The builder interface can be used to set additional configuration
@@ -195,7 +188,7 @@ impl RollingFileAppender {
             ref rotation,
             ref prefix,
             ref suffix,
-            ref keep_last,
+            ref max_files,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -205,7 +198,7 @@ impl RollingFileAppender {
             directory,
             prefix.clone(),
             suffix.clone(),
-            *keep_last,
+            *max_files,
         )?;
         Ok(Self {
             state,
@@ -548,7 +541,7 @@ impl Inner {
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
-        keep_last: Option<usize>,
+        max_files: Option<usize>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let filename = rotation.join_date(
@@ -569,12 +562,12 @@ impl Inner {
                     .unwrap_or(0),
             ),
             rotation,
-            keep_last,
+            max_files,
         };
         Ok((inner, writer))
     }
 
-    fn prune_old_logs(&self, keep_last: usize) {
+    fn prune_old_logs(&self, max_files: usize) {
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(Result::ok)
                 .filter(|entry| {
@@ -594,27 +587,25 @@ impl Inner {
                 return;
             }
         };
-        if files.len() < keep_last {
+        if files.len() < max_files {
             return;
         }
+
         // sort the files by their creation timestamps.
         files.sort_by_key(|file| {
-            file.metadata()
-                .and_then(|metadata| metadata.created().map(Some))
-                .unwrap_or_else(|error| {
-                    eprintln!(
-                        "Unable to get file creation time for {}: {}",
-                        file.path().display(),
-                        error
-                    );
+            match file.metadata().and_then(|metadata| metadata.created()) {
+                Ok(val) => val,
+                Err(why) => {
+                    println!("failed reading the timestamp because: {}", why);
                     // if we couldn't determine the file's creation timestamp
-                    // for whatever reason, it should compare as "less than"
-                    // other files, so that it's not deleted.
-                    None
-                })
+                    // for whatever reason, we should return early
+                    return;
+                }
+            };
         });
+
         // delete files, so that (n-1) files remain, because we will create another log file
-        for file in &files[..files.len() - (keep_last - 1)] {
+        for file in &files[..files.len() - (max_files - 1)] {
             if let Err(error) = fs::remove_file(file.path()) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
@@ -632,8 +623,8 @@ impl Inner {
             self.log_filename_suffix.as_deref(),
         );
 
-        if let Some(keep_last) = self.keep_last {
-            self.prune_old_logs(keep_last);
+        if let Some(max_files) = self.max_files {
+            self.prune_old_logs(max_files);
         }
 
         match create_writer(&self.log_directory, &filename) {

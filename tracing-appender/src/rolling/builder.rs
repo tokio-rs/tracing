@@ -10,7 +10,7 @@ pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
-    pub(super) keep_last: Option<usize>,
+    pub(super) max_files: Option<usize>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -49,7 +49,7 @@ impl Builder {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
-            keep_last: None,
+            max_files: None,
         }
     }
 
@@ -187,6 +187,8 @@ impl Builder {
     ///
     /// When a new log file is created, if there are `n` or more
     /// existing log files in the directory, the oldest will be deleted.
+    /// If no value is supplied, `RollingAppender` will not remove any files.
+    ///
     /// # Examples
     ///
     /// ```
@@ -194,18 +196,17 @@ impl Builder {
     ///
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
-    ///     .keep_last_n_logs(5) // only the most recent 5 log files will be kept
+    ///     .max_log_files(5) // only the most recent 5 log files will be kept
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
     /// # drop(appender)
     /// # }
     /// ```
-    ///
-    /// If no value is supplied, `RollingAppender` will not remove any files.
-    pub fn keep_last_n_logs(self, n: usize) -> Self {
+    #[must_use]
+    pub fn max_log_files(self, n: usize) -> Self {
         Self {
-            keep_last: Some(n),
+            max_files: Some(n),
             ..self
         }
     }
