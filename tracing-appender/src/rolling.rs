@@ -572,6 +572,13 @@ impl Inner {
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(|entry| {
                 let entry = entry.ok()?;
+                let metadata = entry.metadata().ok()?;
+
+                // the appender only creates files, not directories or symlinks,
+                // so we should never delete a dir or symlink.
+                if !metadata.is_file() {
+                    return None;
+                }
 
                 let filename = entry.file_name();
                 // if the filename is not a UTF-8 string, skip it.
@@ -595,10 +602,7 @@ impl Inner {
                     return None;
                 }
 
-                let created = entry
-                    .metadata()
-                    .and_then(|metadata| metadata.created())
-                    .ok()?;
+                let created = metadata.created().ok()?;
                 Some((entry, created))
             })
             .collect::<Vec<_>>()
