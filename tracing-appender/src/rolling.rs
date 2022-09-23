@@ -573,21 +573,24 @@ impl Inner {
             dir.filter_map(|entry| {
                 let entry = entry.ok()?;
 
+                let filename = entry.file_name();
+                // if the filename is not a UTF-8 string, skip it.
+                let filename = filename.to_str()?;
                 if let Some(prefix) = &self.log_filename_prefix {
-                    if !entry.file_name().to_string_lossy().contains(prefix) {
+                    if !dbg!(filename.starts_with(prefix)) {
                         return None;
                     }
                 }
 
                 if let Some(suffix) = &self.log_filename_suffix {
-                    if !entry.file_name().to_string_lossy().contains(suffix) {
+                    if !filename.ends_with(suffix) {
                         return None;
                     }
                 }
 
                 if self.log_filename_prefix.is_none()
                     && self.log_filename_suffix.is_none()
-                    && Date::parse(entry.file_name().to_str().unwrap(), &self.date_format).is_err()
+                    && Date::parse(filename, &self.date_format).is_err()
                 {
                     return None;
                 }
