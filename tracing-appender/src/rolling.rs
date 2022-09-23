@@ -921,4 +921,100 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_max_log_files() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            Some("test_max_log_files".to_string()),
+            None,
+            Some(2),
+        )
+        .unwrap();
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        tracing::info!("file 1");
+
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        tracing::info!("file 1");
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        tracing::info!("file 2");
+
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        tracing::info!("file 2");
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        tracing::info!("file 3");
+
+        // advance time by one second
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        tracing::info!("file 3");
+
+        drop(default);
+
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+            let path = entry.expect("Expected dir entry").path();
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
+
+            match path
+                .extension()
+                .expect("found a file without a date!")
+                .to_str()
+                .expect("extension should be UTF8")
+            {
+                "2020-02-01-10" => {
+                    panic!("this file should have been pruned already!");
+                }
+                "2020-02-01-11" => {
+                    assert_eq!("file 2\nfile 2\n", file);
+                }
+                "2020-02-01-12" => {
+                    assert_eq!("file 3\nfile 3\n", file);
+                }
+                x => panic!("unexpected date {}", x),
+            }
+        }
+    }
 }
