@@ -187,7 +187,7 @@ impl Builder {
     ///
     /// When a new log file is created, if there are `n` or more
     /// existing log files in the directory, the oldest will be deleted.
-    /// If no value is supplied, `RollingAppender` will not remove any files.
+    /// If no value is supplied, the `RollingAppender` will not remove any files.
     ///
     /// # Examples
     ///
