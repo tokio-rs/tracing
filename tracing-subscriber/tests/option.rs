@@ -90,6 +90,16 @@ fn doesnt_override_none() {
         .with(None::<LevelFilter>.with_filter(LevelFilter::DEBUG));
     assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
 
+    // Test filter on the other layer
+    let subscriber = tracing_subscriber::registry()
+        .with(BasicLayer(Some(LevelFilter::INFO)).with_filter(LevelFilter::DEBUG))
+        .with(None::<LevelFilter>);
+    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    let subscriber = tracing_subscriber::registry()
+        .with(BasicLayer(None).with_filter(LevelFilter::DEBUG))
+        .with(None::<LevelFilter>);
+    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+
     // The `OFF` from `None` over overridden.
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(Some(LevelFilter::INFO)))
