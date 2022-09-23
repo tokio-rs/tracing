@@ -1475,6 +1475,26 @@ pub struct Identity {
 
 // === impl Subscribe ===
 
+#[derive(Clone, Copy)]
+pub(crate) struct NoneLayerMarker;
+pub(crate) static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker;
+
+/// Does a type implementing `Subscriber` contain any per-subscriber filters?
+pub(crate) fn subscriber_is_none<S, C>(subscriber: &S) -> bool
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer --- we
+        // only care about the `Option`, which we're turning into a `bool`. So
+        // even if the subscriber decides to be evil and give us some kind of invalid
+        // pointer, we don't ever dereference it, so this is always safe.
+        subscriber.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
 impl<S, C> Subscribe<C> for Option<S>
 where
     S: Subscribe<C>,
@@ -1589,6 +1609,8 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
             Some(NonNull::from(self).cast())
+        } else if id == TypeId::of::<NoneLayerMarker>() && self.is_none() {
+            Some(NonNull::from(&NONE_LAYER_MARKER).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }

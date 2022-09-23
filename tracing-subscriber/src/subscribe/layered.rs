@@ -494,6 +494,25 @@ where
             return None;
         }
 
+        // If the subscriber is `Option::None`, then we
+        // want to short-circuit the layer underneath, if it
+        // returns `None`, to override the `None` layer returning
+        // `Some(OFF)`, which should ONLY apply when there are
+        // no other layers that return `None`. Note this
+        // `None` does not == `Some(TRACE)`, it means
+        // something more like: "whatever all the other
+        // layers agree on, default to `TRACE` if none
+        // have an opinion". We also choose do this AFTER
+        // we check for per-subscriber filters, which
+        // have their own logic.
+        //
+        // Also note that this does come at some perf cost, but
+        // this function is only called on initialization and
+        // subscriber reloading.
+        if super::subscriber_is_none(&self.subscriber) {
+            return cmp::max(outer_hint, Some(inner_hint?));
+        }
+
         cmp::max(outer_hint, inner_hint)
     }
 }
