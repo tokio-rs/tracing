@@ -183,7 +183,7 @@ impl Builder {
         Self { suffix, ..self }
     }
 
-    /// Keep the last `n` log entries on disk.
+    /// Keep the last `n` log files on disk.
     ///
     /// # Examples
     ///
