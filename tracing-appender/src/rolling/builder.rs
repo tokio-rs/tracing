@@ -185,6 +185,8 @@ impl Builder {
 
     /// Keep the last `n` log files on disk.
     ///
+    /// When a new log file is created, if there are `n` or more
+    /// existing log files in the directory, the oldest will be deleted.
     /// # Examples
     ///
     /// Setting a suffix:
