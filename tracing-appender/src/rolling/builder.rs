@@ -196,7 +196,7 @@ impl Builder {
     ///
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
-    ///     .keep_last_n_logs(5) // only the most recent 5 logs files will be kept
+    ///     .keep_last_n_logs(5) // only the most recent 5 log files will be kept
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
