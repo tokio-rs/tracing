@@ -10,6 +10,7 @@ pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
+    pub(super) max_files: Option<usize>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -39,15 +40,20 @@ impl Builder {
     /// | :-------- | :------------ | :---- |
     /// | [`rotation`] | [`Rotation::NEVER`] | By default, log files will never be rotated. |
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
+    /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
+    /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
+    /// [`filename_suffix`]: Self::filename_suffix
+    /// [`max_log_files`]: Self::max_log_files
     #[must_use]
     pub const fn new() -> Self {
         Self {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
+            max_files: None,
         }
     }
 
@@ -179,6 +185,52 @@ impl Builder {
             Some(suffix)
         };
         Self { suffix, ..self }
+    }
+
+    /// Keeps the last `n` log files on disk.
+    ///
+    /// When a new log file is created, if there are `n` or more
+    /// existing log files in the directory, the oldest will be deleted.
+    /// If no value is supplied, the `RollingAppender` will not remove any files.
+    ///
+    /// Files are considered candidates for deletion based on the following
+    /// criteria:
+    ///
+    /// * The file must not be a directory or symbolic link.
+    /// * If the appender is configured with a [`filename_prefix`], the file
+    ///   name must start with that prefix.
+    /// * If the appender is configured with a [`filename_suffix`], the file
+    ///   name must end with that suffix.
+    /// * If the appender has neither a filename prefix nor a suffix, then the
+    ///   file name must parse as a valid date based on the appender's date
+    ///   format.
+    ///
+    /// Files matching these criteria may be deleted if the maximum number of
+    /// log files in the directory has been reached.
+    ///
+    /// [`filename_prefix`]: Self::filename_prefix
+    /// [`filename_suffix`]: Self::filename_suffix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .max_log_files(5) // only the most recent 5 log files will be kept
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn max_log_files(self, n: usize) -> Self {
+        Self {
+            max_files: Some(n),
+            ..self
+        }
     }
 
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
