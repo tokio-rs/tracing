@@ -169,8 +169,24 @@ pub struct Dispatch {
 }
 
 /// `WeakDispatch` is a version of [`Dispatch`] that holds a non-owning reference
-/// to a collector. This collector is accessed calling [`WeakDispatch::upgrade`],
-/// which returns an `Option<Dispatch>`.
+/// to a [collector].
+///
+/// The collector may be accessed by calling [`WeakDispatch::upgrade`],
+/// which returns an `Option<Dispatch>`. If all [`Dispatch`] clones that point
+/// at the collector have been dropped, [`WeakDispatch::upgrade`] will return
+/// `None`. Otherwise, it will return `Some(Dispatch)`.
+///
+/// A `WeakDispatch` may be created from a [`Dispatch`] by calling the
+/// [`Dispatch::downgrade`] method. The primary use for creating a
+/// [`WeakDispatch`] is to allow a collector to hold a cyclical reference to
+/// itself without creating a memory leak. See [here] for details.
+///
+/// This type is analogous to the [`std::sync::Weak`] type, but for a
+/// [`Dispatch`] rather than an [`Arc`].
+///
+/// [collector]: Collect
+/// [`Arc`]: std::sync::Arc
+/// [here]: Collect#avoiding-memory-leaks
 #[derive(Clone)]
 pub struct WeakDispatch {
     #[cfg(feature = "alloc")]
@@ -589,6 +605,20 @@ impl Dispatch {
     }
 
     /// Creates a [`WeakDispatch`] from this `Dispatch`.
+    ///
+    /// A [`WeakDispatch`] is similar to a [`Dispatch`], but it does not prevent
+    /// the underlying [collector] from being dropped. Instead, it only permits
+    /// access while other references to the collector exist. This is equivalent
+    /// to the standard library's [`Arc::downgrade`] method, but for `Dispatch`
+    /// rather than `Arc`.
+    ///
+    /// The primary use for creating a [`WeakDispatch`] is to allow a collector
+    /// to hold a cyclical reference to itself without creating a memory leak.
+    /// See [here] for details.
+    ///
+    /// [collector]: Collect
+    /// [`Arc::downgrade`]: std::sync::Arc::downgrade
+    /// [here]: Collect#avoiding-memory-leaks
     pub fn downgrade(&self) -> WeakDispatch {
         #[cfg(feature = "alloc")]
         let collector = match &self.collector {
