@@ -734,9 +734,8 @@ where
     /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
     /// the `Dispatch` must be accessed by the subscriber.
     ///
-    /// [`WeakDispatch`]: crate::dispatch::WeakDispatch
-    /// [upgraded]: crate::dispatch::WeakDispatch::upgrade
-    ///
+    /// [`WeakDispatch`]: tracing_core::dispatch::WeakDispatch
+    /// [upgraded]: tracing_core::dispatch::WeakDispatch::upgrade
     /// [collector]: tracing_core::Collect
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
