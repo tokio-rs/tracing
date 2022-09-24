@@ -584,7 +584,7 @@ impl Inner {
                 // if the filename is not a UTF-8 string, skip it.
                 let filename = filename.to_str()?;
                 if let Some(prefix) = &self.log_filename_prefix {
-                    if !dbg!(filename.starts_with(prefix)) {
+                    if !filename.starts_with(prefix) {
                         return None;
                     }
                 }
