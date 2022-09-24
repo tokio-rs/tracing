@@ -44,9 +44,9 @@ impl Builder {
     /// | [`max_files`] | `None` | By default, there is no limit for maximum log file count. |
     ///
     /// [`rotation`]: Self::rotation
-    /// [`prefix`]: Self::filename_prefix
-    /// [`suffix`]: Self::filename_suffix
-    /// [`max_files`]: Self::max_log_files
+    /// [`filename_prefix`]: Self::filename_prefix
+    /// [`filename_suffix`]: Self::filename_suffix
+    /// [`max_log_files`]: Self::max_log_files
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -207,6 +207,10 @@ impl Builder {
     ///
     /// Files matching these criteria may be deleted if the maximum number of
     /// log files in the directory has been reached.
+    ///
+    /// [`filename_prefix`]: Self::filename_prefix
+    /// [`filename_suffix`]: Self::filename_suffix
+    ///
     /// # Examples
     ///
     /// ```
