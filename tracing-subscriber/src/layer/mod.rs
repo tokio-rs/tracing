@@ -712,11 +712,28 @@ where
     Self: 'static,
 {
     /// Performs late initialization when installing this layer as a
-    /// [subscriber].
+    /// [`Subscriber`].
     ///
-    /// [subscriber]: tracing_core::Subscriber
-    fn on_register_dispatch(&self, subscriber: &Dispatch) {
-        let _ = subscriber;
+    /// ## Avoiding Memory Leaks
+    ///
+    /// `Layer`s should not store the [`Dispatch`] pointing to the [`Subscriber`]
+    /// that they are a part of. Because the `Dispatch` owns the `Subscriber`,
+    /// storing the `Dispatch` within the `Subscriber` will create a reference
+    /// count cycle, preventing the `Dispatch` from ever being dropped.
+    ///
+    /// Instead, when it is necessary to store a cyclical reference to the
+    /// `Dispatch` within a `Layer`, use [`Dispatch::downgrade`] to convert a
+    /// `Dispatch` into a [`WeakDispatch`]. This type is analogous to
+    /// [`std::sync::Weak`], and does not create a reference count cycle. A
+    /// [`WeakDispatch`] can be stored within a subscriber without causing a
+    /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
+    /// the `Dispatch` must be accessed by the subscriber.
+    ///
+    /// [`WeakDispatch`]: tracing_core::dispatcher::WeakDispatch
+    /// [upgraded]: tracing_core::dispatcher::WeakDispatch::upgrade
+    /// [`Subscriber`]: tracing_core::Subscriber
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        let _ = collector;
     }
 
     /// Performs late initialization when attaching a `Layer` to a

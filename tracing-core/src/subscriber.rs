@@ -82,6 +82,24 @@ use crate::stdlib::{
 /// [`event_enabled`]: Subscriber::event_enabled
 pub trait Subscriber: 'static {
     /// Invoked when this subscriber becomes a [`Dispatch`].
+    ///
+    /// ## Avoiding Memory Leaks
+    ///
+    /// `Subscriber`s should not store their own [`Dispatch`]. Because the
+    /// `Dispatch` owns the `Subscriber`, storing the `Dispatch` within the
+    /// `Subscriber` will create a reference count cycle, preventing the `Dispatch`
+    /// from ever being dropped.
+    ///
+    /// Instead, when it is necessary to store a cyclical reference to the
+    /// `Dispatch` within a `Subscriber`, use [`Dispatch::downgrade`] to convert a
+    /// `Dispatch` into a [`WeakDispatch`]. This type is analogous to
+    /// [`std::sync::Weak`], and does not create a reference count cycle. A
+    /// [`WeakDispatch`] can be stored within a `Subscriber` without causing a
+    /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
+    /// the `Dispatch` must be accessed by the `Subscriber`.
+    ///
+    /// [`WeakDispatch`]: crate::dispatcher::WeakDispatch
+    /// [upgraded]: crate::dispatcher::WeakDispatch::upgrade
     fn on_register_dispatch(&self, subscriber: &Dispatch) {
         let _ = subscriber;
     }
