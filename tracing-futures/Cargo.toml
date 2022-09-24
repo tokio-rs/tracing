@@ -37,7 +37,7 @@ tokio_01 = { package = "tokio", version = "0.1.22", optional = true }
 
 # Fix minimal-versions
 tokio-threadpool = "0.1.18"
-mio = "0.6.23"
+mio = "0.8.4"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
