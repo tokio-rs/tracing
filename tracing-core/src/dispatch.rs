@@ -589,7 +589,6 @@ impl Dispatch {
     }
 
     /// Creates a [`WeakDispatch`] from this `Dispatch`.
-    #[cfg(feature = "alloc")]
     pub fn downgrade(&self) -> WeakDispatch {
         #[cfg(feature = "alloc")]
         let collector = match &self.collector {
@@ -885,9 +884,9 @@ where
 }
 
 impl WeakDispatch {
-    /// Attempts to upgrade the `WeakDispatch` to a [`Dispatch`].
+    /// Attempts to upgrade this `WeakDispatch` to a [`Dispatch`].
     ///
-    /// Returns `None` if the inner `Dispatch` has already been dropped.
+    /// Returns `None` if the referenced `Dispatch` has already been dropped.
     ///
     /// ## Examples
     ///
@@ -922,19 +921,19 @@ impl fmt::Debug for WeakDispatch {
         match &self.collector {
             #[cfg(feature = "alloc")]
             Kind::Global(collector) => f
-                .debug_tuple("Dispatch::Global")
+                .debug_tuple("WeakDispatch::Global")
                 .field(&format_args!("{:p}", collector))
                 .finish(),
 
             #[cfg(feature = "alloc")]
             Kind::Scoped(collector) => f
-                .debug_tuple("Dispatch::Scoped")
+                .debug_tuple("WeakDispatch::Scoped")
                 .field(&format_args!("{:p}", collector))
                 .finish(),
 
             #[cfg(not(feature = "alloc"))]
             collector => f
-                .debug_tuple("Dispatch::Global")
+                .debug_tuple("WeakDispatch::Global")
                 .field(&format_args!("{:p}", collector))
                 .finish(),
         }

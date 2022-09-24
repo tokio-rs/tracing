@@ -82,13 +82,21 @@ pub trait Collect: 'static {
     ///
     /// ## Avoiding Memory Leaks
     ///
-    /// Collectors should not store their own [`Dispatch`]. Doing so will prevent
-    /// them from being dropped. Instead, you may call [`Dispatch::downgrade`]
-    /// to construct a [`WeakDispatch`] (analogous to [`std::sync::Weak`]) that is
-    /// safe to stash, and can be [upgraded][`WeakDispatch::upgrade`] into a `Dispatch`.
+    /// Collectors should not store their own [`Dispatch`]. Because the
+    /// `Dispatch` owns the collector, storing the `Dispatch` within the
+    /// collector will create a reference count cycle, preventing the `Dispatch`
+    /// from ever being dropped.
+    ///
+    /// Instead, when it is necessary to store a cyclical reference to the
+    /// `Dispatch` within a collector, use [`Dispatch::downgrade`] to convert a
+    /// `Dispatch` into a [`WeakDispatch`]. This type is analogous to
+    /// [`std::sync::Weak`], and does not create a reference count cycle. A
+    /// [`WeakDispatch`] can be stored within a collector without causing a
+    /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
+    /// the `Dispatch` must be accessed by the collector.
     ///
     /// [`WeakDispatch`]: crate::dispatch::WeakDispatch
-    /// [`WeakDispatch::upgrade`]: crate::dispatch::WeakDispatch::upgrade
+    /// [upgraded]: crate::dispatch::WeakDispatch::upgrade
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
     }
