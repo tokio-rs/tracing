@@ -39,9 +39,9 @@ impl Builder {
     /// | Parameter | Default Value | Notes |
     /// | :-------- | :------------ | :---- |
     /// | [`rotation`] | [`Rotation::NEVER`] | By default, log files will never be rotated. |
-    /// | [`prefix`] | `""` | By default, log file names will not have a prefix. |
-    /// | [`suffix`] | `""` | By default, log file names will not have a suffix. |
-    /// | [`max_files`] | `None` | By default, there is no limit for maximum log file count. |
+    /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
+    /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
+    /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
