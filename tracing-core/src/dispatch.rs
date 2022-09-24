@@ -150,11 +150,10 @@ use core::{
 use std::{
     cell::{Cell, RefCell, RefMut},
     error,
-    sync::Weak,
 };
 
 #[cfg(feature = "alloc")]
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
 
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
@@ -164,6 +163,34 @@ use core::ops::Deref;
 pub struct Dispatch {
     #[cfg(feature = "alloc")]
     collector: Kind<Arc<dyn Collect + Send + Sync>>,
+
+    #[cfg(not(feature = "alloc"))]
+    collector: &'static (dyn Collect + Send + Sync),
+}
+
+/// `WeakDispatch` is a version of [`Dispatch`] that holds a non-owning reference
+/// to a [collector].
+///
+/// The collector may be accessed by calling [`WeakDispatch::upgrade`],
+/// which returns an `Option<Dispatch>`. If all [`Dispatch`] clones that point
+/// at the collector have been dropped, [`WeakDispatch::upgrade`] will return
+/// `None`. Otherwise, it will return `Some(Dispatch)`.
+///
+/// A `WeakDispatch` may be created from a [`Dispatch`] by calling the
+/// [`Dispatch::downgrade`] method. The primary use for creating a
+/// [`WeakDispatch`] is to allow a collector to hold a cyclical reference to
+/// itself without creating a memory leak. See [here] for details.
+///
+/// This type is analogous to the [`std::sync::Weak`] type, but for a
+/// [`Dispatch`] rather than an [`Arc`].
+///
+/// [collector]: Collect
+/// [`Arc`]: std::sync::Arc
+/// [here]: Collect#avoiding-memory-leaks
+#[derive(Clone)]
+pub struct WeakDispatch {
+    #[cfg(feature = "alloc")]
+    collector: Kind<Weak<dyn Collect + Send + Sync>>,
 
     #[cfg(not(feature = "alloc"))]
     collector: &'static (dyn Collect + Send + Sync),
@@ -577,6 +604,33 @@ impl Dispatch {
         me
     }
 
+    /// Creates a [`WeakDispatch`] from this `Dispatch`.
+    ///
+    /// A [`WeakDispatch`] is similar to a [`Dispatch`], but it does not prevent
+    /// the underlying [collector] from being dropped. Instead, it only permits
+    /// access while other references to the collector exist. This is equivalent
+    /// to the standard library's [`Arc::downgrade`] method, but for `Dispatch`
+    /// rather than `Arc`.
+    ///
+    /// The primary use for creating a [`WeakDispatch`] is to allow a collector
+    /// to hold a cyclical reference to itself without creating a memory leak.
+    /// See [here] for details.
+    ///
+    /// [collector]: Collect
+    /// [`Arc::downgrade`]: std::sync::Arc::downgrade
+    /// [here]: Collect#avoiding-memory-leaks
+    pub fn downgrade(&self) -> WeakDispatch {
+        #[cfg(feature = "alloc")]
+        let collector = match &self.collector {
+            Kind::Global(dispatch) => Kind::Global(*dispatch),
+            Kind::Scoped(dispatch) => Kind::Scoped(Arc::downgrade(dispatch)),
+        };
+        #[cfg(not(feature = "alloc"))]
+        let collector = self.collector;
+
+        WeakDispatch { collector }
+    }
+
     #[cfg(feature = "std")]
     pub(crate) fn registrar(&self) -> Registrar {
         Registrar(match self.collector {
@@ -856,6 +910,63 @@ where
     #[inline]
     fn from(collector: C) -> Self {
         Dispatch::new(collector)
+    }
+}
+
+impl WeakDispatch {
+    /// Attempts to upgrade this `WeakDispatch` to a [`Dispatch`].
+    ///
+    /// Returns `None` if the referenced `Dispatch` has already been dropped.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use tracing_core::collect::NoCollector;
+    /// # use tracing_core::dispatch::Dispatch;
+    /// static COLLECTOR: NoCollector = NoCollector::new();
+    /// let strong = Dispatch::new(COLLECTOR);
+    /// let weak = strong.downgrade();
+    ///
+    /// // The strong here keeps it alive, so we can still access the object.
+    /// assert!(weak.upgrade().is_some());
+    ///
+    /// drop(strong); // But not any more.
+    /// assert!(weak.upgrade().is_none());
+    /// ```
+    pub fn upgrade(&self) -> Option<Dispatch> {
+        #[cfg(feature = "alloc")]
+        let collector = match &self.collector {
+            Kind::Global(dispatch) => Some(Kind::Global(*dispatch)),
+            Kind::Scoped(dispatch) => dispatch.upgrade().map(Kind::Scoped),
+        };
+        #[cfg(not(feature = "alloc"))]
+        let collector = Some(self.collector);
+
+        collector.map(|collector| Dispatch { collector })
+    }
+}
+
+impl fmt::Debug for WeakDispatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.collector {
+            #[cfg(feature = "alloc")]
+            Kind::Global(collector) => f
+                .debug_tuple("WeakDispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(feature = "alloc")]
+            Kind::Scoped(collector) => f
+                .debug_tuple("WeakDispatch::Scoped")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+
+            #[cfg(not(feature = "alloc"))]
+            collector => f
+                .debug_tuple("WeakDispatch::Global")
+                .field(&format_args!("{:p}", collector))
+                .finish(),
+        }
     }
 }
 
