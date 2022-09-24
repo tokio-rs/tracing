@@ -626,7 +626,7 @@ impl Dispatch {
             Kind::Scoped(dispatch) => Kind::Scoped(Arc::downgrade(dispatch)),
         };
         #[cfg(not(feature = "alloc"))]
-        let collector = &self.collector;
+        let collector = self.collector;
 
         WeakDispatch { collector }
     }
