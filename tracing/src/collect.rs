@@ -5,15 +5,13 @@ pub use tracing_core::collect::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use tracing_core::dispatch::DefaultGuard;
 
-/// Sets this collector as the default for the duration of a closure.
+/// Sets this collector as the default for the current thread for the duration
+/// of a closure.
 ///
 /// The default collector is used when creating a new [`Span`] or
-/// [`Event`], _if no span is currently executing_. If a span is currently
-/// executing, new spans or events are dispatched to the collector that
-/// tagged that span, instead.
+/// [`Event`].
 ///
 /// [`Span`]: super::span::Span
-/// [`Collect`]: super::collect::Collect
 /// [`Event`]: tracing_core::Event
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -43,13 +41,11 @@ where
     crate::dispatch::set_global_default(crate::Dispatch::new(collector))
 }
 
-/// Sets the collector as the default for the duration of the lifetime of the
-/// returned [`DefaultGuard`]
+/// Sets the collector as the default for the current thread for the duration of
+/// the lifetime of the returned [`DefaultGuard`].
 ///
 /// The default collector is used when creating a new [`Span`] or
-/// [`Event`], _if no span is currently executing_. If a span is currently
-/// executing, new spans or events are dispatched to the collector that
-/// tagged that span, instead.
+/// [`Event`].
 ///
 /// [`Span`]: super::span::Span
 /// [`Event`]: tracing_core::Event

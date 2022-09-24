@@ -533,6 +533,14 @@ impl<'a> AsSerde<'a> for Level {
     }
 }
 
+impl<'a> AsSerde<'a> for FieldSet {
+    type Serializable = SerializeFieldSet<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeFieldSet(self)
+    }
+}
+
 impl<'a> self::sealed::Sealed for Event<'a> {}
 
 impl<'a> self::sealed::Sealed for Attributes<'a> {}
@@ -544,6 +552,8 @@ impl self::sealed::Sealed for Level {}
 impl<'a> self::sealed::Sealed for Record<'a> {}
 
 impl<'a> self::sealed::Sealed for Metadata<'a> {}
+
+impl self::sealed::Sealed for FieldSet {}
 
 mod sealed {
     pub trait Sealed {}

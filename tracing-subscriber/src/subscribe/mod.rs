@@ -417,6 +417,28 @@
 //! [`Interest::never()`] from its [`register_callsite`] method, filter
 //! evaluation will short-circuit and the span or event will be disabled.
 //!
+//! ### Enabling Interest
+//!
+//! Whenever an tracing event (or span) is emitted, it goes through a number of
+//! steps to determine how and how much it should be processed. The earlier an
+//! event is disabled, the less work has to be done to process the event, so
+//! subscribers that implement filtering should attempt to disable unwanted
+//! events as early as possible. In order, each event checks:
+//!
+//! - [`register_callsite`], once per callsite (roughly: once per time that
+//!   `event!` or `span!` is written in the source code; this is cached at the
+//!   callsite). See [`Collect::register_callsite`] and
+//!   [`tracing_core::callsite`] for a summary of how this behaves.
+//! - [`enabled`], once per emitted event (roughly: once per time that `event!`
+//!   or `span!` is *executed*), and only if `register_callsite` regesters an
+//!   [`Interest::sometimes`]. This is the main customization point to globally
+//!   filter events based on their [`Metadata`]. If an event can be disabled
+//!   based only on [`Metadata`], it should be, as this allows the construction
+//!   of the actual `Event`/`Span` to be skipped.
+//! - For events only (and not spans), [`event_enabled`] is called just before
+//!   processing the event. This gives subscribers one last chance to say that
+//!   an event should be filtered out, now that the event's fields are known.
+//!
 //! ## Per-Subscriber Filtering
 //!
 //! **Note**: per-subscriber filtering APIs currently require the [`"registry"` crate
@@ -639,6 +661,7 @@
 //! [the current span]: Context::current_span
 //! [`register_callsite`]: Subscribe::register_callsite
 //! [`enabled`]: Subscribe::enabled
+//! [`event_enabled`]: Subscribe::event_enabled
 //! [`on_enter`]: Subscribe::on_enter
 //! [`Subscribe::register_callsite`]: Subscribe::register_callsite
 //! [`Subscribe::enabled`]: Subscribe::enabled
@@ -659,7 +682,7 @@ use crate::filter;
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Dispatch, Event, LevelFilter,
 };
 
 use core::{any::TypeId, ptr::NonNull};
@@ -693,6 +716,14 @@ where
     C: Collect,
     Self: 'static,
 {
+    /// Performs late initialization when installing this subscriber as a
+    /// [collector].
+    ///
+    /// [collector]: tracing_core::Collect
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        let _ = collector;
+    }
+
     /// Performs late initialization when attaching a subscriber to a
     /// [collector].
     ///
@@ -826,6 +857,31 @@ where
     // only thing the `Context` type currently provides), but passing it in anyway
     // seems like a good future-proofing measure as it may grow other methods later...
     fn on_follows_from(&self, _span: &span::Id, _follows: &span::Id, _ctx: Context<'_, C>) {}
+
+    /// Called before [`on_event`], to determine if `on_event` should be called.
+    ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note**: This method determines whether an event is globally enabled,
+    /// *not* whether the individual subscriber will be notified about the
+    /// event. This is intended to be used by subscibers that implement
+    /// filtering for the entire stack. Subscribers which do not wish to be
+    /// notified about certain events but do not wish to globally disable them
+    /// should ignore those events in their [on_event][Self::on_event].
+    ///
+    /// </pre></div>
+    ///
+    /// See [the trait-level documentation] for more information on filtering
+    /// with `Subscriber`s.
+    ///
+    /// [`on_event`]: Self::on_event
+    /// [`Interest`]: tracing_core::Interest
+    /// [the trait-level documentation]: #filtering-with-subscribers
+    #[inline] // collapse this to a constant please mrs optimizer
+    fn event_enabled(&self, _event: &Event<'_>, _ctx: Context<'_, C>) -> bool {
+        true
+    }
 
     /// Notifies this subscriber that an event has occurred.
     fn on_event(&self, _event: &Event<'_>, _ctx: Context<'_, C>) {}
@@ -1334,6 +1390,26 @@ pub trait Filter<S> {
         None
     }
 
+    /// Called before the filtered subscribers' [`on_event`], to determine if
+    /// `on_event` should be called.
+    ///
+    /// This gives a chance to filter events based on their fields. Note,
+    /// however, that this *does not* override [`enabled`], and is not even
+    /// called if [`enabled`] returns `false`.
+    ///
+    /// ## Default Implementation
+    ///
+    /// By default, this method returns `true`, indicating that no events are
+    /// filtered out based on their fields.
+    ///
+    /// [`enabled`]: crate::subscribe::Filter::enabled
+    /// [`on_event`]: crate::subscribe::Subscribe::on_event
+    #[inline] // collapse this to a constant please mrs optimizer
+    fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+        let _ = (event, cx);
+        true
+    }
+
     /// Notifies this filter that a new span was constructed with the given
     /// `Attributes` and `Id`.
     ///
@@ -1404,6 +1480,12 @@ where
     S: Subscribe<C>,
     C: Collect,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        if let Some(ref subscriber) = self {
+            subscriber.on_register_dispatch(collector)
+        }
+    }
+
     fn on_subscribe(&mut self, collector: &mut C) {
         if let Some(ref mut subscriber) = self {
             subscriber.on_subscribe(collector)
@@ -1437,7 +1519,11 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         match self {
             Some(ref inner) => inner.max_level_hint(),
-            None => None,
+            None => {
+                // There is no inner subscriber, so this subscriber will
+                // never enable anything.
+                Some(LevelFilter::OFF)
+            }
         }
     }
 
@@ -1452,6 +1538,14 @@ where
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
         if let Some(ref inner) = self {
             inner.on_follows_from(span, follows, ctx);
+        }
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+        match self {
+            Some(ref inner) => inner.event_enabled(event, ctx),
+            None => true,
         }
     }
 
@@ -1504,6 +1598,10 @@ where
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! subscriber_impl_body {
     () => {
+        fn on_register_dispatch(&self, collector: &Dispatch) {
+            self.deref().on_register_dispatch(collector);
+        }
+
         #[inline]
         fn on_subscribe(&mut self, collect: &mut C) {
             self.deref_mut().on_subscribe(collect);
@@ -1532,6 +1630,11 @@ macro_rules! subscriber_impl_body {
         #[inline]
         fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
             self.deref().on_follows_from(span, follows, ctx)
+        }
+
+        #[inline]
+        fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+            self.deref().event_enabled(event, ctx)
         }
 
         #[inline]
@@ -1591,11 +1694,16 @@ feature! {
     }
 
 
-    impl<C, S> Subscribe<C> for Vec<S>
+    impl<C, S> Subscribe<C> for alloc::vec::Vec<S>
     where
         S: Subscribe<C>,
         C: Collect,
     {
+        fn on_register_dispatch(&self, collector: &Dispatch) {
+            for s in self {
+                s.on_register_dispatch(collector);
+            }
+        }
 
         fn on_subscribe(&mut self, collector: &mut C) {
             for s in self {
@@ -1629,7 +1737,8 @@ feature! {
         }
 
         fn max_level_hint(&self) -> Option<LevelFilter> {
-            let mut max_level = LevelFilter::ERROR;
+            // Default to `OFF` if there are no underlying subscribers
+            let mut max_level = LevelFilter::OFF;
             for s in self {
                 // NOTE(eliza): this is slightly subtle: if *any* subscriber
                 // returns `None`, we have to return `None`, assuming there is

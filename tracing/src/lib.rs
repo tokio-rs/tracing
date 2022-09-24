@@ -119,8 +119,6 @@
 //! tracing = "0.1"
 //! ```
 //!
-//! *Compiler support: requires rustc 1.39+*
-//!
 //! ## Recording Spans and Events
 //!
 //! Spans and events are recorded using macros.
@@ -790,6 +788,8 @@
 //!    in [bunyan] format, enriched with timing information.
 //!  - [`tracing-wasm`] provides a `Collect`/`Subscribe` implementation that reports
 //!    events and spans via browser `console.log` and [User Timing API (`window.performance`)].
+//!  - [`tracing-web`] provides a layer implementation of level-aware logging of events
+//!    to web browsers' `console.*` and span events to the [User Timing API (`window.performance`)].
 //!  - [`tide-tracing`] provides a [tide] middleware to trace all incoming requests and responses.
 //!  - [`test-log`] takes care of initializing `tracing` for tests, based on
 //!    environment variables with an `env_logger` compatible syntax.
@@ -806,6 +806,7 @@
 //!  - [`tracing-forest`] provides a subscriber that preserves contextual coherence by
 //!    grouping together logs from the same spans during writing.
 //!  - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
+//!  - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -823,6 +824,7 @@
 //! [`tracing-bunyan-formatter`]: https://crates.io/crates/tracing-bunyan-formatter
 //! [bunyan]: https://github.com/trentm/node-bunyan
 //! [`tracing-wasm`]: https://docs.rs/tracing-wasm
+//! [`tracing-web`]: https://docs.rs/tracing-web
 //! [User Timing API (`window.performance`)]: https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
 //! [`tide-tracing`]: https://crates.io/crates/tide-tracing
 //! [tide]: https://crates.io/crates/tide
@@ -842,6 +844,7 @@
 //! [`tracing-forest`]: https://crates.io/crates/tracing-forest
 //! [`tracing-loki`]: https://crates.io/crates/tracing-loki
 //! [Grafana Loki]: https://grafana.com/oss/loki/
+//! [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">

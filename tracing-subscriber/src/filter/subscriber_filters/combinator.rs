@@ -40,11 +40,11 @@ pub struct Or<A, B, S> {
 /// If the wrapped filter would enable a span or event, it will be disabled. If
 /// it would disable a span or event, that span or event will be enabled.
 ///
-/// This type is typically returned by the [`FilterExt::or`] method. See that
+/// This type is typically returned by the [`FilterExt::not`] method. See that
 /// method's documentation for details.
 ///
 /// [`Filter`]: crate::subscribe::Filter
-/// [`FilterExt::or`]: crate::filter::FilterExt::or
+/// [`FilterExt::not`]: crate::filter::FilterExt::not
 pub struct Not<A, S> {
     a: A,
     _s: PhantomData<fn(S)>,
@@ -135,6 +135,11 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // If either hint is `None`, return `None`. Otherwise, return the most restrictive.
         cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        self.a.event_enabled(event, cx) && self.b.event_enabled(event, cx)
     }
 
     #[inline]
@@ -325,6 +330,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        self.a.event_enabled(event, cx) || self.b.event_enabled(event, cx)
+    }
+
+    #[inline]
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         self.a.on_new_span(attrs, id, ctx.clone());
         self.b.on_new_span(attrs, id, ctx)
@@ -393,7 +403,62 @@ where
     /// If the wrapped filter would enable a span or event, it will be disabled. If
     /// it would disable a span or event, that span or event will be enabled.
     ///
+    /// This inverts the values returned by the [`enabled`] and [`callsite_enabled`]
+    /// methods on the wrapped filter; it does *not* invert [`event_enabled`], as
+    /// filters which do not implement filtering on event field values will return
+    /// the default `true` even for events that their [`enabled`] method disables.
+    ///
+    /// Consider a normal filter defined as:
+    ///
+    /// ```ignore (pseudo-code)
+    /// // for spans
+    /// match callsite_enabled() {
+    ///     ALWAYS => on_span(),
+    ///     SOMETIMES => if enabled() { on_span() },
+    ///     NEVER => (),
+    /// }
+    /// // for events
+    /// match callsite_enabled() {
+    ///    ALWAYS => on_event(),
+    ///    SOMETIMES => if enabled() && event_enabled() { on_event() },
+    ///    NEVER => (),
+    /// }
+    /// ```
+    ///
+    /// and an inverted filter defined as:
+    ///
+    /// ```ignore (pseudo-code)
+    /// // for spans
+    /// match callsite_enabled() {
+    ///     ALWAYS => (),
+    ///     SOMETIMES => if !enabled() { on_span() },
+    ///     NEVER => on_span(),
+    /// }
+    /// // for events
+    /// match callsite_enabled() {
+    ///     ALWAYS => (),
+    ///     SOMETIMES => if !enabled() { on_event() },
+    ///     NEVER => on_event(),
+    /// }
+    /// ```
+    ///
+    /// A proper inversion would do `!(enabled() && event_enabled())` (or
+    /// `!enabled() || !event_enabled()`), but because of the implicit `&&`
+    /// relation between `enabled` and `event_enabled`, it is difficult to
+    /// short circuit and not call the wrapped `event_enabled`.
+    ///
+    /// A combinator which remembers the result of `enabled` in order to call
+    /// `event_enabled` only when `enabled() == true` is possible, but requires
+    /// additional thread-local mutable state to support a very niche use case.
+    //
+    //  Also, it'd mean the wrapped layer's `enabled()` always gets called and
+    //  globally applied to events where it doesn't today, since we can't know
+    //  what `event_enabled` will say until we have the event to call it with.
+    ///
     /// [`Filter`]: crate::subscribe::Filter
+    /// [`enabled`]: crate::subscribe::Filter::enabled
+    /// [`event_enabled`]: crate::subscribe::Filter::event_enabled
+    /// [`callsite_enabled`]: crate::subscribe::Filter::callsite_enabled
     pub(crate) fn new(a: A) -> Self {
         Self { a, _s: PhantomData }
     }
@@ -419,6 +484,14 @@ where
     fn max_level_hint(&self) -> Option<LevelFilter> {
         // TODO(eliza): figure this out???
         None
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &tracing_core::Event<'_>, cx: &Context<'_, S>) -> bool {
+        // Never disable based on event_enabled; we "disabled" it in `enabled`,
+        // so the `not` has already been applied and filtered this not out.
+        let _ = (event, cx);
+        true
     }
 
     #[inline]

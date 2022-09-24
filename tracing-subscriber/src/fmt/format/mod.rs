@@ -46,7 +46,7 @@ use tracing_core::{
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
-use ansi_term::{Colour, Style};
+use nu_ansi_term::{Color, Style};
 
 #[cfg(feature = "json")]
 mod json;
@@ -103,7 +103,7 @@ use fmt::{Debug, Display};
 ///   does not support ANSI escape codes (such as a log file), and they should
 ///   not be emitted.
 ///
-///   Crates like [`ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   Crates like [`nu_ansi_term`] and [`owo-colors`] can be used to add ANSI
 ///   escape codes to formatted output.
 ///
 /// * The actual [`Event`] to be formatted.
@@ -191,7 +191,7 @@ use fmt::{Debug, Display};
 /// [implements `FormatFields`]: super::FmtContext#impl-FormatFields<'writer>
 /// [ANSI terminal escape codes]: https://en.wikipedia.org/wiki/ANSI_escape_code
 /// [`Writer::has_ansi_escapes`]: Writer::has_ansi_escapes
-/// [`ansi_term`]: https://crates.io/crates/ansi_term
+/// [`nu_ansi_term`]: https://crates.io/crates/nu_ansi_term
 /// [`owo-colors`]: https://crates.io/crates/owo-colors
 /// [default formatter]: Full
 pub trait FormatEvent<C, N>
@@ -756,7 +756,7 @@ impl<F, T> Format<F, T> {
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(self, display_thread_id: bool) -> Format<F, T> {
@@ -767,7 +767,7 @@ impl<F, T> Format<F, T> {
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [name]: std::thread#naming-threads
     pub fn with_thread_names(self, display_thread_name: bool) -> Format<F, T> {
@@ -1396,17 +1396,17 @@ struct FmtLevel<F: ?Sized> {
     _f: PhantomData<fn(F)>,
 }
 
-impl<'a, F: LevelNames> fmt::Display for FmtLevel<F> {
+impl<F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
             if self.ansi {
                 return match self.level {
-                    Level::TRACE => write!(f, "{}", Colour::Purple.paint(F::TRACE_STR)),
-                    Level::DEBUG => write!(f, "{}", Colour::Blue.paint(F::DEBUG_STR)),
-                    Level::INFO => write!(f, "{}", Colour::Green.paint(F::INFO_STR)),
-                    Level::WARN => write!(f, "{}", Colour::Yellow.paint(F::WARN_STR)),
-                    Level::ERROR => write!(f, "{}", Colour::Red.paint(F::ERROR_STR)),
+                    Level::TRACE => write!(f, "{}", Color::Purple.paint(F::TRACE_STR)),
+                    Level::DEBUG => write!(f, "{}", Color::Blue.paint(F::DEBUG_STR)),
+                    Level::INFO => write!(f, "{}", Color::Green.paint(F::INFO_STR)),
+                    Level::WARN => write!(f, "{}", Color::Yellow.paint(F::WARN_STR)),
+                    Level::ERROR => write!(f, "{}", Color::Red.paint(F::ERROR_STR)),
                 };
             }
         }

@@ -806,6 +806,9 @@ macro_rules! event {
 /// This is similar to [`enabled!`], but queries the current collector specifically for
 /// an event, whereas [`enabled!`] queries for an event _or_ span.
 ///
+/// Although it shares the name, this *does not* call [`Collect::event_enabled`].
+/// `Collect::event_enabled` is only called once the event fields are available.
+///
 /// See the documentation for [`enabled!]` for more details on using this macro.
 /// See also [`span_enabled!`].
 ///
@@ -826,6 +829,9 @@ macro_rules! event {
 /// }
 /// ```
 ///
+/// [`Collect::event_enabled`]: crate::Collect::event_enabled
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! event_enabled {
     ($($rest:tt)*)=> (
@@ -858,6 +864,8 @@ macro_rules! event_enabled {
 /// }
 /// ```
 ///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! span_enabled {
     ($($rest:tt)*)=> (
@@ -953,7 +961,8 @@ macro_rules! span_enabled {
 /// [`Metadata`]: crate::Metadata
 /// [`is_event`]: crate::Metadata::is_event
 /// [`is_span`]: crate::Metadata::is_span
-///
+/// [`enabled!`]: crate::enabled
+/// [`span_enabled!`]: crate::span_enabled
 #[macro_export]
 macro_rules! enabled {
     (kind: $kind:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
@@ -2187,79 +2196,79 @@ macro_rules! valueset {
     // };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$($k).+ as &Value)) },
+            @ { $($out),*, (&$next, Some(&$($k).+ as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$($k).+) as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$($k).+) as &dyn Value)) },
             $next,
         )
     };
@@ -2267,47 +2276,47 @@ macro_rules! valueset {
     // Handle literal names
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &Value)) },
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
             $next,
         )
     };
 
     // Remainder is unparseable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
-        $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &Value)), $($out),* }, $next, )
+        $crate::valueset!(@ { (&$next, Some(&format_args!($($rest)+) as &dyn Value)), $($out),* }, $next, )
     };
 
     // === entry ===

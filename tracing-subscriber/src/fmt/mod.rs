@@ -240,6 +240,7 @@ pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
+#[must_use]
 pub struct CollectorBuilder<
     N = format::DefaultFields,
     E = format::Format,
@@ -394,6 +395,11 @@ where
     }
 
     #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.inner.event_enabled(event)
+    }
+
+    #[inline]
     fn event(&self, event: &Event<'_>) {
         self.inner.event(event);
     }
@@ -457,6 +463,7 @@ impl Default for CollectorBuilder {
             filter: Collector::DEFAULT_MAX_LEVEL,
             inner: Default::default(),
         }
+        .log_internal_errors(true)
     }
 }
 
@@ -470,6 +477,7 @@ where
         subscribe::Subscribe<Registry> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtCollector`.
+    #[must_use = "you may want to use `try_init` or similar to actually install the collector."]
     pub fn finish(self) -> Collector<N, E, F, W> {
         let collector = self.inner.with_collector(Registry::default());
         Collector {
@@ -612,6 +620,27 @@ where
         }
     }
 
+    /// Sets whether to write errors from [`FormatEvent`] to the writer.
+    /// Defaults to true.
+    ///
+    /// By default, `fmt::Collector` will write any `FormatEvent`-internal errors to
+    /// the writer. These errors are unlikely and will only occur if there is a
+    /// bug in the `FormatEvent` implementation or its dependencies.
+    ///
+    /// If writing to the writer fails, the error message is printed to stderr
+    /// as a fallback.
+    ///
+    /// [`FormatEvent`]: crate::fmt::FormatEvent
+    pub fn log_internal_errors(
+        self,
+        log_internal_errors: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.log_internal_errors(log_internal_errors),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's target is displayed.
     pub fn with_target(
         self,
@@ -663,7 +692,7 @@ where
     }
 
     /// Sets whether or not the [name] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [name]: std::thread#naming-threads
     pub fn with_thread_names(
@@ -677,7 +706,7 @@ where
     }
 
     /// Sets whether or not the [thread ID] of the current thread is displayed
-    /// when formatting events
+    /// when formatting events.
     ///
     /// [thread ID]: std::thread::ThreadId
     pub fn with_thread_ids(
@@ -885,8 +914,9 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// Sets the maximum [verbosity level] that will be enabled by the
     /// collector.
     ///
-    /// If the max level has already been set, this replaces that configuration
-    /// with the new maximum level.
+    /// If the max level has already been set, or a [`EnvFilter`] was added by
+    /// [`with_env_filter`], this replaces that configuration with the new
+    /// maximum level.
     ///
     /// # Examples
     ///
@@ -908,7 +938,8 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .finish();
     /// ```
     /// [verbosity level]: tracing_core::Level
-    /// [`EnvFilter`]: super::filter::EnvFilter
+    /// [`EnvFilter`]: struct@crate::filter::EnvFilter
+    /// [`with_env_filter`]: fn@Self::with_env_filter
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
@@ -965,8 +996,26 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the function that the collector being built should use to format
-    /// events that occur.
+    /// Sets the [event formatter][`FormatEvent`] that the subscriber being built
+    /// will use to format events that occur.
+    ///
+    /// The event formatter may be any type implementing the [`FormatEvent`]
+    /// trait, which is implemented for all functions taking a [`FmtContext`], a
+    /// [`Writer`], and an [`Event`].
+    ///
+    /// # Examples
+    ///
+    /// Setting a type implementing [`FormatEvent`] as the formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::format;
+    ///
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .event_format(format().compact())
+    ///     .finish();
+    /// ```
+    ///
+    /// [`Writer`]: struct@self::format::Writer
     pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
     where
         E2: FormatEvent<Registry, N> + 'static,
@@ -993,7 +1042,6 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .with_writer(io::stderr)
     ///     .init();
     /// ```
-    ///
     pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
@@ -1032,6 +1080,82 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
+        }
+    }
+
+    /// Updates the event formatter by applying a function to the existing event formatter.
+    ///
+    /// This sets the event formatter that the collector being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating an event formatter:
+    ///
+    /// ```rust
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .map_event_format(|e| e.compact())
+    ///     .finish();
+    /// ```
+    pub fn map_event_format<E2>(self, f: impl FnOnce(E) -> E2) -> CollectorBuilder<N, E2, F, W>
+    where
+        E2: FormatEvent<Registry, N> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
+        W: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.map_event_format(f),
+        }
+    }
+
+    /// Updates the field formatter by applying a function to the existing field formatter.
+    ///
+    /// This sets the field formatter that the subscriber being built will use to record fields.
+    ///
+    /// # Examples
+    ///
+    /// Updating a field formatter:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::field::MakeExt;
+    /// let subscriber = tracing_subscriber::fmt()
+    ///     .map_fmt_fields(|f| f.debug_alt())
+    ///     .finish();
+    /// ```
+    pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> CollectorBuilder<N2, E, F, W>
+    where
+        N2: for<'writer> FormatFields<'writer> + 'static,
+    {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.map_fmt_fields(f),
+        }
+    }
+
+    /// Updates the [`MakeWriter`] by applying a function to the existing [`MakeWriter`].
+    ///
+    /// This sets the [`MakeWriter`] that the subscriber being built will use to write events.
+    ///
+    /// # Examples
+    ///
+    /// Redirect output to stderr if level is <= WARN:
+    ///
+    /// ```rust
+    /// use tracing::Level;
+    /// use tracing_subscriber::fmt::{self, writer::MakeWriterExt};
+    ///
+    /// let stderr = std::io::stderr.with_max_level(Level::WARN);
+    /// let collector = tracing_subscriber::fmt()
+    ///     .map_writer(move |w| stderr.or_else(w))
+    ///     .finish();
+    /// ```
+    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> CollectorBuilder<N, E, F, W2>
+    where
+        W2: for<'writer> MakeWriter<'writer> + 'static,
+    {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.map_writer(f),
         }
     }
 }

@@ -113,6 +113,15 @@ pub trait Callsite: Sync {
 
     /// Returns the [metadata] associated with the callsite.
     ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///
+    /// **Note:** Implementations of this method should not produce [`Metadata`]
+    /// that share the same callsite [`Identifier`] but otherwise differ in any
+    /// way (e.g., have different `name`s).
+    ///
+    /// </pre></div>
+    ///
     /// [metadata]: super::metadata::Metadata
     fn metadata(&self) -> &Metadata<'_>;
 }
@@ -158,7 +167,7 @@ pub use self::inner::{rebuild_interest_cache, register};
 #[cfg(feature = "std")]
 mod inner {
     use super::*;
-    use lazy_static::lazy_static;
+    use once_cell::sync::Lazy;
     use std::sync::RwLock;
     use std::vec::Vec;
 
@@ -169,12 +178,10 @@ mod inner {
         dispatchers: RwLock<Dispatchers>,
     }
 
-    lazy_static! {
-        static ref REGISTRY: Registry = Registry {
-            callsites: LinkedList::new(),
-            dispatchers: RwLock::new(Vec::new()),
-        };
-    }
+    static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry {
+        callsites: LinkedList::new(),
+        dispatchers: RwLock::new(Vec::new()),
+    });
 
     /// Clear and reregister interest on every [`Callsite`]
     ///
@@ -225,6 +232,7 @@ mod inner {
         let mut dispatchers = REGISTRY.dispatchers.write().unwrap();
         let callsites = &REGISTRY.callsites;
 
+        dispatch.collector().on_register_dispatch(dispatch);
         dispatchers.push(dispatch.registrar());
 
         rebuild_interest(callsites, &mut dispatchers);
@@ -503,9 +511,9 @@ mod tests {
 
         let linked_list = LinkedList::new();
 
-        fn expect<'a>(
-            callsites: &'a mut impl Iterator<Item = &'static Registration>,
-        ) -> impl FnMut(&'static Registration) + 'a {
+        fn expect(
+            callsites: &mut impl Iterator<Item = &'static Registration>,
+        ) -> impl FnMut(&'static Registration) + '_ {
             move |reg: &'static Registration| {
                 let ptr = callsites
                     .next()

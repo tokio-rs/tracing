@@ -31,10 +31,13 @@ use std::{
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
-    path::Path,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
+
+mod builder;
+pub use builder::{Builder, InitError};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -98,8 +101,9 @@ pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
 
 #[derive(Debug)]
 struct Inner {
-    log_directory: String,
-    log_filename_prefix: String,
+    log_directory: PathBuf,
+    log_filename_prefix: Option<String>,
+    log_filename_suffix: Option<String>,
     rotation: Rotation,
     next_date: AtomicUsize,
 }
@@ -122,8 +126,10 @@ impl RollingFileAppender {
     /// - [`Rotation::daily()`][daily],
     /// - [`Rotation::never()`][never()]
     ///
+    /// Additional parameters can be configured using [`RollingFileAppender::builder`].
     ///
     /// # Examples
+    ///
     /// ```rust
     /// # fn docs() {
     /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -133,16 +139,70 @@ impl RollingFileAppender {
     pub fn new(
         rotation: Rotation,
         directory: impl AsRef<Path>,
-        file_name_prefix: impl AsRef<Path>,
+        filename_prefix: impl AsRef<Path>,
     ) -> RollingFileAppender {
+        let filename_prefix = filename_prefix
+            .as_ref()
+            .to_str()
+            .expect("filename prefix must be a valid UTF-8 string");
+        Self::builder()
+            .rotation(rotation)
+            .filename_prefix(filename_prefix)
+            .build(directory)
+            .expect("initializing rolling file appender failed")
+    }
+
+    /// Returns a new [`Builder`] for configuring a `RollingFileAppender`.
+    ///
+    /// The builder interface can be used to set additional configuration
+    /// parameters when constructing a new appender.
+    ///
+    /// Unlike [`RollingFileAppender::new`], the [`Builder::build`] method
+    /// returns a `Result` rather than panicking when the appender cannot be
+    /// initialized. Therefore, the builder interface can also be used when
+    /// appender initialization errors should be handled gracefully.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # fn docs() {
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
+    ///
+    /// let file_appender = RollingFileAppender::builder()
+    ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
+    ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
+    ///     .filename_suffix("log") // log file names will be suffixed with `.log`
+    ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
+    ///     .expect("initializing rolling file appender failed");
+    /// # drop(file_appender);
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+
+    fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
+        let Builder {
+            ref rotation,
+            ref prefix,
+            ref suffix,
+        } = builder;
+        let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
-        let (state, writer) = Inner::new(now, rotation, directory, file_name_prefix);
-        Self {
+        let (state, writer) = Inner::new(
+            now,
+            rotation.clone(),
+            directory,
+            prefix.clone(),
+            suffix.clone(),
+        )?;
+        Ok(Self {
             state,
             writer,
             #[cfg(test)]
             now: Box::new(OffsetDateTime::now_utc),
-        }
+        })
     }
 
     #[inline]
@@ -428,35 +488,31 @@ impl Rotation {
         }
     }
 
-    pub(crate) fn join_date(&self, filename: &str, date: &OffsetDateTime) -> String {
-        match *self {
-            Rotation::MINUTELY => {
-                let format = format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
+    pub(crate) fn join_date(
+        &self,
+        filename: Option<&str>,
+        date: &OffsetDateTime,
+        suffix: Option<&str>,
+    ) -> String {
+        let format = match *self {
+            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
+            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
+            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+        }
+        .expect("Unable to create a formatter; this is a bug in tracing-appender");
+        let date = date
+            .format(&format)
+            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
 
-                let date = date
-                    .format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
-            }
-            Rotation::HOURLY => {
-                let format = format_description::parse("[year]-[month]-[day]-[hour]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-
-                let date = date
-                    .format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
-            }
-            Rotation::DAILY => {
-                let format = format_description::parse("[year]-[month]-[day]")
-                    .expect("Unable to create a formatter; this is a bug in tracing-appender");
-                let date = date
-                    .format(&format)
-                    .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-                format!("{}.{}", filename, date)
-            }
-            Rotation::NEVER => filename.to_string(),
+        match (self, filename, suffix) {
+            (&Rotation::NEVER, Some(filename), None) => filename.to_string(),
+            (&Rotation::NEVER, Some(filename), Some(suffix)) => format!("{}.{}", filename, suffix),
+            (&Rotation::NEVER, None, Some(suffix)) => suffix.to_string(),
+            (_, Some(filename), Some(suffix)) => format!("{}.{}.{}", filename, date, suffix),
+            (_, Some(filename), None) => format!("{}.{}", filename, date),
+            (_, None, Some(suffix)) => format!("{}.{}", date, suffix),
+            (_, None, None) => date,
         }
     }
 }
@@ -480,20 +536,22 @@ impl Inner {
         now: OffsetDateTime,
         rotation: Rotation,
         directory: impl AsRef<Path>,
-        file_name_prefix: impl AsRef<Path>,
-    ) -> (Self, RwLock<File>) {
-        let log_directory = directory.as_ref().to_str().unwrap();
-        let log_filename_prefix = file_name_prefix.as_ref().to_str().unwrap();
-
-        let filename = rotation.join_date(log_filename_prefix, &now);
-        let next_date = rotation.next_date(&now);
-        let writer = RwLock::new(
-            create_writer(log_directory, &filename).expect("failed to create appender"),
+        log_filename_prefix: Option<String>,
+        log_filename_suffix: Option<String>,
+    ) -> Result<(Self, RwLock<File>), builder::InitError> {
+        let log_directory = directory.as_ref().to_path_buf();
+        let filename = rotation.join_date(
+            log_filename_prefix.as_deref(),
+            &now,
+            log_filename_suffix.as_deref(),
         );
+        let next_date = rotation.next_date(&now);
+        let writer = RwLock::new(create_writer(log_directory.as_ref(), &filename)?);
 
         let inner = Inner {
-            log_directory: log_directory.to_string(),
-            log_filename_prefix: log_filename_prefix.to_string(),
+            log_directory,
+            log_filename_prefix,
+            log_filename_suffix,
             next_date: AtomicUsize::new(
                 next_date
                     .map(|date| date.unix_timestamp() as usize)
@@ -501,11 +559,15 @@ impl Inner {
             ),
             rotation,
         };
-        (inner, writer)
+        Ok((inner, writer))
     }
 
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
-        let filename = self.rotation.join_date(&self.log_filename_prefix, &now);
+        let filename = self.rotation.join_date(
+            self.log_filename_prefix.as_deref(),
+            &now,
+            self.log_filename_suffix.as_deref(),
+        );
 
         match create_writer(&self.log_directory, &filename) {
             Ok(new_file) => {
@@ -552,20 +614,22 @@ impl Inner {
     }
 }
 
-fn create_writer(directory: &str, filename: &str) -> io::Result<File> {
-    let path = Path::new(directory).join(filename);
+fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
+    let path = directory.join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);
 
     let new_file = open_options.open(path.as_path());
     if new_file.is_err() {
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-            return open_options.open(path);
+            fs::create_dir_all(parent).map_err(InitError::ctx("failed to create log directory"))?;
+            return open_options
+                .open(path)
+                .map_err(InitError::ctx("failed to create initial log file"));
         }
     }
 
-    new_file
+    new_file.map_err(InitError::ctx("failed to create initial log file"))
 }
 
 #[cfg(test)]
@@ -673,19 +737,51 @@ mod test {
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
 
         // per-minute
-        let path = Rotation::MINUTELY.join_date("app.log", &now);
+        let path = Rotation::MINUTELY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01-10-01", path);
 
         // per-hour
-        let path = Rotation::HOURLY.join_date("app.log", &now);
+        let path = Rotation::HOURLY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01-10", path);
 
         // per-day
-        let path = Rotation::DAILY.join_date("app.log", &now);
+        let path = Rotation::DAILY.join_date(Some("app.log"), &now, None);
         assert_eq!("app.log.2020-02-01", path);
 
         // never
-        let path = Rotation::NEVER.join_date("app.log", &now);
+        let path = Rotation::NEVER.join_date(Some("app.log"), &now, None);
+        assert_eq!("app.log", path);
+
+        // per-minute with suffix
+        let path = Rotation::MINUTELY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01-10-01.log", path);
+
+        // per-hour with suffix
+        let path = Rotation::HOURLY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01-10.log", path);
+
+        // per-day with suffix
+        let path = Rotation::DAILY.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.2020-02-01.log", path);
+
+        // never with suffix
+        let path = Rotation::NEVER.join_date(Some("app"), &now, Some("log"));
+        assert_eq!("app.log", path);
+
+        // per-minute without prefix
+        let path = Rotation::MINUTELY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01-10-01.app.log", path);
+
+        // per-hour without prefix
+        let path = Rotation::HOURLY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01-10.app.log", path);
+
+        // per-day without prefix
+        let path = Rotation::DAILY.join_date(None, &now, Some("app.log"));
+        assert_eq!("2020-02-01.app.log", path);
+
+        // never without prefix
+        let path = Rotation::NEVER.join_date(None, &now, Some("app.log"));
         assert_eq!("app.log", path);
     }
 
@@ -702,8 +798,14 @@ mod test {
 
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
         let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let (state, writer) =
-            Inner::new(now, Rotation::HOURLY, directory.path(), "test_make_writer");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            Some("test_make_writer".to_string()),
+            None,
+        )
+        .unwrap();
 
         let clock = Arc::new(Mutex::new(now));
         let now = {

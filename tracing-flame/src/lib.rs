@@ -137,7 +137,7 @@
 pub use error::Error;
 
 use error::Kind;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -158,9 +158,7 @@ use tracing_subscriber::Subscribe;
 
 mod error;
 
-lazy_static! {
-    static ref START: Instant = Instant::now();
-}
+static START: Lazy<Instant> = Lazy::new(Instant::now);
 
 thread_local! {
     static LAST_EVENT: Cell<Instant> = Cell::new(*START);

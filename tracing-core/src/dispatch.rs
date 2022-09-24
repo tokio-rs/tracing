@@ -349,20 +349,31 @@ pub fn has_been_set() -> bool {
 }
 
 /// Returned if setting the global dispatcher fails.
-#[derive(Debug)]
 pub struct SetGlobalDefaultError {
     _no_construct: (),
 }
 
+impl fmt::Debug for SetGlobalDefaultError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("SetGlobalDefaultError")
+            .field(&Self::MESSAGE)
+            .finish()
+    }
+}
+
 impl fmt::Display for SetGlobalDefaultError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("a global default trace dispatcher has already been set")
+        f.pad(Self::MESSAGE)
     }
 }
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl error::Error for SetGlobalDefaultError {}
+
+impl SetGlobalDefaultError {
+    const MESSAGE: &'static str = "a global default trace dispatcher has already been set";
+}
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
 ///
@@ -550,11 +561,11 @@ impl Dispatch {
     /// with access to `liballoc` or the Rust standard library are encouraged to
     /// use [`Dispatch::new`] rather than `from_static`. `no_std` users who
     /// cannot allocate or do not have access to `liballoc` may want to consider
-    /// the [`lazy_static`] crate, or another library which allows lazy
+    /// the [`once_cell`] crate, or another library which allows lazy
     /// initialization of statics.
     ///
     /// [collector]: super::collect::Collect
-    /// [`lazy_static`]: https://crates.io/crates/lazy_static
+    /// [`once_cell`]: https://crates.io/crates/once_cell
     pub fn from_static(collector: &'static (dyn Collect + Send + Sync)) -> Self {
         #[cfg(feature = "alloc")]
         let me = Self {
@@ -576,7 +587,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(feature = "alloc")]
-    fn collector(&self) -> &(dyn Collect + Send + Sync) {
+    pub(crate) fn collector(&self) -> &(dyn Collect + Send + Sync) {
         match self.collector {
             Kind::Scoped(ref s) => Arc::deref(s),
             Kind::Global(s) => s,
@@ -585,7 +596,7 @@ impl Dispatch {
 
     #[inline(always)]
     #[cfg(not(feature = "alloc"))]
-    fn collector(&self) -> &(dyn Collect + Send + Sync) {
+    pub(crate) fn collector(&self) -> &(dyn Collect + Send + Sync) {
         self.collector
     }
 
@@ -682,7 +693,10 @@ impl Dispatch {
     /// [`event`]: super::collect::Collect::event
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        self.collector().event(event)
+        let collector = self.collector();
+        if collector.event_enabled(event) {
+            collector.event(event);
+        }
     }
 
     /// Records that a span has been can_enter.
@@ -790,7 +804,7 @@ impl Dispatch {
     /// `T`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        <dyn Collect>::is::<T>(&*self.collector())
+        <dyn Collect>::is::<T>(self.collector())
     }
 
     /// Returns some reference to the [`Collect`] this `Dispatch` forwards to
@@ -799,7 +813,7 @@ impl Dispatch {
     /// [`Collect`]: super::collect::Collect
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        <dyn Collect>::downcast_ref(&*self.collector())
+        <dyn Collect>::downcast_ref(self.collector())
     }
 }
 

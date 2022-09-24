@@ -1,7 +1,7 @@
 use tracing_core::{
     collect::{Collect, Interest},
     metadata::Metadata,
-    span, Event, LevelFilter,
+    span, Dispatch, Event, LevelFilter,
 };
 
 use crate::{
@@ -11,7 +11,12 @@ use crate::{
 };
 #[cfg(all(feature = "registry", feature = "std"))]
 use crate::{filter::FilterId, registry::Registry};
-use core::{any::TypeId, cmp, fmt, marker::PhantomData, ptr::NonNull};
+use core::{
+    any::{Any, TypeId},
+    cmp, fmt,
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 /// A [collector] composed of a [collector] wrapped by one or more
 /// [subscriber]s.
@@ -62,6 +67,26 @@ pub struct Layered<S, I, C = I> {
 
 // === impl Layered ===
 
+impl<S, C> Layered<S, C>
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    /// Returns `true` if this `Collector` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Collector` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
+
 impl<S, C> Collect for Layered<S, C>
 where
     S: Subscribe<C>,
@@ -111,6 +136,16 @@ where
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.inner.record_follows_from(span, follows);
         self.subscriber.on_follows_from(span, follows, self.ctx());
+    }
+
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        if self.subscriber.event_enabled(event, self.ctx()) {
+            // if the outer subscriber enables the event, ask the inner collector.
+            self.inner.event_enabled(event)
+        } else {
+            // otherwise, the event is disabled by this subscriber
+            false
+        }
     }
 
     fn event(&self, event: &Event<'_>) {
@@ -209,6 +244,11 @@ where
     B: Subscribe<C>,
     C: Collect,
 {
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        self.subscriber.on_register_dispatch(collector);
+        self.inner.on_register_dispatch(collector);
+    }
+
     fn on_subscribe(&mut self, collect: &mut C) {
         self.subscriber.on_subscribe(collect);
         self.inner.on_subscribe(collect);
@@ -253,6 +293,17 @@ where
     fn on_follows_from(&self, span: &span::Id, follows: &span::Id, ctx: Context<'_, C>) {
         self.inner.on_follows_from(span, follows, ctx.clone());
         self.subscriber.on_follows_from(span, follows, ctx);
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, C>) -> bool {
+        if self.subscriber.event_enabled(event, ctx.clone()) {
+            // if the outer subscriber enables the event, ask the inner collector.
+            self.inner.event_enabled(event, ctx)
+        } else {
+            // otherwise, the event is disabled by this subscriber
+            false
+        }
     }
 
     #[inline]
@@ -391,7 +442,7 @@ where
             // (rather than calling into the inner type), clear the current
             // per-layer filter interest state.
             #[cfg(feature = "registry")]
-            drop(filter::FilterState::take_interest());
+            filter::FilterState::take_interest();
 
             return outer;
         }

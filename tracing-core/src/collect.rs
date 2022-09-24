@@ -1,5 +1,5 @@
 //! Collectors collect and record trace data.
-use crate::{span, Event, LevelFilter, Metadata};
+use crate::{span, Dispatch, Event, LevelFilter, Metadata};
 
 use core::any::{Any, TypeId};
 use core::ptr::NonNull;
@@ -57,6 +57,9 @@ use core::ptr::NonNull;
 ///   See also the [documentation on the callsite registry][cs-reg] for details
 ///   on [`register_callsite`].
 ///
+/// - [`event_enabled`] is called once before every call to the [`event`]
+///   method. This can be used to implement filtering on events once their field
+///   values are known, but before any processing is done in the `event` method.
 /// - [`clone_span`] is called every time a span ID is cloned, and [`try_close`]
 ///   is called when a span ID is dropped. By default, these functions do
 ///   nothing. However, they can be used to implement reference counting for
@@ -72,7 +75,14 @@ use core::ptr::NonNull;
 /// [`clone_span`]: Collect::clone_span
 /// [`try_close`]: Collect::try_close
 /// [cs-reg]: crate::callsite#registering-callsites
+/// [`event`]: Collect::event
+/// [`event_enabled`]: Collect::event_enabled
 pub trait Collect: 'static {
+    /// Invoked when this collector becomes a [`Dispatch`].
+    fn on_register_dispatch(&self, collector: &Dispatch) {
+        let _ = collector;
+    }
+
     // === Span registry methods ==============================================
 
     /// Registers a new [callsite] with this collector, returning whether or not
@@ -288,6 +298,17 @@ pub trait Collect: 'static {
     /// follow from _b_), it may silently do nothing.
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id);
 
+    /// Determine if an [`Event`] should be recorded.
+    ///
+    /// By default, this returns `true` and collectors can filter events in
+    /// [`event`][Self::event] without any penalty. However, when `event` is
+    /// more complicated, this can be used to determine if `event` should be
+    /// called at all, separating out the decision from the processing.
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        let _ = event;
+        true
+    }
+
     /// Records that an [`Event`] has occurred.
     ///
     /// This method will be invoked when an Event is constructed by
@@ -471,6 +492,54 @@ impl dyn Collect {
     }
 }
 
+impl dyn Collect + Send {
+    /// Returns `true` if this `Collector` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Collector` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
+
+impl dyn Collect + Sync {
+    /// Returns `true` if this `Collector` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Collector` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
+
+impl dyn Collect + Send + Sync {
+    /// Returns `true` if this `Collector` is the same type as `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Returns some reference to this `Collector` value if it is of type `T`,
+    /// or `None` if it isn't.
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        unsafe {
+            let raw = self.downcast_raw(TypeId::of::<T>())?;
+            Some(&*(raw.cast().as_ptr()))
+        }
+    }
+}
+
 /// Indicates a [`Collect`]'s interest in a particular callsite.
 ///
 /// Collectors return an `Interest` from their [`register_callsite`] methods
@@ -606,7 +675,10 @@ impl Collect for NoCollector {
 }
 
 #[cfg(feature = "alloc")]
-impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
+impl<C> Collect for alloc::boxed::Box<C>
+where
+    C: Collect + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
@@ -635,6 +707,11 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
     #[inline]
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
     }
 
     #[inline]
@@ -677,7 +754,10 @@ impl Collect for alloc::boxed::Box<dyn Collect + Send + Sync + 'static> {
 }
 
 #[cfg(feature = "alloc")]
-impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
+impl<C> Collect for alloc::sync::Arc<C>
+where
+    C: Collect + ?Sized,
+{
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
@@ -706,6 +786,11 @@ impl Collect for alloc::sync::Arc<dyn Collect + Send + Sync + 'static> {
     #[inline]
     fn record_follows_from(&self, span: &span::Id, follows: &span::Id) {
         self.as_ref().record_follows_from(span, follows)
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>) -> bool {
+        self.as_ref().event_enabled(event)
     }
 
     #[inline]

@@ -627,35 +627,35 @@ mod tests {
             handle.assert_finished();
         }
 
-        #[test]
-        fn span_follows_future_onto_threadpool() {
-            let (collector, handle) = collector::mock()
-                .enter(span::mock().named("a"))
-                .enter(span::mock().named("b"))
-                .exit(span::mock().named("b"))
-                .enter(span::mock().named("b"))
-                .exit(span::mock().named("b"))
-                .drop_span(span::mock().named("b"))
-                .exit(span::mock().named("a"))
-                .drop_span(span::mock().named("a"))
-                .done()
-                .run_with_handle();
-            let mut runtime = tokio::runtime::Runtime::new().unwrap();
-            with_default(collector, || {
-                tracing::trace_span!("a").in_scope(|| {
-                    let future = PollN::new_ok(2)
-                        .instrument(tracing::trace_span!("b"))
-                        .map(|_| {
-                            tracing::trace_span!("c").in_scope(|| {
-                                // "c" happens _outside_ of the instrumented future's
-                                // span, so we don't expect it.
-                            })
-                        });
-                    runtime.block_on(Box::new(future)).unwrap();
-                })
-            });
-            handle.assert_finished();
-        }
+        // #[test]
+        // fn span_follows_future_onto_threadpool() {
+        //     let (collector, handle) = collector::mock()
+        //         .enter(span::mock().named("a"))
+        //         .enter(span::mock().named("b"))
+        //         .exit(span::mock().named("b"))
+        //         .enter(span::mock().named("b"))
+        //         .exit(span::mock().named("b"))
+        //         .drop_span(span::mock().named("b"))
+        //         .exit(span::mock().named("a"))
+        //         .drop_span(span::mock().named("a"))
+        //         .done()
+        //         .run_with_handle();
+        //     let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        //     with_default(collector, || {
+        //         tracing::trace_span!("a").in_scope(|| {
+        //             let future = PollN::new_ok(2)
+        //                 .instrument(tracing::trace_span!("b"))
+        //                 .map(|_| {
+        //                     tracing::trace_span!("c").in_scope(|| {
+        //                         // "c" happens _outside_ of the instrumented future's
+        //                         // span, so we don't expect it.
+        //                     })
+        //                 });
+        //             runtime.block_on(Box::new(future)).unwrap();
+        //         })
+        //     });
+        //     handle.assert_finished();
+        // }
     }
 
     #[cfg(all(feature = "futures-03", feature = "std-future"))]

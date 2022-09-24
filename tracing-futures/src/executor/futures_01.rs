@@ -44,7 +44,7 @@ pub use self::tokio::*;
 mod tokio {
     use crate::{Instrument, Instrumented, WithDispatch};
     use futures_01::Future;
-    use tokio::{
+    use tokio_01::{
         executor::{Executor, SpawnError, TypedExecutor},
         runtime::{current_thread, Runtime, TaskExecutor},
     };

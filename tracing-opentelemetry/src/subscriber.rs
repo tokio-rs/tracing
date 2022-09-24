@@ -1,10 +1,12 @@
 use crate::{OtelData, PreSampledTracer};
+use once_cell::unsync;
 use opentelemetry::{
-    trace::{self as otel, noop, TraceContextExt},
-    Context as OtelContext, Key, KeyValue, Value,
+    trace::{self as otel, noop, OrderMap, TraceContextExt},
+    Context as OtelContext, Key, KeyValue, StringValue, Value,
 };
 use std::fmt;
 use std::marker;
+use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
@@ -20,6 +22,9 @@ const SPAN_KIND_FIELD: &str = "otel.kind";
 const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
 const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 
+const FIELD_EXCEPTION_MESSAGE: &str = "exception.message";
+const FIELD_EXCEPTION_STACKTRACE: &str = "exception.stacktrace";
+
 /// An [OpenTelemetry] propagation subscriber for use in a project that uses
 /// [tracing].
 ///
@@ -27,8 +32,10 @@ const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
 /// [tracing]: https://github.com/tokio-rs/tracing
 pub struct OpenTelemetrySubscriber<C, T> {
     tracer: T,
-    event_location: bool,
+    location: bool,
     tracked_inactivity: bool,
+    with_threads: bool,
+    exception_config: ExceptionFieldConfig,
     get_context: WithContext,
     _registry: marker::PhantomData<C>,
 }
@@ -97,29 +104,34 @@ fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
     }
 }
 
-fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
+fn str_to_status(s: &str) -> otel::Status {
     match s {
-        s if s.eq_ignore_ascii_case("unset") => Some(otel::StatusCode::Unset),
-        s if s.eq_ignore_ascii_case("ok") => Some(otel::StatusCode::Ok),
-        s if s.eq_ignore_ascii_case("error") => Some(otel::StatusCode::Error),
-        _ => None,
+        s if s.eq_ignore_ascii_case("ok") => otel::Status::Ok,
+        s if s.eq_ignore_ascii_case("error") => otel::Status::error(""),
+        _ => otel::Status::Unset,
     }
 }
 
-struct SpanEventVisitor<'a>(&'a mut otel::Event);
+struct SpanEventVisitor<'a, 'b> {
+    event_builder: &'a mut otel::Event,
+    span_builder: Option<&'b mut otel::SpanBuilder>,
+    exception_config: ExceptionFieldConfig,
+}
 
-impl<'a> field::Visit for SpanEventVisitor<'a> {
+impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
         match field.name() {
-            "message" => self.0.name = value.to_string().into(),
+            "message" => self.event_builder.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name => {
-                self.0.attributes.push(KeyValue::new(name, value));
+                self.event_builder
+                    .attributes
+                    .push(KeyValue::new(name, value));
             }
         }
     }
@@ -129,12 +141,14 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_f64(&mut self, field: &field::Field, value: f64) {
         match field.name() {
-            "message" => self.0.name = value.to_string().into(),
+            "message" => self.event_builder.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name => {
-                self.0.attributes.push(KeyValue::new(name, value));
+                self.event_builder
+                    .attributes
+                    .push(KeyValue::new(name, value));
             }
         }
     }
@@ -144,12 +158,14 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_i64(&mut self, field: &field::Field, value: i64) {
         match field.name() {
-            "message" => self.0.name = value.to_string().into(),
+            "message" => self.event_builder.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name => {
-                self.0.attributes.push(KeyValue::new(name, value));
+                self.event_builder
+                    .attributes
+                    .push(KeyValue::new(name, value));
             }
         }
     }
@@ -159,12 +175,12 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
-            "message" => self.0.name = value.to_string().into(),
+            "message" => self.event_builder.name = value.to_string().into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name => {
-                self.0
+                self.event_builder
                     .attributes
                     .push(KeyValue::new(name, value.to_string()));
             }
@@ -177,26 +193,103 @@ impl<'a> field::Visit for SpanEventVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
-            "message" => self.0.name = format!("{:?}", value).into(),
+            "message" => self.event_builder.name = format!("{:?}", value).into(),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name => {
-                self.0
+                self.event_builder
                     .attributes
                     .push(KeyValue::new(name, format!("{:?}", value)));
             }
         }
     }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] using a [`std::error::Error`]'s
+    /// [`std::fmt::Display`] implementation. Also adds the `source` chain as an extra field
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        let mut chain = Vec::new();
+        let mut next_err = value.source();
+
+        while let Some(err) = next_err {
+            chain.push(StringValue::from(err.to_string()));
+            next_err = err.source();
+        }
+
+        let error_msg = value.to_string();
+
+        if self.exception_config.record {
+            self.event_builder
+                .attributes
+                .push(Key::new(FIELD_EXCEPTION_MESSAGE).string(error_msg.clone()));
+
+            // NOTE: This is actually not the stacktrace of the exception. This is
+            // the "source chain". It represents the heirarchy of errors from the
+            // app level to the lowest level such as IO. It does not represent all
+            // of the callsites in the code that led to the error happening.
+            // `std::error::Error::backtrace` is a nightly-only API and cannot be
+            // used here until the feature is stabilized.
+            self.event_builder
+                .attributes
+                .push(Key::new(FIELD_EXCEPTION_STACKTRACE).array(chain.clone()));
+        }
+
+        if self.exception_config.propagate {
+            if let Some(span) = &mut self.span_builder {
+                if let Some(attrs) = span.attributes.as_mut() {
+                    attrs.insert(Key::new(FIELD_EXCEPTION_MESSAGE), error_msg.clone().into());
+
+                    // NOTE: This is actually not the stacktrace of the exception. This is
+                    // the "source chain". It represents the heirarchy of errors from the
+                    // app level to the lowest level such as IO. It does not represent all
+                    // of the callsites in the code that led to the error happening.
+                    // `std::error::Error::backtrace` is a nightly-only API and cannot be
+                    // used here until the feature is stabilized.
+                    attrs.insert(
+                        Key::new(FIELD_EXCEPTION_STACKTRACE),
+                        Value::Array(chain.clone().into()),
+                    );
+                }
+            }
+        }
+
+        self.event_builder
+            .attributes
+            .push(Key::new(field.name()).string(error_msg));
+        self.event_builder
+            .attributes
+            .push(Key::new(format!("{}.chain", field.name())).array(chain));
+    }
 }
 
-struct SpanAttributeVisitor<'a>(&'a mut otel::SpanBuilder);
+/// Control over opentelemetry conventional exception fields
+#[derive(Clone, Copy)]
+struct ExceptionFieldConfig {
+    /// If an error value is recorded on an event/span, should the otel fields
+    /// be added
+    record: bool,
+
+    /// If an error value is recorded on an event, should the otel fields be
+    /// added to the corresponding span
+    propagate: bool,
+}
+
+struct SpanAttributeVisitor<'a> {
+    span_builder: &'a mut otel::SpanBuilder,
+    exception_config: ExceptionFieldConfig,
+}
 
 impl<'a> SpanAttributeVisitor<'a> {
     fn record(&mut self, attribute: KeyValue) {
-        debug_assert!(self.0.attributes.is_some());
-        if let Some(v) = self.0.attributes.as_mut() {
-            v.push(attribute);
+        debug_assert!(self.span_builder.attributes.is_some());
+        if let Some(v) = self.span_builder.attributes.as_mut() {
+            v.insert(attribute.key, attribute.value);
         }
     }
 }
@@ -228,10 +321,12 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
-            SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
-            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
-            SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
-            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            SPAN_NAME_FIELD => self.span_builder.name = value.to_string().into(),
+            SPAN_KIND_FIELD => self.span_builder.span_kind = str_to_span_kind(value),
+            SPAN_STATUS_CODE_FIELD => self.span_builder.status = str_to_status(value),
+            SPAN_STATUS_MESSAGE_FIELD => {
+                self.span_builder.status = otel::Status::error(value.to_string())
+            }
             _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
@@ -242,16 +337,53 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
-            SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
-            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
+            SPAN_NAME_FIELD => self.span_builder.name = format!("{:?}", value).into(),
+            SPAN_KIND_FIELD => {
+                self.span_builder.span_kind = str_to_span_kind(&format!("{:?}", value))
+            }
             SPAN_STATUS_CODE_FIELD => {
-                self.0.status_code = str_to_status_code(&format!("{:?}", value))
+                self.span_builder.status = str_to_status(&format!("{:?}", value))
             }
             SPAN_STATUS_MESSAGE_FIELD => {
-                self.0.status_message = Some(format!("{:?}", value).into())
+                self.span_builder.status = otel::Status::error(format!("{:?}", value))
             }
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
+    }
+
+    /// Set attributes on the underlying OpenTelemetry [`Span`] using a [`std::error::Error`]'s
+    /// [`std::fmt::Display`] implementation. Also adds the `source` chain as an extra field
+    ///
+    /// [`Span`]: opentelemetry::trace::Span
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        let mut chain = Vec::new();
+        let mut next_err = value.source();
+
+        while let Some(err) = next_err {
+            chain.push(StringValue::from(err.to_string()));
+            next_err = err.source();
+        }
+
+        let error_msg = value.to_string();
+
+        if self.exception_config.record {
+            self.record(Key::new(FIELD_EXCEPTION_MESSAGE).string(error_msg.clone()));
+
+            // NOTE: This is actually not the stacktrace of the exception. This is
+            // the "source chain". It represents the heirarchy of errors from the
+            // app level to the lowest level such as IO. It does not represent all
+            // of the callsites in the code that led to the error happening.
+            // `std::error::Error::backtrace` is a nightly-only API and cannot be
+            // used here until the feature is stabilized.
+            self.record(Key::new(FIELD_EXCEPTION_STACKTRACE).array(chain.clone()));
+        }
+
+        self.record(Key::new(field.name()).string(error_msg));
+        self.record(Key::new(format!("{}.chain", field.name())).array(chain));
     }
 }
 
@@ -274,7 +406,7 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let tracer = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_agent_pipeline()
     ///     .with_service_name("trace_demo")
     ///     .install_simple()
     ///     .expect("Error initializing Jaeger exporter");
@@ -290,8 +422,13 @@ where
     pub fn new(tracer: T) -> Self {
         OpenTelemetrySubscriber {
             tracer,
-            event_location: true,
+            location: true,
             tracked_inactivity: true,
+            with_threads: true,
+            exception_config: ExceptionFieldConfig {
+                record: false,
+                propagate: false,
+            },
             get_context: WithContext(Self::get_context),
             _registry: marker::PhantomData,
         }
@@ -310,7 +447,7 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let tracer = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_agent_pipeline()
     ///     .with_service_name("trace_demo")
     ///     .install_simple()
     ///     .expect("Error initializing Jaeger exporter");
@@ -329,20 +466,89 @@ where
     {
         OpenTelemetrySubscriber {
             tracer,
-            event_location: self.event_location,
+            location: self.location,
             tracked_inactivity: self.tracked_inactivity,
+            with_threads: self.with_threads,
             get_context: WithContext(OpenTelemetrySubscriber::<C, Tracer>::get_context),
+            exception_config: self.exception_config,
             _registry: self._registry,
         }
     }
 
-    /// Sets whether or not event span's metadata should include detailed location
-    /// information, such as the file, module and line number.
+    /// Sets whether or not span and event metadata should include OpenTelemetry
+    /// exception fields such as `exception.message` and `exception.backtrace`
+    /// when an `Error` value is recorded. If multiple error values are recorded
+    /// on the same span/event, only the most recently recorded error value will
+    /// show up under these fields.
     ///
-    /// By default, event locations are enabled.
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// exceptions][conv].
+    ///
+    /// By default, these fields are disabled
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
+    pub fn with_exception_fields(self, exception_fields: bool) -> Self {
+        Self {
+            exception_config: ExceptionFieldConfig {
+                record: exception_fields,
+                ..self.exception_config
+            },
+            ..self
+        }
+    }
+
+    /// Sets whether or not reporting an `Error` value on an event will
+    /// propagate the OpenTelemetry exception fields such as `exception.message`
+    /// and `exception.backtrace` to the corresponding span. You do not need to
+    /// enable `with_exception_fields` in order to enable this. If multiple
+    /// error values are recorded on the same span/event, only the most recently
+    /// recorded error value will show up under these fields.
+    ///
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// exceptions][conv].
+    ///
+    /// By default, this is disabled
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/exceptions/
+    pub fn with_exception_field_propagation(self, exception_field_propagation: bool) -> Self {
+        Self {
+            exception_config: ExceptionFieldConfig {
+                propagate: exception_field_propagation,
+                ..self.exception_config
+            },
+            ..self
+        }
+    }
+
+    /// Sets whether or not span and event metadata should include OpenTelemetry
+    /// attributes with location information, such as the file, module and line number.
+    ///
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// source locations][conv].
+    ///
+    /// By default, locations are enabled.
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#source-code-attributes
+    pub fn with_location(self, location: bool) -> Self {
+        Self { location, ..self }
+    }
+
+    /// Sets whether or not span and event metadata should include OpenTelemetry
+    /// attributes with location information, such as the file, module and line number.
+    ///
+    /// These attributes follow the [OpenTelemetry semantic conventions for
+    /// source locations][conv].
+    ///
+    /// By default, locations are enabled.
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#source-code-attributes
+    #[deprecated(
+        since = "0.17.3",
+        note = "renamed to `OpenTelemetrySubscriber::with_location`"
+    )]
     pub fn with_event_location(self, event_location: bool) -> Self {
         Self {
-            event_location,
+            location: event_location,
             ..self
         }
     }
@@ -353,6 +559,20 @@ where
     pub fn with_tracked_inactivity(self, tracked_inactivity: bool) -> Self {
         Self {
             tracked_inactivity,
+            ..self
+        }
+    }
+
+    /// Sets whether or not spans record additional attributes for the thread
+    /// name and thread ID of the thread they were created on, following the
+    /// [OpenTelemetry semantic conventions for threads][conv].
+    ///
+    /// By default, thread attributes are enabled.
+    ///
+    /// [conv]: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/span-general/#general-thread-attributes
+    pub fn with_threads(self, threads: bool) -> Self {
+        Self {
+            with_threads: threads,
             ..self
         }
     }
@@ -409,6 +629,30 @@ where
             f(builder, &subscriber.tracer);
         }
     }
+
+    fn extra_span_attrs(&self) -> usize {
+        let mut extra_attrs = 0;
+        if self.location {
+            extra_attrs += 3;
+        }
+        if self.with_threads {
+            extra_attrs += 2;
+        }
+        extra_attrs
+    }
+}
+
+thread_local! {
+    static THREAD_ID: unsync::Lazy<u64> = unsync::Lazy::new(|| {
+        // OpenTelemetry's semantic conventions require the thread ID to be
+        // recorded as an integer, but `std::thread::ThreadId` does not expose
+        // the integer value on stable, so we have to convert it to a `usize` by
+        // parsing it. Since this requires allocating a `String`, store it in a
+        // thread local so we only have to do this once.
+        // TODO(eliza): once `std::thread::ThreadId::as_u64` is stabilized
+        // (https://github.com/rust-lang/rust/issues/67939), just use that.
+        thread_id_integer(thread::current().id())
+    });
 }
 
 impl<C, T> Subscribe<C> for OpenTelemetrySubscriber<C, T>
@@ -441,25 +685,41 @@ where
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
-        let builder_attrs = builder
-            .attributes
-            .get_or_insert(Vec::with_capacity(attrs.fields().len() + 3));
+        let builder_attrs = builder.attributes.get_or_insert(OrderMap::with_capacity(
+            attrs.fields().len() + self.extra_span_attrs(),
+        ));
 
-        let meta = attrs.metadata();
+        if self.location {
+            let meta = attrs.metadata();
 
-        if let Some(filename) = meta.file() {
-            builder_attrs.push(KeyValue::new("code.filepath", filename));
+            if let Some(filename) = meta.file() {
+                builder_attrs.insert("code.filepath".into(), filename.into());
+            }
+
+            if let Some(module) = meta.module_path() {
+                builder_attrs.insert("code.namespace".into(), module.into());
+            }
+
+            if let Some(line) = meta.line() {
+                builder_attrs.insert("code.lineno".into(), (line as i64).into());
+            }
         }
 
-        if let Some(module) = meta.module_path() {
-            builder_attrs.push(KeyValue::new("code.namespace", module));
+        if self.with_threads {
+            THREAD_ID.with(|id| builder_attrs.insert("thread.id".into(), (**id as i64).into()));
+            if let Some(name) = std::thread::current().name() {
+                // TODO(eliza): it's a bummer that we have to allocate here, but
+                // we can't easily get the string as a `static`. it would be
+                // nice if `opentelemetry` could also take `Arc<str>`s as
+                // `String` values...
+                builder_attrs.insert("thread.name".into(), name.to_owned().into());
+            }
         }
 
-        if let Some(line) = meta.line() {
-            builder_attrs.push(KeyValue::new("code.lineno", line as i64));
-        }
-
-        attrs.record(&mut SpanAttributeVisitor(&mut builder));
+        attrs.record(&mut SpanAttributeVisitor {
+            span_builder: &mut builder,
+            exception_config: self.exception_config,
+        });
         extensions.insert(OtelData { builder, parent_cx });
     }
 
@@ -500,7 +760,10 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<OtelData>() {
-            values.record(&mut SpanAttributeVisitor(&mut data.builder));
+            values.record(&mut SpanAttributeVisitor {
+                span_builder: &mut data.builder,
+                exception_config: self.exception_config,
+            });
         }
     }
 
@@ -542,8 +805,8 @@ where
     /// [`ERROR`]: tracing::Level::ERROR
     /// [`Error`]: opentelemetry::trace::StatusCode::Error
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
-        // Ignore events that are not in the context of a span
-        if let Some(span) = ctx.lookup_current() {
+        // Ignore events that have no explicit parent set *and* are not in the context of a span
+        if let Some(span) = ctx.event_span(event) {
             // Performing read operations before getting a write lock to avoid a deadlock
             // See https://github.com/tokio-rs/tracing/issues/763
             #[cfg(feature = "tracing-log")]
@@ -565,21 +828,31 @@ where
             #[cfg(not(feature = "tracing-log"))]
             let target = target.string(meta.target());
 
+            let mut extensions = span.extensions_mut();
+            let span_builder = extensions
+                .get_mut::<OtelData>()
+                .map(|data| &mut data.builder);
+
             let mut otel_event = otel::Event::new(
                 String::new(),
                 SystemTime::now(),
                 vec![Key::new("level").string(meta.level().as_str()), target],
                 0,
             );
-            event.record(&mut SpanEventVisitor(&mut otel_event));
+            event.record(&mut SpanEventVisitor {
+                event_builder: &mut otel_event,
+                span_builder,
+                exception_config: self.exception_config,
+            });
 
-            let mut extensions = span.extensions_mut();
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
-                if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
-                    builder.status_code = Some(otel::StatusCode::Error);
+                if builder.status == otel::Status::Unset
+                    && *meta.level() == tracing_core::Level::ERROR
+                {
+                    builder.status = otel::Status::error("")
                 }
 
-                if self.event_location {
+                if self.location {
                     #[cfg(not(feature = "tracing-log"))]
                     let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
                     let (file, module) = match &normalized_meta {
@@ -634,15 +907,14 @@ where
             if self.tracked_inactivity {
                 // Append busy/idle timings when enabled.
                 if let Some(timings) = extensions.get_mut::<Timings>() {
-                    let busy_ns = KeyValue::new("busy_ns", timings.busy);
-                    let idle_ns = KeyValue::new("idle_ns", timings.idle);
+                    let busy_ns = Key::new("busy_ns");
+                    let idle_ns = Key::new("idle_ns");
 
-                    if let Some(ref mut attributes) = builder.attributes {
-                        attributes.push(busy_ns);
-                        attributes.push(idle_ns);
-                    } else {
-                        builder.attributes = Some(vec![busy_ns, idle_ns]);
-                    }
+                    let attributes = builder
+                        .attributes
+                        .get_or_insert_with(|| OrderMap::with_capacity(2));
+                    attributes.insert(busy_ns, timings.busy.into());
+                    attributes.insert(idle_ns, timings.idle.into());
                 }
             }
 
@@ -682,14 +954,32 @@ impl Timings {
     }
 }
 
+fn thread_id_integer(id: thread::ThreadId) -> u64 {
+    let thread_id = format!("{:?}", id);
+    thread_id
+        .trim_start_matches("ThreadId(")
+        .trim_end_matches(')')
+        .parse::<u64>()
+        .expect("thread ID should parse as an integer")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::OtelData;
-    use opentelemetry::trace::{noop, SpanKind, TraceFlags};
-    use std::borrow::Cow;
-    use std::sync::{Arc, Mutex};
-    use std::time::SystemTime;
+    use opentelemetry::{
+        trace::{noop, TraceFlags},
+        StringValue,
+    };
+    use std::{
+        borrow::Cow,
+        collections::HashMap,
+        error::Error,
+        fmt::Display,
+        sync::{Arc, Mutex},
+        thread,
+        time::SystemTime,
+    };
     use tracing_subscriber::prelude::*;
 
     #[derive(Debug, Clone)]
@@ -733,6 +1023,14 @@ mod tests {
         }
     }
 
+    impl TestTracer {
+        fn with_data<T>(&self, f: impl FnOnce(&OtelData) -> T) -> T {
+            let lock = self.0.lock().unwrap();
+            let data = lock.as_ref().expect("no span data has been recorded yet");
+            f(data)
+        }
+    }
+
     #[derive(Debug, Clone)]
     struct TestSpan(otel::SpanContext);
     impl otel::Span for TestSpan {
@@ -750,9 +1048,39 @@ mod tests {
             false
         }
         fn set_attribute(&mut self, _attribute: KeyValue) {}
-        fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
+        fn set_status(&mut self, _status: otel::Status) {}
         fn update_name<T: Into<Cow<'static, str>>>(&mut self, _new_name: T) {}
         fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
+    }
+
+    #[derive(Debug)]
+    struct TestDynError {
+        msg: &'static str,
+        source: Option<Box<TestDynError>>,
+    }
+    impl Display for TestDynError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.msg)
+        }
+    }
+    impl Error for TestDynError {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            match &self.source {
+                Some(source) => Some(source),
+                None => None,
+            }
+        }
+    }
+    impl TestDynError {
+        fn new(msg: &'static str) -> Self {
+            Self { msg, source: None }
+        }
+        fn with_parent(self, parent_msg: &'static str) -> Self {
+            Self {
+                msg: parent_msg,
+                source: Some(Box::new(self)),
+            }
+        }
     }
 
     #[test]
@@ -782,18 +1110,10 @@ mod tests {
             tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
         tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
+            tracing::debug_span!("request", otel.kind = "server");
         });
 
-        let recorded_kind = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .span_kind
-            .clone();
+        let recorded_kind = tracer.with_data(|data| data.builder.span_kind.clone());
         assert_eq!(recorded_kind, Some(otel::SpanKind::Server))
     }
 
@@ -804,17 +1124,19 @@ mod tests {
             tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
 
         tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
+            tracing::debug_span!("request", otel.status_code = ?otel::Status::Ok);
         });
-        let recorded_status_code = tracer
+        let recorded_status = tracer
             .0
             .lock()
             .unwrap()
             .as_ref()
             .unwrap()
             .builder
-            .status_code;
-        assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
+            .status
+            .clone();
+
+        assert_eq!(recorded_status, otel::Status::Ok)
     }
 
     #[test]
@@ -836,10 +1158,10 @@ mod tests {
             .as_ref()
             .unwrap()
             .builder
-            .status_message
+            .status
             .clone();
 
-        assert_eq!(recorded_status_message, Some(message.into()))
+        assert_eq!(recorded_status_message, otel::Status::error(message))
     }
 
     #[test]
@@ -858,19 +1180,11 @@ mod tests {
         let _g = existing_cx.attach();
 
         tracing::collect::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
+            tracing::debug_span!("request", otel.kind = "server");
         });
 
-        let recorded_trace_id = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .parent_cx
-            .span()
-            .span_context()
-            .trace_id();
+        let recorded_trace_id =
+            tracer.with_data(|data| data.parent_cx.span().span_context().trace_id());
         assert_eq!(recorded_trace_id, trace_id)
     }
 
@@ -887,6 +1201,35 @@ mod tests {
             tracing::debug_span!("request");
         });
 
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
+        let keys = attributes
+            .iter()
+            .map(|(key, _)| key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(keys.contains(&"idle_ns"));
+        assert!(keys.contains(&"busy_ns"));
+    }
+
+    #[test]
+    fn records_error_fields() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_exception_fields(true),
+        );
+
+        let err = TestDynError::new("base error")
+            .with_parent("intermediate error")
+            .with_parent("user error");
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!(
+                "request",
+                error = &err as &(dyn std::error::Error + 'static)
+            );
+        });
+
         let attributes = tracer
             .0
             .lock()
@@ -898,11 +1241,173 @@ mod tests {
             .as_ref()
             .unwrap()
             .clone();
+
+        let key_values = attributes
+            .into_iter()
+            .map(|(key, value)| (key.as_str().to_owned(), value))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(key_values["error"].as_str(), "user error");
+        assert_eq!(
+            key_values["error.chain"],
+            Value::Array(
+                vec![
+                    StringValue::from("intermediate error"),
+                    StringValue::from("base error")
+                ]
+                .into()
+            )
+        );
+
+        assert_eq!(key_values[FIELD_EXCEPTION_MESSAGE].as_str(), "user error");
+        assert_eq!(
+            key_values[FIELD_EXCEPTION_STACKTRACE],
+            Value::Array(
+                vec![
+                    StringValue::from("intermediate error"),
+                    StringValue::from("base error")
+                ]
+                .into()
+            )
+        );
+    }
+
+    #[test]
+    fn includes_span_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry()
+            .with(subscriber().with_tracer(tracer.clone()).with_location(true));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
         let keys = attributes
             .iter()
-            .map(|attr| attr.key.as_str())
+            .map(|(key, _)| key.as_str())
             .collect::<Vec<&str>>();
-        assert!(keys.contains(&"idle_ns"));
-        assert!(keys.contains(&"busy_ns"));
+        assert!(keys.contains(&"code.filepath"));
+        assert!(keys.contains(&"code.namespace"));
+        assert!(keys.contains(&"code.lineno"));
+    }
+
+    #[test]
+    fn excludes_span_location() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_location(false),
+        );
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
+        let keys = attributes
+            .iter()
+            .map(|(key, _)| key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(!keys.contains(&"code.filepath"));
+        assert!(!keys.contains(&"code.namespace"));
+        assert!(!keys.contains(&"code.lineno"));
+    }
+
+    #[test]
+    fn includes_thread() {
+        let thread = thread::current();
+        let expected_name = thread
+            .name()
+            .map(|name| Value::String(name.to_owned().into()));
+        let expected_id = Value::I64(thread_id_integer(thread.id()) as i64);
+
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry()
+            .with(subscriber().with_tracer(tracer.clone()).with_threads(true));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer
+            .with_data(|data| data.builder.attributes.as_ref().unwrap().clone())
+            .drain(..)
+            .map(|(key, value)| (key.as_str().to_string(), value))
+            .collect::<HashMap<_, _>>();
+        assert_eq!(attributes.get("thread.name"), expected_name.as_ref());
+        assert_eq!(attributes.get("thread.id"), Some(&expected_id));
+    }
+
+    #[test]
+    fn excludes_thread() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry()
+            .with(subscriber().with_tracer(tracer.clone()).with_threads(false));
+
+        tracing::collect::with_default(subscriber, || {
+            tracing::debug_span!("request");
+        });
+
+        let attributes = tracer.with_data(|data| data.builder.attributes.as_ref().unwrap().clone());
+        let keys = attributes
+            .iter()
+            .map(|(key, _)| key.as_str())
+            .collect::<Vec<&str>>();
+        assert!(!keys.contains(&"thread.name"));
+        assert!(!keys.contains(&"thread.id"));
+    }
+
+    #[test]
+    fn propagates_error_fields_from_event_to_span() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber = tracing_subscriber::registry().with(
+            subscriber()
+                .with_tracer(tracer.clone())
+                .with_exception_field_propagation(true),
+        );
+
+        let err = TestDynError::new("base error")
+            .with_parent("intermediate error")
+            .with_parent("user error");
+
+        tracing::collect::with_default(subscriber, || {
+            let _guard = tracing::debug_span!("request",).entered();
+
+            tracing::error!(
+                error = &err as &(dyn std::error::Error + 'static),
+                "request error!"
+            )
+        });
+
+        let attributes = tracer
+            .0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .builder
+            .attributes
+            .as_ref()
+            .unwrap()
+            .clone();
+
+        let key_values = attributes
+            .into_iter()
+            .map(|(key, value)| (key.as_str().to_owned(), value))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(key_values[FIELD_EXCEPTION_MESSAGE].as_str(), "user error");
+        assert_eq!(
+            key_values[FIELD_EXCEPTION_STACKTRACE],
+            Value::Array(
+                vec![
+                    StringValue::from("intermediate error"),
+                    StringValue::from("base error")
+                ]
+                .into()
+            )
+        );
     }
 }
