@@ -18,6 +18,8 @@ use core::{
     ptr::NonNull,
 };
 
+use super::subscriber_is_none;
+
 /// A [collector] composed of a [collector] wrapped by one or more
 /// [subscriber]s.
 ///
@@ -119,6 +121,7 @@ where
         self.pick_level_hint(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
+            super::collector_is_none(&self.inner),
         )
     }
 
@@ -274,6 +277,7 @@ where
         self.pick_level_hint(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
+            super::subscriber_is_none(&self.inner),
         )
     }
 
@@ -374,10 +378,9 @@ where
                 .and(self.inner.downcast_raw(id)),
 
             // Otherwise, try to downcast both branches normally...
-            _ => self
-                .subscriber
-                .downcast_raw(id)
-                .or_else(|| self.inner.downcast_raw(id)),
+            _ => {
+                dbg!(self.subscriber.downcast_raw(id)).or_else(|| dbg!(self.inner.downcast_raw(id)))
+            }
         }
     }
 }
@@ -477,6 +480,7 @@ where
         &self,
         outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
+        inner_is_none: bool,
     ) -> Option<LevelFilter> {
         if self.inner_is_registry {
             return outer_hint;
@@ -509,8 +513,14 @@ where
         // Also note that this does come at some perf cost, but
         // this function is only called on initialization and
         // subscriber reloading.
-        if super::subscriber_is_none(&self.subscriber) {
+        if dbg!(super::subscriber_is_none(&self.subscriber)) {
             return cmp::max(outer_hint, Some(inner_hint?));
+        }
+
+        // Similarly, if the layer on the inside is `None` and it returned an
+        // `Off` hint, we want to override that with the outer hint.
+        if inner_is_none && inner_hint == Some(LevelFilter::OFF) {
+            return outer_hint;
         }
 
         cmp::max(outer_hint, inner_hint)

@@ -1515,6 +1515,24 @@ where
     .is_some()
 }
 
+/// Is a type implementing `Collect` `Option::<_>::None`?
+pub(crate) fn collector_is_none<C>(collector: &C) -> bool
+where
+    C: Collect,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Subscribe` impl
+        // for `Option`s. However, even if the subscriber *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
+        collector.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
 impl<S, C> Subscribe<C> for Option<S>
 where
     S: Subscribe<C>,
