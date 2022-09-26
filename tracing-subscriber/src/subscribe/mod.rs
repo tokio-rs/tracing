@@ -1494,7 +1494,7 @@ pub struct Identity {
 
 #[derive(Clone, Copy)]
 pub(crate) struct NoneLayerMarker(());
-pub(crate) static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker(());
+static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker(());
 
 /// Is a type implementing `Subscriber` `Option::<_>::None`?
 pub(crate) fn subscriber_is_none<S, C>(subscriber: &S) -> bool
