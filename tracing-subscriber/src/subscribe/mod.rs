@@ -1493,8 +1493,8 @@ pub struct Identity {
 // === impl Subscribe ===
 
 #[derive(Clone, Copy)]
-pub(crate) struct NoneLayerMarker;
-pub(crate) static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker;
+pub(crate) struct NoneLayerMarker(());
+pub(crate) static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker(());
 
 /// Is a type implementing `Subscriber` `Option::<_>::None`?
 pub(crate) fn subscriber_is_none<S, C>(subscriber: &S) -> bool
@@ -1503,10 +1503,13 @@ where
     C: Collect,
 {
     unsafe {
-        // Safety: we're not actually *doing* anything with this pointer --- we
-        // only care about the `Option`, which we're turning into a `bool`. So
-        // even if the subscriber decides to be evil and give us some kind of invalid
-        // pointer, we don't ever dereference it, so this is always safe.
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Subscribe` impl
+        // for `Option`s. However, even if the subscriber *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
         subscriber.downcast_raw(TypeId::of::<NoneLayerMarker>())
     }
     .is_some()

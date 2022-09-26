@@ -148,10 +148,16 @@ where
 
     #[doc(hidden)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
-        // Safety: It is generally unsafe to downcast through a reload, because
+        // Safety: it is generally unsafe to downcast through a reload, because
         // the pointer can be invalidated after the lock is dropped.
         // `NoneLayerMarker` is a special case because it
         // is never dereferenced.
+        //
+        // Additionally, even if the marker type *is* dereferenced (which it
+        // never will be), the pointer should be valid even if the subscriber
+        // is reloaded, because all `NoneLayerMarker` pointers that we return
+        // actually point to the global static singleton `NoneLayerMarker`,
+        // rather than to a field inside the lock.
         if id == TypeId::of::<subscribe::NoneLayerMarker>() {
             return try_lock!(self.inner.read(), else return None).downcast_raw(id);
         }
