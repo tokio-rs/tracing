@@ -79,6 +79,24 @@ use core::ptr::NonNull;
 /// [`event_enabled`]: Collect::event_enabled
 pub trait Collect: 'static {
     /// Invoked when this collector becomes a [`Dispatch`].
+    ///
+    /// ## Avoiding Memory Leaks
+    ///
+    /// Collectors should not store their own [`Dispatch`]. Because the
+    /// `Dispatch` owns the collector, storing the `Dispatch` within the
+    /// collector will create a reference count cycle, preventing the `Dispatch`
+    /// from ever being dropped.
+    ///
+    /// Instead, when it is necessary to store a cyclical reference to the
+    /// `Dispatch` within a collector, use [`Dispatch::downgrade`] to convert a
+    /// `Dispatch` into a [`WeakDispatch`]. This type is analogous to
+    /// [`std::sync::Weak`], and does not create a reference count cycle. A
+    /// [`WeakDispatch`] can be stored within a collector without causing a
+    /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
+    /// the `Dispatch` must be accessed by the collector.
+    ///
+    /// [`WeakDispatch`]: crate::dispatch::WeakDispatch
+    /// [upgraded]: crate::dispatch::WeakDispatch::upgrade
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
     }
