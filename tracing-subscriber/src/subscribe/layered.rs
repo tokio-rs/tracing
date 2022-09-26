@@ -18,8 +18,6 @@ use core::{
     ptr::NonNull,
 };
 
-use super::subscriber_is_none;
-
 /// A [collector] composed of a [collector] wrapped by one or more
 /// [subscriber]s.
 ///
@@ -378,9 +376,10 @@ where
                 .and(self.inner.downcast_raw(id)),
 
             // Otherwise, try to downcast both branches normally...
-            _ => {
-                dbg!(self.subscriber.downcast_raw(id)).or_else(|| dbg!(self.inner.downcast_raw(id)))
-            }
+            _ => self
+                .subscriber
+                .downcast_raw(id)
+                .or_else(|| self.inner.downcast_raw(id)),
         }
     }
 }
@@ -513,7 +512,7 @@ where
         // Also note that this does come at some perf cost, but
         // this function is only called on initialization and
         // subscriber reloading.
-        if dbg!(super::subscriber_is_none(&self.subscriber)) {
+        if super::subscriber_is_none(&self.subscriber) {
             return cmp::max(outer_hint, Some(inner_hint?));
         }
 
