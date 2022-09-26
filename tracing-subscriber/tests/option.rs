@@ -3,6 +3,7 @@ use tracing_core::{collect::Interest, Collect, LevelFilter, Metadata};
 use tracing_subscriber::{prelude::*, subscribe};
 
 // A basic layer that returns its inner for `max_level_hint`
+#[derive(Debug)]
 struct BasicLayer(Option<LevelFilter>);
 impl<C: Collect> tracing_subscriber::Subscribe<C> for BasicLayer {
     fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
@@ -62,19 +63,34 @@ fn none_outside_doesnt_override_max_level() {
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(None))
         .with(None::<LevelFilter>);
-    assert_eq!(subscriber.max_level_hint(), None);
+    assert_eq!(
+        subscriber.max_level_hint(),
+        None,
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The `None`-returning layer still wins
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(None))
         .with(Some(LevelFilter::ERROR));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::ERROR));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::ERROR),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Check that we aren't doing anything truly wrong
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(Some(LevelFilter::DEBUG)))
         .with(None::<LevelFilter>);
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Test that per-subscriber filters aren't affected
 
@@ -82,29 +98,54 @@ fn none_outside_doesnt_override_max_level() {
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(None))
         .with(None::<LevelFilter>.with_filter(LevelFilter::DEBUG));
-    assert_eq!(subscriber.max_level_hint(), None);
+    assert_eq!(
+        subscriber.max_level_hint(),
+        None,
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The max-levels wins
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(Some(LevelFilter::INFO)))
         .with(None::<LevelFilter>.with_filter(LevelFilter::DEBUG));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Test filter on the other layer
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(Some(LevelFilter::INFO)).with_filter(LevelFilter::DEBUG))
         .with(None::<LevelFilter>);
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(None).with_filter(LevelFilter::DEBUG))
         .with(None::<LevelFilter>);
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The `OFF` from `None` over overridden.
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(Some(LevelFilter::INFO)))
         .with(None::<LevelFilter>);
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::INFO),
+        "\n stack: {:#?}",
+        subscriber
+    );
 }
 
 // Test that the `None` max level hint only applies if its the only layer
@@ -114,19 +155,34 @@ fn none_inside_doesnt_override_max_level() {
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
         .with(BasicLayer(None));
-    assert_eq!(subscriber.max_level_hint(), None);
+    assert_eq!(
+        subscriber.max_level_hint(),
+        None,
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The `None`-returning layer still wins
     let subscriber = tracing_subscriber::registry()
         .with(Some(LevelFilter::ERROR))
         .with(BasicLayer(None));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::ERROR));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::ERROR),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Check that we aren't doing anything truly wrong
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
         .with(BasicLayer(Some(LevelFilter::DEBUG)));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Test that per-subscriber filters aren't affected
 
@@ -134,29 +190,54 @@ fn none_inside_doesnt_override_max_level() {
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>.with_filter(LevelFilter::DEBUG))
         .with(BasicLayer(None));
-    assert_eq!(subscriber.max_level_hint(), None);
+    assert_eq!(
+        subscriber.max_level_hint(),
+        None,
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The max-levels wins
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>.with_filter(LevelFilter::DEBUG))
         .with(BasicLayer(Some(LevelFilter::INFO)));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // Test filter on the other layer
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
         .with(BasicLayer(Some(LevelFilter::INFO)).with_filter(LevelFilter::DEBUG));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
         .with(BasicLayer(None).with_filter(LevelFilter::DEBUG));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::DEBUG),
+        "\n stack: {:#?}",
+        subscriber
+    );
 
     // The `OFF` from `None` over overridden.
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
         .with(BasicLayer(Some(LevelFilter::INFO)));
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::INFO));
+    assert_eq!(
+        subscriber.max_level_hint(),
+        Some(LevelFilter::INFO),
+        "\n stack: {:#?}",
+        subscriber
+    );
 }
 
 /// Tests that the logic tested in `doesnt_override_none` works through the reload subscriber
