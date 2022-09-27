@@ -129,7 +129,7 @@ async fn u64_histogram_is_exported() {
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(value.abcdefg = 9_u64);
+        tracing::info!(histogram.abcdefg = 9_u64);
     });
 
     exporter.export().unwrap();
@@ -145,7 +145,7 @@ async fn i64_histogram_is_exported() {
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(value.abcdefg_auenatsou = -19_i64);
+        tracing::info!(histogram.abcdefg_auenatsou = -19_i64);
     });
 
     exporter.export().unwrap();
@@ -161,7 +161,7 @@ async fn f64_histogram_is_exported() {
     );
 
     tracing::collect::with_default(subscriber, || {
-        tracing::info!(value.abcdefg_racecar = 777.0012_f64);
+        tracing::info!(histogram.abcdefg_racecar = 777.0012_f64);
     });
 
     exporter.export().unwrap();
