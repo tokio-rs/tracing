@@ -1,16 +1,17 @@
-#![cfg(feature = "registry")]
-#[path = "../support.rs"]
-mod support;
-use self::support::*;
-mod filter_scopes;
-mod per_event;
-mod reload;
-mod targets;
-mod trees;
-mod vec;
+use super::*;
+use tracing::Collect;
+use tracing_subscriber::{filter::Filtered, reload, subscribe::Filter};
 
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{filter, prelude::*, Subscribe};
+fn mk_reload<S, F, C>(subscriber: S, filter: F) -> reload::Subscriber<Filtered<S, F, C>>
+where
+    S: Subscribe<C>,
+    F: Filter<C>,
+    C: Collect,
+{
+    let subscriber = subscriber.with_filter(filter);
+    let (subscriber, _) = reload::Subscriber::new(subscriber);
+    subscriber
+}
 
 #[test]
 fn basic_subscriber_filters() {
@@ -32,10 +33,14 @@ fn basic_subscriber_filters() {
         .done()
         .run_with_handle();
 
+    let trace_subscriber = mk_reload(trace_subscriber, LevelFilter::TRACE);
+    let debug_subscriber = mk_reload(debug_subscriber, LevelFilter::DEBUG);
+    let info_subscriber = mk_reload(info_subscriber, LevelFilter::INFO);
+
     let _subscriber = tracing_subscriber::registry()
-        .with(trace_subscriber.with_filter(LevelFilter::TRACE))
-        .with(debug_subscriber.with_filter(LevelFilter::DEBUG))
-        .with(info_subscriber.with_filter(LevelFilter::INFO))
+        .with(trace_subscriber)
+        .with(debug_subscriber)
+        .with(info_subscriber)
         .set_default();
 
     tracing::trace!("hello trace");
@@ -67,10 +72,14 @@ fn basic_subscriber_filters_spans() {
         .done()
         .run_with_handle();
 
+    let trace_subscriber = mk_reload(trace_subscriber, LevelFilter::TRACE);
+    let debug_subscriber = mk_reload(debug_subscriber, LevelFilter::DEBUG);
+    let info_subscriber = mk_reload(info_subscriber, LevelFilter::INFO);
+
     let _subscriber = tracing_subscriber::registry()
-        .with(trace_subscriber.with_filter(LevelFilter::TRACE))
-        .with(debug_subscriber.with_filter(LevelFilter::DEBUG))
-        .with(info_subscriber.with_filter(LevelFilter::INFO))
+        .with(trace_subscriber)
+        .with(debug_subscriber)
+        .with(info_subscriber)
         .set_default();
 
     tracing::trace_span!("hello trace");
@@ -83,29 +92,6 @@ fn basic_subscriber_filters_spans() {
 }
 
 #[test]
-fn global_filters_subscribers_still_work() {
-    let (expect, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
-        .run_with_handle();
-
-    let _subscriber = tracing_subscriber::registry()
-        .with(expect)
-        .with(LevelFilter::INFO)
-        .set_default();
-
-    tracing::trace!("hello trace");
-    tracing::debug!("hello debug");
-    tracing::info!("hello info");
-    tracing::warn!("hello warn");
-    tracing::error!("hello error");
-
-    handle.assert_finished();
-}
-
-#[test]
 fn global_filter_interests_are_cached() {
     let (expect, handle) = subscriber::mock()
         .event(event::mock().at_level(Level::WARN))
@@ -113,14 +99,17 @@ fn global_filter_interests_are_cached() {
         .done()
         .run_with_handle();
 
+    let filter = filter::filter_fn(|meta| {
+        assert!(
+            meta.level() <= &Level::INFO,
+            "enabled should not be called for callsites disabled by the global filter"
+        );
+        meta.level() <= &Level::WARN
+    });
+    let expect = mk_reload(expect, filter);
+
     let _subscriber = tracing_subscriber::registry()
-        .with(expect.with_filter(filter::filter_fn(|meta| {
-            assert!(
-                meta.level() <= &Level::INFO,
-                "enabled should not be called for callsites disabled by the global filter"
-            );
-            meta.level() <= &Level::WARN
-        })))
+        .with(expect)
         .with(LevelFilter::INFO)
         .set_default();
 
@@ -141,9 +130,10 @@ fn global_filters_affect_subscriber_filters() {
         .event(event::mock().at_level(Level::ERROR))
         .done()
         .run_with_handle();
+    let expect = mk_reload(expect, LevelFilter::DEBUG);
 
     let _subscriber = tracing_subscriber::registry()
-        .with(expect.with_filter(LevelFilter::DEBUG))
+        .with(expect)
         .with(LevelFilter::INFO)
         .set_default();
 
@@ -174,10 +164,20 @@ fn filter_fn() {
         .done()
         .run_with_handle();
 
+    let foo = {
+        let filter = filter::filter_fn(|meta| meta.target().starts_with("foo"));
+        mk_reload(foo, filter)
+    };
+
+    let bar = {
+        let filter = filter::filter_fn(|meta| meta.target().starts_with("bar"));
+        mk_reload(bar, filter)
+    };
+
     let _subscriber = tracing_subscriber::registry()
         .with(all)
-        .with(foo.with_filter(filter::filter_fn(|meta| meta.target().starts_with("foo"))))
-        .with(bar.with_filter(filter::filter_fn(|meta| meta.target().starts_with("bar"))))
+        .with(foo)
+        .with(bar)
         .set_default();
 
     tracing::trace!(target: "foo", "hello foo");

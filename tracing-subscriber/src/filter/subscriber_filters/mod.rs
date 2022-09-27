@@ -61,7 +61,7 @@ pub mod combinator;
 pub struct Filtered<S, F, C> {
     filter: F,
     subscriber: S,
-    id: MagicPsfDowncastMarker,
+    id: FilterId,
     _s: PhantomData<fn(C)>,
 }
 
@@ -509,14 +509,14 @@ impl<S, F, C> Filtered<S, F, C> {
         Self {
             subscriber,
             filter,
-            id: MagicPsfDowncastMarker(FilterId::disabled()),
+            id: FilterId::disabled(),
             _s: PhantomData,
         }
     }
 
     #[inline(always)]
     fn id(&self) -> FilterId {
-        self.id.0
+        self.id
     }
 
     fn did_enable(&self, f: impl FnOnce()) {
@@ -608,7 +608,7 @@ where
     }
 
     fn on_subscribe(&mut self, collector: &mut C) {
-        self.id = MagicPsfDowncastMarker(collector.register_filter());
+        self.id = collector.register_filter();
         self.subscriber.on_subscribe(collector);
     }
 
@@ -758,7 +758,7 @@ where
             id if id == TypeId::of::<S>() => Some(NonNull::from(&self.subscriber).cast()),
             id if id == TypeId::of::<F>() => Some(NonNull::from(&self.filter).cast()),
             id if id == TypeId::of::<MagicPsfDowncastMarker>() => {
-                Some(NonNull::from(&self.id).cast())
+                Some(NonNull::from(&PSF_DOWNCAST_MARKER).cast())
             }
             _ => None,
         }
@@ -1141,30 +1141,16 @@ impl FilterState {
 /// downcasting to recurse to their children, this will do the Right Thing with
 /// subscribers like Reload, Option, etc.
 ///
-/// Why is this a wrapper around the `FilterId`, you may ask? Because
-/// downcasting works by returning a pointer, and we don't want to risk
-/// introducing UB by  constructing pointers that _don't_ point to a valid
-/// instance of the type they claim to be. In this case, we don't _intend_ for
-/// this pointer to be dereferenced, so it would actually be fine to return one
-/// that isn't a valid pointer...but we can't guarantee that the caller won't
-/// (accidentally) dereference it, so it's better to be safe than sorry. We
-/// could, alternatively, add an additional field to the type that's used only
-/// for returning pointers to as as part of the evil downcasting hack, but I
-/// thought it was nicer to just add a `repr(transparent)` wrapper to the
-/// existing `FilterId` field, since it won't make the struct any bigger.
-///
 /// Don't worry, this isn't on the test. :)
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-struct MagicPsfDowncastMarker(FilterId);
-impl fmt::Debug for MagicPsfDowncastMarker {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Just pretend that `MagicPsfDowncastMarker` doesn't exist for
-        // `fmt::Debug` purposes...if no one *sees* it in their `Debug` output,
-        // they don't have to know I thought this code would be a good idea.
-        fmt::Debug::fmt(&self.0, f)
-    }
-}
+struct MagicPsfDowncastMarker(());
+
+/// The instance of `MagicPsfDowncastMarker` that pointers are returned to. This
+/// is a static so that a `reload` subscriber containing a per-subscriber filter
+/// can still downcast to a `MagicPsfDowncastMarker`, even though it can't
+/// return pointers to its own fields, as they may be invalidated by reloading.
+static PSF_DOWNCAST_MARKER: MagicPsfDowncastMarker = MagicPsfDowncastMarker(());
 
 pub(crate) fn is_psf_downcast_marker(type_id: TypeId) -> bool {
     type_id == TypeId::of::<MagicPsfDowncastMarker>()
