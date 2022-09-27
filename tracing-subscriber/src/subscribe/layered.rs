@@ -119,6 +119,7 @@ where
         self.pick_level_hint(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
+            super::collector_is_none(&self.inner),
         )
     }
 
@@ -274,6 +275,7 @@ where
         self.pick_level_hint(
             self.subscriber.max_level_hint(),
             self.inner.max_level_hint(),
+            super::subscriber_is_none(&self.inner),
         )
     }
 
@@ -477,6 +479,7 @@ where
         &self,
         outer_hint: Option<LevelFilter>,
         inner_hint: Option<LevelFilter>,
+        inner_is_none: bool,
     ) -> Option<LevelFilter> {
         if self.inner_is_registry {
             return outer_hint;
@@ -492,6 +495,31 @@ where
 
         if self.inner_has_subscriber_filter && outer_hint.is_none() {
             return None;
+        }
+
+        // If the subscriber is `Option::None`, then we
+        // want to short-circuit the layer underneath, if it
+        // returns `None`, to override the `None` layer returning
+        // `Some(OFF)`, which should ONLY apply when there are
+        // no other layers that return `None`. Note this
+        // `None` does not == `Some(TRACE)`, it means
+        // something more like: "whatever all the other
+        // layers agree on, default to `TRACE` if none
+        // have an opinion". We also choose do this AFTER
+        // we check for per-subscriber filters, which
+        // have their own logic.
+        //
+        // Also note that this does come at some perf cost, but
+        // this function is only called on initialization and
+        // subscriber reloading.
+        if super::subscriber_is_none(&self.subscriber) {
+            return cmp::max(outer_hint, Some(inner_hint?));
+        }
+
+        // Similarly, if the layer on the inside is `None` and it returned an
+        // `Off` hint, we want to override that with the outer hint.
+        if inner_is_none && inner_hint == Some(LevelFilter::OFF) {
+            return outer_hint;
         }
 
         cmp::max(outer_hint, inner_hint)
