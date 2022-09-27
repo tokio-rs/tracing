@@ -76,6 +76,10 @@ where
         try_lock!(self.inner.read()).on_register_dispatch(collector);
     }
 
+    fn on_subscribe(&mut self, collector: &mut C) {
+        try_lock!(self.inner.write()).on_subscribe(collector);
+    }
+
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)
@@ -150,15 +154,17 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         // Safety: it is generally unsafe to downcast through a reload, because
         // the pointer can be invalidated after the lock is dropped.
-        // `NoneLayerMarker` is a special case because it
-        // is never dereferenced.
+        // The `MagicPsfDowncastMarker` and `NoneLayerMarker` markers are a
+        // special case because they are never dereferenced.
         //
         // Additionally, even if the marker type *is* dereferenced (which it
         // never will be), the pointer should be valid even if the subscriber
-        // is reloaded, because all `NoneLayerMarker` pointers that we return
-        // actually point to the global static singleton `NoneLayerMarker`,
-        // rather than to a field inside the lock.
-        if id == TypeId::of::<subscribe::NoneLayerMarker>() {
+        // is reloaded, because all such marker pointers that we return
+        // actually point to the global static singleton instances of those
+        // marker types, rather than to a field inside the lock.
+        if dbg!(id == TypeId::of::<subscribe::NoneLayerMarker>())
+            || dbg!(crate::filter::is_psf_downcast_marker(id))
+        {
             return try_lock!(self.inner.read(), else return None).downcast_raw(id);
         }
 
