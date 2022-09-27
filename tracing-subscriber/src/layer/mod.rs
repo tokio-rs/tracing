@@ -1497,6 +1497,47 @@ pub struct Identity {
 
 // === impl Layer ===
 
+#[derive(Clone, Copy)]
+pub(crate) struct NoneLayerMarker(());
+static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker(());
+
+/// Is a type implementing `Layer` `Option::<_>::None`?
+pub(crate) fn layer_is_none<L, S>(layer: &L) -> bool
+where
+    L: Layer<S>,
+    S: Subscriber,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Layer` impl
+        // for `Option`s. However, even if the layer *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
+        layer.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
+/// Is a type implementing `Subscriber` `Option::<_>::None`?
+pub(crate) fn subscriber_is_none<S>(subscriber: &S) -> bool
+where
+    S: Subscriber,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Layer` impl
+        // for `Option`s. However, even if the subscriber *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
+        subscriber.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
 impl<L, S> Layer<S> for Option<L>
 where
     L: Layer<S>,
@@ -1605,6 +1646,8 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         if id == TypeId::of::<Self>() {
             Some(self as *const _ as *const ())
+        } else if id == TypeId::of::<NoneLayerMarker>() && self.is_none() {
+            Some(&NONE_LAYER_MARKER as *const _ as *const ())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }
