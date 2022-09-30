@@ -76,7 +76,7 @@
 //! // no default collector
 //!
 //! # #[cfg(feature = "std")]
-//! dispatch::with_default(&my_dispatch, || {
+//! dispatch::with_default(my_dispatch, || {
 //!     // my_collector is the default
 //! });
 //!
