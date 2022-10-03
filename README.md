@@ -408,6 +408,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 - [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
+- [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -448,6 +449,8 @@ please let us know!)
 [Grafana Loki]: https://grafana.com/oss/loki/
 [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
 [`tracing-chrome`]: https://crates.io/crates/tracing-chrome
+[`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
+[`reqwest`]: https://crates.io/crates/reqwest
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
