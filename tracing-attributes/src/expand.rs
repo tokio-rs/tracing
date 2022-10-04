@@ -10,7 +10,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs},
+    attr::{level_to_tokens, DisplayArgs, Field, Fields, FormatMode, InstrumentArgs},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -232,21 +232,37 @@ fn gen_block<B: ToTokens>(
 
     let target = args.target();
 
-    let err_event = match args.err_mode {
-        Some(FormatMode::Default) | Some(FormatMode::Display) => {
-            Some(quote!(tracing::error!(target: #target, error = %e)))
+    let err_event = match args.err_args {
+        Some(DisplayArgs { level, mode }) => {
+            let level_tokens = level_to_tokens(&level, true);
+            match mode {
+                FormatMode::Default | FormatMode::Display => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = %e)
+                )),
+                FormatMode::Debug => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = ?e)
+                )),
+            }
         }
-        Some(FormatMode::Debug) => Some(quote!(tracing::error!(target: #target, error = ?e))),
         _ => None,
     };
 
-    let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(
-            tracing::event!(target: #target, #level, return = %x)
-        )),
-        Some(FormatMode::Default) | Some(FormatMode::Debug) => Some(quote!(
-            tracing::event!(target: #target, #level, return = ?x)
-        )),
+    let ret_event = match args.ret_args {
+        Some(DisplayArgs {
+            level: ret_level,
+            mode,
+        }) => {
+            let ret_level = ret_level.or(args.level);
+            let level_tokens = level_to_tokens(&ret_level, false);
+            match mode {
+                FormatMode::Display => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, return = %x)
+                )),
+                FormatMode::Default | FormatMode::Debug => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, return = ?x)
+                )),
+            }
+        }
         _ => None,
     };
 

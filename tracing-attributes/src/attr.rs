@@ -7,59 +7,29 @@ use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 
 #[derive(Clone, Default, Debug)]
+pub(crate) struct DisplayArgs {
+    pub(crate) level: Option<Level>,
+    pub(crate) mode: FormatMode,
+}
+
+#[derive(Clone, Default, Debug)]
 pub(crate) struct InstrumentArgs {
-    level: Option<Level>,
+    pub(crate) level: Option<Level>,
     pub(crate) name: Option<LitStr>,
     target: Option<LitStr>,
     pub(crate) parent: Option<Expr>,
     pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
-    pub(crate) err_mode: Option<FormatMode>,
-    pub(crate) ret_mode: Option<FormatMode>,
+    pub(crate) err_args: Option<DisplayArgs>,
+    pub(crate) ret_args: Option<DisplayArgs>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
 
 impl InstrumentArgs {
     pub(crate) fn level(&self) -> impl ToTokens {
-        fn is_level(lit: &LitInt, expected: u64) -> bool {
-            match lit.base10_parse::<u64>() {
-                Ok(value) => value == expected,
-                Err(_) => false,
-            }
-        }
-
-        match &self.level {
-            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
-                quote!(tracing::Level::TRACE)
-            }
-            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("debug") => {
-                quote!(tracing::Level::DEBUG)
-            }
-            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("info") => {
-                quote!(tracing::Level::INFO)
-            }
-            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("warn") => {
-                quote!(tracing::Level::WARN)
-            }
-            Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
-                quote!(tracing::Level::ERROR)
-            }
-            Some(Level::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
-            Some(Level::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
-            Some(Level::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
-            Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
-            Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
-            Some(Level::Path(ref pat)) => quote!(#pat),
-            Some(_) => quote! {
-                compile_error!(
-                    "unknown verbosity level, expected one of \"trace\", \
-                     \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
-                )
-            },
-            None => quote!(tracing::Level::INFO),
-        }
+        level_to_tokens(&self.level, false)
     }
 
     pub(crate) fn target(&self) -> impl ToTokens {
@@ -154,12 +124,12 @@ impl Parse for InstrumentArgs {
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>();
-                let mode = FormatMode::parse(input)?;
-                args.err_mode = Some(mode);
+                let err_args = DisplayArgs::parse(input)?;
+                args.err_args = Some(err_args);
             } else if lookahead.peek(kw::ret) {
                 let _ = input.parse::<kw::ret>()?;
-                let mode = FormatMode::parse(input)?;
-                args.ret_mode = Some(mode);
+                let ret_args = DisplayArgs::parse(input)?;
+                args.ret_args = Some(ret_args);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -174,6 +144,54 @@ impl Parse for InstrumentArgs {
             }
         }
         Ok(args)
+    }
+}
+
+impl Parse for DisplayArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        if !input.peek(syn::token::Paren) {
+            return Ok(Self::default());
+        }
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let mut result = Self::default();
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
+                }
+                result.level = Some(content.parse()?);
+            } else {
+                if result.mode != FormatMode::default() {
+                    return Err(content.error("expected only a single format argument"));
+                }
+                let maybe_mode: Option<Ident> = content.parse()?;
+                if let Some(ident) = maybe_mode {
+                    match ident.to_string().as_str() {
+                        "Debug" => result.mode = FormatMode::Debug,
+                        "Display" => result.mode = FormatMode::Display,
+                        _ => {
+                            return Err(syn::Error::new(
+                                ident.span(),
+                                "unknown error mode, must be Debug or Display",
+                            ))
+                        }
+                    }
+                }
+            }
+            Ok(())
+        };
+        parse_one_arg()?;
+        if !content.is_empty() {
+            if content.lookahead1().peek(Token![,]) {
+                let _ = content.parse::<Token![,]>()?;
+                parse_one_arg()?;
+            } else {
+                return Err(content.error("expected `,` or `)`"));
+            }
+        }
+        Ok(result)
     }
 }
 
@@ -244,27 +262,6 @@ pub(crate) enum FormatMode {
 impl Default for FormatMode {
     fn default() -> Self {
         FormatMode::Default
-    }
-}
-
-impl Parse for FormatMode {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        if !input.peek(syn::token::Paren) {
-            return Ok(FormatMode::default());
-        }
-        let content;
-        let _ = syn::parenthesized!(content in input);
-        let maybe_mode: Option<Ident> = content.parse()?;
-        maybe_mode.map_or(Ok(FormatMode::default()), |ident| {
-            match ident.to_string().as_str() {
-                "Debug" => Ok(FormatMode::Debug),
-                "Display" => Ok(FormatMode::Display),
-                _ => Err(syn::Error::new(
-                    ident.span(),
-                    "unknown error mode, must be Debug or Display",
-                )),
-            }
-        })
     }
 }
 
@@ -363,7 +360,7 @@ impl ToTokens for FieldKind {
 }
 
 #[derive(Clone, Debug)]
-enum Level {
+pub(crate) enum Level {
     Str(LitStr),
     Int(LitInt),
     Path(Path),
@@ -383,6 +380,50 @@ impl Parse for Level {
         } else {
             Err(lookahead.error())
         }
+    }
+}
+
+pub(crate) fn level_to_tokens(level: &Option<Level>, default_error: bool) -> impl ToTokens {
+    fn is_level(lit: &LitInt, expected: u64) -> bool {
+        match lit.base10_parse::<u64>() {
+            Ok(value) => value == expected,
+            Err(_) => false,
+        }
+    }
+
+    match level {
+        Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("trace") => {
+            quote!(tracing::Level::TRACE)
+        }
+        Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("debug") => {
+            quote!(tracing::Level::DEBUG)
+        }
+        Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("info") => {
+            quote!(tracing::Level::INFO)
+        }
+        Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("warn") => {
+            quote!(tracing::Level::WARN)
+        }
+        Some(Level::Str(ref lit)) if lit.value().eq_ignore_ascii_case("error") => {
+            quote!(tracing::Level::ERROR)
+        }
+        Some(Level::Int(ref lit)) if is_level(lit, 1) => quote!(tracing::Level::TRACE),
+        Some(Level::Int(ref lit)) if is_level(lit, 2) => quote!(tracing::Level::DEBUG),
+        Some(Level::Int(ref lit)) if is_level(lit, 3) => quote!(tracing::Level::INFO),
+        Some(Level::Int(ref lit)) if is_level(lit, 4) => quote!(tracing::Level::WARN),
+        Some(Level::Int(ref lit)) if is_level(lit, 5) => quote!(tracing::Level::ERROR),
+        Some(Level::Path(ref pat)) => quote!(#pat),
+        Some(_) => quote! {
+            compile_error!(
+                "unknown verbosity level, expected one of \"trace\", \
+                 \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5"
+            )
+        },
+        None => if default_error {
+            quote!(tracing::Level::ERROR)
+        } else {
+            quote!(tracing::Level::INFO)
+        },
     }
 }
 
