@@ -1,3 +1,72 @@
+# 0.3.16 (October 6, 2022)
+
+This release of `tracing-subscriber` fixes a regression introduced in
+[v0.3.15][subscriber-0.3.15] where `Option::None`'s `Layer` implementation would
+set the max level hint to `OFF`. In addition, it adds several new APIs,
+including the `Filter::event_enabled` method for filtering events based on
+fields values, and the ability to log internal errors that occur when writing a
+log line.
+
+This release also replaces the dependency on the unmaintained [`ansi-term`]
+crate with the [`nu-ansi-term`] crate, resolving an *informational* security
+advisory ([RUSTSEC-2021-0139]) for [`ansi-term`]'s maintainance status. This
+increases the minimum supported Rust version (MSRV) to Rust 1.50+, although the
+crate should still compile for the previous MSRV of Rust 1.49+ when the `ansi`
+feature is not enabled.
+
+### Fixed
+
+- **layer**: `Option::None`'s `Layer` impl always setting the `max_level_hint`
+  to `LevelFilter::OFF` ([#2321])
+- Compilation with `-Z minimal versions` ([#2246])
+- **env-filter**: Clarify that disabled level warnings are emitted by
+  `tracing-subscriber` ([#2285])
+
+### Added
+
+- **fmt**: Log internal errors to `stderr` if writing a log line fails ([#2102])
+- **fmt**: `FmtLayer::log_internal_errors` and
+  `FmtSubscriber::log_internal_errors` methods for configuring whether internal
+  writer errors are printed to `stderr` ([#2102])
+- **fmt**: `#[must_use]` attributes on builders to warn if a `Subscriber` is
+  configured but not set as the default subscriber ([#2239])
+- **filter**: `Filter::event_enabled` method for filtering an event based on its
+  fields ([#2245], [#2251])
+- **filter**: `Targets::default_level` accessor ([#2242])
+
+### Changed
+
+- **ansi**: Replaced dependency on unmaintained `ansi-term` crate with
+  `nu-ansi-term` (([#2287], fixes informational advisory [RUSTSEC-2021-0139])
+- `tracing-core`: updated to [0.1.30][core-0.1.30]
+- Minimum Supported Rust Version (MSRV) increased to Rust 1.50+ (when the
+  `ansi`) feature flag is enabled ([#2287])
+
+### Documented
+
+- **fmt**: Correct inaccuracies in `fmt::init` documentation ([#2224])
+- **filter**: Fix incorrect doc link in `filter::Not` combinator ([#2249])
+
+Thanks to new contributors @cgbur, @DesmondWillowbrook, @RalfJung, and
+@poliorcetics, as well as returning contributors @CAD97, @connec, @jswrenn,
+@guswynn, and @bryangarza, for contributing to this release!
+
+[nu-ansi-term]: https://github.com/nushell/nu-ansi-term
+[ansi_term]: https://github.com/ogham/rust-ansi-term
+[RUSTSEC-2021-0139]: https://rustsec.org/advisories/RUSTSEC-2021-0139.html
+[core-0.1.30]: https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.30
+[subscriber-0.3.15]: https://github.com/tokio-rs/tracing/releases/tag/tracing-subscriber-0.3.15
+[#2321]: https://github.com/tokio-rs/tracing/pull/2321
+[#2246]: https://github.com/tokio-rs/tracing/pull/2246
+[#2285]: https://github.com/tokio-rs/tracing/pull/2285
+[#2102]: https://github.com/tokio-rs/tracing/pull/2102
+[#2239]: https://github.com/tokio-rs/tracing/pull/2239
+[#2245]: https://github.com/tokio-rs/tracing/pull/2245
+[#2251]: https://github.com/tokio-rs/tracing/pull/2251
+[#2287]: https://github.com/tokio-rs/tracing/pull/2287
+[#2224]: https://github.com/tokio-rs/tracing/pull/2224
+[#2249]: https://github.com/tokio-rs/tracing/pull/2249
+
 # 0.3.15 (Jul 20, 2022)
 
 This release fixes a bug where the `reload` layer would fail to pass through
