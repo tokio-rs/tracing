@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::iter;
 
 use proc_macro2::TokenStream;
@@ -682,7 +681,7 @@ impl<'block> AsyncInfo<'block> {
             out_stmts[iter] = match self.kind {
                 // `Box::pin(immediately_invoked_async_fn())`
                 AsyncKind::Function(fun) => {
-                    let fun: MaybeItemFn = fun.clone().try_into()?;
+                    let fun = MaybeItemFn::from(fun.clone());
                     gen_function(
                         fun.as_ref(),
                         args,

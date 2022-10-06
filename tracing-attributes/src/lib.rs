@@ -80,8 +80,6 @@
     while_true
 )]
 
-use std::convert::{TryFrom, TryInto};
-
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
@@ -393,7 +391,7 @@ fn instrument_precise(
         return async_like.gen_async(args, instrumented_function_name.as_str());
     }
 
-    let input: MaybeItemFn = input.try_into()?;
+    let input = MaybeItemFn::from(input);
 
     Ok(expand::gen_function(
         input.as_ref(),
@@ -446,6 +444,28 @@ impl Parse for MaybeItemFn {
     }
 }
 
+impl From<ItemFn> for MaybeItemFn {
+    fn from(
+        ItemFn {
+            attrs,
+            vis,
+            sig,
+            block,
+        }: ItemFn,
+    ) -> Self {
+        let (outer_attrs, inner_attrs) = attrs
+            .into_iter()
+            .partition(|attr| attr.style == syn::AttrStyle::Outer);
+        Self {
+            outer_attrs,
+            inner_attrs,
+            vis,
+            sig,
+            block: block.to_token_stream(),
+        }
+    }
+}
+
 /// A generic reference type for `MaybeItemFn`,
 /// that takes a generic block type `B` that implements `ToTokens` (eg. `TokenStream`, `Block`).
 #[derive(Debug, Clone)]
@@ -455,12 +475,4 @@ struct MaybeItemFnRef<'a, B: ToTokens> {
     vis: &'a Visibility,
     sig: &'a Signature,
     block: &'a B,
-}
-
-impl TryFrom<ItemFn> for MaybeItemFn {
-    type Error = syn::Error;
-
-    fn try_from(value: ItemFn) -> Result<Self, Self::Error> {
-        syn::parse2(value.into_token_stream())
-    }
 }
