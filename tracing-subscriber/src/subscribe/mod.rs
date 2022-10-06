@@ -719,6 +719,23 @@ where
     /// Performs late initialization when installing this subscriber as a
     /// [collector].
     ///
+    /// ## Avoiding Memory Leaks
+    ///
+    /// Subscribers should not store the [`Dispatch`] pointing to the collector
+    /// that they are a part of. Because the `Dispatch` owns the collector,
+    /// storing the `Dispatch` within the collector will create a reference
+    /// count cycle, preventing the `Dispatch` from ever being dropped.
+    ///
+    /// Instead, when it is necessary to store a cyclical reference to the
+    /// `Dispatch` within a subscriber, use [`Dispatch::downgrade`] to convert a
+    /// `Dispatch` into a [`WeakDispatch`]. This type is analogous to
+    /// [`std::sync::Weak`], and does not create a reference count cycle. A
+    /// [`WeakDispatch`] can be stored within a subscriber without causing a
+    /// memory leak, and can be [upgraded] into a `Dispatch` temporarily when
+    /// the `Dispatch` must be accessed by the subscriber.
+    ///
+    /// [`WeakDispatch`]: tracing_core::dispatch::WeakDispatch
+    /// [upgraded]: tracing_core::dispatch::WeakDispatch::upgrade
     /// [collector]: tracing_core::Collect
     fn on_register_dispatch(&self, collector: &Dispatch) {
         let _ = collector;
@@ -1475,6 +1492,47 @@ pub struct Identity {
 
 // === impl Subscribe ===
 
+#[derive(Clone, Copy)]
+pub(crate) struct NoneLayerMarker(());
+static NONE_LAYER_MARKER: NoneLayerMarker = NoneLayerMarker(());
+
+/// Is a type implementing `Subscriber` `Option::<_>::None`?
+pub(crate) fn subscriber_is_none<S, C>(subscriber: &S) -> bool
+where
+    S: Subscribe<C>,
+    C: Collect,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Subscribe` impl
+        // for `Option`s. However, even if the subscriber *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
+        subscriber.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
+/// Is a type implementing `Collect` `Option::<_>::None`?
+pub(crate) fn collector_is_none<C>(collector: &C) -> bool
+where
+    C: Collect,
+{
+    unsafe {
+        // Safety: we're not actually *doing* anything with this pointer ---
+        // this only care about the `Option`, which is essentially being used
+        // as a bool. We can rely on the pointer being valid, because it is
+        // a crate-private type, and is only returned by the `Subscribe` impl
+        // for `Option`s. However, even if the subscriber *does* decide to be
+        // evil and give us an invalid pointer here, that's fine, because we'll
+        // never actually dereference it.
+        collector.downcast_raw(TypeId::of::<NoneLayerMarker>())
+    }
+    .is_some()
+}
+
 impl<S, C> Subscribe<C> for Option<S>
 where
     S: Subscribe<C>,
@@ -1589,6 +1647,8 @@ where
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
         if id == TypeId::of::<Self>() {
             Some(NonNull::from(self).cast())
+        } else if id == TypeId::of::<NoneLayerMarker>() && self.is_none() {
+            Some(NonNull::from(&NONE_LAYER_MARKER).cast())
         } else {
             self.as_ref().and_then(|inner| inner.downcast_raw(id))
         }
