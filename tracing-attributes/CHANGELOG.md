@@ -1,7 +1,7 @@
 # 0.1.23 (October 6, 2022)
 
 This release of `tracing-attributes` fixes a bug where compiler diagnostic spans
-for type errorsin `#[instrument]`ed `async fn`s have the location of the
+for type errors in `#[instrument]`ed `async fn`s have the location of the
 `#[instrument]` attribute rather than the location of the actual error, and a
 bug where inner attributes in `#[instrument]`ed functions would cause a compiler
 error.
