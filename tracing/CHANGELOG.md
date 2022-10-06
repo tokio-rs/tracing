@@ -1,10 +1,10 @@
-'# 0.1.37 (October 6, 2022)
+# 0.1.37 (October 6, 2022)
 
 This release of `tracing` incorporates changes from `tracing-core`
-[v0.1.30][core-0.1.30] and `tracing-attributes` [v0.1.23][0.1.23], including the
-new `Subscriber::on_register_dispatch` method for performing late initialization
-after a `Subscriber` is registered as a `Dispatch`, and bugfixes for the
-`#[instrument]` attribute. Additionally, it fixes instances of the
+[v0.1.30][core-0.1.30] and `tracing-attributes` [v0.1.23][attrs-0.1.23],
+including the new `Subscriber::on_register_dispatch` method for performing late
+initialization after a `Subscriber` is registered as a `Dispatch`, and bugfixes
+for the `#[instrument]` attribute. Additionally, it fixes instances of the
 `bare_trait_objects` lint, which is now a warning on `tracing`'s MSRV and will
 become an error in the next edition.
 
@@ -49,7 +49,7 @@ this release!
 [#2307]: https://github.com/tokio-rs/tracing/pull/2307
 [#2308]: https://github.com/tokio-rs/tracing/pull/2308
 [#2331]: https://github.com/tokio-rs/tracing/pull/2331
-'
+
 # 0.1.36 (July 29, 2022)
 
 This release adds support for owned values and fat pointers as arguments to the
