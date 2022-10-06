@@ -11,7 +11,7 @@ use syn::{
 
 use crate::{
     attr::{Field, Fields, FormatMode, InstrumentArgs},
-    MaybeItemFnRef,
+    MaybeItemFn, MaybeItemFnRef,
 };
 
 /// Given an existing function, generate an instrumented version of that function
@@ -25,7 +25,8 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // isn't representable inside a quote!/quote_spanned! macro
     // (Syn's ToTokens isn't implemented for ItemFn)
     let MaybeItemFnRef {
-        attrs,
+        outer_attrs,
+        inner_attrs,
         vis,
         sig,
         block,
@@ -87,10 +88,11 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     );
 
     quote!(
-        #(#attrs) *
+        #(#outer_attrs) *
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #output
         #where_clause
         {
+            #(#inner_attrs) *
             #warnings
             #body
         }
@@ -657,7 +659,7 @@ impl<'block> AsyncInfo<'block> {
         self,
         args: InstrumentArgs,
         instrumented_function_name: &str,
-    ) -> proc_macro::TokenStream {
+    ) -> Result<proc_macro::TokenStream, syn::Error> {
         // let's rewrite some statements!
         let mut out_stmts: Vec<TokenStream> = self
             .input
@@ -678,12 +680,15 @@ impl<'block> AsyncInfo<'block> {
             // instrument the future by rewriting the corresponding statement
             out_stmts[iter] = match self.kind {
                 // `Box::pin(immediately_invoked_async_fn())`
-                AsyncKind::Function(fun) => gen_function(
-                    fun.into(),
-                    args,
-                    instrumented_function_name,
-                    self.self_type.as_ref(),
-                ),
+                AsyncKind::Function(fun) => {
+                    let fun = MaybeItemFn::from(fun.clone());
+                    gen_function(
+                        fun.as_ref(),
+                        args,
+                        instrumented_function_name,
+                        self.self_type.as_ref(),
+                    )
+                }
                 // `async move { ... }`, optionally pinned
                 AsyncKind::Async {
                     async_expr,
@@ -714,13 +719,13 @@ impl<'block> AsyncInfo<'block> {
         let vis = &self.input.vis;
         let sig = &self.input.sig;
         let attrs = &self.input.attrs;
-        quote!(
+        Ok(quote!(
             #(#attrs) *
             #vis #sig {
                 #(#out_stmts) *
             }
         )
-        .into()
+        .into())
     }
 }
 
