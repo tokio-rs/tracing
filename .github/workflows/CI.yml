@@ -385,7 +385,6 @@ jobs:
       - minimal-versions
       - cargo-hack
       - check-msrv
-      - check-msrv-appender
       - test-build-wasm
       - test-wasm
       - test-features-stable
