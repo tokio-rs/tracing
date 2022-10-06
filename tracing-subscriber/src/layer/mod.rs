@@ -685,7 +685,7 @@ use core::any::TypeId;
 
 feature! {
     #![feature = "alloc"]
-    use alloc::{vec::Vec, boxed::Box};
+    use alloc::boxed::Box;
     use core::ops::{Deref, DerefMut};
 }
 
@@ -1656,6 +1656,8 @@ where
 
 feature! {
     #![any(feature = "std", feature = "alloc")]
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
 
     macro_rules! layer_impl_body {
         () => {

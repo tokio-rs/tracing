@@ -230,11 +230,6 @@ pub struct Scope<'a, R> {
 feature! {
     #![any(feature = "alloc", feature = "std")]
 
-    use alloc::{
-        boxed::Box,
-        sync::Arc
-    };
-
     #[cfg(not(feature = "smallvec"))]
     use alloc::vec::{self, Vec};
 
@@ -255,66 +250,6 @@ feature! {
 
     #[cfg(feature = "smallvec")]
     type SpanRefVecArray<'span, L> = [SpanRef<'span, L>; 16];
-
-    impl<'a, S> LookupSpan<'a> for Arc<S>
-    where
-        S: LookupSpan<'a>,
-    {
-        type Data = <S as LookupSpan<'a>>::Data;
-
-        fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
-            self.as_ref().span_data(id)
-        }
-
-        fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
-        where
-            Self: Sized,
-        {
-            self.as_ref().span(id).map(
-                |SpanRef {
-                    registry: _,
-                    data,
-                    #[cfg(feature = "registry")]
-                    filter,
-                }| SpanRef {
-                    registry: self,
-                    data,
-                    #[cfg(feature = "registry")]
-                    filter,
-                },
-            )
-        }
-    }
-
-    impl<'a, S> LookupSpan<'a> for Box<S>
-    where
-        S: LookupSpan<'a>,
-    {
-        type Data = <S as LookupSpan<'a>>::Data;
-
-        fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
-            self.as_ref().span_data(id)
-        }
-
-        fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
-        where
-            Self: Sized,
-        {
-            self.as_ref().span(id).map(
-                |SpanRef {
-                    registry: _,
-                    data,
-                    #[cfg(feature = "registry")]
-                    filter,
-                }| SpanRef {
-                    registry: self,
-                    data,
-                    #[cfg(feature = "registry")]
-                    filter,
-                },
-            )
-        }
-    }
 
     impl<'a, R> Scope<'a, R>
     where
