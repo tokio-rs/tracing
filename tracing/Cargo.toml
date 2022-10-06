@@ -8,7 +8,7 @@ name = "tracing"
 #   - README.md
 # - Update CHANGELOG.md.
 # - Create "v0.1.x" git tag
-version = "0.1.36"
+version = "0.1.37"
 authors = ["Eliza Weisman <eliza@buoyant.io>", "Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 readme = "README.md"
@@ -28,9 +28,9 @@ edition = "2018"
 rust-version = "1.49.0"
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.29", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.1.30", default-features = false }
 log = { version = "0.4.17", optional = true }
-tracing-attributes = { path = "../tracing-attributes", version = "0.1.22", optional = true }
+tracing-attributes = { path = "../tracing-attributes", version = "0.1.23", optional = true }
 cfg-if = "1.0.0"
 pin-project-lite = "0.2.9"
 
