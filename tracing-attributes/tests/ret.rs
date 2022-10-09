@@ -261,7 +261,7 @@ fn ret_warn_info() -> i32 {
 
 #[test]
 fn test_warn_info() {
-    let span = span::mock().named("ret_warn_info");
+    let span = span::mock().named("ret_warn_info").at_level(Level::WARN);
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
@@ -286,7 +286,7 @@ fn ret_dbg_warn() -> i32 {
 
 #[test]
 fn test_dbg_warn() {
-    let span = span::mock().named("ret_dbg_warn");
+    let span = span::mock().named("ret_dbg_warn").at_level(Level::INFO);
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())

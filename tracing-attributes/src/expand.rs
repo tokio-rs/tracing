@@ -10,7 +10,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{level_to_tokens, DisplayArgs, Field, Fields, FormatMode, InstrumentArgs},
+    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -116,7 +116,8 @@ fn gen_block<B: ToTokens>(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
-    let level = args.level();
+    let args_level = args.level();
+    let level = args_level.clone();
 
     let follows_from = args.follows_from.iter();
     let follows_from = quote! {
@@ -233,9 +234,9 @@ fn gen_block<B: ToTokens>(
     let target = args.target();
 
     let err_event = match args.err_args {
-        Some(DisplayArgs { level, mode }) => {
-            let level_tokens = level_to_tokens(&level, true);
-            match mode {
+        Some(event_args) => {
+            let level_tokens = event_args.level(Level::Error);
+            match event_args.mode {
                 FormatMode::Default | FormatMode::Display => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, error = %e)
                 )),
@@ -248,13 +249,9 @@ fn gen_block<B: ToTokens>(
     };
 
     let ret_event = match args.ret_args {
-        Some(DisplayArgs {
-            level: ret_level,
-            mode,
-        }) => {
-            let ret_level = ret_level.or(args.level);
-            let level_tokens = level_to_tokens(&ret_level, false);
-            match mode {
+        Some(event_args) => {
+            let level_tokens = event_args.level(args_level);
+            match event_args.mode {
                 FormatMode::Display => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, return = %x)
                 )),

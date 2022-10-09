@@ -301,3 +301,23 @@ fn test_err_dbg_info() {
     with_default(collector, || err_dbg_info().ok());
     handle.assert_finished();
 }
+
+#[instrument(level = "warn", err(level = "info"))]
+fn err_warn_info() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_warn_info() {
+    let span = span::mock().named("err_warn_info").at_level(Level::WARN);
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(event::mock().at_level(Level::INFO))
+        .exit(span.clone())
+        .drop_span(span)
+        .done()
+        .run_with_handle();
+    with_default(collector, || err_warn_info().ok());
+    handle.assert_finished();
+}
