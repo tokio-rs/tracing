@@ -422,6 +422,16 @@ mod expand;
 /// By default, this will be [`INFO`], but if the level is overridden, the event will be at the same
 /// level.
 ///
+/// It's also possible to override the level for the `ret` event independently:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(level = "warn"))]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
+///
 /// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values if and
 /// only if the function returns [`Result::Ok`].
 ///
@@ -443,6 +453,16 @@ mod expand;
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err)]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
+/// Similarly, you can override the level of the `err` event:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(level = "info"))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }

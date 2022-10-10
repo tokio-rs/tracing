@@ -10,7 +10,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs},
+    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -116,7 +116,8 @@ fn gen_block<B: ToTokens>(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
-    let level = args.level();
+    let args_level = args.level();
+    let level = args_level.clone();
 
     let follows_from = args.follows_from.iter();
     let follows_from = quote! {
@@ -232,21 +233,33 @@ fn gen_block<B: ToTokens>(
 
     let target = args.target();
 
-    let err_event = match args.err_mode {
-        Some(FormatMode::Default) | Some(FormatMode::Display) => {
-            Some(quote!(tracing::error!(target: #target, error = %e)))
+    let err_event = match args.err_args {
+        Some(event_args) => {
+            let level_tokens = event_args.level(Level::Error);
+            match event_args.mode {
+                FormatMode::Default | FormatMode::Display => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = %e)
+                )),
+                FormatMode::Debug => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = ?e)
+                )),
+            }
         }
-        Some(FormatMode::Debug) => Some(quote!(tracing::error!(target: #target, error = ?e))),
         _ => None,
     };
 
-    let ret_event = match args.ret_mode {
-        Some(FormatMode::Display) => Some(quote!(
-            tracing::event!(target: #target, #level, return = %x)
-        )),
-        Some(FormatMode::Default) | Some(FormatMode::Debug) => Some(quote!(
-            tracing::event!(target: #target, #level, return = ?x)
-        )),
+    let ret_event = match args.ret_args {
+        Some(event_args) => {
+            let level_tokens = event_args.level(args_level);
+            match event_args.mode {
+                FormatMode::Display => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, return = %x)
+                )),
+                FormatMode::Default | FormatMode::Debug => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, return = ?x)
+                )),
+            }
+        }
         _ => None,
     };
 
