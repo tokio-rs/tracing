@@ -231,7 +231,7 @@ mod expand;
 /// By default, this will be `TRACE`, but if the span level is overridden, the event will be at the same
 /// level.
 ///
-/// It's also possible to override the level for the `ret` independently:
+/// It's also possible to override the level for the `ret` event independently:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
