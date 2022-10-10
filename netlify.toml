@@ -8,6 +8,7 @@
 [build.environment]
   RUSTDOCFLAGS="""
     -D warnings \
+    --force-warn renamed-and-removed-lints \
     --cfg docsrs \
     --cfg tracing_unstable
     """
