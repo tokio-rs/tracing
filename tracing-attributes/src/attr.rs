@@ -6,6 +6,8 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 
+/// Arguments to `#[instrument(err(...))]` and `#[instrument(ret(...))]` which describe how the
+/// return value event should be emitted.
 #[derive(Clone, Default, Debug)]
 pub(crate) struct EventArgs {
     level: Option<Level>,
@@ -161,29 +163,28 @@ impl Parse for EventArgs {
         let content;
         let _ = syn::parenthesized!(content in input);
         let mut result = Self::default();
-        let mut parse_one_arg = || {
-            let lookahead = content.lookahead1();
-            if lookahead.peek(kw::level) {
-                if result.level.is_some() {
-                    return Err(content.error("expected only a single `level` argument"));
-                }
-                result.level = Some(content.parse()?);
-            } else if result.mode != FormatMode::default() {
-                return Err(content.error("expected only a single format argument"));
-            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                match ident.to_string().as_str() {
-                    "Debug" => result.mode = FormatMode::Debug,
-                    "Display" => result.mode = FormatMode::Display,
-                    _ => {
-                        return Err(syn::Error::new(
+        let mut parse_one_arg =
+            || {
+                let lookahead = content.lookahead1();
+                if lookahead.peek(kw::level) {
+                    if result.level.is_some() {
+                        return Err(content.error("expected only a single `level` argument"));
+                    }
+                    result.level = Some(content.parse()?);
+                } else if result.mode != FormatMode::default() {
+                    return Err(content.error("expected only a single format argument"));
+                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                    match ident.to_string().as_str() {
+                        "Debug" => result.mode = FormatMode::Debug,
+                        "Display" => result.mode = FormatMode::Display,
+                        _ => return Err(syn::Error::new(
                             ident.span(),
-                            "unknown error mode, must be Debug or Display",
-                        ))
+                            "unknown event formatting mode, expected either `Debug` or `Display`",
+                        )),
                     }
                 }
-            }
-            Ok(())
-        };
+                Ok(())
+            };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -378,21 +379,16 @@ impl Parse for Level {
         let lookahead = input.lookahead1();
         if lookahead.peek(LitStr) {
             let str: LitStr = input.parse()?;
-            if str.value().eq_ignore_ascii_case("trace") {
-                Ok(Level::Trace)
-            } else if str.value().eq_ignore_ascii_case("debug") {
-                Ok(Level::Debug)
-            } else if str.value().eq_ignore_ascii_case("info") {
-                Ok(Level::Info)
-            } else if str.value().eq_ignore_ascii_case("warn") {
-                Ok(Level::Warn)
-            } else if str.value().eq_ignore_ascii_case("error") {
-                Ok(Level::Error)
-            } else {
-                Err(input.error(
+            match str.value() {
+                s if s.eq_ignore_ascii_case("trace") => Ok(Level::Trace),
+                s if s.eq_ignore_ascii_case("debug") => Ok(Level::Debug),
+                s if s.eq_ignore_ascii_case("info") => Ok(Level::Info),
+                s if s.eq_ignore_ascii_case("warn") => Ok(Level::Warn),
+                s if s.eq_ignore_ascii_case("error") => Ok(Level::Error),
+                _ => Err(input.error(
                     "unknown verbosity level, expected one of \"trace\", \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5",
-                ))
+                )),
             }
         } else if lookahead.peek(LitInt) {
             fn is_level(lit: &LitInt, expected: u64) -> bool {
@@ -402,21 +398,16 @@ impl Parse for Level {
                 }
             }
             let int: LitInt = input.parse()?;
-            if is_level(&int, 1) {
-                Ok(Level::Trace)
-            } else if is_level(&int, 2) {
-                Ok(Level::Debug)
-            } else if is_level(&int, 3) {
-                Ok(Level::Info)
-            } else if is_level(&int, 4) {
-                Ok(Level::Warn)
-            } else if is_level(&int, 5) {
-                Ok(Level::Error)
-            } else {
-                Err(input.error(
+            match &int {
+                i if is_level(i, 1) => Ok(Level::Trace),
+                i if is_level(i, 2) => Ok(Level::Debug),
+                i if is_level(i, 3) => Ok(Level::Info),
+                i if is_level(i, 4) => Ok(Level::Warn),
+                i if is_level(i, 5) => Ok(Level::Error),
+                _ => Err(input.error(
                     "unknown verbosity level, expected one of \"trace\", \
                      \"debug\", \"info\", \"warn\", or \"error\", or a number 1-5",
-                ))
+                )),
             }
         } else if lookahead.peek(Ident) {
             Ok(Self::Path(input.parse()?))
