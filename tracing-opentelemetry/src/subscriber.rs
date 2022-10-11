@@ -4,11 +4,13 @@ use opentelemetry::{
     trace::{self as otel, noop, OrderMap, TraceContextExt},
     Context as OtelContext, ContextGuard as OtelContextGuard, Key, KeyValue, StringValue, Value,
 };
+use std::cell::RefCell;
+use std::fmt;
 use std::marker;
 use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
-use std::{borrow::BorrowMut, fmt};
+
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -654,7 +656,7 @@ thread_local! {
         thread_id_integer(thread::current().id())
     });
 
-    static OTEL_CX_GUARDS: Vec<OtelContextGuard> = Vec::new();
+    static OTEL_CX_GUARDS: RefCell<Vec<OtelContextGuard>>  = RefCell::new(Vec::new());
 }
 
 impl<C, T> Subscribe<C> for OpenTelemetrySubscriber<C, T>
@@ -733,9 +735,14 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if let Some(cx) = extensions.get_mut::<OtelData>() {
-            let guard = cx.attach(); // unable to grab guard: Context(self) -> ContextGuard
-            OTEL_CX_GUARDS.with(|guards| guards.borrow_mut().push(guard));
+        if let Some(data) = extensions.get_mut::<OtelData>() {
+            let cx_guard = data.parent_cx.clone().attach(); // unable to grab guard: Context(self) -> ContextGuard
+            dbg!(data.parent_cx.has_active_span());
+            let trace_id = data.parent_cx.span().span_context().trace_id();
+            OTEL_CX_GUARDS.with(|guards| {
+                println!("on_enter attaching trace id: {}", trace_id);
+                guards.borrow_mut().push(cx_guard);
+            });
         }
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
@@ -752,6 +759,15 @@ where
 
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
+
+        if let Some(data) = extensions.get_mut::<OtelData>() {
+            let cx_guard = data.parent_cx.clone().attach(); // unable to grab guard: Context(self) -> ContextGuard
+            let trace_id = data.parent_cx.span().span_context().trace_id();
+            OTEL_CX_GUARDS.with(|guards| {
+                println!("on_exit dropping trace id: {}", trace_id);
+                guards.borrow_mut().pop();
+            })
+        }
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
@@ -973,9 +989,9 @@ fn thread_id_integer(id: thread::ThreadId) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::OtelData;
+    use crate::{OpenTelemetrySpanExt, OtelData};
     use opentelemetry::{
-        trace::{noop, TraceFlags},
+        trace::{noop, FutureExt, TraceFlags},
         StringValue,
     };
     use std::{
@@ -1193,6 +1209,52 @@ mod tests {
         let recorded_trace_id =
             tracer.with_data(|data| data.parent_cx.span().span_context().trace_id());
         assert_eq!(recorded_trace_id, trace_id)
+    }
+
+    #[test]
+    fn trace_id_propagates_to_current_context() {
+        let tracer = TestTracer(Arc::new(Mutex::new(None)));
+        let subscriber =
+            tracing_subscriber::registry().with(subscriber().with_tracer(tracer.clone()));
+        let trace_id = otel::TraceId::from(42u128.to_be_bytes());
+        let existing_cx = OtelContext::current_with_span(TestSpan(otel::SpanContext::new(
+            trace_id,
+            otel::SpanId::from(1u64.to_be_bytes()),
+            TraceFlags::default(),
+            false,
+            Default::default(),
+        )));
+
+        tracing::collect::with_default(subscriber, || {
+            let outer_span = tracing::debug_span!("outer");
+            outer_span.set_parent(existing_cx);
+            let _outer_g = outer_span.enter();
+
+            let inner_span = tracing::debug_span!("inner");
+
+            dbg!(OtelContext::current().span().span_context().trace_id());
+            dbg!(OtelContext::current().has_active_span(),);
+            dbg!(outer_span.context().has_active_span(),);
+            dbg!(outer_span.context().span().span_context().trace_id());
+            // let inner_span = tracing::debug_span!("inner");
+            dbg!(tracing::Span::current().id().unwrap());
+            assert_eq!(
+                OtelContext::current().span().span_context().trace_id(),
+                trace_id
+            );
+            assert_eq!(
+                tracing::Span::current()
+                    .context()
+                    .span()
+                    .span_context()
+                    .trace_id(),
+                trace_id
+            );
+        });
+
+        // let recorded_trace_id =
+        //     tracer.with_data(|data| data.parent_cx.span().span_context().trace_id());
+        // assert_eq!(recorded_trace_id, trace_id)
     }
 
     #[test]

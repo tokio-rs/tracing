@@ -99,7 +99,7 @@
 //!
 //! [subscriber]: tracing_subscriber::subscribe
 #![deny(unreachable_pub)]
-#![cfg_attr(test, deny(warnings))]
+// #![cfg_attr(test, deny(warnings))]
 #![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.16.0")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
@@ -138,7 +138,7 @@ pub use tracer::PreSampledTracer;
 #[derive(Debug, Clone)]
 pub struct OtelData {
     /// The parent otel `Context` for the current tracing span.
-    pub parent_cx: opentelemetry::Context, // Should this be an enum? Cx::Context and Cx::Guard ?
+    pub parent_cx: opentelemetry::Context,
 
     /// The otel span data recorded during the current tracing span.
     pub builder: opentelemetry::trace::SpanBuilder,
