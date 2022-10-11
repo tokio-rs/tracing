@@ -138,7 +138,7 @@ pub use tracer::PreSampledTracer;
 #[derive(Debug, Clone)]
 pub struct OtelData {
     /// The parent otel `Context` for the current tracing span.
-    pub parent_cx: opentelemetry::Context,
+    pub parent_cx: opentelemetry::Context, // Should this be an enum? Cx::Context and Cx::Guard ?
 
     /// The otel span data recorded during the current tracing span.
     pub builder: opentelemetry::trace::SpanBuilder,

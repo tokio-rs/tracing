@@ -2,13 +2,13 @@ use crate::{OtelData, PreSampledTracer};
 use once_cell::unsync;
 use opentelemetry::{
     trace::{self as otel, noop, OrderMap, TraceContextExt},
-    Context as OtelContext, Key, KeyValue, StringValue, Value,
+    Context as OtelContext, ContextGuard as OtelContextGuard, Key, KeyValue, StringValue, Value,
 };
-use std::fmt;
 use std::marker;
 use std::thread;
 use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
+use std::{borrow::BorrowMut, fmt};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
 #[cfg(feature = "tracing-log")]
@@ -653,6 +653,8 @@ thread_local! {
         // (https://github.com/rust-lang/rust/issues/67939), just use that.
         thread_id_integer(thread::current().id())
     });
+
+    static OTEL_CX_GUARDS: Vec<OtelContextGuard> = Vec::new();
 }
 
 impl<C, T> Subscribe<C> for OpenTelemetrySubscriber<C, T>
@@ -660,7 +662,7 @@ where
     C: Collect + for<'span> LookupSpan<'span>,
     T: otel::Tracer + PreSampledTracer + 'static,
 {
-    /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`].
+    /// Creates an [OpenTelemetry `Span`] for the corresponding [tracing `Span`]
     ///
     /// [OpenTelemetry `Span`]: opentelemetry::trace::Span
     /// [tracing `Span`]: tracing::Span
@@ -730,6 +732,11 @@ where
 
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
+
+        if let Some(cx) = extensions.get_mut::<OtelData>() {
+            let guard = cx.attach(); // unable to grab guard: Context(self) -> ContextGuard
+            OTEL_CX_GUARDS.with(|guards| guards.borrow_mut().push(guard));
+        }
 
         if let Some(timings) = extensions.get_mut::<Timings>() {
             let now = Instant::now();
