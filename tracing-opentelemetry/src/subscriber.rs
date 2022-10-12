@@ -676,6 +676,7 @@ where
             extensions.insert(Timings::new());
         }
 
+        dbg!(id);
         let parent_cx = self.parent_context(attrs, &ctx);
         let mut builder = self
             .tracer
@@ -1242,14 +1243,12 @@ mod tests {
                 OtelContext::current().span().span_context().trace_id(),
                 trace_id
             );
+            let _inner_g = inner_span.enter();
             assert_eq!(
-                tracing::Span::current()
-                    .context()
-                    .span()
-                    .span_context()
-                    .trace_id(),
+                OtelContext::current().span().span_context().trace_id(),
                 trace_id
             );
+            dbg!(tracing::Span::current().id().unwrap());
         });
 
         // let recorded_trace_id =

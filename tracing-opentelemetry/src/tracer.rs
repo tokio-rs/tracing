@@ -120,6 +120,7 @@ fn current_trace_state(
     parent_cx: &OtelContext,
     provider: &TracerProvider,
 ) -> (TraceId, TraceFlags) {
+    dbg!(parent_cx.has_active_span());
     if parent_cx.has_active_span() {
         let span = parent_cx.span();
         let sc = span.span_context();
