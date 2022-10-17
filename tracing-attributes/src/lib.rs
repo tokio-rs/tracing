@@ -132,13 +132,14 @@ mod expand;
 /// Setting the level for the generated span:
 /// ```
 /// # use tracing_attributes::instrument;
+/// # use tracing::Level;
 /// #[instrument(level = Level::DEBUG)]
 /// pub fn my_function() {
 ///     // ...
 /// }
 /// ```
-/// Levels can be specifide either with `Level` constants, literal strings
-/// (`"debug", etc) or numerically (1 - 5).
+/// Levels can be specified either with [`Level`] constants, literal strings
+/// (`"debug", etc) or numerically (1 - 5, corresponding to [`Level::TRACE`] - [`Level::ERROR`]).
 ///
 /// Overriding the generated span's name:
 /// ```
@@ -238,6 +239,7 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
+/// # use tracing::Level;
 /// #[instrument(ret(level = Level::WARN))]
 /// fn my_function() -> i32 {
 ///     42
@@ -274,6 +276,7 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
+/// # use tracing::Level;
 /// #[instrument(err(level = Level::INFO))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
@@ -372,6 +375,7 @@ mod expand;
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
+/// [`Level`]: tracing::Level
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
