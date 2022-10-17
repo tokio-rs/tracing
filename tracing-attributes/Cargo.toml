@@ -37,12 +37,12 @@ proc-macro = true
 proc-macro2 = "1.0.40"
 syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1.0.20"
+tracing-core = { path = "../tracing-core", version = "0.2"} # non-dev just for docs
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
 tokio-test = "0.4.2"
-tracing-core = { path = "../tracing-core", version = "0.2"}
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
 async-trait = "0.1.56"
 trybuild = "1.0.64"

@@ -375,7 +375,7 @@ mod expand;
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
-/// [`Level`]: tracing::Level
+/// [`Level`]: tracing_core::Level
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
