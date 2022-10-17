@@ -132,11 +132,14 @@ mod expand;
 /// Setting the level for the generated span:
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(level = "debug")]
+/// #[instrument(level = Level::DEBUG)]
 /// pub fn my_function() {
 ///     // ...
 /// }
 /// ```
+/// Levels can be specifide either with `Level` constants, literal strings
+/// (`"debug", etc) or numerically (1 - 5).
+///
 /// Overriding the generated span's name:
 /// ```
 /// # use tracing_attributes::instrument;
@@ -235,7 +238,7 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(ret(level = "warn"))]
+/// #[instrument(ret(level = Level::WARN))]
 /// fn my_function() -> i32 {
 ///     42
 /// }
@@ -271,7 +274,7 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err(level = "info"))]
+/// #[instrument(err(level = Level::INFO))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
