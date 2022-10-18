@@ -15,6 +15,7 @@ use crate::Metadata;
 /// should be used whenever possible.
 ///
 /// </pre>
+/// </div>
 pub trait AsField: crate::sealed::Sealed {
     /// Attempts to convert `&self` into a `Field` with the specified `metadata`.
     ///
