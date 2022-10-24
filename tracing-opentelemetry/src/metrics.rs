@@ -139,7 +139,7 @@ impl Instruments {
 pub(crate) struct MetricVisitor<'a> {
     pub(crate) instruments: &'a Instruments,
     pub(crate) meter: &'a Meter,
-    pub(crate) metadata: &'a [KeyValue],
+    pub(crate) attributes: &'a [KeyValue],
 }
 
 impl<'a> Visit for MetricVisitor<'a> {
@@ -155,7 +155,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterU64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             if value <= I64_MAX {
@@ -164,7 +164,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                     self.meter,
                     InstrumentType::UpDownCounterI64(value as i64),
                     metric_name,
-                    self.metadata,
+                    self.attributes,
                 );
             } else {
                 eprintln!(
@@ -180,7 +180,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramU64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         }
     }
@@ -193,7 +193,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterF64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             self.instruments.update_metric(
@@ -201,7 +201,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::UpDownCounterF64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_HISTOGRAM) {
             self.instruments.update_metric(
@@ -209,7 +209,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramF64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         }
     }
@@ -222,7 +222,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterU64(value as u64),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             self.instruments.update_metric(
@@ -230,7 +230,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::UpDownCounterI64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_HISTOGRAM) {
             self.instruments.update_metric(
@@ -238,43 +238,43 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramI64(value),
                 metric_name,
-                self.metadata,
+                self.attributes,
             );
         }
     }
 }
 
 #[derive(Default)]
-pub(crate) struct MetadataVisitor {
-    pub(crate) opentelemetry_metadata: Vec<KeyValue>
+pub(crate) struct AttributeVisitor {
+    pub(crate) attributes: Vec<KeyValue>
 }
 
-impl<'a> Visit for MetadataVisitor {
+impl Visit for AttributeVisitor {
     fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
         // Do nothing
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
-            self.opentelemetry_metadata.push(KeyValue::new(attribute_name, value.to_owned()));
+            self.attributes.push(KeyValue::new(attribute_name, value.to_owned()));
         }
     }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
         if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
-            self.opentelemetry_metadata.push(KeyValue::new(attribute_name, value));
+            self.attributes.push(KeyValue::new(attribute_name, value));
         }
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
         if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
-            self.opentelemetry_metadata.push(KeyValue::new(attribute_name, value));
+            self.attributes.push(KeyValue::new(attribute_name, value));
         }
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
         if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
-            self.opentelemetry_metadata.push(KeyValue::new(attribute_name, value));
+            self.attributes.push(KeyValue::new(attribute_name, value));
         }
     }
 }
@@ -423,13 +423,13 @@ where
     C: Collect + for<'span> LookupSpan<'span>,
 {
     fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, C>) {
-        let mut attribute_visitor = MetadataVisitor::default();
+        let mut attribute_visitor = AttributeVisitor::default();
         event.record(&mut attribute_visitor);
 
         let mut metric_visitor = MetricVisitor {
             instruments: &self.instruments,
             meter: &self.meter,
-            metadata: &attribute_visitor.opentelemetry_metadata
+            attributes: &attribute_visitor.attributes
         };
         event.record(&mut metric_visitor);
     }
