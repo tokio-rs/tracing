@@ -65,7 +65,7 @@ fn yak_shaving_traced() {
                     .only(),
             ),
         )
-        .exit(span.clone())
+        .exit(span)
         .done()
         .run_with_handle();
 
