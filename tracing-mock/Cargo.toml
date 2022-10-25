@@ -18,7 +18,7 @@ rust-version = "1.49.0"
 publish = false
 
 [dependencies]
-tracing = { path = "../tracing", version = "0.1.35", default-features = false }
+tracing = { path = "../tracing", version = "0.1.35" }
 tracing-core = { path = "../tracing-core", version = "0.1.28", default-features = false }
 tokio-test = { version = "0.4.2", optional = true }
 
