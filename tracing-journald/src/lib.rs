@@ -133,7 +133,7 @@ impl Subscriber {
         self
     }
 
-    /// Sets the mappings from the tracing level to the journald priorities.
+    /// Sets how [`tracing::Level`]s are mapped to [journald priorities](Priority).
     pub fn with_priority_mappings(mut self, mappings: PriorityMappings) -> Self {
         self.priority_mappings = mappings;
         self
@@ -363,7 +363,7 @@ impl Visit for EventVisitor<'_> {
     }
 }
 
-/// A priority (in syslog called severity code) is used to mark the
+/// A priority (called "severity code" by syslog) is used to mark the
 /// importance of a message.
 ///
 /// Descriptions and examples are taken from the [Arch Linux wiki].
@@ -431,7 +431,9 @@ pub enum Priority {
     Debug = b'7',
 }
 
-/// Mappings from the tracing levels to the journald priorities.
+/// Mappings from tracing [`Level`]s to journald [priorities].
+///
+/// [priorities]: Priority
 #[derive(Debug, Clone)]
 pub struct PriorityMappings {
     /// Priority mapped to the `ERROR` level
@@ -447,13 +449,13 @@ pub struct PriorityMappings {
 }
 
 impl PriorityMappings {
-    /// Create new default mappings:
+    /// Returns the default priority mappings:
     ///
-    /// - `tracing::Level::ERROR`: Error (3)
-    /// - `tracing::Level::WARN`: Warning (4)
-    /// - `tracing::Level::INFO`: Notice (5)
-    /// - `tracing::Level::DEBUG`: Informational (6)
-    /// - `tracing::Level::TRACE`: Debug (7)
+    /// - [`tracing::Level::ERROR`]: [`Priority::Error`] (3)
+    /// - [`tracing::Level::WARN`]: [`Priority::Warning`] (4)
+    /// - [`tracing::Level::INFO`]: [`Priority::Notice`] (5)
+    /// - [`tracing::Level::DEBUG`]: [`Priority::Informational`] (6)
+    /// - [`tracing::Level::TRACE`]: [`Priority::Debug`] (7)
     pub fn new() -> PriorityMappings {
         Self {
             error: Priority::Error,
