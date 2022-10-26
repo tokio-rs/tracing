@@ -24,7 +24,6 @@
 //! called. For example:
 //!
 //! ```
-//! # use tracing_attributes as tracing;
 //! use tracing::instrument;
 //!
 //! #[instrument]
