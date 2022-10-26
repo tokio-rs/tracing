@@ -1,5 +1,6 @@
 #![deny(rust_2018_idioms)]
 use tracing::{error, info};
+use tracing_journald::{Priority, PriorityMappings};
 use tracing_subscriber::prelude::*;
 
 #[path = "fmt/yak_shave.rs"]
@@ -10,7 +11,17 @@ fn main() {
         .with(tracing_subscriber::fmt::subscriber().with_target(false));
     match tracing_journald::subscriber() {
         Ok(subscriber) => {
-            registry.with(subscriber).init();
+            registry
+                .with(
+                    subscriber
+                        // We can tweak the mappings between the trace level and
+                        // the journal priorities.
+                        .with_priority_mappings(PriorityMappings {
+                            info: Priority::Informational,
+                            ..PriorityMappings::new()
+                        }),
+                )
+                .init();
         }
         // journald is typically available on Linux systems, but nowhere else. Portable software
         // should handle its absence gracefully.
