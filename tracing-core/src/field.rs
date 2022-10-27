@@ -231,6 +231,7 @@ pub trait Visit {
     /// <strong>Note</strong>: This is only enabled when the Rust standard library is
     /// present.
     /// </pre>
+    /// </div>
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
