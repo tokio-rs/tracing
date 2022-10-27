@@ -240,7 +240,7 @@ fn err_info() -> Result<u8, TryFromIntError> {
 #[test]
 fn test_err_info() {
     let span = span::mock().named("err_info");
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(event::mock().at_level(Level::INFO))
@@ -248,7 +248,7 @@ fn test_err_info() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(collector, || err_info().ok());
+    with_default(subscriber, || err_info().ok());
     handle.assert_finished();
 }
 
@@ -260,7 +260,7 @@ fn err_dbg_info() -> Result<u8, TryFromIntError> {
 #[test]
 fn test_err_dbg_info() {
     let span = span::mock().named("err_dbg_info");
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -277,7 +277,7 @@ fn test_err_dbg_info() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(collector, || err_dbg_info().ok());
+    with_default(subscriber, || err_dbg_info().ok());
     handle.assert_finished();
 }
 
@@ -289,7 +289,7 @@ fn err_warn_info() -> Result<u8, TryFromIntError> {
 #[test]
 fn test_err_warn_info() {
     let span = span::mock().named("err_warn_info").at_level(Level::WARN);
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(event::mock().at_level(Level::INFO))
@@ -297,6 +297,6 @@ fn test_err_warn_info() {
         .drop_span(span)
         .done()
         .run_with_handle();
-    with_default(collector, || err_warn_info().ok());
+    with_default(subscriber, || err_warn_info().ok());
     handle.assert_finished();
 }

@@ -262,7 +262,7 @@ fn ret_warn_info() -> i32 {
 #[test]
 fn test_warn_info() {
     let span = span::mock().named("ret_warn_info").at_level(Level::WARN);
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -275,7 +275,7 @@ fn test_warn_info() {
         .done()
         .run_with_handle();
 
-    with_default(collector, ret_warn_info);
+    with_default(subscriber, ret_warn_info);
     handle.assert_finished();
 }
 
@@ -287,7 +287,7 @@ fn ret_dbg_warn() -> i32 {
 #[test]
 fn test_dbg_warn() {
     let span = span::mock().named("ret_dbg_warn").at_level(Level::INFO);
-    let (collector, handle) = collector::mock()
+    let (subscriber, handle) = subscriber::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
@@ -300,6 +300,6 @@ fn test_dbg_warn() {
         .done()
         .run_with_handle();
 
-    with_default(collector, ret_dbg_warn);
+    with_default(subscriber, ret_dbg_warn);
     handle.assert_finished();
 }
