@@ -126,6 +126,7 @@ use crate::Metadata;
 /// string comparisons. Thus, if possible, once the key for a field is known, it
 /// should be used whenever possible.
 /// </pre>
+/// </div>
 pub trait AsField: crate::sealed::Sealed {
     /// Attempts to convert `&self` into a `Field` with the specified `metadata`.
     ///

@@ -133,8 +133,7 @@
     while_true
 )]
 
-pub use error::Error;
-
+use error::Error;
 use error::Kind;
 use once_cell::sync::Lazy;
 use std::cell::Cell;
