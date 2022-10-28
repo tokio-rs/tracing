@@ -114,7 +114,7 @@ where
     ///
     /// Make sure `fmt_fields` is compatible with `event_fmt`:
     ///
-    /// ```rust
+    /// ```no_build
     /// use tracing_subscriber::fmt::{self, format};
     ///
     /// let fmt_subscriber = fmt::subscriber()
