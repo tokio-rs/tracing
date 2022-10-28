@@ -93,9 +93,15 @@ where
     /// trait, which is implemented for all functions taking a [`FmtContext`], a
     /// [`Writer`], and an [`Event`].
     ///
+    /// # Notes
+    ///
+    /// `fmt_fields` should also be updated to compatible FormatFields.
+    /// For example, useing `JsonFields` for `Json` format.
+    ///
     /// # Examples
     ///
     /// Setting a type implementing [`FormatEvent`] as the formatter:
+    ///
     /// ```rust
     /// use tracing_subscriber::fmt::{self, format};
     ///
@@ -105,6 +111,20 @@ where
     /// # use tracing_subscriber::Subscribe as _;
     /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
     /// ```
+    ///
+    /// Make sure `fmt_fields` is compatible with `event_fmt`:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt::{self, format};
+    ///
+    /// let fmt_subscriber = fmt::subscriber()
+    ///     .event_format(format().json())
+    ///     .fmt_fields(format::JsonFields::new());
+    /// # // this is necessary for type inference.
+    /// # use tracing_subscriber::Subscribe as _;
+    /// # let _ = fmt_subscriber.with_collector(tracing_subscriber::registry::Registry::default());
+    /// ```
+    ///
     /// [`FormatEvent`]: format::FormatEvent
     /// [`Event`]: tracing::Event
     /// [`Writer`]: format::Writer
