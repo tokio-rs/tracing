@@ -203,6 +203,7 @@ pub mod time;
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
 
+use crate::encrypter::EncrypterLayer;
 use crate::subscribe::Subscribe as _;
 use crate::{
     filter::LevelFilter,
@@ -528,7 +529,15 @@ where
         tracing_core::Dispatch::new(builder.finish())
     }
 }
-
+impl CollectorBuilder {
+    /// build with encrypter
+    pub fn with_encrypter(self, encrypter: EncrypterLayer) -> Self {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.with_encrypter(encrypter),
+        }
+    }
+}
 impl<N, L, T, F, W> CollectorBuilder<N, format::Format<L, T>, F, W>
 where
     N: for<'writer> FormatFields<'writer> + 'static,

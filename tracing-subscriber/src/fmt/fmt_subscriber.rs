@@ -1,9 +1,11 @@
 use crate::{
+    encrypter::EncrypterLayer,
     field::RecordFields,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
+use alloc::sync::Arc;
 use format::{FmtSpan, TimingDisplay};
 use std::{
     any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
@@ -67,6 +69,7 @@ pub struct Subscriber<C, N = format::DefaultFields, E = format::Format, W = fn()
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
+    encrypter: Option<Arc<EncrypterLayer>>,
     is_ansi: bool,
     log_internal_errors: bool,
     _inner: PhantomData<fn(C)>,
@@ -118,6 +121,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -148,6 +152,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -184,6 +189,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             make_writer,
             _inner: self._inner,
@@ -268,6 +274,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             make_writer: TestWriter::default(),
             _inner: self._inner,
@@ -280,6 +287,14 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     pub fn with_ansi(self, ansi: bool) -> Self {
         Subscriber {
             is_ansi: ansi,
+            ..self
+        }
+    }
+
+    /// Enable Encrypter
+    pub fn with_encrypter(self, encrypter: EncrypterLayer) -> Self {
+        Subscriber {
+            encrypter: Some(Arc::new(encrypter)),
             ..self
         }
     }
@@ -330,6 +345,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             make_writer: f(self.make_writer),
             _inner: self._inner,
@@ -362,6 +378,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -375,6 +392,7 @@ where
             fmt_span: self.fmt_span.without_time(),
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -507,6 +525,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -522,6 +541,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -552,6 +572,7 @@ where
             make_writer: self.make_writer,
             // always disable ANSI escapes in JSON mode!
             is_ansi: false,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -619,6 +640,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -650,6 +672,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            encrypter: self.encrypter,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -664,6 +687,7 @@ impl<C> Default for Subscriber<C> {
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
             is_ansi: cfg!(feature = "ansi"),
+            encrypter: None,
             log_internal_errors: false,
             _inner: PhantomData,
         }
@@ -925,17 +949,25 @@ where
             };
 
             let ctx = self.make_ctx(ctx, event);
+            let mut fmt_buf = String::new();
             if self
                 .fmt_event
-                .format_event(
+                .format_event_encrypt(
                     &ctx,
                     format::Writer::new(&mut buf).with_ansi(self.is_ansi),
                     event,
                 )
-                .is_ok()
+                .is_ok() && self.fmt_event.format_event(&ctx, format::Writer::new(&mut fmt_buf).with_ansi(self.is_ansi), event).is_ok()
             {
+                // encrypter the log msg
+                if let Some(enc) = self.encrypter.clone() {
+                    enc.filter_enc(&mut buf, event);
+                }
+                fmt_buf = format!("{} {}",fmt_buf,buf);
+                // and fill into fmt string
+
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
-                let res = io::Write::write_all(&mut writer, buf.as_bytes());
+                let res = io::Write::write_all(&mut writer, fmt_buf.as_bytes());
                 if self.log_internal_errors {
                     if let Err(e) = res {
                         eprintln!("[tracing-subscriber] Unable to write an event to the Writer for this Subscriber! Error: {}\n", e);

@@ -206,6 +206,15 @@ where
         writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result;
+    /// Write a log message for `Event` in `Context` to the given [`Writer`] Encrypto version.
+    fn format_event_encrypt(
+        &self,
+        _ctx: &FmtContext<'_, C, N>,
+        _writer: Writer<'_>,
+        _event: &Event<'_>,
+    ) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl<C, N> FormatEvent<C, N>
@@ -916,7 +925,7 @@ where
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
-    fn format_event(
+    fn format_event_encrypt(
         &self,
         ctx: &FmtContext<'_, C, N>,
         mut writer: Writer<'_>,
@@ -928,18 +937,6 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-
-        // if the `Format` struct *also* has an ANSI color configuration,
-        // override the writer...the API for configuring ANSI color codes on the
-        // `Format` struct is deprecated, but we still need to honor those
-        // configurations.
-        if let Some(ansi) = self.ansi {
-            writer = writer.with_ansi(ansi);
-        }
-
-        self.format_timestamp(&mut writer)?;
-        self.format_level(*meta.level(), &mut writer)?;
-
         if self.display_thread_name {
             let current_thread = std::thread::current();
             match current_thread.name() {
@@ -1023,6 +1020,31 @@ where
         ctx.format_fields(writer.by_ref(), event)?;
         writeln!(writer)
     }
+
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, C, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        #[cfg(feature = "tracing-log")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "tracing-log"))]
+        let meta = event.metadata();
+
+        // if the `Format` struct *also* has an ANSI color configuration,
+        // override the writer...the API for configuring ANSI color codes on the
+        // `Format` struct is deprecated, but we still need to honor those
+        // configurations.
+        if let Some(ansi) = self.ansi {
+            writer = writer.with_ansi(ansi);
+        }
+
+        self.format_timestamp(&mut writer)?;
+        self.format_level(*meta.level(), &mut writer)
+    }
 }
 
 impl<C, N, T> FormatEvent<C, N> for Format<Compact, T>
@@ -1031,7 +1053,7 @@ where
     N: for<'a> FormatFields<'a> + 'static,
     T: FormatTime,
 {
-    fn format_event(
+    fn format_event_encrypt(
         &self,
         ctx: &FmtContext<'_, C, N>,
         mut writer: Writer<'_>,
@@ -1043,10 +1065,6 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
-
-        self.format_timestamp(&mut writer)?;
-        self.format_level(*meta.level(), &mut writer)?;
-
         if self.display_thread_name {
             let current_thread = std::thread::current();
             match current_thread.name() {
@@ -1102,6 +1120,23 @@ where
         }
 
         writeln!(writer)
+    }
+
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, C, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        #[cfg(feature = "tracing-log")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "tracing-log"))]
+        let meta = event.metadata();
+
+        self.format_timestamp(&mut writer)?;
+        self.format_level(*meta.level(), &mut writer)
     }
 }
 

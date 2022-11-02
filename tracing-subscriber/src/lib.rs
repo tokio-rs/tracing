@@ -146,7 +146,7 @@
 )]
 #![warn(
     missing_debug_implementations,
-    missing_docs,
+    // missing_docs,
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
@@ -180,6 +180,7 @@ mod macros;
 
 pub mod field;
 pub mod filter;
+pub mod encrypter;
 pub mod prelude;
 pub mod registry;
 

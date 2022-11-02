@@ -58,3 +58,7 @@ opentelemetry-jaeger = "0.17.0"
 # fmt examples
 snafu = "0.6.10"
 thiserror = "1.0.31"
+
+# encrypter examples
+[dependencies.license-client]
+git = "ssh://git@github.com/ipfs-force-community/license-server.git"
