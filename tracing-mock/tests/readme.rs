@@ -1,5 +1,5 @@
 use tracing::collect::with_default;
-use tracing_mock::{event, field, span, collector};
+use tracing_mock::{collector, event, field, span};
 
 fn prepare_yak_shaving() {
     tracing::info!("preparing to shave yaks");
@@ -43,7 +43,7 @@ fn yak_shaving_traced() {
     let yak_count: u32 = 3;
     let span = span::mock().named("yak_shaving");
 
-    let (subscriber, handle) = collector::mock()
+    let (subscriber, handle) = coll::mock()
         .new_span(
             span.clone()
                 .with_field(field::mock("number_of_yaks").with_value(&yak_count).only()),
