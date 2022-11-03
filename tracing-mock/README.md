@@ -54,6 +54,7 @@ tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", vers
 [patch.crates-io]
 tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
 ```
+## Examples
 
 Below is a simple example of checking for an event with only a
 message.
