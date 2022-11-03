@@ -92,6 +92,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
   of `true`, and the message "yak shaving completed"
 - the span is exited
 - the span is dropped
+- no further traces are received
 
 ```rust
 use tracing::subscriber::with_default;
