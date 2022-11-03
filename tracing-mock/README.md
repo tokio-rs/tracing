@@ -82,9 +82,11 @@ fn traced_event() {
 }
 ```
 
-The following is a more complex example taking the full yak shaving example
-from the `tracing` README and additionally instrumenting the called function
-with a span.
+Below is a slightly more complex example. `tracing-mock` asserts that, in order:
+- a span is created with a single field/value pair and entered
+- an event is created with the field `number_of_yaks`, a corresponding value of 3, and the message "preparing to shave yaks", and nothing else.
+- an event is created with the field `all_yaks_shaved`, a corresponding value of `true`, and the message "yak shaving completed".
+- the span was exited.
 
 ```rust
 use tracing::subscriber::with_default;
