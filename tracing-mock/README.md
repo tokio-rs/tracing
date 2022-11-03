@@ -53,11 +53,11 @@ tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", vers
 
 [patch.crates-io]
 tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
+tracing-core = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
 ```
 ## Examples
 
-Below is a simple example of checking for an event with only a
-message.
+Below is an example that checks that an event contains a message:
 
 ```rust
 use tracing::subscriber::with_default;
@@ -84,8 +84,10 @@ fn traced_event() {
 
 Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 - a span is created with a single field/value pair and entered
-- an event is created with the field `number_of_yaks`, a corresponding value of 3, and the message "preparing to shave yaks", and nothing else.
-- an event is created with the field `all_yaks_shaved`, a corresponding value of `true`, and the message "yak shaving completed".
+- an event is created with the field `number_of_yaks`, a corresponding
+  value of 3, and the message "preparing to shave yaks", and nothing else.
+- an event is created with the field `all_yaks_shaved`, a corresponding value
+  of `true`, and the message "yak shaving completed".
 - the span was exited.
 
 ```rust
@@ -103,7 +105,6 @@ fn yak_shaving(number_of_yaks: u32) {
     );
 }
 
-// If this test gets updated, the `tracing-mock` README.md must be updated too.
 #[test]
 fn yak_shaving_traced() {
     let yak_count: u32 = 3;
@@ -143,8 +144,7 @@ fn yak_shaving_traced() {
 }
 ```
 
-The full code for both examples can be found in the [readme.rs](tests/readme.rs)
-tests.
+The full code for both examples can be found in the readme.rs tests.
 
 ## Supported Rust Versions
 
