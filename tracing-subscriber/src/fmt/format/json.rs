@@ -681,7 +681,7 @@ mod test {
             );
 
             let span = tracing::info_span!("the span", na = tracing::field::Empty);
-            span.record("na", &"value");
+            span.record("na", "value");
             let _enter = span.enter();
 
             tracing::info!("an event inside the root span");

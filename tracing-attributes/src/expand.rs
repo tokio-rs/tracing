@@ -135,7 +135,7 @@ fn gen_block<B: ToTokens>(
             .into_iter()
             .flat_map(|param| match param {
                 FnArg::Typed(PatType { pat, ty, .. }) => {
-                    param_names(*pat, RecordType::parse_from_ty(&*ty))
+                    param_names(*pat, RecordType::parse_from_ty(&ty))
                 }
                 FnArg::Receiver(_) => Box::new(iter::once((
                     Ident::new("self", param.span()),
