@@ -55,6 +55,7 @@ tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", vers
 tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
 tracing-core = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
 ```
+
 ## Examples
 
 Below is an example that checks that an event contains a message:
