@@ -12,11 +12,11 @@
 //!
 //! ## Usage
 //!
-//! First, add this to your `Cargo.toml`:
+//! In the `Cargo.toml`:
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-attributes = "0.1.11"
+//! tracing = "0.1"
 //! ```
 //!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
@@ -24,7 +24,7 @@
 //! called. For example:
 //!
 //! ```
-//! use tracing_attributes::instrument;
+//! use tracing::instrument;
 //!
 //! #[instrument]
 //! pub fn my_function(my_arg: usize) {
@@ -64,7 +64,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -108,10 +107,10 @@ mod expand;
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
-/// You can also pass additional fields (key-value pairs with arbitrary data)
-/// to the generated span. This is achieved using the `fields` argument on the
-/// `#[instrument]` macro. You can use a string, integer or boolean literal as
-/// a value for each field. The name of the field must be a single valid Rust
+/// Additional fields (key-value pairs with arbitrary data) can be passed to
+/// to the generated span through the `fields` argument on the
+/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
+/// for each field. The name of the field must be a single valid Rust
 /// identifier, nested (dotted) field names are not supported.
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
@@ -132,11 +131,15 @@ mod expand;
 /// Setting the level for the generated span:
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(level = "debug")]
+/// # use tracing::Level;
+/// #[instrument(level = Level::DEBUG)]
 /// pub fn my_function() {
 ///     // ...
 /// }
 /// ```
+/// Levels can be specified either with [`Level`] constants, literal strings
+/// (e.g., `"debug"`, `"info"`) or numerically (1—5, corresponding to [`Level::TRACE`]—[`Level::ERROR`]).
+///
 /// Overriding the generated span's name:
 /// ```
 /// # use tracing_attributes::instrument;
@@ -207,7 +210,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// To add an additional context to the span, you can pass key-value pairs to `fields`:
+/// To add additional context to the span, pass key-value pairs to `fields`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
@@ -235,7 +238,8 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(ret(level = "warn"))]
+/// # use tracing::Level;
+/// #[instrument(ret(level = Level::WARN))]
 /// fn my_function() -> i32 {
 ///     42
 /// }
@@ -256,8 +260,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, you can add
-/// `err` or `err(Display)` to emit error events when the function returns `Err`:
+/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
+/// `err` or `err(Display)` will emit error events when the function returns `Err`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
@@ -267,11 +271,12 @@ mod expand;
 /// }
 /// ```
 ///
-/// Similarly, you can override the level of the `err` event:
+/// Similarly, overriding the level of the `err` event :
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err(level = "info"))]
+/// # use tracing::Level;
+/// #[instrument(err(level = Level::INFO))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
@@ -279,7 +284,7 @@ mod expand;
 ///
 /// By default, error values will be recorded using their `std::fmt::Display` implementations.
 /// If an error implements `std::fmt::Debug`, it can be recorded using its `Debug` implementation
-/// instead, by writing `err(Debug)`:
+/// instead by writing `err(Debug)`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
@@ -338,37 +343,13 @@ mod expand;
 /// }
 /// ```
 ///
-/// Note than on `async-trait` <= 0.1.43, references to the `Self`
-/// type inside the `fields` argument were only allowed when the instrumented
-/// function is a method (i.e., the function receives `self` as an argument).
-/// For example, this *used to not work* because the instrument function
-/// didn't receive `self`:
-/// ```
-/// # use tracing::instrument;
-/// use async_trait::async_trait;
-///
-/// #[async_trait]
-/// pub trait Bar {
-///     async fn bar();
-/// }
-///
-/// #[derive(Debug)]
-/// struct BarImpl(usize);
-///
-/// #[async_trait]
-/// impl Bar for BarImpl {
-///     #[instrument(fields(tmp = std::any::type_name::<Self>()))]
-///     async fn bar() {}
-/// }
-/// ```
-/// Instead, you should manually rewrite any `Self` types as the type for
-/// which you implement the trait: `#[instrument(fields(tmp = std::any::type_name::<Bar>()))]`
-/// (or maybe you can just bump `async-trait`).
-///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
+/// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
+/// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
+/// [`Level::ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
