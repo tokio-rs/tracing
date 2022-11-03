@@ -43,7 +43,7 @@ fn yak_shaving_traced() {
     let yak_count: u32 = 3;
     let span = span::mock().named("yak_shaving");
 
-    let (subscriber, handle) = coll::mock()
+    let (subscriber, handle) = collector::mock()
         .new_span(
             span.clone()
                 .with_field(field::mock("number_of_yaks").with_value(&yak_count).only()),
@@ -65,7 +65,8 @@ fn yak_shaving_traced() {
                     .only(),
             ),
         )
-        .exit(span)
+        .exit(span.clone())
+        .drop_span(span)
         .done()
         .run_with_handle();
 

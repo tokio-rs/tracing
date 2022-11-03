@@ -84,12 +84,14 @@ fn traced_event() {
 ```
 
 Below is a slightly more complex example. `tracing-mock` asserts that, in order:
-- a span is created with a single field/value pair and entered
+- a span is created with a single field/value pair
+- the span is entered
 - an event is created with the field `number_of_yaks`, a corresponding
-  value of 3, and the message "preparing to shave yaks", and nothing else.
+  value of 3, and the message "preparing to shave yaks", and nothing else
 - an event is created with the field `all_yaks_shaved`, a corresponding value
-  of `true`, and the message "yak shaving completed".
-- the span was exited.
+  of `true`, and the message "yak shaving completed"
+- the span is exited
+- the span is dropped
 
 ```rust
 use tracing::subscriber::with_default;
@@ -134,6 +136,7 @@ fn yak_shaving_traced() {
             ),
         )
         .exit(span.clone())
+        .drop_span(span)
         .done()
         .run_with_handle();
 
