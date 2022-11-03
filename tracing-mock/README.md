@@ -35,10 +35,8 @@ and crates that use `tracing`.
 
 ## Usage
 
-The `tracing-mock` crate provides a mock `subscriber` which can
-verify the spans and events sent. It is inteded for use in tests
-to ensure that your crate is tracing at the corrrect time with the
-correct data.
+`tracing-mock` crate provides a mock `Subscriber` that allows asserting on 
+the order and contents of spans and events.
 
 As `tracing-mock` isn't available on [crates.io](https://crates.io/)
 yet, you must import it via git. It is important that you also override
