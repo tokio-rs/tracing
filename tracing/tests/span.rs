@@ -563,7 +563,7 @@ fn record_new_value_for_field() {
 
     with_default(subscriber, || {
         let span = tracing::span!(Level::TRACE, "foo", bar = 5, baz = false);
-        span.record("baz", &true);
+        span.record("baz", true);
         span.in_scope(|| {})
     });
 
@@ -598,8 +598,8 @@ fn record_new_values_for_fields() {
 
     with_default(subscriber, || {
         let span = tracing::span!(Level::TRACE, "foo", bar = 4, baz = false);
-        span.record("bar", &5);
-        span.record("baz", &true);
+        span.record("bar", 5);
+        span.record("baz", true);
         span.in_scope(|| {})
     });
 

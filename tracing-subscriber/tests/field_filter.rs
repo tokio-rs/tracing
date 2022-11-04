@@ -103,7 +103,7 @@ fn record_after_created() {
             tracing::debug!("i'm disabled!");
         });
 
-        span.record("enabled", &true);
+        span.record("enabled", true);
         span.in_scope(|| {
             tracing::debug!("i'm enabled!");
         });
