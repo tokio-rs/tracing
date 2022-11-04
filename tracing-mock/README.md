@@ -58,11 +58,16 @@ tracing-core = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" 
 
 ## Examples
 
+The following examples are for the `master` branch. For examples that
+will work with `tracing` from [crates.io], please check the
+[v0.1.x](https://github.com/tokio-rs/tracing/tree/v0.1.x/tracing-mock)
+branch.
+
 Below is an example that checks that an event contains a message:
 
 ```rust
-use tracing::subscriber::with_default;
-use tracing_mock::{event, field, subscriber};
+use tracing::collect::with_default;
+use tracing_mock::{collector, event, field};
 
 fn yak_shaving() {
     tracing::info!("preparing to shave yaks");
@@ -70,12 +75,12 @@ fn yak_shaving() {
 
 #[test]
 fn traced_event() {
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .event(event::mock().with_fields(field::msg("preparing to shave yaks")))
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         yak_shaving();
     });
 
@@ -95,14 +100,14 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 - no further traces are received
 
 ```rust
-use tracing::subscriber::with_default;
-use tracing_mock::{event, field, span, subscriber};
+use tracing::collect::with_default;
+use tracing_mock::{collector, event, field, span};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
     tracing::info!(number_of_yaks, "preparing to shave yaks");
 
-    let number_shaved = yak_shave::shave_all(number_of_yaks);
+    let number_shaved = number_of_yaks; // shave_all
     tracing::info!(
         all_yaks_shaved = number_shaved == number_of_yaks,
         "yak shaving completed."
@@ -114,7 +119,7 @@ fn yak_shaving_traced() {
     let yak_count: u32 = 3;
     let span = span::mock().named("yak_shaving");
 
-    let (subscriber, handle) = subscriber::mock()
+    let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
                 .with_field(field::mock("number_of_yaks").with_value(&yak_count).only()),
@@ -141,7 +146,7 @@ fn yak_shaving_traced() {
         .done()
         .run_with_handle();
 
-    with_default(subscriber, || {
+    with_default(collector, || {
         yak_shaving(yak_count);
     });
 
