@@ -902,7 +902,7 @@ mod tests {
 
             drop(span3);
 
-            state.assert_closed_in_order(&["child", "parent", "grandparent"]);
+            state.assert_closed_in_order(["child", "parent", "grandparent"]);
         });
     }
 }
