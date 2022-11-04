@@ -1,5 +1,5 @@
-use crate::support::*;
 use tracing::Level;
+use tracing_mock::{event, subscriber};
 use tracing_subscriber::{field::Visit, prelude::*, subscribe::Filter};
 
 struct FilterEvent;

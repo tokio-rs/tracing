@@ -1,4 +1,5 @@
 use super::*;
+use tracing_mock::subscriber::ExpectSubscriber;
 
 #[test]
 fn filters_span_scopes() {

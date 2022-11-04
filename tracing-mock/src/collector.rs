@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
-use super::{
+use crate::{
     event::MockEvent,
+    expectation::Expect,
     field as mock_field,
     span::{MockSpan, NewSpan},
 };
@@ -19,22 +20,6 @@ use tracing::{
     span::{self, Attributes, Id},
     Collect, Event, Metadata,
 };
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Expect {
-    Event(MockEvent),
-    FollowsFrom {
-        consequence: MockSpan,
-        cause: MockSpan,
-    },
-    Enter(MockSpan),
-    Exit(MockSpan),
-    CloneSpan(MockSpan),
-    DropSpan(MockSpan),
-    Visit(MockSpan, mock_field::Expect),
-    NewSpan(NewSpan),
-    Nothing,
-}
 
 struct SpanState {
     name: &'static str,
@@ -469,7 +454,7 @@ where
 }
 
 impl MockHandle {
-    pub fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
+    pub(crate) fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
         Self(expected, name)
     }
 
