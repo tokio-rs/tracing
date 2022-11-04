@@ -67,9 +67,9 @@ impl<T: Write + Send + Sync + 'static> Worker<T> {
     }
 
     /// Creates a worker thread that processes a channel until it's disconnected
-    pub(crate) fn worker_thread(mut self) -> std::thread::JoinHandle<()> {
+    pub(crate) fn worker_thread(mut self, name: String) -> std::thread::JoinHandle<()> {
         thread::Builder::new()
-            .name("tracing-appender".to_string())
+            .name(name)
             .spawn(move || {
                 loop {
                     match self.work() {
