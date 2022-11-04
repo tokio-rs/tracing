@@ -64,7 +64,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // unreachable, but does affect inference, so it needs to be written
     // exactly that way for it to do its magic.
     let fake_return_edge = quote_spanned! {return_span=>
-        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value)]
+        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value, clippy::unreachable)]
         if false {
             let __tracing_attr_fake_return: #return_type =
                 unreachable!("this is just for type inference, and is unreachable code");
