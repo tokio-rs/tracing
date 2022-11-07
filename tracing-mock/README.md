@@ -142,7 +142,7 @@ fn yak_shaving_traced() {
             ),
         )
         .exit(span.clone())
-        .drop_span(span)
+        .close_span(span)
         .done()
         .run_with_handle();
 
