@@ -96,7 +96,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 - an event is created with the field `all_yaks_shaved`, a corresponding value
   of `true`, and the message "yak shaving completed"
 - the span is exited
-- the span is dropped
+- the span is closed
 - no further traces are received
 
 ```rust
