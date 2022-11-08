@@ -26,8 +26,8 @@ Utilities for testing [`tracing`][tracing] and crates that uses it.
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
 structured, event-based diagnostic information. `tracing-mock` provides
-mock `tracing` objects that are useful in testing `tracing`  itself 
-and crates that use `tracing`.
+tools for making assertions about what `tracing` diagnostics are emitted
+by code under test.
 
 *Compiler support: [requires `rustc` 1.49+][msrv]*
 
