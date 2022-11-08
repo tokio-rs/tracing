@@ -2,6 +2,7 @@
 //! `subscriber` filter).
 #![cfg(feature = "registry")]
 use super::*;
+use tracing_mock::{event, field, span, subscriber};
 
 #[test]
 fn level_filter_event() {
