@@ -16,7 +16,7 @@ Utilities for testing [`tracing`][tracing] and crates that uses it.
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_mock
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[mit-url]: LICENSE
+[mit-url]: https://github.com/tokio-rs/tracing/blob/master/tracing-mock/LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
 [actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
@@ -35,8 +35,11 @@ by code under test.
 
 ## Usage
 
-`tracing-mock` crate provides a mock `Subscriber` that allows asserting on 
-the order and contents of spans and events.
+`tracing-mock` crate provides a mock
+[`Collector`](https://tracing-rs.netlify.app/tracing/#collectors)
+that allows asserting on the order and contents of
+[spans]https://tracing-rs.netlify.app/tracing/#spans) and
+[events](https://tracing-rs.netlify.app/tracing/#events).
 
 As `tracing-mock` isn't available on [crates.io](https://crates.io/)
 yet, you must import it via git. It is important that you also override
@@ -45,7 +48,7 @@ example, the `Cargo.toml` for your test crate could contain:
 
 ```toml
 [dependencies]
-lib-under-test = 1.0 # depends on `tracing`
+lib-under-test = "1.0" # depends on `tracing`
 
 [dev-dependencies]
 tracing-mock = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", version = "0.1" }
@@ -154,8 +157,6 @@ fn yak_shaving_traced() {
 }
 ```
 
-The full code for both examples can be found in the readme.rs tests.
-
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
@@ -172,7 +173,7 @@ with this policy.
 
 ## License
 
-This project is licensed under the [MIT license](LICENSE).
+This project is licensed under the [MIT license][mit-url].
 
 ### Contribution
 
