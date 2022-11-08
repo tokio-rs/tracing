@@ -10,8 +10,7 @@ pub mod field;
 mod metadata;
 pub mod span;
 
-#[cfg(feature = "subscriber")]
-#[doc(hidden)]
+#[cfg(feature = "tracing-subscriber")]
 pub mod subscriber;
 
 #[derive(Debug, Eq, PartialEq)]

@@ -17,10 +17,6 @@ edition = "2018"
 rust-version = "1.49.0"
 publish = false
 
-[features]
-default = []
-subscriber = ["tracing-subscriber"]
-
 [dependencies]
 tracing = { path = "../tracing", version = "0.2", default-features = false }
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
