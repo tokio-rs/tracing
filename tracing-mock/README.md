@@ -42,8 +42,9 @@ that allows asserting on the order and contents of
 [events](https://tracing-rs.netlify.app/tracing/#events).
 
 As `tracing-mock` isn't available on [crates.io](https://crates.io/)
-yet, you must import it via git. It is important that you also override
-the source of any `tracing` crates that are transient dependencies. For
+yet, you must import it via git. When using `tracing-mock` with the
+`tracing` `0.1` ecosystem, it is important that you also override the
+source of any `tracing` crates that are transient dependencies. For
 example, the `Cargo.toml` for your test crate could contain:
 
 ```toml
