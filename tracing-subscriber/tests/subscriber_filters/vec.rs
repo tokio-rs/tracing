@@ -1,5 +1,6 @@
 use super::*;
 use tracing::Collect;
+use tracing_mock::subscriber::ExpectSubscriber;
 
 #[test]
 fn with_filters_unboxed() {

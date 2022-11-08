@@ -1,7 +1,9 @@
 #![cfg(feature = "registry")]
-mod support;
-use self::support::*;
 use tracing::Level;
+use tracing_mock::{
+    collector, event,
+    subscriber::{self, ExpectSubscriber},
+};
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
 
 #[test]
