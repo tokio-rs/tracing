@@ -1,9 +1,9 @@
 #![allow(missing_docs, dead_code)]
-pub use tracing_mock::{collector, event, field, span};
-
-use self::{
-    collector::{Expect, MockHandle},
+use crate::{
+    collector::MockHandle,
     event::MockEvent,
+    expectation::Expect,
+    field,
     span::{MockSpan, NewSpan},
 };
 use tracing_core::{
@@ -21,22 +21,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub mod subscriber {
-    use super::ExpectSubscriberBuilder;
-
-    pub fn mock() -> ExpectSubscriberBuilder {
-        ExpectSubscriberBuilder {
-            expected: Default::default(),
-            name: std::thread::current()
-                .name()
-                .map(String::from)
-                .unwrap_or_default(),
-        }
+pub fn mock() -> ExpectSubscriberBuilder {
+    ExpectSubscriberBuilder {
+        expected: Default::default(),
+        name: std::thread::current()
+            .name()
+            .map(String::from)
+            .unwrap_or_default(),
     }
+}
 
-    pub fn named(name: impl std::fmt::Display) -> ExpectSubscriberBuilder {
-        mock().named(name)
-    }
+pub fn named(name: impl std::fmt::Display) -> ExpectSubscriberBuilder {
+    mock().named(name)
 }
 
 pub struct ExpectSubscriberBuilder {

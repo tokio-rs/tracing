@@ -1,7 +1,4 @@
 #![cfg(feature = "registry")]
-#[path = "../support.rs"]
-mod support;
-use self::support::*;
 mod filter_scopes;
 mod per_event;
 mod targets;
@@ -9,6 +6,7 @@ mod trees;
 mod vec;
 
 use tracing::{level_filters::LevelFilter, Level};
+use tracing_mock::{collector, event, span, subscriber};
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
 #[test]
