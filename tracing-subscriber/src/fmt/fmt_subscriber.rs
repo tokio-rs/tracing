@@ -604,6 +604,21 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
             ..self
         }
     }
+
+    /// Sets whether or not the formatter will include newline characters after
+    /// formatting a log event.
+    ///
+    /// See [`format::Json`]
+    pub fn with_newlines(
+        self,
+        print_newlines: bool,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_newlines(print_newlines),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
 }
 
 impl<C, N, E, W> Subscriber<C, N, E, W> {

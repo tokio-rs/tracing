@@ -908,6 +908,17 @@ impl<T> Format<Json, T> {
         self.format.with_span_list(display_span_list);
         self
     }
+
+    /// Sets whether or not the formatter will include newline characters after
+    /// formatting a log event.
+    ///
+    /// See [`Json`]
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn with_newlines(mut self, print_newlines: bool) -> Format<Json, T> {
+        self.format.with_newlines(print_newlines);
+        self
+    }
 }
 
 impl<C, N, T> FormatEvent<C, N> for Format<Full, T>
