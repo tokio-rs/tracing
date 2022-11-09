@@ -71,6 +71,62 @@ use tracing_log::NormalizeEvent;
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
 ///
+/// # Wrapping JSON entries with custom formatters
+/// 
+/// [`Json::with_newlines`] can be used to re-use [`Json`] formatters in
+/// custom formatter implementations that also log additional information.
+/// For example, wrapping log entries in a serde-style "externally tagged"
+/// enum can be implemented by extending logged events with prefix and
+/// postfix strings:
+/// 
+/// ```rust
+/// use std::default::Default;
+/// use std::fmt::Result;
+/// 
+/// use tracing_core::{Collect, Event};
+/// use tracing_subscriber::fmt::FmtContext;
+/// use tracing_subscriber::fmt::format::{Format, FormatEvent, FormatFields, Json, Writer};
+/// use tracing_subscriber::fmt::time::SystemTime;
+/// use tracing_subscriber::registry::LookupSpan;
+/// 
+/// #[derive(Clone)]
+/// pub struct MyJsonFormatter(Format<Json, SystemTime>);
+/// 
+/// impl Default for MyJsonFormatter {
+///     fn default() -> Self {
+///         Self(Format::default().json().with_newlines(false))
+///     }
+/// }
+/// 
+/// impl<C, N> FormatEvent<C, N> for MyJsonFormatter
+/// where
+///     C: Collect + for<'a> LookupSpan<'a>,
+///     N: for<'a> FormatFields<'a> + 'static,
+/// {
+///     fn format_event(
+///         &self,
+///         ctx: &FmtContext<'_, C, N>,
+///         mut writer: Writer<'_>,
+///         event: &Event<'_>,
+///     ) -> Result {
+///         write!(&mut writer, "{{\"log\":")?;
+///         self.0.format_event(ctx, writer.by_ref(), event)?;
+///         writeln!(&mut writer, "}}")
+///     }
+/// }
+/// 
+/// let _subscriber = tracing_subscriber::fmt()
+///     .event_format(MyJsonFormatter::default())
+///     .init();
+/// 
+/// tracing::info!("hello world");
+/// ```
+/// 
+/// This formatter will print events like this:
+///
+/// ```text
+/// {"log":{"timestamp":"2022-11-09T22:03:56.332925Z","level":"INFO","fields":{"message":"hello world"},"target":"rust_out"}}
+/// ```
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
