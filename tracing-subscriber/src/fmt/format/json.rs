@@ -318,7 +318,12 @@ where
         };
 
         visit().map_err(|_| fmt::Error)?;
-        writeln!(writer)
+
+        if self.format.print_newlines {
+            writeln!(writer)?;
+        }
+
+        Ok(())
     }
 }
 
