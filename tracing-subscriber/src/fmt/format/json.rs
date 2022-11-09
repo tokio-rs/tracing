@@ -65,6 +65,8 @@ use tracing_log::NormalizeEvent;
 /// span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 /// object.
+/// - [`Json::with_newlines`] can be used to disable newlines in the log event
+/// format.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -74,6 +76,7 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) print_newlines: bool,
 }
 
 impl Json {
@@ -91,6 +94,13 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    /// If set to `false`, formatted events won't be followed by a newline.
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    pub fn with_newlines(&mut self, print_newlines: bool) {
+        self.print_newlines = print_newlines;
     }
 }
 
@@ -318,6 +328,7 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            print_newlines: true,
         }
     }
 }
