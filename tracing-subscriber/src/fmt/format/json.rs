@@ -850,6 +850,25 @@ mod test {
         });
     }
 
+    #[test]
+    fn json_without_newlines() {
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
+            .json()
+            .with_newlines(false)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("Log message 1");
+            tracing::info!("Log message 2");
+            tracing::info!("Log message 3");
+
+            let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
+            assert_eq!(1, buf.lines().count());
+        });
+    }
+
     fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
         let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
         let json = buf
