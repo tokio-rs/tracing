@@ -1,10 +1,10 @@
 #![allow(missing_docs, dead_code)]
 use crate::{
     collector::MockHandle,
-    event::MockEvent,
+    event::ExpectedEvent,
     expectation::Expect,
-    field,
-    span::{MockSpan, NewSpan},
+    field::ExpectedFields,
+    span::{ExpectedSpan, NewSpan},
 };
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -21,8 +21,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn mock() -> ExpectSubscriberBuilder {
-    ExpectSubscriberBuilder {
+pub fn mock() -> MockSubscriberBuilder {
+    MockSubscriberBuilder {
         expected: Default::default(),
         name: std::thread::current()
             .name()
@@ -31,22 +31,22 @@ pub fn mock() -> ExpectSubscriberBuilder {
     }
 }
 
-pub fn named(name: impl std::fmt::Display) -> ExpectSubscriberBuilder {
+pub fn named(name: impl std::fmt::Display) -> MockSubscriberBuilder {
     mock().named(name)
 }
 
-pub struct ExpectSubscriberBuilder {
+pub struct MockSubscriberBuilder {
     expected: VecDeque<Expect>,
     name: String,
 }
 
-pub struct ExpectSubscriber {
+pub struct MockSubscriber {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
     name: String,
 }
 
-impl ExpectSubscriberBuilder {
+impl MockSubscriberBuilder {
     /// Overrides the name printed by the mock subscriber's debugging output.
     ///
     /// The debugging output is displayed if the test panics, or if the test is
@@ -70,29 +70,29 @@ impl ExpectSubscriberBuilder {
         self
     }
 
-    pub fn enter(mut self, span: MockSpan) -> Self {
+    pub fn enter(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
         self
     }
 
-    pub fn event(mut self, event: MockEvent) -> Self {
+    pub fn event(mut self, event: ExpectedEvent) -> Self {
         self.expected.push_back(Expect::Event(event));
         self
     }
 
-    pub fn exit(mut self, span: MockSpan) -> Self {
+    pub fn exit(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::Exit(span));
         self
     }
 
-    pub fn done(mut self) -> Self {
+    pub fn only(mut self) -> Self {
         self.expected.push_back(Expect::Nothing);
         self
     }
 
-    pub fn record<I>(mut self, span: MockSpan, fields: I) -> Self
+    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
     where
-        I: Into<field::Expect>,
+        I: Into<ExpectedFields>,
     {
         self.expected.push_back(Expect::Visit(span, fields.into()));
         self
@@ -106,18 +106,18 @@ impl ExpectSubscriberBuilder {
         self
     }
 
-    pub fn run(self) -> ExpectSubscriber {
-        ExpectSubscriber {
+    pub fn run(self) -> MockSubscriber {
+        MockSubscriber {
             expected: Arc::new(Mutex::new(self.expected)),
             name: self.name,
             current: Mutex::new(Vec::new()),
         }
     }
 
-    pub fn run_with_handle(self) -> (ExpectSubscriber, MockHandle) {
+    pub fn run_with_handle(self) -> (MockSubscriber, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle::new(expected.clone(), self.name.clone());
-        let subscriber = ExpectSubscriber {
+        let subscriber = MockSubscriber {
             expected,
             name: self.name,
             current: Mutex::new(Vec::new()),
@@ -126,10 +126,10 @@ impl ExpectSubscriberBuilder {
     }
 }
 
-impl ExpectSubscriber {
+impl MockSubscriber {
     fn check_span_ref<'spans, S>(
         &self,
-        expected: &MockSpan,
+        expected: &ExpectedSpan,
         actual: &SpanRef<'spans, S>,
         what_happened: impl fmt::Display,
     ) where
@@ -187,7 +187,7 @@ impl ExpectSubscriber {
     }
 }
 
-impl<C> Subscribe<C> for ExpectSubscriber
+impl<C> Subscribe<C> for MockSubscriber
 where
     C: Collect + for<'a> LookupSpan<'a>,
 {
@@ -381,7 +381,7 @@ where
     }
 }
 
-impl fmt::Debug for ExpectSubscriber {
+impl fmt::Debug for MockSubscriber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("ExpectSubscriber");
         s.field("name", &self.name);

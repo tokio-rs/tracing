@@ -1,21 +1,21 @@
 use crate::{
-    event::MockEvent,
-    field,
-    span::{MockSpan, NewSpan},
+    event::ExpectedEvent,
+    field::ExpectedFields,
+    span::{ExpectedSpan, NewSpan},
 };
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Expect {
-    Event(MockEvent),
+    Event(ExpectedEvent),
     FollowsFrom {
-        consequence: MockSpan,
-        cause: MockSpan,
+        consequence: ExpectedSpan,
+        cause: ExpectedSpan,
     },
-    Enter(MockSpan),
-    Exit(MockSpan),
-    CloneSpan(MockSpan),
-    DropSpan(MockSpan),
-    Visit(MockSpan, field::Expect),
+    Enter(ExpectedSpan),
+    Exit(ExpectedSpan),
+    CloneSpan(ExpectedSpan),
+    DropSpan(ExpectedSpan),
+    Visit(ExpectedSpan, ExpectedFields),
     NewSpan(NewSpan),
     Nothing,
 }

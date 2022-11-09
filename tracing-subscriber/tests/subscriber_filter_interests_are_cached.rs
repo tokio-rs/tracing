@@ -21,9 +21,9 @@ fn subscriber_filter_interests_are_cached() {
     });
 
     let (expect, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let subscriber = tracing_subscriber::registry().with(expect.with_filter(filter));

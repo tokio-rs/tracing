@@ -14,8 +14,8 @@ where
 
 #[test]
 fn default_parent_test() {
-    let contextual_parent = span::mock().named("contextual_parent");
-    let child = span::mock().named("with_default_parent");
+    let contextual_parent = span::expect().named("contextual_parent");
+    let child = span::expect().named("with_default_parent");
 
     let (collector, handle) = collector::mock()
         .new_span(
@@ -42,7 +42,7 @@ fn default_parent_test() {
         .enter(child.clone())
         .exit(child)
         .exit(contextual_parent)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -60,9 +60,9 @@ fn default_parent_test() {
 
 #[test]
 fn explicit_parent_test() {
-    let contextual_parent = span::mock().named("contextual_parent");
-    let explicit_parent = span::mock().named("explicit_parent");
-    let child = span::mock().named("with_explicit_parent");
+    let contextual_parent = span::expect().named("contextual_parent");
+    let explicit_parent = span::expect().named("explicit_parent");
+    let child = span::expect().named("with_explicit_parent");
 
     let (collector, handle) = collector::mock()
         .new_span(
@@ -86,7 +86,7 @@ fn explicit_parent_test() {
         .enter(child.clone())
         .exit(child)
         .exit(contextual_parent)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
