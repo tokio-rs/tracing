@@ -3,7 +3,7 @@ use tracing_mock::layer::MockLayer;
 use tracing_subscriber::{filter, prelude::*, Layer};
 
 fn layer() -> (MockLayer, subscriber::MockHandle) {
-    layer::mock().done().run_with_handle()
+    layer::mock().only().run_with_handle()
 }
 
 fn filter<S>() -> filter::DynFilterFn<S> {

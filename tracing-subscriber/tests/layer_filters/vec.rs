@@ -1,27 +1,27 @@
 use super::*;
 use tracing::Subscriber;
-use tracing_mock::layer::{self, MockLayer};
+use tracing_mock::layer::MockLayer;
 
 #[test]
 fn with_filters_unboxed() {
     let (trace_layer, trace_handle) = layer::named("trace")
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::TRACE))
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let trace_layer = trace_layer.with_filter(LevelFilter::TRACE);
 
     let (debug_layer, debug_handle) = layer::named("debug")
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let debug_layer = debug_layer.with_filter(LevelFilter::DEBUG);
 
     let (info_layer, info_handle) = layer::named("info")
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let info_layer = info_layer.with_filter(LevelFilter::INFO);
 
@@ -41,23 +41,23 @@ fn with_filters_unboxed() {
 #[test]
 fn with_filters_boxed() {
     let (unfiltered_layer, unfiltered_handle) = layer::named("unfiltered")
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::TRACE))
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let unfiltered_layer = unfiltered_layer.boxed();
 
     let (debug_layer, debug_handle) = layer::named("debug")
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let debug_layer = debug_layer.with_filter(LevelFilter::DEBUG).boxed();
 
     let (target_layer, target_handle) = layer::named("target")
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let target_layer = target_layer
         .with_filter(filter::filter_fn(|meta| meta.target() == "my_target"))
@@ -116,6 +116,6 @@ fn all_filtered_max_level_hint() {
 #[test]
 fn empty_vec() {
     // Just a None means everything is off
-    let subscriber = tracing_subscriber::registry().with(Vec::<MockLayer>::new());
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::OFF));
+    let collector = tracing_subscriber::registry().with(Vec::<MockLayer>::new());
+    assert_eq!(collector.max_level_hint(), Some(LevelFilter::OFF));
 }

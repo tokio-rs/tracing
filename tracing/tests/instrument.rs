@@ -33,17 +33,17 @@ fn span_on_drop() {
     }
 
     let subscriber = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .event(event::mock().at_level(Level::INFO))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .enter(span::mock().named("bar"))
-        .event(event::mock().at_level(Level::INFO))
-        .exit(span::mock().named("bar"))
-        .drop_span(span::mock().named("bar"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .event(event::expect().at_level(Level::INFO))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .enter(span::expect().named("bar"))
+        .event(event::expect().at_level(Level::INFO))
+        .exit(span::expect().named("bar"))
+        .drop_span(span::expect().named("bar"))
+        .only()
         .run();
 
     with_default(subscriber, || {
