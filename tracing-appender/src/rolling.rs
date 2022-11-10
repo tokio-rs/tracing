@@ -46,7 +46,7 @@ pub use builder::{Builder, InitError};
 /// writes without blocking the current thread.
 ///
 /// Additionally, `RollingFileAppender` also implements the [`MakeWriter`]
-/// trait from `tracing-appender`, so it may also be used
+/// trait from `tracing-subscriber`, so it may also be used
 /// directly, without [`NonBlocking`].
 ///
 /// [write]: std::io::Write
