@@ -1,37 +1,49 @@
 use super::*;
-use tracing_mock::subscriber::ExpectSubscriber;
+use tracing_mock::subscriber::MockSubscriber;
 
 #[test]
 fn basic_trees() {
     let (with_target, with_target_handle) = subscriber::named("info_with_target")
-        .event(event::mock().at_level(Level::INFO).with_target("my_target"))
-        .done()
+        .event(
+            event::expect()
+                .at_level(Level::INFO)
+                .with_target("my_target"),
+        )
+        .only()
         .run_with_handle();
 
     let (info, info_handle) = subscriber::named("info")
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::INFO)
                 .with_target(module_path!()),
         )
-        .event(event::mock().at_level(Level::INFO).with_target("my_target"))
-        .done()
+        .event(
+            event::expect()
+                .at_level(Level::INFO)
+                .with_target("my_target"),
+        )
+        .only()
         .run_with_handle();
 
     let (all, all_handle) = subscriber::named("all")
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::INFO)
                 .with_target(module_path!()),
         )
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::INFO).with_target("my_target"))
+        .event(event::expect().at_level(Level::TRACE))
         .event(
-            event::mock()
+            event::expect()
+                .at_level(Level::INFO)
+                .with_target("my_target"),
+        )
+        .event(
+            event::expect()
                 .at_level(Level::TRACE)
                 .with_target("my_target"),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     let info_tree = info
@@ -55,43 +67,42 @@ fn basic_trees() {
 
 #[test]
 fn filter_span_scopes() {
-    fn target_subscriber(target: &'static str) -> (ExpectSubscriber, collector::MockHandle) {
+    fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
         subscriber::named(format!("target_{}", target))
-            .enter(span::mock().with_target(target).at_level(Level::INFO))
-            .event(
-                event::msg("hello world")
-                    .in_scope(vec![span::mock().with_target(target).at_level(Level::INFO)]),
-            )
-            .exit(span::mock().with_target(target).at_level(Level::INFO))
-            .done()
+            .enter(span::expect().with_target(target).at_level(Level::INFO))
+            .event(event::msg("hello world").in_scope(vec![
+                span::expect().with_target(target).at_level(Level::INFO),
+            ]))
+            .exit(span::expect().with_target(target).at_level(Level::INFO))
+            .only()
             .run_with_handle()
     }
 
     let (a_subscriber, a_handle) = target_subscriber("a");
     let (b_subscriber, b_handle) = target_subscriber("b");
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .enter(span::mock().with_target("b").at_level(Level::INFO))
-        .enter(span::mock().with_target("a").at_level(Level::INFO))
+        .enter(span::expect().with_target("b").at_level(Level::INFO))
+        .enter(span::expect().with_target("a").at_level(Level::INFO))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().with_target("a").at_level(Level::INFO),
-            span::mock().with_target("b").at_level(Level::INFO),
+            span::expect().with_target("a").at_level(Level::INFO),
+            span::expect().with_target("b").at_level(Level::INFO),
         ]))
-        .exit(span::mock().with_target("a").at_level(Level::INFO))
-        .exit(span::mock().with_target("b").at_level(Level::INFO))
-        .done()
+        .exit(span::expect().with_target("a").at_level(Level::INFO))
+        .exit(span::expect().with_target("b").at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let full_scope = vec![
-        span::mock().with_target("b").at_level(Level::TRACE),
-        span::mock().with_target("a").at_level(Level::INFO),
-        span::mock().with_target("b").at_level(Level::INFO),
-        span::mock().with_target("a").at_level(Level::TRACE),
+        span::expect().with_target("b").at_level(Level::TRACE),
+        span::expect().with_target("a").at_level(Level::INFO),
+        span::expect().with_target("b").at_level(Level::INFO),
+        span::expect().with_target("a").at_level(Level::TRACE),
     ];
     let (all_subscriber, all_handle) = subscriber::named("all")
-        .enter(span::mock().with_target("a").at_level(Level::TRACE))
-        .enter(span::mock().with_target("b").at_level(Level::INFO))
-        .enter(span::mock().with_target("a").at_level(Level::INFO))
-        .enter(span::mock().with_target("b").at_level(Level::TRACE))
+        .enter(span::expect().with_target("a").at_level(Level::TRACE))
+        .enter(span::expect().with_target("b").at_level(Level::INFO))
+        .enter(span::expect().with_target("a").at_level(Level::INFO))
+        .enter(span::expect().with_target("b").at_level(Level::TRACE))
         .event(event::msg("hello world").in_scope(full_scope.clone()))
         .event(
             event::msg("hello to my target")
@@ -103,11 +114,11 @@ fn filter_span_scopes() {
                 .with_target("b")
                 .in_scope(full_scope),
         )
-        .exit(span::mock().with_target("b").at_level(Level::TRACE))
-        .exit(span::mock().with_target("a").at_level(Level::INFO))
-        .exit(span::mock().with_target("b").at_level(Level::INFO))
-        .exit(span::mock().with_target("a").at_level(Level::TRACE))
-        .done()
+        .exit(span::expect().with_target("b").at_level(Level::TRACE))
+        .exit(span::expect().with_target("a").at_level(Level::INFO))
+        .exit(span::expect().with_target("b").at_level(Level::INFO))
+        .exit(span::expect().with_target("a").at_level(Level::TRACE))
+        .only()
         .run_with_handle();
 
     let a_subscriber = a_subscriber.with_filter(filter::filter_fn(|meta| {

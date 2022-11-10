@@ -1,6 +1,6 @@
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
-use tracing_mock::field::mock;
+use tracing_mock::field::expect;
 use tracing_mock::span::NewSpan;
 use tracing_mock::*;
 
@@ -48,11 +48,11 @@ impl HasField {
 
 #[test]
 fn fields() {
-    let span = span::mock().with_field(
-        mock("foo")
+    let span = span::expect().with_field(
+        expect("foo")
             .with_value(&"bar")
-            .and(mock("dsa").with_value(&true))
-            .and(mock("num").with_value(&1))
+            .and(expect("dsa").with_value(&true))
+            .and(expect("num").with_value(&1))
             .only(),
     );
     run_test(span, || {
@@ -62,10 +62,10 @@ fn fields() {
 
 #[test]
 fn expr_field() {
-    let span = span::mock().with_field(
-        mock("s")
+    let span = span::expect().with_field(
+        expect("s")
             .with_value(&"hello world")
-            .and(mock("len").with_value(&"hello world".len()))
+            .and(expect("len").with_value(&"hello world".len()))
             .only(),
     );
     run_test(span, || {
@@ -75,11 +75,11 @@ fn expr_field() {
 
 #[test]
 fn two_expr_fields() {
-    let span = span::mock().with_field(
-        mock("s")
+    let span = span::expect().with_field(
+        expect("s")
             .with_value(&"hello world")
-            .and(mock("s.len").with_value(&"hello world".len()))
-            .and(mock("s.is_empty").with_value(&false))
+            .and(expect("s.len").with_value(&"hello world".len()))
+            .and(expect("s.is_empty").with_value(&false))
             .only(),
     );
     run_test(span, || {
@@ -89,19 +89,19 @@ fn two_expr_fields() {
 
 #[test]
 fn clashy_expr_field() {
-    let span = span::mock().with_field(
+    let span = span::expect().with_field(
         // Overriding the `s` field should record `s` as a `Display` value,
         // rather than as a `Debug` value.
-        mock("s")
+        expect("s")
             .with_value(&tracing::field::display("hello world"))
-            .and(mock("s.len").with_value(&"hello world".len()))
+            .and(expect("s.len").with_value(&"hello world".len()))
             .only(),
     );
     run_test(span, || {
         fn_clashy_expr_field("hello world");
     });
 
-    let span = span::mock().with_field(mock("s").with_value(&"s").only());
+    let span = span::expect().with_field(expect("s").with_value(&"s").only());
     run_test(span, || {
         fn_clashy_expr_field2("hello world");
     });
@@ -109,7 +109,7 @@ fn clashy_expr_field() {
 
 #[test]
 fn self_expr_field() {
-    let span = span::mock().with_field(mock("my_field").with_value(&"hello world").only());
+    let span = span::expect().with_field(expect("my_field").with_value(&"hello world").only());
     run_test(span, || {
         let has_field = HasField {
             my_field: "hello world",
@@ -120,10 +120,10 @@ fn self_expr_field() {
 
 #[test]
 fn parameters_with_fields() {
-    let span = span::mock().with_field(
-        mock("foo")
+    let span = span::expect().with_field(
+        expect("foo")
             .with_value(&"bar")
-            .and(mock("param").with_value(&1u32))
+            .and(expect("param").with_value(&1u32))
             .only(),
     );
     run_test(span, || {
@@ -133,7 +133,7 @@ fn parameters_with_fields() {
 
 #[test]
 fn empty_field() {
-    let span = span::mock().with_field(mock("foo").with_value(&"bar").only());
+    let span = span::expect().with_field(expect("foo").with_value(&"bar").only());
     run_test(span, || {
         fn_empty_field();
     });
@@ -141,7 +141,7 @@ fn empty_field() {
 
 #[test]
 fn string_field() {
-    let span = span::mock().with_field(mock("s").with_value(&"hello world").only());
+    let span = span::expect().with_field(expect("s").with_value(&"hello world").only());
     run_test(span, || {
         fn_string(String::from("hello world"));
     });
@@ -150,9 +150,9 @@ fn string_field() {
 fn run_test<F: FnOnce() -> T, T>(span: NewSpan, fun: F) {
     let (collector, handle) = collector::mock()
         .new_span(span)
-        .enter(span::mock())
-        .exit(span::mock())
-        .done()
+        .enter(span::expect())
+        .exit(span::expect())
+        .only()
         .run_with_handle();
 
     with_default(collector, fun);

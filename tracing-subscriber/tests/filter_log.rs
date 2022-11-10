@@ -36,10 +36,10 @@ fn log_is_enabled() {
         .parse()
         .expect("filter should parse");
     let (collector, finished) = collector::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     // Note: we have to set the global default in order to set the `log` max

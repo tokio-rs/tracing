@@ -24,36 +24,36 @@ mod my_mod {
 fn default_targets() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .enter(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .exit(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .new_span(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
         .enter(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
         .exit(
-            span::mock()
+            span::expect()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -67,25 +67,37 @@ fn default_targets() {
 #[test]
 fn custom_targets() {
     let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("custom_target").with_target("my_target"))
-        .enter(span::mock().named("custom_target").with_target("my_target"))
-        .exit(span::mock().named("custom_target").with_target("my_target"))
         .new_span(
-            span::mock()
+            span::expect()
+                .named("custom_target")
+                .with_target("my_target"),
+        )
+        .enter(
+            span::expect()
+                .named("custom_target")
+                .with_target("my_target"),
+        )
+        .exit(
+            span::expect()
+                .named("custom_target")
+                .with_target("my_target"),
+        )
+        .new_span(
+            span::expect()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )
         .enter(
-            span::mock()
+            span::expect()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )
         .exit(
-            span::mock()
+            span::expect()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {

@@ -5,12 +5,12 @@ use tracing_mock::*;
 #[test]
 fn enter_exit_is_reasonable() {
     let (collector, handle) = collector::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .only()
         .run_with_handle();
     with_default(collector, || {
         let future = PollN::new_ok(2).instrument(tracing::span!(Level::TRACE, "foo"));
@@ -22,12 +22,12 @@ fn enter_exit_is_reasonable() {
 #[test]
 fn error_ends_span() {
     let (collector, handle) = collector::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .only()
         .run_with_handle();
     with_default(collector, || {
         let future = PollN::new_err(2).instrument(tracing::span!(Level::TRACE, "foo"));

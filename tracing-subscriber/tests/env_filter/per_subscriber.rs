@@ -8,10 +8,10 @@ use tracing_mock::{event, field, span, subscriber};
 fn level_filter_event() {
     let filter: EnvFilter = "info".parse().expect("filter should parse");
     let (subscriber, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -34,18 +34,18 @@ fn same_name_spans() {
         .expect("filter should parse");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span::mock()
+            span::expect()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("bar")),
+                .with_field(field::expect("bar")),
         )
         .new_span(
-            span::mock()
+            span::expect()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("baz")),
+                .with_field(field::expect("baz")),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -62,12 +62,12 @@ fn same_name_spans() {
 fn level_filter_event_with_target() {
     let filter: EnvFilter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -96,12 +96,12 @@ fn level_filter_event_with_target_and_span() {
     let (subscriber, handle) = subscriber::mock()
         .enter(cool_span.clone())
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::DEBUG)
                 .in_scope(vec![cool_span.clone()]),
         )
         .exit(cool_span)
-        .done()
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -129,12 +129,12 @@ fn not_order_dependent() {
 
     let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -164,9 +164,9 @@ fn add_directive_enables_event() {
     filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
 
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO).with_target("hello"))
-        .event(event::mock().at_level(Level::TRACE).with_target("hello"))
-        .done()
+        .event(event::expect().at_level(Level::INFO).with_target("hello"))
+        .event(event::expect().at_level(Level::TRACE).with_target("hello"))
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -187,21 +187,21 @@ fn span_name_filter_is_dynamic() {
     let cool_span = span::named("cool_span");
     let uncool_span = span::named("uncool_span");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::INFO))
         .enter(cool_span.clone())
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::DEBUG)
                 .in_scope(vec![cool_span.clone()]),
         )
         .enter(uncool_span.clone())
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::WARN)
                 .in_scope(vec![uncool_span.clone()]),
         )
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::DEBUG)
                 .in_scope(vec![uncool_span.clone()]),
         )
@@ -209,17 +209,17 @@ fn span_name_filter_is_dynamic() {
         .exit(cool_span)
         .enter(uncool_span.clone())
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::WARN)
                 .in_scope(vec![uncool_span.clone()]),
         )
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::ERROR)
                 .in_scope(vec![uncool_span.clone()]),
         )
         .exit(uncool_span)
-        .done()
+        .only()
         .run_with_handle();
 
     let _collect = tracing_subscriber::registry()
@@ -260,12 +260,12 @@ fn multiple_dynamic_filters() {
         let (subscriber, handle) = subscriber::named("subscriber1")
             .enter(span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::DEBUG)
                     .in_scope(vec![span.clone()]),
             )
             .exit(span)
-            .done()
+            .only()
             .run_with_handle();
         (subscriber.with_filter(filter), handle)
     };
@@ -276,12 +276,12 @@ fn multiple_dynamic_filters() {
         let (subscriber, handle) = subscriber::named("subscriber2")
             .enter(span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::INFO)
                     .in_scope(vec![span.clone()]),
             )
             .exit(span)
-            .done()
+            .only()
             .run_with_handle();
         (subscriber.with_filter(filter), handle)
     };

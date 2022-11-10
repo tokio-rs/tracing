@@ -12,21 +12,21 @@ use tracing_subscriber::{filter, prelude::*, Subscribe};
 #[test]
 fn basic_subscriber_filters() {
     let (trace_subscriber, trace_handle) = subscriber::named("trace")
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::TRACE))
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -47,21 +47,21 @@ fn basic_subscriber_filters() {
 #[test]
 fn basic_subscriber_filters_spans() {
     let (trace_subscriber, trace_handle) = subscriber::named("trace")
-        .new_span(span::mock().at_level(Level::TRACE))
-        .new_span(span::mock().at_level(Level::DEBUG))
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::TRACE))
+        .new_span(span::expect().at_level(Level::DEBUG))
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .new_span(span::mock().at_level(Level::DEBUG))
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::DEBUG))
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -82,10 +82,10 @@ fn basic_subscriber_filters_spans() {
 #[test]
 fn global_filters_subscribers_still_work() {
     let (expect, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -105,9 +105,9 @@ fn global_filters_subscribers_still_work() {
 #[test]
 fn global_filter_interests_are_cached() {
     let (expect, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -133,10 +133,10 @@ fn global_filter_interests_are_cached() {
 #[test]
 fn global_filters_affect_subscriber_filters() {
     let (expect, handle) = subscriber::named("debug")
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -158,17 +158,17 @@ fn filter_fn() {
     let (all, all_handle) = subscriber::named("all_targets")
         .event(event::msg("hello foo"))
         .event(event::msg("hello bar"))
-        .done()
+        .only()
         .run_with_handle();
 
     let (foo, foo_handle) = subscriber::named("foo_target")
         .event(event::msg("hello foo"))
-        .done()
+        .only()
         .run_with_handle();
 
     let (bar, bar_handle) = subscriber::named("bar_target")
         .event(event::msg("hello bar"))
-        .done()
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()

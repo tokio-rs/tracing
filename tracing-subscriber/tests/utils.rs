@@ -7,11 +7,11 @@ use tracing_subscriber::prelude::*;
 fn init_ext_works() {
     let (subscriber, finished) = collector::mock()
         .event(
-            event::mock()
+            event::expect()
                 .at_level(tracing::Level::INFO)
                 .with_target("init_works"),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     let _guard = subscriber.set_default();
