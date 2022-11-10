@@ -1,7 +1,9 @@
+#![allow(missing_docs, dead_code)]
 use crate::{
-    event::MockEvent,
+    event::ExpectedEvent,
     expectation::Expect,
-    span::{MockSpan, NewSpan},
+    field::ExpectedFields,
+    span::{ExpectedSpan, NewSpan},
     subscriber::MockHandle,
 };
 use tracing_core::{
@@ -19,7 +21,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[must_use]
 pub fn mock() -> MockLayerBuilder {
     MockLayerBuilder {
         expected: Default::default(),
@@ -30,7 +31,6 @@ pub fn mock() -> MockLayerBuilder {
     }
 }
 
-#[must_use]
 pub fn named(name: impl std::fmt::Display) -> MockLayerBuilder {
     mock().named(name)
 }
@@ -47,6 +47,19 @@ pub struct MockLayer {
 }
 
 impl MockLayerBuilder {
+    /// Overrides the name printed by the mock layer's debugging output.
+    ///
+    /// The debugging output is displayed if the test panics, or if the test is
+    /// run with `--nocapture`.
+    ///
+    /// By default, the mock layer's name is the  name of the test
+    /// (*technically*, the name of the thread where it was created, which is
+    /// the name of the test unless tests are run with `--test-threads=1`).
+    /// When a test has only one mock layer, this is sufficient. However,
+    /// some tests may include multiple layers, in order to test
+    /// interactions between multiple layers. In that case, it can be
+    /// helpful to give each layer a separate name to distinguish where the
+    /// debugging output comes from.
     pub fn named(mut self, name: impl fmt::Display) -> Self {
         use std::fmt::Write;
         if !self.name.is_empty() {
@@ -57,8 +70,31 @@ impl MockLayerBuilder {
         self
     }
 
-    pub fn event(mut self, event: MockEvent) -> Self {
+    pub fn enter(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::Enter(span));
+        self
+    }
+
+    pub fn event(mut self, event: ExpectedEvent) -> Self {
         self.expected.push_back(Expect::Event(event));
+        self
+    }
+
+    pub fn exit(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::Exit(span));
+        self
+    }
+
+    pub fn only(mut self) -> Self {
+        self.expected.push_back(Expect::Nothing);
+        self
+    }
+
+    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
+    where
+        I: Into<ExpectedFields>,
+    {
+        self.expected.push_back(Expect::Visit(span, fields.into()));
         self
     }
 
@@ -67,21 +103,6 @@ impl MockLayerBuilder {
         I: Into<NewSpan>,
     {
         self.expected.push_back(Expect::NewSpan(new_span.into()));
-        self
-    }
-
-    pub fn enter(mut self, span: MockSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
-        self
-    }
-
-    pub fn exit(mut self, span: MockSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
-        self
-    }
-
-    pub fn done(mut self) -> Self {
-        self.expected.push_back(Expect::Nothing);
         self
     }
 
@@ -96,19 +117,19 @@ impl MockLayerBuilder {
     pub fn run_with_handle(self) -> (MockLayer, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle::new(expected.clone(), self.name.clone());
-        let subscriber = MockLayer {
+        let layer = MockLayer {
             expected,
             name: self.name,
             current: Mutex::new(Vec::new()),
         };
-        (subscriber, handle)
+        (layer, handle)
     }
 }
 
 impl MockLayer {
     fn check_span_ref<'spans, S>(
         &self,
-        expected: &MockSpan,
+        expected: &ExpectedSpan,
         actual: &SpanRef<'spans, S>,
         what_happened: impl fmt::Display,
     ) where
@@ -238,11 +259,7 @@ where
     }
 
     fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, C>) {
-        unimplemented!(
-            "so far, we don't have any tests that need an `on_follows_from` \
-            implementation.\nif you just wrote one that does, feel free to \
-            implement it!"
-        );
+        // TODO: it should be possible to expect spans to follow from other spans
     }
 
     fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, C>) {
@@ -360,13 +377,13 @@ where
     }
 
     fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
-        panic!("well-behaved subscribers should never do this to us, lol");
+        panic!("well-behaved Layers should never do this to us, lol");
     }
 }
 
 impl fmt::Debug for MockLayer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = f.debug_struct("MockLayer");
+        let mut s = f.debug_struct("Expectlayer");
         s.field("name", &self.name);
 
         if let Ok(expected) = self.expected.try_lock() {

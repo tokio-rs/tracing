@@ -8,14 +8,14 @@ use tracing_mock::*;
 #[test]
 fn enter_exit_is_reasonable() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .only()
         .run_with_handle();
     with_default(subscriber, || {
         let future = PollN::new_ok(2).instrument(tracing::span!(Level::TRACE, "foo"));
@@ -27,14 +27,14 @@ fn enter_exit_is_reasonable() {
 #[test]
 fn error_ends_span() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .only()
         .run_with_handle();
     with_default(subscriber, || {
         let future = PollN::new_err(2).instrument(tracing::span!(Level::TRACE, "foo"));
@@ -66,17 +66,17 @@ fn span_on_drop() {
     }
 
     let subscriber = subscriber::mock()
-        .enter(span::mock().named("foo"))
-        .event(event::mock().at_level(Level::INFO))
-        .exit(span::mock().named("foo"))
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .enter(span::mock().named("bar"))
-        .event(event::mock().at_level(Level::INFO))
-        .exit(span::mock().named("bar"))
-        .drop_span(span::mock().named("bar"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .event(event::expect().at_level(Level::INFO))
+        .exit(span::expect().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .enter(span::expect().named("bar"))
+        .event(event::expect().at_level(Level::INFO))
+        .exit(span::expect().named("bar"))
+        .drop_span(span::expect().named("bar"))
+        .only()
         .run();
 
     with_default(subscriber, || {

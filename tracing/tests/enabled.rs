@@ -13,7 +13,7 @@ fn level_and_target() {
                 meta.level() <= &Level::INFO
             }
         })
-        .done()
+        .only()
         .run();
 
     let _guard = tracing::subscriber::set_default(subscriber);
@@ -38,7 +38,7 @@ fn span_and_event() {
                 meta.level() <= &Level::INFO
             }
         })
-        .done()
+        .only()
         .run();
 
     let _guard = tracing::subscriber::set_default(subscriber);

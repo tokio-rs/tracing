@@ -12,23 +12,23 @@ use tracing_mock::{event, layer, span, subscriber};
 use tracing_subscriber::{filter, prelude::*, Layer};
 
 #[test]
-fn basic_layer_filters() {
+fn basic_subscriber_filters() {
     let (trace_layer, trace_handle) = layer::named("trace")
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::TRACE))
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (debug_layer, debug_handle) = layer::named("debug")
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (info_layer, info_handle) = layer::named("info")
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -47,23 +47,23 @@ fn basic_layer_filters() {
 }
 
 #[test]
-fn basic_layer_filters_spans() {
+fn basic_subscriber_filters_spans() {
     let (trace_layer, trace_handle) = layer::named("trace")
-        .new_span(span::mock().at_level(Level::TRACE))
-        .new_span(span::mock().at_level(Level::DEBUG))
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::TRACE))
+        .new_span(span::expect().at_level(Level::DEBUG))
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (debug_layer, debug_handle) = layer::named("debug")
-        .new_span(span::mock().at_level(Level::DEBUG))
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::DEBUG))
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let (info_layer, info_handle) = layer::named("info")
-        .new_span(span::mock().at_level(Level::INFO))
-        .done()
+        .new_span(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -82,12 +82,12 @@ fn basic_layer_filters_spans() {
 }
 
 #[test]
-fn global_filters_layers_still_work() {
+fn global_filters_subscribers_still_work() {
     let (expect, handle) = layer::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -107,9 +107,9 @@ fn global_filters_layers_still_work() {
 #[test]
 fn global_filter_interests_are_cached() {
     let (expect, handle) = layer::mock()
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -133,12 +133,12 @@ fn global_filter_interests_are_cached() {
 }
 
 #[test]
-fn global_filters_affect_layer_filters() {
+fn global_filters_affect_subscriber_filters() {
     let (expect, handle) = layer::named("debug")
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -160,17 +160,17 @@ fn filter_fn() {
     let (all, all_handle) = layer::named("all_targets")
         .event(event::msg("hello foo"))
         .event(event::msg("hello bar"))
-        .done()
+        .only()
         .run_with_handle();
 
     let (foo, foo_handle) = layer::named("foo_target")
         .event(event::msg("hello foo"))
-        .done()
+        .only()
         .run_with_handle();
 
     let (bar, bar_handle) = layer::named("bar_target")
         .event(event::msg("hello bar"))
-        .done()
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()

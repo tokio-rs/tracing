@@ -8,12 +8,12 @@ fn scoped_clobbers_global() {
     let (scoped, scoped_handle) = subscriber::mock()
         .event(event::msg("before global"))
         .event(event::msg("before drop"))
-        .done()
+        .only()
         .run_with_handle();
 
     let (global, global_handle) = subscriber::mock()
         .event(event::msg("after drop"))
-        .done()
+        .only()
         .run_with_handle();
 
     // Set a scoped default subscriber, returning a guard.

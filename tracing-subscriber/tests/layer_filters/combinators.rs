@@ -12,7 +12,7 @@ fn and() {
                 .at_level(tracing::Level::INFO)
                 .with_target("interesting_target"),
         )
-        .done()
+        .only()
         .run_with_handle();
 
     // Enables spans and events with targets starting with `interesting_target`:

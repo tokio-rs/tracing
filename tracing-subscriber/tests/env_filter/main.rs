@@ -13,10 +13,10 @@ use tracing_subscriber::{
 fn level_filter_event() {
     let filter: EnvFilter = "info".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -38,18 +38,18 @@ fn same_name_spans() {
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
         .new_span(
-            span::mock()
+            span::expect()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("bar")),
+                .with_field(field::expect("bar")),
         )
         .new_span(
-            span::mock()
+            span::expect()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("baz")),
+                .with_field(field::expect("baz")),
         )
-        .done()
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
     with_default(subscriber, || {
@@ -64,12 +64,12 @@ fn same_name_spans() {
 fn level_filter_event_with_target() {
     let filter: EnvFilter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -98,14 +98,14 @@ fn level_filter_event_with_target_and_span_global() {
     let (subscriber, handle) = subscriber::mock()
         .enter(cool_span.clone())
         .event(
-            event::mock()
+            event::expect()
                 .at_level(Level::DEBUG)
                 .in_scope(vec![cool_span.clone()]),
         )
         .exit(cool_span)
         .enter(uncool_span.clone())
         .exit(uncool_span)
-        .done()
+        .only()
         .run_with_handle();
 
     let subscriber = subscriber.with(filter);
@@ -133,12 +133,12 @@ fn not_order_dependent() {
 
     let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -167,9 +167,9 @@ fn add_directive_enables_event() {
     filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
 
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO).with_target("hello"))
-        .event(event::mock().at_level(Level::TRACE).with_target("hello"))
-        .done()
+        .event(event::expect().at_level(Level::INFO).with_target("hello"))
+        .event(event::expect().at_level(Level::TRACE).with_target("hello"))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -187,19 +187,19 @@ fn span_name_filter_is_dynamic() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .enter(span::named("cool_span"))
-        .event(event::mock().at_level(Level::DEBUG))
-        .enter(span::named("uncool_span"))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::DEBUG))
-        .exit(span::named("uncool_span"))
-        .exit(span::named("cool_span"))
-        .enter(span::named("uncool_span"))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .exit(span::named("uncool_span"))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .enter(span::expect().named("cool_span"))
+        .event(event::expect().at_level(Level::DEBUG))
+        .enter(span::expect().named("uncool_span"))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::DEBUG))
+        .exit(span::expect().named("uncool_span"))
+        .exit(span::expect().named("cool_span"))
+        .enter(span::expect().named("uncool_span"))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .exit(span::expect().named("uncool_span"))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -245,10 +245,10 @@ mod per_layer_filter {
     fn level_filter_event() {
         let filter: EnvFilter = "info".parse().expect("filter should parse");
         let (layer, handle) = layer::mock()
-            .event(event::mock().at_level(Level::INFO))
-            .event(event::mock().at_level(Level::WARN))
-            .event(event::mock().at_level(Level::ERROR))
-            .done()
+            .event(event::expect().at_level(Level::INFO))
+            .event(event::expect().at_level(Level::WARN))
+            .event(event::expect().at_level(Level::ERROR))
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -271,18 +271,18 @@ mod per_layer_filter {
             .expect("filter should parse");
         let (layer, handle) = layer::mock()
             .new_span(
-                span::mock()
+                span::expect()
                     .named("foo")
                     .at_level(Level::TRACE)
-                    .with_field(field::mock("bar")),
+                    .with_field(field::expect("bar")),
             )
             .new_span(
-                span::mock()
+                span::expect()
                     .named("foo")
                     .at_level(Level::TRACE)
-                    .with_field(field::mock("baz")),
+                    .with_field(field::expect("baz")),
             )
-            .done()
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -299,12 +299,12 @@ mod per_layer_filter {
     fn level_filter_event_with_target() {
         let filter: EnvFilter = "info,stuff=debug".parse().expect("filter should parse");
         let (layer, handle) = layer::mock()
-            .event(event::mock().at_level(Level::INFO))
-            .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-            .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-            .event(event::mock().at_level(Level::ERROR))
-            .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-            .done()
+            .event(event::expect().at_level(Level::INFO))
+            .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+            .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+            .event(event::expect().at_level(Level::ERROR))
+            .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -333,12 +333,12 @@ mod per_layer_filter {
         let (layer, handle) = layer::mock()
             .enter(cool_span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::DEBUG)
                     .in_scope(vec![cool_span.clone()]),
             )
             .exit(cool_span)
-            .done()
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -366,12 +366,12 @@ mod per_layer_filter {
 
         let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
         let (layer, finished) = layer::mock()
-            .event(event::mock().at_level(Level::INFO))
-            .event(event::mock().at_level(Level::DEBUG).with_target("stuff"))
-            .event(event::mock().at_level(Level::WARN).with_target("stuff"))
-            .event(event::mock().at_level(Level::ERROR))
-            .event(event::mock().at_level(Level::ERROR).with_target("stuff"))
-            .done()
+            .event(event::expect().at_level(Level::INFO))
+            .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
+            .event(event::expect().at_level(Level::WARN).with_target("stuff"))
+            .event(event::expect().at_level(Level::ERROR))
+            .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -401,9 +401,9 @@ mod per_layer_filter {
         filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
 
         let (layer, finished) = layer::mock()
-            .event(event::mock().at_level(Level::INFO).with_target("hello"))
-            .event(event::mock().at_level(Level::TRACE).with_target("hello"))
-            .done()
+            .event(event::expect().at_level(Level::INFO).with_target("hello"))
+            .event(event::expect().at_level(Level::TRACE).with_target("hello"))
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -424,21 +424,21 @@ mod per_layer_filter {
         let cool_span = span::named("cool_span");
         let uncool_span = span::named("uncool_span");
         let (layer, finished) = layer::mock()
-            .event(event::mock().at_level(Level::INFO))
+            .event(event::expect().at_level(Level::INFO))
             .enter(cool_span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::DEBUG)
                     .in_scope(vec![cool_span.clone()]),
             )
             .enter(uncool_span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::WARN)
                     .in_scope(vec![uncool_span.clone()]),
             )
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::DEBUG)
                     .in_scope(vec![uncool_span.clone()]),
             )
@@ -446,17 +446,17 @@ mod per_layer_filter {
             .exit(cool_span)
             .enter(uncool_span.clone())
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::WARN)
                     .in_scope(vec![uncool_span.clone()]),
             )
             .event(
-                event::mock()
+                event::expect()
                     .at_level(Level::ERROR)
                     .in_scope(vec![uncool_span.clone()]),
             )
             .exit(uncool_span)
-            .done()
+            .only()
             .run_with_handle();
 
         let _subscriber = tracing_subscriber::registry()
@@ -497,12 +497,12 @@ mod per_layer_filter {
             let (layer, handle) = layer::named("layer1")
                 .enter(span.clone())
                 .event(
-                    event::mock()
+                    event::expect()
                         .at_level(Level::DEBUG)
                         .in_scope(vec![span.clone()]),
                 )
                 .exit(span)
-                .done()
+                .only()
                 .run_with_handle();
             (layer.with_filter(filter), handle)
         };
@@ -513,12 +513,12 @@ mod per_layer_filter {
             let (layer, handle) = layer::named("layer2")
                 .enter(span.clone())
                 .event(
-                    event::mock()
+                    event::expect()
                         .at_level(Level::INFO)
                         .in_scope(vec![span.clone()]),
                 )
                 .exit(span)
-                .done()
+                .only()
                 .run_with_handle();
             (layer.with_filter(filter), handle)
         };

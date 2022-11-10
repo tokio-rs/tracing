@@ -1,9 +1,9 @@
 #![allow(missing_docs)]
-use super::{
-    event::MockEvent,
+use crate::{
+    event::ExpectedEvent,
     expectation::Expect,
-    field as mock_field,
-    span::{MockSpan, NewSpan},
+    field::ExpectedFields,
+    span::{ExpectedSpan, NewSpan},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -82,46 +82,46 @@ where
         }
     }
 
-    pub fn enter(mut self, span: MockSpan) -> Self {
+    pub fn enter(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::Enter(span));
         self
     }
 
-    pub fn follows_from(mut self, consequence: MockSpan, cause: MockSpan) -> Self {
+    pub fn follows_from(mut self, consequence: ExpectedSpan, cause: ExpectedSpan) -> Self {
         self.expected
             .push_back(Expect::FollowsFrom { consequence, cause });
         self
     }
 
-    pub fn event(mut self, event: MockEvent) -> Self {
+    pub fn event(mut self, event: ExpectedEvent) -> Self {
         self.expected.push_back(Expect::Event(event));
         self
     }
 
-    pub fn exit(mut self, span: MockSpan) -> Self {
+    pub fn exit(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::Exit(span));
         self
     }
 
-    pub fn clone_span(mut self, span: MockSpan) -> Self {
+    pub fn clone_span(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::CloneSpan(span));
         self
     }
 
     #[allow(deprecated)]
-    pub fn drop_span(mut self, span: MockSpan) -> Self {
+    pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::DropSpan(span));
         self
     }
 
-    pub fn done(mut self) -> Self {
+    pub fn only(mut self) -> Self {
         self.expected.push_back(Expect::Nothing);
         self
     }
 
-    pub fn record<I>(mut self, span: MockSpan, fields: I) -> Self
+    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
     where
-        I: Into<mock_field::Expect>,
+        I: Into<ExpectedFields>,
     {
         self.expected.push_back(Expect::Visit(span, fields.into()));
         self
@@ -194,9 +194,7 @@ where
             Interest::never()
         }
     }
-
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        println!("[{}] max_level_hint ->  {:?}", self.name, self.max_level);
         self.max_level
     }
 
@@ -309,8 +307,8 @@ where
             id.clone(),
             SpanState {
                 name: meta.name(),
-                meta,
                 refs: 1,
+                meta,
             },
         );
         id
@@ -473,7 +471,7 @@ impl MockHandle {
 }
 
 impl Expect {
-    pub(crate) fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
+    pub fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
             Expect::Event(e) => panic!(
