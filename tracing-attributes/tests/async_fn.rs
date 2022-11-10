@@ -84,14 +84,14 @@ fn repro_1831_2() -> impl Future<Output = Result<(), Infallible>> {
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("test_async_fn"))
-        .enter(span::mock().named("test_async_fn"))
-        .event(event::mock().with_fields(field::mock("awaiting").with_value(&true)))
-        .exit(span::mock().named("test_async_fn"))
-        .enter(span::mock().named("test_async_fn"))
-        .exit(span::mock().named("test_async_fn"))
-        .drop_span(span::mock().named("test_async_fn"))
-        .done()
+        .new_span(span::expect().named("test_async_fn"))
+        .enter(span::expect().named("test_async_fn"))
+        .event(event::expect().with_fields(field::expect("awaiting").with_value(&true)))
+        .exit(span::expect().named("test_async_fn"))
+        .enter(span::expect().named("test_async_fn"))
+        .exit(span::expect().named("test_async_fn"))
+        .drop_span(span::expect().named("test_async_fn"))
+        .only()
         .run_with_handle();
     with_default(collector, || {
         block_on_future(async { test_async_fn(2).await }).unwrap();
@@ -111,19 +111,19 @@ fn async_fn_nested() {
         tracing::trace!(nested = true);
     }
 
-    let span = span::mock().named("test_async_fns_nested");
-    let span2 = span::mock().named("test_async_fns_nested_other");
+    let span = span::expect().named("test_async_fns_nested");
+    let span2 = span::expect().named("test_async_fns_nested_other");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .new_span(span2.clone())
         .enter(span2.clone())
-        .event(event::mock().with_fields(field::mock("nested").with_value(&true)))
+        .event(event::expect().with_fields(field::expect("nested").with_value(&true)))
         .exit(span2.clone())
         .drop_span(span2)
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -185,29 +185,29 @@ fn async_fn_with_async_trait() {
         }
     }
 
-    let span = span::mock().named("foo");
-    let span2 = span::mock().named("bar");
-    let span3 = span::mock().named("baz");
+    let span = span::expect().named("foo");
+    let span2 = span::expect().named("bar");
+    let span3 = span::expect().named("baz");
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("self"))
-                .with_field(field::mock("v")),
+                .with_field(field::expect("self"))
+                .with_field(field::expect("v")),
         )
         .enter(span.clone())
         .new_span(span3.clone())
         .enter(span3.clone())
-        .event(event::mock().with_fields(field::mock("val").with_value(&2u64)))
+        .event(event::expect().with_fields(field::expect("val").with_value(&2u64)))
         .exit(span3.clone())
         .drop_span(span3)
-        .new_span(span2.clone().with_field(field::mock("self")))
+        .new_span(span2.clone().with_field(field::expect("self")))
         .enter(span2.clone())
-        .event(event::mock().with_fields(field::mock("val").with_value(&5u64)))
+        .event(event::expect().with_fields(field::expect("val").with_value(&5u64)))
         .exit(span2.clone())
         .drop_span(span2)
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -243,21 +243,21 @@ fn async_fn_with_async_trait_and_fields_expressions() {
         async fn call(&mut self, _v: usize) {}
     }
 
-    let span = span::mock().named("call");
+    let span = span::expect().named("call");
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("_v")
+                field::expect("_v")
                     .with_value(&5usize)
-                    .and(field::mock("test").with_value(&tracing::field::debug(10)))
-                    .and(field::mock("val").with_value(&42u64))
-                    .and(field::mock("val2").with_value(&42u64)),
+                    .and(field::expect("test").with_value(&tracing::field::debug(10)))
+                    .and(field::expect("val").with_value(&42u64))
+                    .and(field::expect("val2").with_value(&42u64)),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -309,26 +309,26 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
     }
 
     //let span = span::mock().named("call");
-    let span2 = span::mock().named("call_with_self");
-    let span3 = span::mock().named("call_with_mut_self");
-    let span4 = span::mock().named("sync_fun");
+    let span2 = span::expect().named("call_with_self");
+    let span3 = span::expect().named("call_with_mut_self");
+    let span4 = span::expect().named("sync_fun");
     let (collector, handle) = collector::mock()
         /*.new_span(span.clone()
             .with_field(
-                field::mock("Self").with_value(&"TestImpler")))
+                field::expect("Self").with_value(&"TestImpler")))
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)*/
         .new_span(
             span2
                 .clone()
-                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+                .with_field(field::expect("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
         .enter(span2.clone())
         .new_span(
             span4
                 .clone()
-                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+                .with_field(field::expect("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
         .enter(span4.clone())
         .exit(span4)
@@ -337,12 +337,12 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
         .new_span(
             span3
                 .clone()
-                .with_field(field::mock("Self").with_value(&std::any::type_name::<TestImpl>())),
+                .with_field(field::expect("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
         .enter(span3.clone())
         .exit(span3.clone())
         .drop_span(span3)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -377,13 +377,13 @@ fn out_of_scope_fields() {
         }
     }
 
-    let span = span::mock().named("call");
+    let span = span::expect().named("call");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -408,8 +408,8 @@ fn manual_impl_future() {
         }
     }
 
-    let span = span::mock().named("manual_impl_future");
-    let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
+    let span = span::expect().named("manual_impl_future");
+    let poll_event = || event::expect().with_fields(field::expect("poll").with_value(&true));
 
     let (collector, handle) = collector::mock()
         // await manual_impl_future
@@ -418,7 +418,7 @@ fn manual_impl_future() {
         .event(poll_event())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -439,8 +439,8 @@ fn manual_box_pin() {
         })
     }
 
-    let span = span::mock().named("manual_box_pin");
-    let poll_event = || event::mock().with_fields(field::mock("poll").with_value(&true));
+    let span = span::expect().named("manual_box_pin");
+    let poll_event = || event::expect().with_fields(field::expect("poll").with_value(&true));
 
     let (collector, handle) = collector::mock()
         // await manual_box_pin
@@ -449,7 +449,7 @@ fn manual_box_pin() {
         .event(poll_event())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {

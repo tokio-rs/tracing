@@ -1,49 +1,49 @@
 use super::*;
-use tracing_mock::subscriber::ExpectSubscriber;
+use tracing_mock::subscriber::MockSubscriber;
 
 #[test]
 fn filters_span_scopes() {
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .enter(span::mock().at_level(Level::DEBUG))
-        .enter(span::mock().at_level(Level::INFO))
-        .enter(span::mock().at_level(Level::WARN))
-        .enter(span::mock().at_level(Level::ERROR))
+        .enter(span::expect().at_level(Level::DEBUG))
+        .enter(span::expect().at_level(Level::INFO))
+        .enter(span::expect().at_level(Level::WARN))
+        .enter(span::expect().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().at_level(Level::ERROR),
-            span::mock().at_level(Level::WARN),
-            span::mock().at_level(Level::INFO),
-            span::mock().at_level(Level::DEBUG),
+            span::expect().at_level(Level::ERROR),
+            span::expect().at_level(Level::WARN),
+            span::expect().at_level(Level::INFO),
+            span::expect().at_level(Level::DEBUG),
         ]))
-        .exit(span::mock().at_level(Level::ERROR))
-        .exit(span::mock().at_level(Level::WARN))
-        .exit(span::mock().at_level(Level::INFO))
-        .exit(span::mock().at_level(Level::DEBUG))
-        .done()
+        .exit(span::expect().at_level(Level::ERROR))
+        .exit(span::expect().at_level(Level::WARN))
+        .exit(span::expect().at_level(Level::INFO))
+        .exit(span::expect().at_level(Level::DEBUG))
+        .only()
         .run_with_handle();
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .enter(span::mock().at_level(Level::INFO))
-        .enter(span::mock().at_level(Level::WARN))
-        .enter(span::mock().at_level(Level::ERROR))
+        .enter(span::expect().at_level(Level::INFO))
+        .enter(span::expect().at_level(Level::WARN))
+        .enter(span::expect().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().at_level(Level::ERROR),
-            span::mock().at_level(Level::WARN),
-            span::mock().at_level(Level::INFO),
+            span::expect().at_level(Level::ERROR),
+            span::expect().at_level(Level::WARN),
+            span::expect().at_level(Level::INFO),
         ]))
-        .exit(span::mock().at_level(Level::ERROR))
-        .exit(span::mock().at_level(Level::WARN))
-        .exit(span::mock().at_level(Level::INFO))
-        .done()
+        .exit(span::expect().at_level(Level::ERROR))
+        .exit(span::expect().at_level(Level::WARN))
+        .exit(span::expect().at_level(Level::INFO))
+        .only()
         .run_with_handle();
     let (warn_subscriber, warn_handle) = subscriber::named("warn")
-        .enter(span::mock().at_level(Level::WARN))
-        .enter(span::mock().at_level(Level::ERROR))
+        .enter(span::expect().at_level(Level::WARN))
+        .enter(span::expect().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().at_level(Level::ERROR),
-            span::mock().at_level(Level::WARN),
+            span::expect().at_level(Level::ERROR),
+            span::expect().at_level(Level::WARN),
         ]))
-        .exit(span::mock().at_level(Level::ERROR))
-        .exit(span::mock().at_level(Level::WARN))
-        .done()
+        .exit(span::expect().at_level(Level::ERROR))
+        .exit(span::expect().at_level(Level::WARN))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()
@@ -68,40 +68,40 @@ fn filters_span_scopes() {
 
 #[test]
 fn filters_interleaved_span_scopes() {
-    fn target_subscriber(target: &'static str) -> (ExpectSubscriber, collector::MockHandle) {
+    fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
         subscriber::named(format!("target_{}", target))
-            .enter(span::mock().with_target(target))
-            .enter(span::mock().with_target(target))
+            .enter(span::expect().with_target(target))
+            .enter(span::expect().with_target(target))
             .event(event::msg("hello world").in_scope(vec![
-                span::mock().with_target(target),
-                span::mock().with_target(target),
+                span::expect().with_target(target),
+                span::expect().with_target(target),
             ]))
             .event(
                 event::msg("hello to my target")
                     .in_scope(vec![
-                        span::mock().with_target(target),
-                        span::mock().with_target(target),
+                        span::expect().with_target(target),
+                        span::expect().with_target(target),
                     ])
                     .with_target(target),
             )
-            .exit(span::mock().with_target(target))
-            .exit(span::mock().with_target(target))
-            .done()
+            .exit(span::expect().with_target(target))
+            .exit(span::expect().with_target(target))
+            .only()
             .run_with_handle()
     }
 
     let (a_subscriber, a_handle) = target_subscriber("a");
     let (b_subscriber, b_handle) = target_subscriber("b");
     let (all_subscriber, all_handle) = subscriber::named("all")
-        .enter(span::mock().with_target("b"))
-        .enter(span::mock().with_target("a"))
+        .enter(span::expect().with_target("b"))
+        .enter(span::expect().with_target("a"))
         .event(event::msg("hello world").in_scope(vec![
-            span::mock().with_target("a"),
-            span::mock().with_target("b"),
+            span::expect().with_target("a"),
+            span::expect().with_target("b"),
         ]))
-        .exit(span::mock().with_target("a"))
-        .exit(span::mock().with_target("b"))
-        .done()
+        .exit(span::expect().with_target("a"))
+        .exit(span::expect().with_target("b"))
+        .only()
         .run_with_handle();
 
     let _subscriber = tracing_subscriber::registry()

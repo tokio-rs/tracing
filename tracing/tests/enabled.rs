@@ -16,7 +16,7 @@ fn level_and_target() {
                 meta.level() <= &Level::INFO
             }
         })
-        .done()
+        .only()
         .run();
 
     let _guard = tracing::collect::set_default(collector);
@@ -41,7 +41,7 @@ fn span_and_event() {
                 meta.level() <= &Level::INFO
             }
         })
-        .done()
+        .only()
         .run();
 
     let _guard = tracing::collect::set_default(collector);

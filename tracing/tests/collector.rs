@@ -65,16 +65,16 @@ fn event_macros_dont_infinite_loop() {
 fn boxed_collector() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::mock().named("foo").with_field(
-                field::mock("bar")
+            span::expect().named("foo").with_field(
+                field::expect("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
-        .done()
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
+        .only()
         .run_with_handle();
     let collector: Box<dyn Collect + Send + Sync + 'static> = Box::new(collector);
 
@@ -98,20 +98,20 @@ fn arced_collector() {
 
     let (collector, handle) = collector::mock()
         .new_span(
-            span::mock().named("foo").with_field(
-                field::mock("bar")
+            span::expect().named("foo").with_field(
+                field::expect("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::mock().named("foo"))
-        .exit(span::mock().named("foo"))
-        .drop_span(span::mock().named("foo"))
+        .enter(span::expect().named("foo"))
+        .exit(span::expect().named("foo"))
+        .drop_span(span::expect().named("foo"))
         .event(
-            event::mock()
-                .with_fields(field::mock("message").with_value(&display("hello from my event"))),
+            event::expect()
+                .with_fields(field::expect("message").with_value(&display("hello from my event"))),
         )
-        .done()
+        .only()
         .run_with_handle();
     let collector: Arc<dyn Collect + Send + Sync + 'static> = Arc::new(collector);
 

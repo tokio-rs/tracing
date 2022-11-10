@@ -35,10 +35,10 @@ fn multiple_max_level_hints() {
             );
             level <= &Level::INFO
         })
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
     let (subscriber2, handle2) = collector::mock()
         .named("subscriber2")
@@ -51,11 +51,11 @@ fn multiple_max_level_hints() {
             );
             level <= &Level::DEBUG
         })
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::DEBUG))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     let dispatch1 = tracing::Dispatch::new(subscriber1);

@@ -24,10 +24,10 @@ fn max_level_hints() {
             );
             true
         })
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
 
     tracing::collect::set_global_default(collector).unwrap();

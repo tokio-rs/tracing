@@ -13,14 +13,14 @@ fn spans_dont_leak() {
     let (collector, handle) = collector::mock()
         .named("spans/subscriber1")
         .with_filter(|_| false)
-        .done()
+        .only()
         .run_with_handle();
 
     let _guard = tracing::collect::set_default(collector);
 
     do_span();
 
-    let alice = span::mock().named("alice");
+    let alice = span::expect().named("alice");
     let (subscriber2, handle2) = collector::mock()
         .named("spans/subscriber2")
         .with_filter(|_| true)
@@ -28,7 +28,7 @@ fn spans_dont_leak() {
         .enter(alice.clone())
         .exit(alice.clone())
         .drop_span(alice)
-        .done()
+        .only()
         .run_with_handle();
 
     tracing::collect::with_default(subscriber2, || {
@@ -53,7 +53,7 @@ fn events_dont_leak() {
     let (collector, handle) = collector::mock()
         .named("events/collector1")
         .with_filter(|_| false)
-        .done()
+        .only()
         .run_with_handle();
 
     let _guard = tracing::collect::set_default(collector);
@@ -63,8 +63,8 @@ fn events_dont_leak() {
     let (collector2, handle2) = collector::mock()
         .named("events/collector2")
         .with_filter(|_| true)
-        .event(event::mock())
-        .done()
+        .event(event::expect())
+        .only()
         .run_with_handle();
 
     tracing::collect::with_default(collector2, || {

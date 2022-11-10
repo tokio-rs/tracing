@@ -2,7 +2,7 @@ use super::*;
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
 fn subscribe() -> (ExpectSubscriber, subscriber::MockHandle) {
-    subscribe::mock().done().run_with_handle()
+    subscribe::mock().only().run_with_handle()
 }
 
 fn filter<S>() -> filter::DynFilterFn<S> {

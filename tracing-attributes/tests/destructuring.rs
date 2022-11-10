@@ -7,21 +7,21 @@ fn destructure_tuples() {
     #[instrument]
     fn my_fn((arg1, arg2): (usize, usize)) {}
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field::expect("arg1")
                     .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .and(field::expect("arg2").with_value(&format_args!("2")))
                     .only(),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -36,23 +36,23 @@ fn destructure_nested_tuples() {
     #[instrument]
     fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field::expect("arg1")
                     .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .and(field::mock("arg3").with_value(&format_args!("3")))
-                    .and(field::mock("arg4").with_value(&format_args!("4")))
+                    .and(field::expect("arg2").with_value(&format_args!("2")))
+                    .and(field::expect("arg3").with_value(&format_args!("3")))
+                    .and(field::expect("arg4").with_value(&format_args!("4")))
                     .only(),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -67,17 +67,17 @@ fn destructure_refs() {
     #[instrument]
     fn my_fn(&arg1: &usize) {}
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::mock("arg1").with_value(&1usize).only()),
+                .with_field(field::expect("arg1").with_value(&1usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -94,21 +94,21 @@ fn destructure_tuple_structs() {
     #[instrument]
     fn my_fn(Foo(arg1, arg2): Foo) {}
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field::expect("arg1")
                     .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .and(field::expect("arg2").with_value(&format_args!("2")))
                     .only(),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -135,21 +135,21 @@ fn destructure_structs() {
         let _ = (arg1, arg2);
     }
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field::expect("arg1")
                     .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
+                    .and(field::expect("arg2").with_value(&format_args!("2")))
                     .only(),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -180,23 +180,23 @@ fn destructure_everything() {
         let _ = (arg1, arg2, arg3, arg4);
     }
 
-    let span = span::mock().named("my_fn");
+    let span = span::expect().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone().with_field(
-                field::mock("arg1")
+                field::expect("arg1")
                     .with_value(&format_args!("1"))
-                    .and(field::mock("arg2").with_value(&format_args!("2")))
-                    .and(field::mock("arg3").with_value(&format_args!("3")))
-                    .and(field::mock("arg4").with_value(&format_args!("4")))
+                    .and(field::expect("arg2").with_value(&format_args!("2")))
+                    .and(field::expect("arg3").with_value(&format_args!("3")))
+                    .and(field::expect("arg4").with_value(&format_args!("4")))
                     .only(),
             ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
-        .done()
+        .only()
         .run_with_handle();
 
     with_default(collector, || {

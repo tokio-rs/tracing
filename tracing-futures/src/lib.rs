@@ -567,12 +567,12 @@ mod tests {
         #[test]
         fn future_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
-                .done()
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .drop_span(span::expect().named("foo"))
+                .only()
                 .run_with_handle();
             with_default(collector, || {
                 PollN::new_ok(2)
@@ -586,12 +586,12 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
-                .done()
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .drop_span(span::expect().named("foo"))
+                .only()
                 .run_with_handle();
             with_default(collector, || {
                 PollN::new_err(2)
@@ -606,15 +606,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .drop_span(span::expect().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -637,7 +637,7 @@ mod tests {
         //         .drop_span(span::mock().named("b"))
         //         .exit(span::mock().named("a"))
         //         .drop_span(span::mock().named("a"))
-        //         .done()
+        //         .only()
         //         .run_with_handle();
         //     let mut runtime = tokio::runtime::Runtime::new().unwrap();
         //     with_default(collector, || {
@@ -667,15 +667,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .drop_span(span::expect().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
@@ -689,13 +689,13 @@ mod tests {
         #[test]
         fn sink_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .enter(span::expect().named("foo"))
+                .exit(span::expect().named("foo"))
+                .drop_span(span::expect().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))

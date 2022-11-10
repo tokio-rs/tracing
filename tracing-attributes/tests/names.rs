@@ -17,10 +17,10 @@ fn custom_name_no_equals() {}
 #[test]
 fn default_name_test() {
     let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("default_name"))
-        .enter(span::mock().named("default_name"))
-        .exit(span::mock().named("default_name"))
-        .done()
+        .new_span(span::expect().named("default_name"))
+        .enter(span::expect().named("default_name"))
+        .exit(span::expect().named("default_name"))
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -33,10 +33,10 @@ fn default_name_test() {
 #[test]
 fn custom_name_test() {
     let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("my_name"))
-        .enter(span::mock().named("my_name"))
-        .exit(span::mock().named("my_name"))
-        .done()
+        .new_span(span::expect().named("my_name"))
+        .enter(span::expect().named("my_name"))
+        .exit(span::expect().named("my_name"))
+        .only()
         .run_with_handle();
 
     with_default(collector, || {
@@ -49,10 +49,10 @@ fn custom_name_test() {
 #[test]
 fn custom_name_no_equals_test() {
     let (collector, handle) = collector::mock()
-        .new_span(span::mock().named("my_other_name"))
-        .enter(span::mock().named("my_other_name"))
-        .exit(span::mock().named("my_other_name"))
-        .done()
+        .new_span(span::expect().named("my_other_name"))
+        .enter(span::expect().named("my_other_name"))
+        .exit(span::expect().named("my_other_name"))
+        .only()
         .run_with_handle();
 
     with_default(collector, || {

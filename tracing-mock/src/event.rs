@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata, span, Parent};
+use super::{field, metadata::ExpectedMetadata, span, Parent};
 
 use std::fmt;
 
@@ -8,30 +8,30 @@ use std::fmt;
 /// This is intended for use with the mock subscriber API in the
 /// `subscriber` module.
 #[derive(Default, Eq, PartialEq)]
-pub struct MockEvent {
-    pub fields: Option<field::Expect>,
-    pub(crate) parent: Option<Parent>,
-    in_spans: Vec<span::MockSpan>,
-    metadata: metadata::Expect,
+pub struct ExpectedEvent {
+    fields: Option<field::ExpectedFields>,
+    parent: Option<Parent>,
+    in_spans: Vec<span::ExpectedSpan>,
+    metadata: ExpectedMetadata,
 }
 
-pub fn mock() -> MockEvent {
-    MockEvent {
+pub fn expect() -> ExpectedEvent {
+    ExpectedEvent {
         ..Default::default()
     }
 }
 
-pub fn msg(message: impl fmt::Display) -> MockEvent {
-    mock().with_fields(field::msg(message))
+pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
+    expect().with_fields(field::msg(message))
 }
 
-impl MockEvent {
+impl ExpectedEvent {
     pub fn named<I>(self, name: I) -> Self
     where
         I: Into<String>,
     {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 name: Some(name.into()),
                 ..self.metadata
             },
@@ -41,7 +41,7 @@ impl MockEvent {
 
     pub fn with_fields<I>(self, fields: I) -> Self
     where
-        I: Into<field::Expect>,
+        I: Into<field::ExpectedFields>,
     {
         Self {
             fields: Some(fields.into()),
@@ -51,7 +51,7 @@ impl MockEvent {
 
     pub fn at_level(self, level: tracing::Level) -> Self {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 level: Some(level),
                 ..self.metadata
             },
@@ -64,7 +64,7 @@ impl MockEvent {
         I: Into<String>,
     {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 target: Some(target.into()),
                 ..self.metadata
             },
@@ -72,7 +72,7 @@ impl MockEvent {
         }
     }
 
-    pub fn with_explicit_parent(self, parent: Option<&str>) -> MockEvent {
+    pub fn with_explicit_parent(self, parent: Option<&str>) -> ExpectedEvent {
         let parent = match parent {
             Some(name) => Parent::Explicit(name.into()),
             None => Parent::ExplicitRoot,
@@ -117,25 +117,25 @@ impl MockEvent {
         }
     }
 
-    pub fn in_scope(self, spans: impl IntoIterator<Item = span::MockSpan>) -> Self {
+    pub fn in_scope(self, spans: impl IntoIterator<Item = span::ExpectedSpan>) -> Self {
         Self {
             in_spans: spans.into_iter().collect(),
             ..self
         }
     }
 
-    pub fn scope_mut(&mut self) -> &mut [span::MockSpan] {
+    pub fn scope_mut(&mut self) -> &mut [span::ExpectedSpan] {
         &mut self.in_spans[..]
     }
 }
 
-impl fmt::Display for MockEvent {
+impl fmt::Display for ExpectedEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "an event{}", self.metadata)
     }
 }
 
-impl fmt::Debug for MockEvent {
+impl fmt::Debug for ExpectedEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("MockEvent");
 

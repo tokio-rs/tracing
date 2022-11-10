@@ -8,19 +8,19 @@ use tracing::{
 use std::{collections::HashMap, fmt};
 
 #[derive(Default, Debug, Eq, PartialEq)]
-pub struct Expect {
-    fields: HashMap<String, MockValue>,
+pub struct ExpectedFields {
+    fields: HashMap<String, ExpectedValue>,
     only: bool,
 }
 
 #[derive(Debug)]
-pub struct MockField {
+pub struct ExpectedField {
     name: String,
-    value: MockValue,
+    value: ExpectedValue,
 }
 
 #[derive(Debug)]
-pub enum MockValue {
+pub enum ExpectedValue {
     F64(f64),
     I64(i64),
     U64(u64),
@@ -30,11 +30,11 @@ pub enum MockValue {
     Any,
 }
 
-impl Eq for MockValue {}
+impl Eq for ExpectedValue {}
 
-impl PartialEq for MockValue {
+impl PartialEq for ExpectedValue {
     fn eq(&self, other: &Self) -> bool {
-        use MockValue::*;
+        use ExpectedValue::*;
 
         match (self, other) {
             (F64(a), F64(b)) => {
@@ -55,34 +55,34 @@ impl PartialEq for MockValue {
     }
 }
 
-pub fn mock<K>(name: K) -> MockField
+pub fn expect<K>(name: K) -> ExpectedField
 where
     String: From<K>,
 {
-    MockField {
+    ExpectedField {
         name: name.into(),
-        value: MockValue::Any,
+        value: ExpectedValue::Any,
     }
 }
 
-pub fn msg(message: impl fmt::Display) -> MockField {
-    MockField {
+pub fn msg(message: impl fmt::Display) -> ExpectedField {
+    ExpectedField {
         name: "message".to_string(),
-        value: MockValue::Debug(message.to_string()),
+        value: ExpectedValue::Debug(message.to_string()),
     }
 }
 
-impl MockField {
+impl ExpectedField {
     /// Expect a field with the given name and value.
     pub fn with_value(self, value: &dyn Value) -> Self {
         Self {
-            value: MockValue::from(value),
+            value: ExpectedValue::from(value),
             ..self
         }
     }
 
-    pub fn and(self, other: MockField) -> Expect {
-        Expect {
+    pub fn and(self, other: ExpectedField) -> ExpectedFields {
+        ExpectedFields {
             fields: HashMap::new(),
             only: false,
         }
@@ -90,8 +90,8 @@ impl MockField {
         .and(other)
     }
 
-    pub fn only(self) -> Expect {
-        Expect {
+    pub fn only(self) -> ExpectedFields {
+        ExpectedFields {
             fields: HashMap::new(),
             only: true,
         }
@@ -99,9 +99,9 @@ impl MockField {
     }
 }
 
-impl From<MockField> for Expect {
-    fn from(field: MockField) -> Self {
-        Expect {
+impl From<ExpectedField> for ExpectedFields {
+    fn from(field: ExpectedField) -> Self {
+        ExpectedFields {
             fields: HashMap::new(),
             only: false,
         }
@@ -109,8 +109,8 @@ impl From<MockField> for Expect {
     }
 }
 
-impl Expect {
-    pub fn and(mut self, field: MockField) -> Self {
+impl ExpectedFields {
+    pub fn and(mut self, field: ExpectedField) -> Self {
         self.fields.insert(field.name, field.value);
         self
     }
@@ -123,7 +123,7 @@ impl Expect {
     fn compare_or_panic(&mut self, name: &str, value: &dyn Value, ctx: &str, collector_name: &str) {
         let value = value.into();
         match self.fields.remove(name) {
-            Some(MockValue::Any) => {}
+            Some(ExpectedValue::Any) => {}
             Some(expected) => assert!(
                 expected == value,
                 "\n[{}] expected `{}` to contain:\n\t`{}{}`\nbut got:\n\t`{}{}`",
@@ -155,22 +155,22 @@ impl Expect {
     }
 }
 
-impl fmt::Display for MockValue {
+impl fmt::Display for ExpectedValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MockValue::F64(v) => write!(f, "f64 = {:?}", v),
-            MockValue::I64(v) => write!(f, "i64 = {:?}", v),
-            MockValue::U64(v) => write!(f, "u64 = {:?}", v),
-            MockValue::Bool(v) => write!(f, "bool = {:?}", v),
-            MockValue::Str(v) => write!(f, "&str = {:?}", v),
-            MockValue::Debug(v) => write!(f, "&fmt::Debug = {:?}", v),
-            MockValue::Any => write!(f, "_ = _"),
+            ExpectedValue::F64(v) => write!(f, "f64 = {:?}", v),
+            ExpectedValue::I64(v) => write!(f, "i64 = {:?}", v),
+            ExpectedValue::U64(v) => write!(f, "u64 = {:?}", v),
+            ExpectedValue::Bool(v) => write!(f, "bool = {:?}", v),
+            ExpectedValue::Str(v) => write!(f, "&str = {:?}", v),
+            ExpectedValue::Debug(v) => write!(f, "&fmt::Debug = {:?}", v),
+            ExpectedValue::Any => write!(f, "_ = _"),
         }
     }
 }
 
 pub struct CheckVisitor<'a> {
-    expect: &'a mut Expect,
+    expect: &'a mut ExpectedFields,
     ctx: &'a str,
     collector_name: &'a str,
 }
@@ -223,35 +223,35 @@ impl<'a> CheckVisitor<'a> {
     }
 }
 
-impl<'a> From<&'a dyn Value> for MockValue {
+impl<'a> From<&'a dyn Value> for ExpectedValue {
     fn from(value: &'a dyn Value) -> Self {
         struct MockValueBuilder {
-            value: Option<MockValue>,
+            value: Option<ExpectedValue>,
         }
 
         impl Visit for MockValueBuilder {
             fn record_f64(&mut self, _: &Field, value: f64) {
-                self.value = Some(MockValue::F64(value));
+                self.value = Some(ExpectedValue::F64(value));
             }
 
             fn record_i64(&mut self, _: &Field, value: i64) {
-                self.value = Some(MockValue::I64(value));
+                self.value = Some(ExpectedValue::I64(value));
             }
 
             fn record_u64(&mut self, _: &Field, value: u64) {
-                self.value = Some(MockValue::U64(value));
+                self.value = Some(ExpectedValue::U64(value));
             }
 
             fn record_bool(&mut self, _: &Field, value: bool) {
-                self.value = Some(MockValue::Bool(value));
+                self.value = Some(ExpectedValue::Bool(value));
             }
 
             fn record_str(&mut self, _: &Field, value: &str) {
-                self.value = Some(MockValue::Str(value.to_owned()));
+                self.value = Some(ExpectedValue::Str(value.to_owned()));
             }
 
             fn record_debug(&mut self, _: &Field, value: &dyn fmt::Debug) {
-                self.value = Some(MockValue::Debug(format!("{:?}", value)));
+                self.value = Some(ExpectedValue::Debug(format!("{:?}", value)));
             }
         }
 
@@ -268,7 +268,7 @@ impl<'a> From<&'a dyn Value> for MockValue {
     }
 }
 
-impl fmt::Display for Expect {
+impl fmt::Display for ExpectedFields {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "fields ")?;
         let entries = self

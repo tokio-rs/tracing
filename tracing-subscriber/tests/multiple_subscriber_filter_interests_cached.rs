@@ -23,13 +23,13 @@ fn multiple_subscriber_filter_interests_are_cached() {
     let seen_info = seen_info2;
 
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::INFO))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
     let info_subscriber = info_subscriber.with_filter(filter);
 
@@ -47,11 +47,11 @@ fn multiple_subscriber_filter_interests_are_cached() {
     let seen_warn = seen_warn2;
 
     let (warn_subscriber, warn_handle) = subscriber::named("warn")
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .event(event::expect().at_level(Level::WARN))
+        .event(event::expect().at_level(Level::ERROR))
+        .only()
         .run_with_handle();
     let warn_subscriber = warn_subscriber.with_filter(filter);
 
