@@ -47,7 +47,7 @@
 //!
 //! ## Feature Flags
 //!
-//! - `std`: Enables APIs that depend on the on the Rust standard library
+//! - `std`: Enables APIs that depend on the Rust standard library
 //!   (enabled by default).
 //! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
