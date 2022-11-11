@@ -634,13 +634,13 @@ mod tests {
         #[test]
         fn future_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
             with_default(subscriber, || {
@@ -655,13 +655,13 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
             with_default(subscriber, || {
@@ -677,17 +677,17 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -702,14 +702,14 @@ mod tests {
         // #[test]
         // fn span_follows_future_onto_threadpool() {
         //     let (subscriber, handle) = subscriber::mock()
-        //         .enter(span::expect().named("a"))
-        //         .enter(span::expect().named("b"))
-        //         .exit(span::expect().named("b"))
-        //         .enter(span::expect().named("b"))
-        //         .exit(span::expect().named("b"))
-        //         .drop_span(span::expect().named("b"))
-        //         .exit(span::expect().named("a"))
-        //         .drop_span(span::expect().named("a"))
+        //         .enter(expect::span().named("a"))
+        //         .enter(expect::span().named("b"))
+        //         .exit(expect::span().named("b"))
+        //         .enter(expect::span().named("b"))
+        //         .exit(expect::span().named("b"))
+        //         .drop_span(expect::span().named("b"))
+        //         .exit(expect::span().named("a"))
+        //         .drop_span(expect::span().named("a"))
         //         .only()
         //         .run_with_handle();
         //     let mut runtime = tokio::runtime::Runtime::new().unwrap();
@@ -740,15 +740,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
@@ -762,13 +762,13 @@ mod tests {
         #[test]
         fn sink_enter_exit_is_reasonable() {
             let (subscriber, handle) = subscriber::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(subscriber, || {
                 Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))

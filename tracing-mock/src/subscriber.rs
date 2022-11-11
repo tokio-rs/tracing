@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 use crate::{
     event::ExpectedEvent,
-    expectation::Expect,
+    expect::Expect,
     field::ExpectedFields,
     span::{ExpectedSpan, NewSpan},
 };

@@ -1,6 +1,6 @@
 use crate::{
     event::ExpectedEvent,
-    field::ExpectedFields,
+    field::{ExpectedField, ExpectedFields, ExpectedValue},
     span::{ExpectedSpan, NewSpan},
 };
 
@@ -18,4 +18,26 @@ pub(crate) enum Expect {
     Visit(ExpectedSpan, ExpectedFields),
     NewSpan(NewSpan),
     Nothing,
+}
+
+pub fn event() -> ExpectedEvent {
+    ExpectedEvent {
+        ..Default::default()
+    }
+}
+
+pub fn field<K>(name: K) -> ExpectedField
+where
+    String: From<K>,
+{
+    ExpectedField {
+        name: name.into(),
+        value: ExpectedValue::Any,
+    }
+}
+
+pub fn span() -> ExpectedSpan {
+    ExpectedSpan {
+        ..Default::default()
+    }
 }

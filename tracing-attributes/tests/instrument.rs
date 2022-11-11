@@ -20,11 +20,11 @@ fn override_everything() {
     #[instrument(level = Level::DEBUG, target = "my_target")]
     fn my_other_fn() {}
 
-    let span = span::expect()
+    let span = expect::span()
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
-    let span2 = span::expect()
+    let span2 = expect::span()
         .named("my_other_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
@@ -53,21 +53,21 @@ fn fields() {
     #[instrument(target = "my_target", level = "debug")]
     fn my_fn(arg1: usize, arg2: bool) {}
 
-    let span = span::expect()
+    let span = expect::span()
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::expect()
+    let span2 = expect::span()
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::expect("arg1")
+                expect::field("arg1")
                     .with_value(&2usize)
-                    .and(field::expect("arg2").with_value(&false))
+                    .and(expect::field("arg2").with_value(&false))
                     .only(),
             ),
         )
@@ -76,9 +76,9 @@ fn fields() {
         .drop_span(span)
         .new_span(
             span2.clone().with_field(
-                field::expect("arg1")
+                expect::field("arg1")
                     .with_value(&3usize)
-                    .and(field::expect("arg2").with_value(&true))
+                    .and(expect::field("arg2").with_value(&true))
                     .only(),
             ),
         )
@@ -106,17 +106,17 @@ fn skip() {
     #[instrument(target = "my_target", level = "debug", skip_all)]
     fn my_fn2(_arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
-    let span = span::expect()
+    let span = expect::span()
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span2 = span::expect()
+    let span2 = expect::span()
         .named("my_fn")
         .at_level(Level::DEBUG)
         .with_target("my_target");
 
-    let span3 = span::expect()
+    let span3 = expect::span()
         .named("my_fn2")
         .at_level(Level::DEBUG)
         .with_target("my_target");
@@ -124,7 +124,7 @@ fn skip() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(field::expect("arg1").with_value(&2usize).only()),
+                .with_field(expect::field("arg1").with_value(&2usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -132,7 +132,7 @@ fn skip() {
         .new_span(
             span2
                 .clone()
-                .with_field(field::expect("arg1").with_value(&3usize).only()),
+                .with_field(expect::field("arg1").with_value(&3usize).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -165,14 +165,14 @@ fn generics() {
     {
     }
 
-    let span = span::expect().named("my_fn");
+    let span = expect::span().named("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::expect("arg1")
+                expect::field("arg1")
                     .with_value(&format_args!("Foo"))
-                    .and(field::expect("arg2").with_value(&format_args!("false"))),
+                    .and(expect::field("arg2").with_value(&format_args!("false"))),
             ),
         )
         .enter(span.clone())
@@ -198,14 +198,14 @@ fn methods() {
         fn my_fn(&self, arg1: usize) {}
     }
 
-    let span = span::expect().named("my_fn");
+    let span = expect::span().named("my_fn");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone().with_field(
-                field::expect("self")
+                expect::field("self")
                     .with_value(&format_args!("Foo"))
-                    .and(field::expect("arg1").with_value(&42usize)),
+                    .and(expect::field("arg1").with_value(&42usize)),
             ),
         )
         .enter(span.clone())
@@ -229,12 +229,12 @@ fn impl_trait_return_type() {
         0..x
     }
 
-    let span = span::expect().named("returns_impl_trait");
+    let span = expect::span().named("returns_impl_trait");
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(field::expect("x").with_value(&10usize).only()),
+                .with_field(expect::field("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())

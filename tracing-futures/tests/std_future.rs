@@ -8,13 +8,13 @@ use tracing_mock::*;
 #[test]
 fn enter_exit_is_reasonable() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(subscriber, || {
@@ -27,13 +27,13 @@ fn enter_exit_is_reasonable() {
 #[test]
 fn error_ends_span() {
     let (subscriber, handle) = subscriber::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(subscriber, || {
@@ -66,16 +66,16 @@ fn span_on_drop() {
     }
 
     let subscriber = subscriber::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect().at_level(Level::INFO))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
-        .enter(span::expect().named("bar"))
-        .event(event::expect().at_level(Level::INFO))
-        .exit(span::expect().named("bar"))
-        .drop_span(span::expect().named("bar"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event().at_level(Level::INFO))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
+        .enter(expect::span().named("bar"))
+        .event(expect::event().at_level(Level::INFO))
+        .exit(expect::span().named("bar"))
+        .drop_span(expect::span().named("bar"))
         .only()
         .run();
 
