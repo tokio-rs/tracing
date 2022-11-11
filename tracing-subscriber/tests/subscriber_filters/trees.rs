@@ -5,7 +5,7 @@ use tracing_mock::subscriber::MockSubscriber;
 fn basic_trees() {
     let (with_target, with_target_handle) = subscriber::named("info_with_target")
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
                 .with_target("my_target"),
         )
@@ -14,12 +14,12 @@ fn basic_trees() {
 
     let (info, info_handle) = subscriber::named("info")
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
                 .with_target(module_path!()),
         )
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
                 .with_target("my_target"),
         )
@@ -28,18 +28,18 @@ fn basic_trees() {
 
     let (all, all_handle) = subscriber::named("all")
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
                 .with_target(module_path!()),
         )
-        .event(event::expect().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::TRACE))
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
                 .with_target("my_target"),
         )
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::TRACE)
                 .with_target("my_target"),
         )
@@ -69,11 +69,11 @@ fn basic_trees() {
 fn filter_span_scopes() {
     fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
         subscriber::named(format!("target_{}", target))
-            .enter(span::expect().with_target(target).at_level(Level::INFO))
+            .enter(expect::span().with_target(target).at_level(Level::INFO))
             .event(event::msg("hello world").in_scope(vec![
-                span::expect().with_target(target).at_level(Level::INFO),
+                expect::span().with_target(target).at_level(Level::INFO),
             ]))
-            .exit(span::expect().with_target(target).at_level(Level::INFO))
+            .exit(expect::span().with_target(target).at_level(Level::INFO))
             .only()
             .run_with_handle()
     }
@@ -81,28 +81,28 @@ fn filter_span_scopes() {
     let (a_subscriber, a_handle) = target_subscriber("a");
     let (b_subscriber, b_handle) = target_subscriber("b");
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .enter(span::expect().with_target("b").at_level(Level::INFO))
-        .enter(span::expect().with_target("a").at_level(Level::INFO))
+        .enter(expect::span().with_target("b").at_level(Level::INFO))
+        .enter(expect::span().with_target("a").at_level(Level::INFO))
         .event(event::msg("hello world").in_scope(vec![
-            span::expect().with_target("a").at_level(Level::INFO),
-            span::expect().with_target("b").at_level(Level::INFO),
+            expect::span().with_target("a").at_level(Level::INFO),
+            expect::span().with_target("b").at_level(Level::INFO),
         ]))
-        .exit(span::expect().with_target("a").at_level(Level::INFO))
-        .exit(span::expect().with_target("b").at_level(Level::INFO))
+        .exit(expect::span().with_target("a").at_level(Level::INFO))
+        .exit(expect::span().with_target("b").at_level(Level::INFO))
         .only()
         .run_with_handle();
 
     let full_scope = vec![
-        span::expect().with_target("b").at_level(Level::TRACE),
-        span::expect().with_target("a").at_level(Level::INFO),
-        span::expect().with_target("b").at_level(Level::INFO),
-        span::expect().with_target("a").at_level(Level::TRACE),
+        expect::span().with_target("b").at_level(Level::TRACE),
+        expect::span().with_target("a").at_level(Level::INFO),
+        expect::span().with_target("b").at_level(Level::INFO),
+        expect::span().with_target("a").at_level(Level::TRACE),
     ];
     let (all_subscriber, all_handle) = subscriber::named("all")
-        .enter(span::expect().with_target("a").at_level(Level::TRACE))
-        .enter(span::expect().with_target("b").at_level(Level::INFO))
-        .enter(span::expect().with_target("a").at_level(Level::INFO))
-        .enter(span::expect().with_target("b").at_level(Level::TRACE))
+        .enter(expect::span().with_target("a").at_level(Level::TRACE))
+        .enter(expect::span().with_target("b").at_level(Level::INFO))
+        .enter(expect::span().with_target("a").at_level(Level::INFO))
+        .enter(expect::span().with_target("b").at_level(Level::TRACE))
         .event(event::msg("hello world").in_scope(full_scope.clone()))
         .event(
             event::msg("hello to my target")
@@ -114,10 +114,10 @@ fn filter_span_scopes() {
                 .with_target("b")
                 .in_scope(full_scope),
         )
-        .exit(span::expect().with_target("b").at_level(Level::TRACE))
-        .exit(span::expect().with_target("a").at_level(Level::INFO))
-        .exit(span::expect().with_target("b").at_level(Level::INFO))
-        .exit(span::expect().with_target("a").at_level(Level::TRACE))
+        .exit(expect::span().with_target("b").at_level(Level::TRACE))
+        .exit(expect::span().with_target("a").at_level(Level::INFO))
+        .exit(expect::span().with_target("b").at_level(Level::INFO))
+        .exit(expect::span().with_target("a").at_level(Level::TRACE))
         .only()
         .run_with_handle();
 

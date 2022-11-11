@@ -7,7 +7,7 @@ use tracing_subscriber::prelude::*;
 fn init_ext_works() {
     let (subscriber, finished) = collector::mock()
         .event(
-            event::expect()
+            expect::event()
                 .at_level(tracing::Level::INFO)
                 .with_target("init_works"),
         )

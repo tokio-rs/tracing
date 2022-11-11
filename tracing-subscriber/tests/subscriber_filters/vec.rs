@@ -5,22 +5,22 @@ use tracing_mock::subscriber::MockSubscriber;
 #[test]
 fn with_filters_unboxed() {
     let (trace_subscriber, trace_handle) = subscriber::named("trace")
-        .event(event::expect().at_level(Level::TRACE))
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let trace_subscriber = trace_subscriber.with_filter(LevelFilter::TRACE);
 
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let debug_subscriber = debug_subscriber.with_filter(LevelFilter::DEBUG);
 
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let info_subscriber = info_subscriber.with_filter(LevelFilter::INFO);
@@ -41,22 +41,22 @@ fn with_filters_unboxed() {
 #[test]
 fn with_filters_boxed() {
     let (unfiltered_subscriber, unfiltered_handle) = subscriber::named("unfiltered")
-        .event(event::expect().at_level(Level::TRACE))
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let unfiltered_subscriber = unfiltered_subscriber.boxed();
 
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let debug_subscriber = debug_subscriber.with_filter(LevelFilter::DEBUG).boxed();
 
     let (target_subscriber, target_handle) = subscriber::named("target")
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let target_subscriber = target_subscriber

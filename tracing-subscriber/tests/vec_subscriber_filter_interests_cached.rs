@@ -5,7 +5,7 @@ use std::{
 };
 use tracing::{Collect, Level};
 use tracing_mock::{
-    event,
+    expect,
     subscriber::{self, MockSubscriber},
 };
 use tracing_subscriber::{filter, prelude::*};
@@ -26,22 +26,22 @@ fn vec_subscriber_filter_interests_are_cached() {
 
     // This subscriber will return Interest::always for INFO and lower.
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let (info_subscriber, seen_info) = mk_filtered(Level::INFO, info_subscriber);
 
     // This subscriber will return Interest::always for WARN and lower.
     let (warn_subscriber, warn_handle) = subscriber::named("warn")
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let (warn_subscriber, seen_warn) = mk_filtered(Level::WARN, warn_subscriber);

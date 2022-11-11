@@ -10,8 +10,8 @@ use tracing_subscriber::{filter::EnvFilter, prelude::*};
 fn same_length_targets() {
     let filter: EnvFilter = "foo=trace,bar=trace".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::TRACE))
-        .event(event::expect().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::TRACE))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -31,14 +31,14 @@ fn same_num_fields_event() {
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::TRACE)
-                .with_fields(field::expect("foo")),
+                .with_fields(expect::field("foo")),
         )
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::TRACE)
-                .with_fields(field::expect("bar")),
+                .with_fields(expect::field("bar")),
         )
         .only()
         .run_with_handle();
@@ -58,16 +58,16 @@ fn same_num_fields_and_name_len() {
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::expect("bar")),
+                .with_field(expect::field("bar")),
         )
         .new_span(
-            span::expect()
+            expect::span()
                 .named("baz")
                 .at_level(Level::TRACE)
-                .with_field(field::expect("boz")),
+                .with_field(expect::field("boz")),
         )
         .only()
         .run_with_handle();

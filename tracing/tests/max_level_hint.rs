@@ -24,9 +24,9 @@ fn max_level_hints() {
             );
             true
         })
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
 
