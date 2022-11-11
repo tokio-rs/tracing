@@ -23,22 +23,22 @@ fn vec_subscriber_filter_interests_are_cached() {
 
     // This layer will return Interest::always for INFO and lower.
     let (info_layer, info_handle) = layer::named("info")
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let (info_layer, seen_info) = mk_filtered(Level::INFO, info_layer);
 
     // This layer will return Interest::always for WARN and lower.
     let (warn_layer, warn_handle) = layer::named("warn")
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let (warn_layer, seen_warn) = mk_filtered(Level::WARN, warn_layer);

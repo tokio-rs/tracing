@@ -22,11 +22,11 @@ macro_rules! event_without_message {
         fn $name() {
             let (subscriber, handle) = subscriber::mock()
                 .event(
-                    event::expect().with_fields(
-                        field::expect("answer")
+                    expect::event().with_fields(
+                        expect::field("answer")
                             .with_value(&42)
                             .and(
-                                field::expect("to_question")
+                                expect::field("to_question")
                                     .with_value(&"life, the universe, and everything"),
                             )
                             .only(),
@@ -58,7 +58,7 @@ event_without_message! {nonzeroi32_event_without_message: std::num::NonZeroI32::
 fn event_with_message() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(field::expect("message").with_value(
+            expect::event().with_fields(expect::field("message").with_value(
                 &tracing::field::debug(format_args!(
                     "hello from my tracing::event! yak shaved = {:?}",
                     true
@@ -80,11 +80,11 @@ fn event_with_message() {
 fn message_without_delims() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("answer")
+            expect::event().with_fields(
+                expect::field("answer")
                     .with_value(&42)
                     .and(
-                        field::expect("question").with_value(&"life, the universe, and everything"),
+                        expect::field("question").with_value(&"life, the universe, and everything"),
                     )
                     .and(field::msg(format_args!(
                         "hello from my event! tricky? {:?}!",
@@ -109,11 +109,11 @@ fn message_without_delims() {
 fn string_message_without_delims() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("answer")
+            expect::event().with_fields(
+                expect::field("answer")
                     .with_value(&42)
                     .and(
-                        field::expect("question").with_value(&"life, the universe, and everything"),
+                        expect::field("question").with_value(&"life, the universe, and everything"),
                     )
                     .and(field::msg(format_args!("hello from my event")))
                     .only(),
@@ -135,17 +135,17 @@ fn string_message_without_delims() {
 fn one_with_everything() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect()
+            expect::event()
                 .with_fields(
-                    field::expect("message")
+                    expect::field("message")
                         .with_value(&tracing::field::debug(format_args!(
                             "{:#x} make me one with{what:.>20}",
                             4_277_009_102u64,
                             what = "everything"
                         )))
-                        .and(field::expect("foo").with_value(&666))
-                        .and(field::expect("bar").with_value(&false))
-                        .and(field::expect("like_a_butterfly").with_value(&42.0))
+                        .and(expect::field("foo").with_value(&666))
+                        .and(expect::field("bar").with_value(&false))
+                        .and(expect::field("like_a_butterfly").with_value(&42.0))
                         .only(),
                 )
                 .at_level(Level::ERROR)
@@ -171,8 +171,8 @@ fn one_with_everything() {
 fn moved_field() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("foo")
+            expect::event().with_fields(
+                expect::field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
             ),
@@ -192,10 +192,10 @@ fn moved_field() {
 fn dotted_field_name() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("foo.bar")
+            expect::event().with_fields(
+                expect::field("foo.bar")
                     .with_value(&true)
-                    .and(field::expect("foo.baz").with_value(&false))
+                    .and(expect::field("foo.baz").with_value(&false))
                     .only(),
             ),
         )
@@ -213,8 +213,8 @@ fn dotted_field_name() {
 fn borrowed_field() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("foo")
+            expect::event().with_fields(
+                expect::field("foo")
                     .with_value(&display("hello from my event"))
                     .only(),
             ),
@@ -250,14 +250,14 @@ fn move_field_out_of_struct() {
     };
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("x")
+            expect::event().with_fields(
+                expect::field("x")
                     .with_value(&debug(3.234))
-                    .and(field::expect("y").with_value(&debug(-1.223)))
+                    .and(expect::field("y").with_value(&debug(-1.223)))
                     .only(),
             ),
         )
-        .event(event::expect().with_fields(field::expect("position").with_value(&debug(&pos))))
+        .event(expect::event().with_fields(expect::field("position").with_value(&debug(&pos))))
         .only()
         .run_with_handle();
 
@@ -277,8 +277,8 @@ fn move_field_out_of_struct() {
 fn display_shorthand() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("my_field")
+            expect::event().with_fields(
+                expect::field("my_field")
                     .with_value(&display("hello world"))
                     .only(),
             ),
@@ -297,8 +297,8 @@ fn display_shorthand() {
 fn debug_shorthand() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("my_field")
+            expect::event().with_fields(
+                expect::field("my_field")
                     .with_value(&debug("hello world"))
                     .only(),
             ),
@@ -317,10 +317,10 @@ fn debug_shorthand() {
 fn both_shorthands() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("display_field")
+            expect::event().with_fields(
+                expect::field("display_field")
                     .with_value(&display("hello world"))
-                    .and(field::expect("debug_field").with_value(&debug("hello world")))
+                    .and(expect::field("debug_field").with_value(&debug("hello world")))
                     .only(),
             ),
         )
@@ -337,8 +337,8 @@ fn both_shorthands() {
 #[test]
 fn explicit_child() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::expect().named("foo"))
-        .event(event::expect().with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("foo"))
+        .event(expect::event().with_explicit_parent(Some("foo")))
         .only()
         .run_with_handle();
 
@@ -354,12 +354,12 @@ fn explicit_child() {
 #[test]
 fn explicit_child_at_levels() {
     let (subscriber, handle) = subscriber::mock()
-        .new_span(span::expect().named("foo"))
-        .event(event::expect().with_explicit_parent(Some("foo")))
-        .event(event::expect().with_explicit_parent(Some("foo")))
-        .event(event::expect().with_explicit_parent(Some("foo")))
-        .event(event::expect().with_explicit_parent(Some("foo")))
-        .event(event::expect().with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("foo"))
+        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_explicit_parent(Some("foo")))
         .only()
         .run_with_handle();
 
@@ -380,11 +380,11 @@ fn explicit_child_at_levels() {
 fn option_values() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("some_str")
+            expect::event().with_fields(
+                expect::field("some_str")
                     .with_value(&"yes")
-                    .and(field::expect("some_bool").with_value(&true))
-                    .and(field::expect("some_u64").with_value(&42_u64))
+                    .and(expect::field("some_bool").with_value(&true))
+                    .and(expect::field("some_u64").with_value(&42_u64))
                     .only(),
             ),
         )
@@ -416,11 +416,11 @@ fn option_values() {
 fn option_ref_values() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("some_str")
+            expect::event().with_fields(
+                expect::field("some_str")
                     .with_value(&"yes")
-                    .and(field::expect("some_bool").with_value(&true))
-                    .and(field::expect("some_u64").with_value(&42_u64))
+                    .and(expect::field("some_bool").with_value(&true))
+                    .and(expect::field("some_u64").with_value(&42_u64))
                     .only(),
             ),
         )
@@ -452,11 +452,11 @@ fn option_ref_values() {
 fn option_ref_mut_values() {
     let (subscriber, handle) = subscriber::mock()
         .event(
-            event::expect().with_fields(
-                field::expect("some_str")
+            expect::event().with_fields(
+                expect::field("some_str")
                     .with_value(&"yes")
-                    .and(field::expect("some_bool").with_value(&true))
-                    .and(field::expect("some_u64").with_value(&42_u64))
+                    .and(expect::field("some_bool").with_value(&true))
+                    .and(expect::field("some_u64").with_value(&42_u64))
                     .only(),
             ),
         )
@@ -487,10 +487,10 @@ fn option_ref_mut_values() {
 #[test]
 fn string_field() {
     let (subscriber, handle) = subscriber::mock()
-        .event(event::expect().with_fields(field::expect("my_string").with_value(&"hello").only()))
+        .event(expect::event().with_fields(expect::field("my_string").with_value(&"hello").only()))
         .event(
-            event::expect().with_fields(
-                field::expect("my_string")
+            expect::event().with_fields(
+                expect::field("my_string")
                     .with_value(&"hello world!")
                     .only(),
             ),

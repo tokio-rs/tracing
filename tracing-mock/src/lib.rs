@@ -4,7 +4,7 @@ use std::{
 };
 
 pub mod event;
-mod expectation;
+pub mod expect;
 pub mod field;
 mod metadata;
 pub mod span;

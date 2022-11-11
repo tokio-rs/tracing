@@ -15,8 +15,8 @@ pub struct ExpectedFields {
 
 #[derive(Debug)]
 pub struct ExpectedField {
-    name: String,
-    value: ExpectedValue,
+    pub(super) name: String,
+    pub(super) value: ExpectedValue,
 }
 
 #[derive(Debug)]
@@ -52,16 +52,6 @@ impl PartialEq for ExpectedValue {
             (_, Any) => true,
             _ => false,
         }
-    }
-}
-
-pub fn expect<K>(name: K) -> ExpectedField
-where
-    String: From<K>,
-{
-    ExpectedField {
-        name: name.into(),
-        value: ExpectedValue::Any,
     }
 }
 

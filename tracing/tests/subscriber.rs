@@ -11,8 +11,7 @@ use tracing::{
     subscriber::{with_default, Interest, Subscriber},
     Event, Level, Metadata,
 };
-
-use tracing_mock::*;
+use tracing_mock::{expect, subscriber};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
@@ -61,15 +60,15 @@ fn event_macros_dont_infinite_loop() {
 fn boxed_subscriber() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     let subscriber: Box<dyn Subscriber + Send + Sync + 'static> = Box::new(subscriber);
@@ -94,18 +93,18 @@ fn arced_subscriber() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .event(
-            event::expect()
-                .with_fields(field::expect("message").with_value(&display("hello from my event"))),
+            expect::event()
+                .with_fields(expect::field("message").with_value(&display("hello from my event"))),
         )
         .only()
         .run_with_handle();

@@ -1,5 +1,5 @@
 use tracing::Level;
-use tracing_mock::{event, layer};
+use tracing_mock::{expect, layer};
 use tracing_subscriber::{field::Visit, layer::Filter, prelude::*};
 
 struct FilterEvent;
@@ -42,8 +42,8 @@ impl<S> Filter<S> for FilterEvent {
 #[test]
 fn per_layer_event_field_filtering() {
     let (expect, handle) = layer::mock()
-        .event(event::expect().at_level(Level::TRACE))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
 

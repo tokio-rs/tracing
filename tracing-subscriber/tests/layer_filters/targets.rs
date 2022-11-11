@@ -1,4 +1,5 @@
 use super::*;
+use tracing_mock::event;
 use tracing_subscriber::{
     filter::{filter_fn, Targets},
     prelude::*,

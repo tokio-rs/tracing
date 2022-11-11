@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata::ExpectedMetadata, span, Parent};
+use super::{expect, field, metadata::ExpectedMetadata, span, Parent};
 
 use std::fmt;
 
@@ -9,20 +9,14 @@ use std::fmt;
 /// `subscriber` module.
 #[derive(Default, Eq, PartialEq)]
 pub struct ExpectedEvent {
-    fields: Option<field::ExpectedFields>,
-    parent: Option<Parent>,
-    in_spans: Vec<span::ExpectedSpan>,
-    metadata: ExpectedMetadata,
-}
-
-pub fn expect() -> ExpectedEvent {
-    ExpectedEvent {
-        ..Default::default()
-    }
+    pub(super) fields: Option<field::ExpectedFields>,
+    pub(super) parent: Option<Parent>,
+    pub(super) in_spans: Vec<span::ExpectedSpan>,
+    pub(super) metadata: ExpectedMetadata,
 }
 
 pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect().with_fields(field::msg(message))
+    expect::event().with_fields(field::msg(message))
 }
 
 impl ExpectedEvent {
