@@ -19,13 +19,13 @@ fn ret_with_target() -> i32 {
 
 #[test]
 fn test() {
-    let span = span::expect().named("ret");
+    let span = expect::span().named("ret");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -40,7 +40,7 @@ fn test() {
 #[test]
 fn test_custom_target() {
     let filter: EnvFilter = "my_target=info".parse().expect("filter should parse");
-    let span = span::expect()
+    let span = expect::span()
         .named("ret_with_target")
         .with_target("my_target");
 
@@ -48,8 +48,8 @@ fn test_custom_target() {
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO)
                 .with_target("my_target"),
         )
@@ -71,13 +71,13 @@ fn ret_warn() -> i32 {
 
 #[test]
 fn test_warn() {
-    let span = span::expect().named("ret_warn");
+    let span = expect::span().named("ret_warn");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::WARN),
         )
         .exit(span.clone())
@@ -98,18 +98,18 @@ fn ret_mut(a: &mut i32) -> i32 {
 
 #[test]
 fn test_mut() {
-    let span = span::expect().named("ret_mut");
+    let span = expect::span().named("ret_mut");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("a").with_value(&tracing::field::display(2)))
+            expect::event()
+                .with_fields(expect::field("a").with_value(&tracing::field::display(2)))
                 .at_level(Level::INFO),
         )
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(2)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(2)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -128,13 +128,13 @@ async fn ret_async() -> i32 {
 
 #[test]
 fn test_async() {
-    let span = span::expect().named("ret_async");
+    let span = expect::span().named("ret_async");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -153,13 +153,13 @@ fn ret_impl_type() -> impl Copy {
 
 #[test]
 fn test_impl_type() {
-    let span = span::expect().named("ret_impl_type");
+    let span = expect::span().named("ret_impl_type");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -178,13 +178,13 @@ fn ret_display() -> i32 {
 
 #[test]
 fn test_dbg() {
-    let span = span::expect().named("ret_display");
+    let span = expect::span().named("ret_display");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::display(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::display(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -203,14 +203,14 @@ fn ret_and_err() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_ret_and_err() {
-    let span = span::expect().named("ret_and_err");
+    let span = expect::span().named("ret_and_err");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
+            expect::event()
                 .with_fields(
-                    field::expect("error")
+                    expect::field("error")
                         .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err()))
                         .only(),
                 )
@@ -232,14 +232,14 @@ fn ret_and_ok() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_ret_and_ok() {
-    let span = span::expect().named("ret_and_ok");
+    let span = expect::span().named("ret_and_ok");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
+            expect::event()
                 .with_fields(
-                    field::expect("return")
+                    expect::field("return")
                         .with_value(&tracing::field::debug(u8::try_from(123).unwrap()))
                         .only(),
                 )
@@ -261,13 +261,13 @@ fn ret_warn_info() -> i32 {
 
 #[test]
 fn test_warn_info() {
-    let span = span::expect().named("ret_warn_info").at_level(Level::WARN);
+    let span = expect::span().named("ret_warn_info").at_level(Level::WARN);
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
@@ -286,13 +286,13 @@ fn ret_dbg_warn() -> i32 {
 
 #[test]
 fn test_dbg_warn() {
-    let span = span::expect().named("ret_dbg_warn").at_level(Level::INFO);
+    let span = expect::span().named("ret_dbg_warn").at_level(Level::INFO);
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("return").with_value(&tracing::field::debug(42)))
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::WARN),
         )
         .exit(span.clone())

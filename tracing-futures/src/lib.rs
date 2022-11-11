@@ -567,11 +567,11 @@ mod tests {
         #[test]
         fn future_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
             with_default(collector, || {
@@ -586,11 +586,11 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (collector, handle) = collector::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
             with_default(collector, || {
@@ -606,15 +606,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -667,15 +667,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
@@ -689,13 +689,13 @@ mod tests {
         #[test]
         fn sink_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .enter(span::expect().named("foo"))
-                .exit(span::expect().named("foo"))
-                .drop_span(span::expect().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))

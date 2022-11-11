@@ -20,7 +20,7 @@ fn spans_dont_leak() {
 
     do_span();
 
-    let alice = span::expect().named("alice");
+    let alice = expect::span().named("alice");
     let (subscriber2, handle2) = collector::mock()
         .named("spans/subscriber2")
         .with_filter(|_| true)
@@ -63,7 +63,7 @@ fn events_dont_leak() {
     let (collector2, handle2) = collector::mock()
         .named("events/collector2")
         .with_filter(|_| true)
-        .event(event::expect())
+        .event(expect::event())
         .only()
         .run_with_handle();
 

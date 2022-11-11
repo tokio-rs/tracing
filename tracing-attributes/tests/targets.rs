@@ -24,32 +24,32 @@ mod my_mod {
 fn default_targets() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .enter(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .exit(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(module_path!()),
         )
         .new_span(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
         .enter(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
         .exit(
-            span::expect()
+            expect::span()
                 .named("default_target")
                 .with_target(my_mod::MODULE_PATH),
         )
@@ -68,32 +68,32 @@ fn default_targets() {
 fn custom_targets() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_target"),
         )
         .enter(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_target"),
         )
         .exit(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_target"),
         )
         .new_span(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )
         .enter(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )
         .exit(
-            span::expect()
+            expect::span()
                 .named("custom_target")
                 .with_target("my_other_target"),
         )

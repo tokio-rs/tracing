@@ -21,11 +21,11 @@ fn err_suspicious_else() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test() {
-    let span = span::expect().named("err");
+    let span = expect::span().named("err");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -42,11 +42,11 @@ fn err_early_return() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_early_return() {
-    let span = span::expect().named("err_early_return");
+    let span = expect::span().named("err_early_return");
     let (subscriber, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -65,18 +65,18 @@ async fn err_async(polls: usize) -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_async() {
-    let span = span::expect().named("err_async");
+    let span = expect::span().named("err_async");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("awaiting").with_value(&true))
+            expect::event()
+                .with_fields(expect::field("awaiting").with_value(&true))
                 .at_level(Level::TRACE),
         )
         .exit(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -95,11 +95,11 @@ fn err_mut(out: &mut u8) -> Result<(), TryFromIntError> {
 
 #[test]
 fn test_mut() {
-    let span = span::expect().named("err_mut");
+    let span = expect::span().named("err_mut");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -119,18 +119,18 @@ async fn err_mut_async(polls: usize, out: &mut u8) -> Result<(), TryFromIntError
 
 #[test]
 fn test_mut_async() {
-    let span = span::expect().named("err_mut_async");
+    let span = expect::span().named("err_mut_async");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
-                .with_fields(field::expect("awaiting").with_value(&true))
+            expect::event()
+                .with_fields(expect::field("awaiting").with_value(&true))
                 .at_level(Level::TRACE),
         )
         .exit(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -150,12 +150,12 @@ fn impl_trait_return_type() {
         Ok(0..x)
     }
 
-    let span = span::expect().named("returns_impl_trait");
+    let span = expect::span().named("returns_impl_trait");
 
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(field::expect("x").with_value(&10usize).only()),
+                .with_field(expect::field("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -179,13 +179,13 @@ fn err_dbg() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_err_dbg() {
-    let span = span::expect().named("err_dbg");
+    let span = expect::span().named("err_dbg");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect().at_level(Level::ERROR).with_fields(
-                field::expect("error")
+            expect::event().at_level(Level::ERROR).with_fields(
+                expect::field("error")
                     // use the actual error value that will be emitted, so
                     // that this test doesn't break if the standard library
                     // changes the `fmt::Debug` output from the error type
@@ -203,13 +203,13 @@ fn test_err_dbg() {
 
 #[test]
 fn test_err_display_default() {
-    let span = span::expect().named("err");
+    let span = expect::span().named("err");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect().at_level(Level::ERROR).with_fields(
-                field::expect("error")
+            expect::event().at_level(Level::ERROR).with_fields(
+                expect::field("error")
                     // by default, errors will be emitted with their display values
                     .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())),
             ),
@@ -225,13 +225,13 @@ fn test_err_display_default() {
 #[test]
 fn test_err_custom_target() {
     let filter: EnvFilter = "my_target=error".parse().expect("filter should parse");
-    let span = span::expect().named("error_span").with_target("my_target");
+    let span = expect::span().named("error_span").with_target("my_target");
 
     let (subscriber, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::ERROR)
                 .with_target("my_target"),
         )
@@ -260,11 +260,11 @@ fn err_info() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_err_info() {
-    let span = span::expect().named("err_info");
+    let span = expect::span().named("err_info");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -280,13 +280,13 @@ fn err_dbg_info() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_err_dbg_info() {
-    let span = span::expect().named("err_dbg_info");
+    let span = expect::span().named("err_dbg_info");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
         .event(
-            event::expect().at_level(Level::INFO).with_fields(
-                field::expect("error")
+            expect::event().at_level(Level::INFO).with_fields(
+                expect::field("error")
                     // use the actual error value that will be emitted, so
                     // that this test doesn't break if the standard library
                     // changes the `fmt::Debug` output from the error type
@@ -309,11 +309,11 @@ fn err_warn_info() -> Result<u8, TryFromIntError> {
 
 #[test]
 fn test_err_warn_info() {
-    let span = span::expect().named("err_warn_info").at_level(Level::WARN);
+    let span = expect::span().named("err_warn_info").at_level(Level::WARN);
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
         .exit(span.clone())
         .drop_span(span)
         .only()
