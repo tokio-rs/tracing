@@ -10,14 +10,14 @@ fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
-                .with_fields(field::expect("thing")),
+                .with_fields(expect::field("thing")),
         )
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::DEBUG)
-                .with_fields(field::expect("thing")),
+                .with_fields(expect::field("thing")),
         )
         .only()
         .run_with_handle();
@@ -41,22 +41,22 @@ fn field_filter_spans() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .enter(span::expect().named("span1"))
+        .enter(expect::span().named("span1"))
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::INFO)
-                .with_fields(field::expect("something")),
+                .with_fields(expect::field("something")),
         )
-        .exit(span::expect().named("span1"))
-        .enter(span::expect().named("span2"))
-        .exit(span::expect().named("span2"))
-        .enter(span::expect().named("span3"))
+        .exit(expect::span().named("span1"))
+        .enter(expect::span().named("span2"))
+        .exit(expect::span().named("span2"))
+        .enter(expect::span().named("span3"))
         .event(
-            event::expect()
+            expect::event()
                 .at_level(Level::DEBUG)
-                .with_fields(field::expect("something")),
+                .with_fields(expect::field("something")),
         )
-        .exit(span::expect().named("span3"))
+        .exit(expect::span().named("span3"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -84,15 +84,15 @@ fn record_after_created() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .enter(span::expect().named("span"))
-        .exit(span::expect().named("span"))
+        .enter(expect::span().named("span"))
+        .exit(expect::span().named("span"))
         .record(
-            span::expect().named("span"),
-            field::expect("enabled").with_value(&true),
+            expect::span().named("span"),
+            expect::field("enabled").with_value(&true),
         )
-        .enter(span::expect().named("span"))
-        .event(event::expect().at_level(Level::DEBUG))
-        .exit(span::expect().named("span"))
+        .enter(expect::span().named("span"))
+        .event(expect::event().at_level(Level::DEBUG))
+        .exit(expect::span().named("span"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

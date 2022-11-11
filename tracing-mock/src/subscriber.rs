@@ -2,7 +2,7 @@
 use crate::{
     collector::MockHandle,
     event::ExpectedEvent,
-    expectation::Expect,
+    expect::Expect,
     field::ExpectedFields,
     span::{ExpectedSpan, NewSpan},
 };

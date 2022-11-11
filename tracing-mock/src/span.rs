@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field::ExpectedFields, metadata::ExpectedMetadata, Parent};
+use super::{expect, field::ExpectedFields, metadata::ExpectedMetadata, Parent};
 use std::fmt;
 
 /// A mock span.
@@ -18,17 +18,11 @@ pub struct NewSpan {
     pub(crate) parent: Option<Parent>,
 }
 
-pub fn expect() -> ExpectedSpan {
-    ExpectedSpan {
-        ..Default::default()
-    }
-}
-
 pub fn named<I>(name: I) -> ExpectedSpan
 where
     I: Into<String>,
 {
-    expect().named(name)
+    expect::span().named(name)
 }
 
 impl ExpectedSpan {

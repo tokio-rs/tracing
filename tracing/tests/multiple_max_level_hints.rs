@@ -35,9 +35,9 @@ fn multiple_max_level_hints() {
             );
             level <= &Level::INFO
         })
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let (subscriber2, handle2) = collector::mock()
@@ -51,10 +51,10 @@ fn multiple_max_level_hints() {
             );
             level <= &Level::DEBUG
         })
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
 

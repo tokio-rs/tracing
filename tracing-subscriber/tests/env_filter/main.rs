@@ -3,7 +3,7 @@
 mod per_subscriber;
 
 use tracing::{self, collect::with_default, Level};
-use tracing_mock::{collector, event, field, span};
+use tracing_mock::{collector, expect};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
@@ -13,9 +13,9 @@ use tracing_subscriber::{
 fn level_filter_event() {
     let filter: EnvFilter = "info".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -38,16 +38,16 @@ fn same_name_spans() {
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::expect("bar")),
+                .with_field(expect::field("bar")),
         )
         .new_span(
-            span::expect()
+            expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::expect("baz")),
+                .with_field(expect::field("baz")),
         )
         .only()
         .run_with_handle();
@@ -64,11 +64,11 @@ fn same_name_spans() {
 fn level_filter_event_with_target() {
     let filter: EnvFilter = "info,stuff=debug".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG).with_target("stuff"))
+        .event(expect::event().at_level(Level::WARN).with_target("stuff"))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR).with_target("stuff"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -93,11 +93,11 @@ fn not_order_dependent() {
 
     let filter: EnvFilter = "stuff=debug,info".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::DEBUG).with_target("stuff"))
-        .event(event::expect().at_level(Level::WARN).with_target("stuff"))
-        .event(event::expect().at_level(Level::ERROR))
-        .event(event::expect().at_level(Level::ERROR).with_target("stuff"))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG).with_target("stuff"))
+        .event(expect::event().at_level(Level::WARN).with_target("stuff"))
+        .event(expect::event().at_level(Level::ERROR))
+        .event(expect::event().at_level(Level::ERROR).with_target("stuff"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -127,8 +127,8 @@ fn add_directive_enables_event() {
     filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
 
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO).with_target("hello"))
-        .event(event::expect().at_level(Level::TRACE).with_target("hello"))
+        .event(expect::event().at_level(Level::INFO).with_target("hello"))
+        .event(expect::event().at_level(Level::TRACE).with_target("hello"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
@@ -147,18 +147,18 @@ fn span_name_filter_is_dynamic() {
         .parse()
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO))
-        .enter(span::expect().named("cool_span"))
-        .event(event::expect().at_level(Level::DEBUG))
-        .enter(span::expect().named("uncool_span"))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::DEBUG))
-        .exit(span::expect().named("uncool_span"))
-        .exit(span::expect().named("cool_span"))
-        .enter(span::expect().named("uncool_span"))
-        .event(event::expect().at_level(Level::WARN))
-        .event(event::expect().at_level(Level::ERROR))
-        .exit(span::expect().named("uncool_span"))
+        .event(expect::event().at_level(Level::INFO))
+        .enter(expect::span().named("cool_span"))
+        .event(expect::event().at_level(Level::DEBUG))
+        .enter(expect::span().named("uncool_span"))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::DEBUG))
+        .exit(expect::span().named("uncool_span"))
+        .exit(expect::span().named("cool_span"))
+        .enter(expect::span().named("uncool_span"))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .exit(expect::span().named("uncool_span"))
         .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);

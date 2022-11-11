@@ -62,11 +62,11 @@ fn handles_to_different_spans_with_the_same_metadata_are_not_equal() {
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them() {
     let collector1 = collector::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run();
     let collector2 = collector::mock().run();
@@ -89,11 +89,11 @@ fn spans_always_go_to_the_subscriber_that_tagged_them() {
 #[test]
 fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
     let collector1 = collector::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run();
     let foo = with_default(collector1, || {
@@ -117,9 +117,9 @@ fn spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads() {
 #[test]
 fn dropping_a_span_calls_drop_span() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -135,10 +135,10 @@ fn dropping_a_span_calls_drop_span() {
 #[test]
 fn span_closes_after_event() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect())
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event())
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -154,13 +154,13 @@ fn span_closes_after_event() {
 #[test]
 fn new_span_after_event() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect())
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
-        .enter(span::expect().named("bar"))
-        .exit(span::expect().named("bar"))
-        .drop_span(span::expect().named("bar"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event())
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
+        .enter(expect::span().named("bar"))
+        .exit(expect::span().named("bar"))
+        .drop_span(expect::span().named("bar"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -177,10 +177,10 @@ fn new_span_after_event() {
 #[test]
 fn event_outside_of_span() {
     let (collector, handle) = collector::mock()
-        .event(event::expect())
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .event(expect::event())
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -195,7 +195,7 @@ fn event_outside_of_span() {
 #[test]
 fn cloning_a_span_calls_clone_span() {
     let (collector, handle) = collector::mock()
-        .clone_span(span::expect().named("foo"))
+        .clone_span(expect::span().named("foo"))
         .run_with_handle();
     with_default(collector, || {
         let span = tracing::span!(Level::TRACE, "foo");
@@ -211,9 +211,9 @@ fn cloning_a_span_calls_clone_span() {
 #[test]
 fn drop_span_when_exiting_dispatchers_context() {
     let (collector, handle) = collector::mock()
-        .clone_span(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .clone_span(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .run_with_handle();
     with_default(collector, || {
         let span = tracing::span!(Level::TRACE, "foo");
@@ -228,13 +228,13 @@ fn drop_span_when_exiting_dispatchers_context() {
 #[test]
 fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
     let (subscriber1, handle1) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .clone_span(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .clone_span(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .run_with_handle();
     let subscriber2 = collector::mock().only().run();
 
@@ -259,9 +259,9 @@ fn clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span() {
 #[test]
 fn span_closes_when_exited() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -279,10 +279,10 @@ fn span_closes_when_exited() {
 #[test]
 fn enter() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect())
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event())
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -298,10 +298,10 @@ fn enter() {
 #[test]
 fn entered() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect())
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event())
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -316,10 +316,10 @@ fn entered() {
 #[test]
 fn entered_api() {
     let (collector, handle) = collector::mock()
-        .enter(span::expect().named("foo"))
-        .event(event::expect())
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .event(expect::event())
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -337,15 +337,15 @@ fn entered_api() {
 fn moved_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -366,9 +366,9 @@ fn moved_field() {
 fn dotted_field_name() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("foo")
-                .with_field(field::expect("fields.bar").with_value(&true).only()),
+                .with_field(expect::field("fields.bar").with_value(&true).only()),
         )
         .only()
         .run_with_handle();
@@ -384,15 +384,15 @@ fn dotted_field_name() {
 fn borrowed_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
             ),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
 
@@ -427,17 +427,17 @@ fn move_field_out_of_struct() {
     };
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("x")
+            expect::span().named("foo").with_field(
+                expect::field("x")
                     .with_value(&debug(3.234))
-                    .and(field::expect("y").with_value(&debug(-1.223)))
+                    .and(expect::field("y").with_value(&debug(-1.223)))
                     .only(),
             ),
         )
         .new_span(
-            span::expect()
+            expect::span()
                 .named("bar")
-                .with_field(field::expect("position").with_value(&debug(&pos)).only()),
+                .with_field(expect::field("position").with_value(&debug(&pos)).only()),
         )
         .run_with_handle();
 
@@ -460,10 +460,10 @@ fn move_field_out_of_struct() {
 fn float_values() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("x")
+            expect::span().named("foo").with_field(
+                expect::field("x")
                     .with_value(&3.234)
-                    .and(field::expect("y").with_value(&-1.223))
+                    .and(expect::field("y").with_value(&-1.223))
                     .only(),
             ),
         )
@@ -487,12 +487,12 @@ fn add_field_after_new_span() {
         .new_span(
             span::mock()
                 .named("foo")
-                .with_field(field::expect("bar").with_value(&5)
-                .and(field::expect("baz").with_value).only()),
+                .with_field(expect::field("bar").with_value(&5)
+                .and(expect::field("baz").with_value).only()),
         )
         .record(
             span::mock().named("foo"),
-            field::expect("baz").with_value(&true).only(),
+            expect::field("baz").with_value(&true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -516,11 +516,11 @@ fn add_fields_only_after_new_span() {
         .new_span(span::mock().named("foo"))
         .record(
             span::mock().named("foo"),
-            field::expect("bar").with_value(&5).only(),
+            expect::field("bar").with_value(&5).only(),
         )
         .record(
             span::mock().named("foo"),
-            field::expect("baz").with_value(&true).only(),
+            expect::field("baz").with_value(&true).only(),
         )
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
@@ -544,20 +544,20 @@ fn add_fields_only_after_new_span() {
 fn record_new_value_for_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&5)
-                    .and(field::expect("baz").with_value(&false))
+                    .and(expect::field("baz").with_value(&false))
                     .only(),
             ),
         )
         .record(
-            span::expect().named("foo"),
-            field::expect("baz").with_value(&true).only(),
+            expect::span().named("foo"),
+            expect::field("baz").with_value(&true).only(),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
 
@@ -575,24 +575,24 @@ fn record_new_value_for_field() {
 fn record_new_values_for_fields() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("foo").with_field(
-                field::expect("bar")
+            expect::span().named("foo").with_field(
+                expect::field("bar")
                     .with_value(&4)
-                    .and(field::expect("baz").with_value(&false))
+                    .and(expect::field("baz").with_value(&false))
                     .only(),
             ),
         )
         .record(
-            span::expect().named("foo"),
-            field::expect("bar").with_value(&5).only(),
+            expect::span().named("foo"),
+            expect::field("bar").with_value(&5).only(),
         )
         .record(
-            span::expect().named("foo"),
-            field::expect("baz").with_value(&true).only(),
+            expect::span().named("foo"),
+            expect::field("baz").with_value(&true).only(),
         )
-        .enter(span::expect().named("foo"))
-        .exit(span::expect().named("foo"))
-        .drop_span(span::expect().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
+        .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
 
@@ -611,7 +611,7 @@ fn record_new_values_for_fields() {
 fn new_span_with_target_and_log_level() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect()
+            expect::span()
                 .named("foo")
                 .with_target("app_span")
                 .at_level(Level::DEBUG),
@@ -630,7 +630,7 @@ fn new_span_with_target_and_log_level() {
 #[test]
 fn explicit_root_span_is_root() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo").with_explicit_parent(None))
+        .new_span(expect::span().named("foo").with_explicit_parent(None))
         .only()
         .run_with_handle();
 
@@ -645,10 +645,10 @@ fn explicit_root_span_is_root() {
 #[test]
 fn explicit_root_span_is_root_regardless_of_ctx() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
-        .new_span(span::expect().named("bar").with_explicit_parent(None))
-        .exit(span::expect().named("foo"))
+        .new_span(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .new_span(expect::span().named("bar").with_explicit_parent(None))
+        .exit(expect::span().named("foo"))
         .only()
         .run_with_handle();
 
@@ -665,9 +665,9 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
 #[test]
 fn explicit_child() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo"))
+        .new_span(expect::span().named("foo"))
         .new_span(
-            span::expect()
+            expect::span()
                 .named("bar")
                 .with_explicit_parent(Some("foo")),
         )
@@ -686,12 +686,12 @@ fn explicit_child() {
 #[test]
 fn explicit_child_at_levels() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo"))
-        .new_span(span::expect().named("a").with_explicit_parent(Some("foo")))
-        .new_span(span::expect().named("b").with_explicit_parent(Some("foo")))
-        .new_span(span::expect().named("c").with_explicit_parent(Some("foo")))
-        .new_span(span::expect().named("d").with_explicit_parent(Some("foo")))
-        .new_span(span::expect().named("e").with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("foo"))
+        .new_span(expect::span().named("a").with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("b").with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("c").with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("d").with_explicit_parent(Some("foo")))
+        .new_span(expect::span().named("e").with_explicit_parent(Some("foo")))
         .only()
         .run_with_handle();
 
@@ -711,15 +711,15 @@ fn explicit_child_at_levels() {
 #[test]
 fn explicit_child_regardless_of_ctx() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo"))
-        .new_span(span::expect().named("bar"))
-        .enter(span::expect().named("bar"))
+        .new_span(expect::span().named("foo"))
+        .new_span(expect::span().named("bar"))
+        .enter(expect::span().named("bar"))
         .new_span(
-            span::expect()
+            expect::span()
                 .named("baz")
                 .with_explicit_parent(Some("foo")),
         )
-        .exit(span::expect().named("bar"))
+        .exit(expect::span().named("bar"))
         .only()
         .run_with_handle();
 
@@ -736,7 +736,7 @@ fn explicit_child_regardless_of_ctx() {
 #[test]
 fn contextual_root() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo").with_contextual_parent(None))
+        .new_span(expect::span().named("foo").with_contextual_parent(None))
         .only()
         .run_with_handle();
 
@@ -751,14 +751,14 @@ fn contextual_root() {
 #[test]
 fn contextual_child() {
     let (collector, handle) = collector::mock()
-        .new_span(span::expect().named("foo"))
-        .enter(span::expect().named("foo"))
+        .new_span(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
         .new_span(
-            span::expect()
+            expect::span()
                 .named("bar")
                 .with_contextual_parent(Some("foo")),
         )
-        .exit(span::expect().named("foo"))
+        .exit(expect::span().named("foo"))
         .only()
         .run_with_handle();
 
@@ -776,8 +776,8 @@ fn contextual_child() {
 fn display_shorthand() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("my_span").with_field(
-                field::expect("my_field")
+            expect::span().named("my_span").with_field(
+                expect::field("my_field")
                     .with_value(&display("hello world"))
                     .only(),
             ),
@@ -796,8 +796,8 @@ fn display_shorthand() {
 fn debug_shorthand() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("my_span").with_field(
-                field::expect("my_field")
+            expect::span().named("my_span").with_field(
+                expect::field("my_field")
                     .with_value(&debug("hello world"))
                     .only(),
             ),
@@ -816,10 +816,10 @@ fn debug_shorthand() {
 fn both_shorthands() {
     let (collector, handle) = collector::mock()
         .new_span(
-            span::expect().named("my_span").with_field(
-                field::expect("display_field")
+            expect::span().named("my_span").with_field(
+                expect::field("display_field")
                     .with_value(&display("hello world"))
-                    .and(field::expect("debug_field").with_value(&debug("hello world")))
+                    .and(expect::field("debug_field").with_value(&debug("hello world")))
                     .only(),
             ),
         )

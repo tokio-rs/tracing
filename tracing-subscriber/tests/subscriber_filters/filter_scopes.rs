@@ -4,45 +4,45 @@ use tracing_mock::subscriber::MockSubscriber;
 #[test]
 fn filters_span_scopes() {
     let (debug_subscriber, debug_handle) = subscriber::named("debug")
-        .enter(span::expect().at_level(Level::DEBUG))
-        .enter(span::expect().at_level(Level::INFO))
-        .enter(span::expect().at_level(Level::WARN))
-        .enter(span::expect().at_level(Level::ERROR))
+        .enter(expect::span().at_level(Level::DEBUG))
+        .enter(expect::span().at_level(Level::INFO))
+        .enter(expect::span().at_level(Level::WARN))
+        .enter(expect::span().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::expect().at_level(Level::ERROR),
-            span::expect().at_level(Level::WARN),
-            span::expect().at_level(Level::INFO),
-            span::expect().at_level(Level::DEBUG),
+            expect::span().at_level(Level::ERROR),
+            expect::span().at_level(Level::WARN),
+            expect::span().at_level(Level::INFO),
+            expect::span().at_level(Level::DEBUG),
         ]))
-        .exit(span::expect().at_level(Level::ERROR))
-        .exit(span::expect().at_level(Level::WARN))
-        .exit(span::expect().at_level(Level::INFO))
-        .exit(span::expect().at_level(Level::DEBUG))
+        .exit(expect::span().at_level(Level::ERROR))
+        .exit(expect::span().at_level(Level::WARN))
+        .exit(expect::span().at_level(Level::INFO))
+        .exit(expect::span().at_level(Level::DEBUG))
         .only()
         .run_with_handle();
     let (info_subscriber, info_handle) = subscriber::named("info")
-        .enter(span::expect().at_level(Level::INFO))
-        .enter(span::expect().at_level(Level::WARN))
-        .enter(span::expect().at_level(Level::ERROR))
+        .enter(expect::span().at_level(Level::INFO))
+        .enter(expect::span().at_level(Level::WARN))
+        .enter(expect::span().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::expect().at_level(Level::ERROR),
-            span::expect().at_level(Level::WARN),
-            span::expect().at_level(Level::INFO),
+            expect::span().at_level(Level::ERROR),
+            expect::span().at_level(Level::WARN),
+            expect::span().at_level(Level::INFO),
         ]))
-        .exit(span::expect().at_level(Level::ERROR))
-        .exit(span::expect().at_level(Level::WARN))
-        .exit(span::expect().at_level(Level::INFO))
+        .exit(expect::span().at_level(Level::ERROR))
+        .exit(expect::span().at_level(Level::WARN))
+        .exit(expect::span().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let (warn_subscriber, warn_handle) = subscriber::named("warn")
-        .enter(span::expect().at_level(Level::WARN))
-        .enter(span::expect().at_level(Level::ERROR))
+        .enter(expect::span().at_level(Level::WARN))
+        .enter(expect::span().at_level(Level::ERROR))
         .event(event::msg("hello world").in_scope(vec![
-            span::expect().at_level(Level::ERROR),
-            span::expect().at_level(Level::WARN),
+            expect::span().at_level(Level::ERROR),
+            expect::span().at_level(Level::WARN),
         ]))
-        .exit(span::expect().at_level(Level::ERROR))
-        .exit(span::expect().at_level(Level::WARN))
+        .exit(expect::span().at_level(Level::ERROR))
+        .exit(expect::span().at_level(Level::WARN))
         .only()
         .run_with_handle();
 
@@ -70,22 +70,22 @@ fn filters_span_scopes() {
 fn filters_interleaved_span_scopes() {
     fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
         subscriber::named(format!("target_{}", target))
-            .enter(span::expect().with_target(target))
-            .enter(span::expect().with_target(target))
+            .enter(expect::span().with_target(target))
+            .enter(expect::span().with_target(target))
             .event(event::msg("hello world").in_scope(vec![
-                span::expect().with_target(target),
-                span::expect().with_target(target),
+                expect::span().with_target(target),
+                expect::span().with_target(target),
             ]))
             .event(
                 event::msg("hello to my target")
                     .in_scope(vec![
-                        span::expect().with_target(target),
-                        span::expect().with_target(target),
+                        expect::span().with_target(target),
+                        expect::span().with_target(target),
                     ])
                     .with_target(target),
             )
-            .exit(span::expect().with_target(target))
-            .exit(span::expect().with_target(target))
+            .exit(expect::span().with_target(target))
+            .exit(expect::span().with_target(target))
             .only()
             .run_with_handle()
     }
@@ -93,14 +93,14 @@ fn filters_interleaved_span_scopes() {
     let (a_subscriber, a_handle) = target_subscriber("a");
     let (b_subscriber, b_handle) = target_subscriber("b");
     let (all_subscriber, all_handle) = subscriber::named("all")
-        .enter(span::expect().with_target("b"))
-        .enter(span::expect().with_target("a"))
+        .enter(expect::span().with_target("b"))
+        .enter(expect::span().with_target("a"))
         .event(event::msg("hello world").in_scope(vec![
-            span::expect().with_target("a"),
-            span::expect().with_target("b"),
+            expect::span().with_target("a"),
+            expect::span().with_target("b"),
         ]))
-        .exit(span::expect().with_target("a"))
-        .exit(span::expect().with_target("b"))
+        .exit(expect::span().with_target("a"))
+        .exit(expect::span().with_target("b"))
         .only()
         .run_with_handle();
 

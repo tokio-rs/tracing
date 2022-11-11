@@ -7,9 +7,9 @@ use tracing_subscriber::{filter::LevelFilter, prelude::*, reload};
 #[test]
 fn reload_max_log_level() {
     let (collector, finished) = collector::mock()
-        .event(event::expect().at_level(Level::INFO))
-        .event(event::expect().at_level(Level::DEBUG))
-        .event(event::expect().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
         .only()
         .run_with_handle();
     let (filter, reload_handle) = reload::Subscriber::new(LevelFilter::INFO);
