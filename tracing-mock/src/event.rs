@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, expect, metadata::ExpectedMetadata, span, Parent};
+use super::{expect, field, metadata::ExpectedMetadata, span, Parent};
 
 use std::fmt;
 
