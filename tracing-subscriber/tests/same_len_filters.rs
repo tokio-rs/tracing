@@ -10,9 +10,9 @@ use tracing_subscriber::{filter::EnvFilter, prelude::*};
 fn same_length_targets() {
     let filter: EnvFilter = "foo=trace,bar=trace".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::TRACE))
-        .done()
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::TRACE))
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
 
@@ -31,16 +31,16 @@ fn same_num_fields_event() {
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .event(
-            event::mock()
+            expect::event()
                 .at_level(Level::TRACE)
-                .with_fields(field::mock("foo")),
+                .with_fields(expect::field("foo")),
         )
         .event(
-            event::mock()
+            expect::event()
                 .at_level(Level::TRACE)
-                .with_fields(field::mock("bar")),
+                .with_fields(expect::field("bar")),
         )
-        .done()
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
     with_default(subscriber, || {
@@ -58,18 +58,18 @@ fn same_num_fields_and_name_len() {
         .expect("filter should parse");
     let (subscriber, finished) = collector::mock()
         .new_span(
-            span::mock()
+            expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("bar")),
+                .with_field(expect::field("bar")),
         )
         .new_span(
-            span::mock()
+            expect::span()
                 .named("baz")
                 .at_level(Level::TRACE)
-                .with_field(field::mock("boz")),
+                .with_field(expect::field("boz")),
         )
-        .done()
+        .only()
         .run_with_handle();
     let subscriber = subscriber.with(filter);
     with_default(subscriber, || {

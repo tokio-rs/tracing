@@ -1,8 +1,8 @@
 #![cfg(feature = "registry")]
 use tracing::Level;
 use tracing_mock::{
-    collector, event,
-    subscriber::{self, ExpectSubscriber},
+    collector, expect,
+    subscriber::{self, MockSubscriber},
 };
 use tracing_subscriber::{filter::DynFilterFn, prelude::*};
 
@@ -104,22 +104,22 @@ fn filter<S>() -> DynFilterFn<S> {
     DynFilterFn::new(|metadata, _| metadata.level() <= &Level::INFO)
 }
 
-fn unfiltered(name: &str) -> (ExpectSubscriber, collector::MockHandle) {
+fn unfiltered(name: &str) -> (MockSubscriber, collector::MockHandle) {
     subscriber::named(name)
-        .event(event::mock().at_level(Level::TRACE))
-        .event(event::mock().at_level(Level::DEBUG))
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(expect::event().at_level(Level::TRACE))
+        .event(expect::event().at_level(Level::DEBUG))
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .only()
         .run_with_handle()
 }
 
-fn filtered(name: &str) -> (ExpectSubscriber, collector::MockHandle) {
+fn filtered(name: &str) -> (MockSubscriber, collector::MockHandle) {
     subscriber::named(name)
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::WARN))
-        .event(event::mock().at_level(Level::ERROR))
-        .done()
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .only()
         .run_with_handle()
 }
