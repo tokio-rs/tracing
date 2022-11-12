@@ -912,6 +912,8 @@ impl<T> Format<Json, T> {
     /// Sets whether or not the formatter will include newline characters after
     /// formatting a log event.
     ///
+    /// Defaults to `true`, which enables newlines.
+    ///
     /// See [`Json`]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]

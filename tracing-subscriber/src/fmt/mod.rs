@@ -807,6 +807,8 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the formatter will include newline characters after
     /// formatting a log event.
     ///
+    /// Defaults to `true`, which enables newlines.
+    ///
     /// See [`format::Json`](super::fmt::format::Json)
     pub fn with_newlines(
         self,

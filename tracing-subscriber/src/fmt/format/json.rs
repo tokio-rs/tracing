@@ -153,6 +153,8 @@ impl Json {
     }
 
     /// If set to `false`, formatted events won't be followed by a newline.
+    /// Defaults to `true`.
+    /// 
     /// This option is mainly useful for logic that is supposed to expand logged
     /// JSON values by embedding them in a wrapping JSON structure.
     pub fn with_newlines(&mut self, print_newlines: bool) {
