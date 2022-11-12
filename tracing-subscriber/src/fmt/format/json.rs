@@ -157,6 +157,9 @@ impl Json {
     /// 
     /// This option is mainly useful for logic that is supposed to expand logged
     /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the type-level documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: Json#wrapping-json-entries-with-custom-formatters
     pub fn with_newlines(&mut self, print_newlines: bool) {
         self.print_newlines = print_newlines;
     }

@@ -610,7 +610,11 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
     ///
     /// Defaults to `true`, which enables newlines.
     ///
-    /// See [`format::Json`]
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the `format::Json` documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: format::Json#wrapping-json-entries-with-custom-formatters
     pub fn with_newlines(
         self,
         print_newlines: bool,

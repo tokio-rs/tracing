@@ -914,7 +914,11 @@ impl<T> Format<Json, T> {
     ///
     /// Defaults to `true`, which enables newlines.
     ///
-    /// See [`Json`]
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the `Json` documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: Json#wrapping-json-entries-with-custom-formatters
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn with_newlines(mut self, print_newlines: bool) -> Format<Json, T> {

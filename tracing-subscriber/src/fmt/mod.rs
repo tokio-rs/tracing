@@ -809,7 +809,11 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     ///
     /// Defaults to `true`, which enables newlines.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the `fmt::format::Json` documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: super::fmt::format::Json#wrapping-json-entries-with-custom-formatters
     pub fn with_newlines(
         self,
         print_newlines: bool,
