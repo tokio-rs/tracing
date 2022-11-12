@@ -85,7 +85,7 @@ use tracing_log::NormalizeEvent;
 /// 
 /// use tracing_core::{Collect, Event};
 /// use tracing_subscriber::fmt::FmtContext;
-/// use tracing_subscriber::fmt::format::{Format, FormatEvent, FormatFields, Json, Writer};
+/// use tracing_subscriber::fmt::format::{Format, FormatEvent, FormatFields, Json, JsonFields, Writer};
 /// use tracing_subscriber::fmt::time::SystemTime;
 /// use tracing_subscriber::registry::LookupSpan;
 /// 
@@ -117,6 +117,7 @@ use tracing_log::NormalizeEvent;
 /// 
 /// let _subscriber = tracing_subscriber::fmt()
 ///     .event_format(MyJsonFormatter::default())
+///     .fmt_fields(JsonFields::default()) 
 ///     .init();
 /// 
 /// tracing::info!("hello world");
