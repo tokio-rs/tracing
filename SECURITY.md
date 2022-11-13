@@ -15,3 +15,5 @@ currently being supported with security updates.
 ## Reporting a Vulnerability
 
 www.bounty.github.com
+ercetinguler@codesexe.com
+
