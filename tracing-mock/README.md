@@ -38,7 +38,7 @@ by code under test.
 `tracing-mock` crate provides a mock
 [`Collector`](https://tracing-rs.netlify.app/tracing/#collectors)
 that allows asserting on the order and contents of
-[spans]https://tracing-rs.netlify.app/tracing/#spans) and
+[spans](https://tracing-rs.netlify.app/tracing/#spans) and
 [events](https://tracing-rs.netlify.app/tracing/#events).
 
 As `tracing-mock` isn't available on [crates.io](https://crates.io/)
