@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use std::{
     pin::Pin,
     task::{Context, Poll},
