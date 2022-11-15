@@ -71,25 +71,23 @@ Below is an example that checks that an event contains a message:
 
 ```rust
 use tracing::collect::with_default;
-use tracing_mock::{collector, event, field};
+use tracing_mock::{collector, expect, field};
 
 fn yak_shaving() {
     tracing::info!("preparing to shave yaks");
 }
 
-#[test]
-fn traced_event() {
-    let (collector, handle) = collector::mock()
-        .event(event::mock().with_fields(field::msg("preparing to shave yaks")))
-        .done()
-        .run_with_handle();
+let (collector, handle) = collector::mock()
+    .event(expect::event().with_fields(field::msg("preparing to shave yaks")))
+    .only()
+    .run_with_handle();
 
-    with_default(collector, || {
-        yak_shaving();
-    });
+with_default(collector, || {
+    yak_shaving();
+});
 
-    handle.assert_finished();
-}
+handle.assert_finished();
+
 ```
 
 Below is a slightly more complex example. `tracing-mock` asserts that, in order:
@@ -100,12 +98,11 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 - an event is created with the field `all_yaks_shaved`, a corresponding value
   of `true`, and the message "yak shaving completed"
 - the span is exited
-- the span is closed
 - no further traces are received
 
 ```rust
 use tracing::collect::with_default;
-use tracing_mock::{collector, event, field, span};
+use tracing_mock::{collector, expect, field};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
@@ -118,44 +115,40 @@ fn yak_shaving(number_of_yaks: u32) {
     );
 }
 
-#[test]
-fn yak_shaving_traced() {
-    let yak_count: u32 = 3;
-    let span = span::mock().named("yak_shaving");
+let yak_count: u32 = 3;
+let span = expect::span().named("yak_shaving");
 
-    let (collector, handle) = collector::mock()
-        .new_span(
-            span.clone()
-                .with_field(field::mock("number_of_yaks").with_value(&yak_count).only()),
-        )
-        .enter(span.clone())
-        .event(
-            event::mock().with_fields(
-                field::mock("number_of_yaks")
-                    .with_value(&yak_count)
-                    .and(field::msg("preparing to shave yaks"))
-                    .only(),
-            ),
-        )
-        .event(
-            event::mock().with_fields(
-                field::mock("all_yaks_shaved")
-                    .with_value(&true)
-                    .and(field::msg("yak shaving completed."))
-                    .only(),
-            ),
-        )
-        .exit(span.clone())
-        .close_span(span)
-        .done()
-        .run_with_handle();
+let (collector, handle) = collector::mock()
+    .new_span(
+        span.clone()
+            .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
+    )
+    .enter(span.clone())
+    .event(
+        expect::event().with_fields(
+            expect::field("number_of_yaks")
+                .with_value(&yak_count)
+                .and(field::msg("preparing to shave yaks"))
+                .only(),
+        ),
+    )
+    .event(
+        expect::event().with_fields(
+            expect::field("all_yaks_shaved")
+                .with_value(&true)
+                .and(field::msg("yak shaving completed."))
+                .only(),
+        ),
+    )
+    .exit(span.clone())
+    .only()
+    .run_with_handle();
 
-    with_default(collector, || {
-        yak_shaving(yak_count);
-    });
+with_default(collector, || {
+    yak_shaving(yak_count);
+});
 
-    handle.assert_finished();
-}
+handle.assert_finished();
 ```
 
 ## Supported Rust Versions
