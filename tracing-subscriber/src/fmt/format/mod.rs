@@ -60,6 +60,9 @@ mod pretty;
 #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
 pub use pretty::*;
 
+mod filter;
+pub use filter::*;
+
 use fmt::{Debug, Display};
 
 /// A type that can format a tracing [`Event`] to a [`Writer`].
