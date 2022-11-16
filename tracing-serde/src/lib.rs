@@ -155,7 +155,6 @@
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`serde`]: https://crates.io/crates/serde
-#![doc(html_root_url = "https://docs.rs/tracing-serde/0.1.3")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
