@@ -1,4 +1,37 @@
-#![allow(missing_docs)]
+//! A `Collector` to receive and validate `tracing` data.
+//!
+//! # Overview
+//!
+//! [`tracing`] is a framework for instrumenting Rust programs to collect
+//! structured, event-based diagnostic information. `tracing-mock` provides
+//! tools for making assertions about what `tracing` diagnostics are emitted
+//! by code under test. The `MockCollector` is the central component in these
+//! tools. The `MockCollector` has expectations set on it which are later
+//! validated as the code under test is run.
+//!
+//! # Usage
+//!
+//! ```
+//! use tracing::collect::with_default;
+//! use tracing_mock::{collector, expect, field};
+//!
+//! let (collector, handle) = collector::mock()
+//!        // Expect a single event with a specified message
+//!        .event(expect::event().with_fields(field::msg("droids")))
+//!        .only()
+//!        .run_with_handle();
+//!
+//! // Use `with_default` to apply the `MockCollector` for the duration
+//! // of the closure - this is what we are testing.
+//! with_default(collector, || {
+//!     // These *are* the droids we are looking for
+//!     tracing::info!("droids");
+//! });
+//!
+//! // Use the handle to check the assertions. This line will panic if an
+//! // assertion is not met.
+//! handle.assert_finished();
+//! ```
 use crate::{
     event::ExpectedEvent,
     expect::Expect,
@@ -7,7 +40,6 @@ use crate::{
 };
 use std::{
     collections::{HashMap, VecDeque},
-    fmt,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
@@ -37,6 +69,12 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
     name: String,
 }
 
+/// A collector which can validate received traces.
+///
+/// For a detailed description and examples see the documentation
+/// for the methods and the [`collector`] module.
+///
+/// [`collector`]: mod@crate::collector
 pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
     max_level: Option<LevelFilter>,
@@ -44,8 +82,10 @@ pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
     name: String,
 }
 
+/// A handle which is used to invoke validation of expectations.
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
+/// Create a new [`MockCollector`].
 pub fn mock() -> MockCollector<fn(&Metadata<'_>) -> bool> {
     MockCollector {
         expected: VecDeque::new(),
@@ -75,6 +115,22 @@ where
     /// interactions between multiple subscribers. In that case, it can be
     /// helpful to give each subscriber a separate name to distinguish where the
     /// debugging output comes from.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .named("subscriber-1")
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
     pub fn named(self, name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
@@ -82,51 +138,60 @@ where
         }
     }
 
-    pub fn enter(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
-        self
-    }
-
-    pub fn follows_from(mut self, consequence: ExpectedSpan, cause: ExpectedSpan) -> Self {
-        self.expected
-            .push_back(Expect::FollowsFrom { consequence, cause });
-        self
-    }
-
+    /// Expects an event matching the [`ExpectedEvent`] to be traced.
+    ///
+    /// The `event` can be simple a default mock which will match
+    /// any event (`expect::event()`) or can include
+    /// additional requirements. See the [`ExpectedEvent`] documentation
+    /// for more details.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
     pub fn event(mut self, event: ExpectedEvent) -> Self {
         self.expected.push_back(Expect::Event(event));
         self
     }
 
-    pub fn exit(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
-        self
-    }
-
-    pub fn clone_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::CloneSpan(span));
-        self
-    }
-
-    #[allow(deprecated)]
-    pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::DropSpan(span));
-        self
-    }
-
-    pub fn only(mut self) -> Self {
-        self.expected.push_back(Expect::Nothing);
-        self
-    }
-
-    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
-    where
-        I: Into<ExpectedFields>,
-    {
-        self.expected.push_back(Expect::Visit(span, fields.into()));
-        self
-    }
-
+    /// Expects a span matching `new_span` to be created.
+    ///
+    /// This function accepts `Into<NewSpan>` instead of
+    /// [`ExpectedSpan`] directly. So it can be used to test
+    /// span fields and the span parent. This is because a
+    /// collector only receives the span fields and parent when
+    /// a span is created, not when it is entered.
+    ///
+    /// The new span doesn't need to have been entered.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span = expect::span()
+    ///     .at_level(tracing::Level::INFO)
+    ///     .named("the span we're testing")
+    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    /// let (collector, handle) = collector::mock()
+    ///     .new_span(span)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     _ = tracing::info_span!("the span we're testing", testing = "yes");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
     pub fn new_span<I>(mut self, new_span: I) -> Self
     where
         I: Into<NewSpan>,
@@ -135,6 +200,214 @@ where
         self
     }
 
+    /// Expects a span matching the [`ExpectedSpan`] to be entered.
+    ///
+    /// This expectation is generally accompanied by a call to
+    /// [`exit`] as well. If used together with [`only`], this
+    /// is necessary.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span = expect::span()
+    ///     .at_level(tracing::Level::INFO)
+    ///     .named("the span we're testing");
+    /// let (collector, handle) = collector::mock()
+    ///     .enter(span.clone())
+    ///     .exit(span)
+    ///     .only()
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let span = tracing::info_span!("the span we're testing");
+    ///     let _entered = span.enter();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`exit`]: fn@Self::exit
+    /// [`only`]: fn@Self::only
+    pub fn enter(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::Enter(span));
+        self
+    }
+
+    /// Expects a span matching the [`ExpectedSpan`] to exit.
+    ///
+    /// As a span may be entered and exited multiple times,
+    /// this is different from the span being closed. In
+    /// general [`enter`] and `exit` should be paired.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span = expect::span()
+    ///     .at_level(tracing::Level::INFO)
+    ///     .named("the span we're testing");
+    /// let (collector, handle) = collector::mock()
+    ///     .enter(span.clone())
+    ///     .exit(span.clone())
+    ///     .enter(span.clone())
+    ///     .exit(span)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let span = tracing::info_span!("the span we're testing");
+    ///     {
+    ///         let _entered = span.enter();
+    ///     }
+    ///     {
+    ///         let _entered = span.enter();
+    ///     }
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`enter`]: fn@Self::enter
+    pub fn exit(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::Exit(span));
+        self
+    }
+
+    /// Expects a span matching the [`ExpectedSpan`] to be cloned.
+    ///
+    /// The cloned span does need to have been entered.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span = expect::span()
+    ///     .at_level(tracing::Level::INFO)
+    ///     .named("the span we're testing");
+    /// let (collector, handle) = collector::mock()
+    ///     .clone_span(span)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let span = tracing::info_span!("the span we're testing");
+    ///     _ = span.clone();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    pub fn clone_span(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::CloneSpan(span));
+        self
+    }
+
+    /// Expects a span matching the [`ExpectedSpan`] to be dropped via
+    /// the deprecated function [`Collect::drop_span`].
+    ///
+    /// Instead [`Collect::try_close`] should be used on the collector
+    /// and should be asserted with [`close_span`].
+    ///
+    /// NOTE: [`close_span`] hasn't been implemented yet, but will be
+    /// done as part of #539.
+    ///
+    /// [`Collect::drop_span`]: fn@tracing::Collect::drop_span
+    /// [`close_span`]: fn@Self::close_span
+    #[deprecated(since = "0.1.0", note = "use `MockCollector::close_span` instead")]
+    pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
+        self.expected.push_back(Expect::DropSpan(span));
+        self
+    }
+
+    /// Expects that a span matching `consequence` follows from a span matching `cause`.
+    ///
+    /// For further details on what this causal relationship means, see
+    /// [`Span::follows_from`].
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span_1 = expect::span().named("cause");
+    /// let span_2 = expect::span().named("consequence");
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .new_span(span_1.clone())
+    ///     .new_span(span_2.clone())
+    ///     .follows_from(span_2, span_1)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let cause = tracing::info_span!("cause");
+    ///     let consequence = tracing::info_span!("consequence");
+    ///
+    ///     consequence.follows_from(&cause);
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`Span::follows_from`]: fn@tracing::Span::follows_from
+    pub fn follows_from(mut self, consequence: ExpectedSpan, cause: ExpectedSpan) -> Self {
+        self.expected
+            .push_back(Expect::FollowsFrom { consequence, cause });
+        self
+    }
+
+    /// Expect that `fields` are recorded on a span matching the
+    /// [`ExpectedSpan`].
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let span = expect::span()
+    ///     .named("my_span");
+    /// let (collector, handle) = collector::mock()
+    ///     .new_span(span.clone())
+    ///     .record(span, expect::field("parting").with_value(&"goodbye world!"))
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let span = tracing::trace_span!(
+    ///         "my_span",
+    ///         greeting = "hello world",
+    ///         parting = tracing::field::Empty
+    ///     );
+    ///     span.record("parting", "goodbye world!");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
+    where
+        I: Into<ExpectedFields>,
+    {
+        self.expected.push_back(Expect::Visit(span, fields.into()));
+        self
+    }
+
+    /// Filter the traces evaluated by the `MockCollector`.
+    ///
+    /// The filter will be applied to all traces received before
+    /// any verification occurs - so its position in the call chain
+    /// is not important.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .with_filter(|meta| meta.level() <= &tracing::Level::WARN)
+    ///     .event(expect::event())
+    ///     .only()
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    ///     tracing::warn!("b");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
     pub fn with_filter<G>(self, filter: G) -> MockCollector<G>
     where
         G: Fn(&Metadata<'_>) -> bool + 'static,
@@ -147,6 +420,38 @@ where
         }
     }
 
+    /// Sets the max level that will be provided to the `tracing` system.
+    ///
+    /// This method can be used to test the internals of `tracing`, but it
+    /// is also useful to filter out traces on more verbose levels if you
+    /// only want to verify above a certain level.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .with_max_level_hint(tracing::Level::INFO)
+    ///     .event(expect::event().at_level(tracing::Level::INFO))
+    ///     .only()
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::debug!("a message we don't care about");
+    ///     tracing::info!("a message we want to verify");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// Note that this value determines a global filter, if `with_max_level_hint`
+    /// is called on multiple collectors, the global filter will be the least
+    /// restrictive of all collectors.
+    ///
+    /// To filter the events evaluated by a specific `MockCollector`, use
+    /// [`with_filter`] instead.
+    ///
+    /// [`with_filter`]: fn@Self::with_filter
     pub fn with_max_level_hint(self, hint: impl Into<LevelFilter>) -> Self {
         Self {
             max_level: Some(hint.into()),
@@ -154,11 +459,102 @@ where
         }
     }
 
+    /// Expects that no further traces are received.
+    ///
+    /// Consider this simple test. It passes even though we only
+    /// expect a single event, but receive three.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    ///     tracing::info!("b");
+    ///     tracing::info!("c");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// Now we include `only` and this test will fail.
+    ///
+    /// ```should_panic
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(expect::event())
+    ///     .only()
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    ///     tracing::info!("b");
+    ///     tracing::info!("c");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    pub fn only(mut self) -> Self {
+        self.expected.push_back(Expect::Nothing);
+        self
+    }
+
+    /// Consume the receiver and return an `impl` [`Collect`] which can
+    /// be set as the default collector.
+    ///
+    /// This function is similar to [`run_with_handle`], but it doesn't
+    /// return a [`MockHandle`]. This is useful if the desired
+    /// assertions can be checked externally to the collector.
+    ///
+    /// For example, the following test is used within the `tracing`
+    /// codebase.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::collector;
+    ///
+    /// with_default(collector::mock().run(), || {
+    ///     let foo1 = tracing::span!(tracing::Level::TRACE, "foo");
+    ///     let foo2 = foo1.clone();
+    ///     // Two handles that point to the same span are equal.
+    ///     assert_eq!(foo1, foo2);
+    /// });
+    /// ```
+    ///
+    /// [`Collect`]: tracing::Collect
+    /// [`run_with_handle`]: fn@Self::run_with_handle
     pub fn run(self) -> impl Collect {
         let (collector, _) = self.run_with_handle();
         collector
     }
 
+    /// Consume the receiver and return an `impl` [`Collect`] which can
+    /// be set as the default collector and a [`MockHandle`] which can
+    /// be used to validate the provided expectations.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// // collector and handle are returned from `run_with_handle()`
+    /// let (collector, handle) = collector::mock()
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`Collect`]: tracing::Collect
     pub fn run_with_handle(self) -> (impl Collect, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle(expected.clone(), self.name.clone());
@@ -459,6 +855,31 @@ impl MockHandle {
         Self(expected, name)
     }
 
+    /// Checks the expectations which were set on the
+    /// [`MockCollector`].
+    ///
+    /// Calling `assert_finished` is usually the final part of a test.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if any of the provided expectations are
+    /// not met.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!("a");
+    /// });
+    ///
+    /// // Check assertions set on the mock collector
+    /// handle.assert_finished();
+    /// ```
     pub fn assert_finished(&self) {
         if let Ok(ref expected) = self.0.lock() {
             assert!(
@@ -467,54 +888,6 @@ impl MockHandle {
                 self.1,
                 **expected
             );
-        }
-    }
-}
-
-impl Expect {
-    pub fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
-        let name = name.as_ref();
-        match self {
-            Expect::Event(e) => panic!(
-                "\n[{}] expected event {}\n[{}] but instead {}",
-                name, e, name, what,
-            ),
-            Expect::FollowsFrom { consequence, cause } => panic!(
-                "\n[{}] expected consequence {} to follow cause {} but instead {}",
-                name, consequence, cause, what,
-            ),
-            Expect::Enter(e) => panic!(
-                "\n[{}] expected to enter {}\n[{}] but instead {}",
-                name, e, name, what,
-            ),
-            Expect::Exit(e) => panic!(
-                "\n[{}] expected to exit {}\n[{}] but instead {}",
-                name, e, name, what,
-            ),
-            Expect::CloneSpan(e) => {
-                panic!(
-                    "\n[{}] expected to clone {}\n[{}] but instead {}",
-                    name, e, name, what,
-                )
-            }
-            Expect::DropSpan(e) => {
-                panic!(
-                    "\n[{}] expected to drop {}\n[{}] but instead {}",
-                    name, e, name, what,
-                )
-            }
-            Expect::Visit(e, fields) => panic!(
-                "\n[{}] expected {} to record {}\n[{}] but instead {}",
-                name, e, fields, name, what,
-            ),
-            Expect::NewSpan(e) => panic!(
-                "\n[{}] expected {}\n[{}] but instead {}",
-                name, e, name, what
-            ),
-            Expect::Nothing => panic!(
-                "\n[{}] expected nothing else to happen\n[{}] but {} instead",
-                name, name, what,
-            ),
         }
     }
 }
