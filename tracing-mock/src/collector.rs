@@ -300,6 +300,8 @@ where
         self
     }
 
+    /// **This method is deprecated.**
+    ///
     /// Expects a span matching the [`ExpectedSpan`] to be dropped via
     /// the deprecated function [`Collect::drop_span`].
     ///
@@ -311,7 +313,7 @@ where
     ///
     /// [`Collect::drop_span`]: fn@tracing::Collect::drop_span
     /// [`close_span`]: fn@Self::close_span
-    #[deprecated(since = "0.1.0", note = "use `MockCollector::close_span` instead")]
+    #[allow(deprecated)]
     pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::DropSpan(span));
         self
