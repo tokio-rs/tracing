@@ -306,13 +306,10 @@ where
     /// the deprecated function [`Collect::drop_span`].
     ///
     /// Instead [`Collect::try_close`] should be used on the collector
-    /// and should be asserted with [`close_span`].
-    ///
-    /// NOTE: [`close_span`] hasn't been implemented yet, but will be
-    /// done as part of #539.
+    /// and should be asserted with `close_span` (which hasn't been
+    /// implemented yet, but will be done as part of #539).
     ///
     /// [`Collect::drop_span`]: fn@tracing::Collect::drop_span
-    /// [`close_span`]: fn@Self::close_span
     #[allow(deprecated)]
     pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
         self.expected.push_back(Expect::DropSpan(span));
