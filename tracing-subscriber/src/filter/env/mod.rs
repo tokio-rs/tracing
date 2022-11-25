@@ -14,6 +14,7 @@ use crate::{
     subscribe::{Context, Subscribe},
     sync::RwLock,
 };
+use alloc::sync::Arc;
 use directive::ParseError;
 use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
 use thread_local::ThreadLocal;
@@ -193,15 +194,30 @@ use tracing_core::{
 /// [psf]: crate::subscribe#per-subscriber-filtering
 /// [filtering]: crate::subscribe#filtering-with-subscribers
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnvFilter {
     statics: directive::Statics,
     dynamics: directive::Dynamics,
     has_dynamics: bool,
+    inner: Arc<EnvFilterInner>,
+    regex: bool,
+}
+
+#[derive(Debug)]
+struct EnvFilterInner {
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
     scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
-    regex: bool,
+}
+
+impl Default for EnvFilterInner {
+    fn default() -> Self {
+        Self {
+            by_id: RwLock::new(Default::default()),
+            by_cs: RwLock::new(Default::default()),
+            scope: ThreadLocal::new(),
+        }
+    }
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -482,7 +498,7 @@ impl EnvFilter {
             if metadata.is_span() {
                 // If the metadata is a span, see if we care about its callsite.
                 let enabled_by_cs = self
-                    .by_cs
+                    .by_cs()
                     .read()
                     .ok()
                     .map(|by_cs| by_cs.contains_key(&metadata.callsite()))
@@ -493,7 +509,7 @@ impl EnvFilter {
             }
 
             let enabled_by_scope = {
-                let scope = self.scope.get_or_default().borrow();
+                let scope = self.scope().get_or_default().borrow();
                 for filter in &*scope {
                     if filter >= level {
                         return true;
@@ -543,10 +559,10 @@ impl EnvFilter {
     /// [`Filter::on_new_span`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
     pub fn on_new_span<C>(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, C>) {
-        let by_cs = try_lock!(self.by_cs.read());
+        let by_cs = try_lock!(self.by_cs().read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
-            try_lock!(self.by_id.write()).insert(id.clone(), span);
+            try_lock!(self.by_id().write()).insert(id.clone(), span);
         }
     }
 
@@ -559,8 +575,11 @@ impl EnvFilter {
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            self.scope.get_or_default().borrow_mut().push(span.level());
+        if let Some(span) = try_lock!(self.by_id().read()).get(id) {
+            self.scope()
+                .get_or_default()
+                .borrow_mut()
+                .push(span.level());
         }
     }
 
@@ -571,7 +590,7 @@ impl EnvFilter {
     /// traits, but it does not require the trait to be in scope.
     pub fn on_exit<C>(&self, id: &span::Id, _: Context<'_, C>) {
         if self.cares_about_span(id) {
-            self.scope.get_or_default().borrow_mut().pop();
+            self.scope().get_or_default().borrow_mut().pop();
         }
     }
 
@@ -586,7 +605,7 @@ impl EnvFilter {
             return;
         }
 
-        let mut spans = try_lock!(self.by_id.write());
+        let mut spans = try_lock!(self.by_id().write());
         spans.remove(&id);
     }
 
@@ -597,13 +616,13 @@ impl EnvFilter {
     /// [`Filter::on_record`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope
     pub fn on_record<C>(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, C>) {
-        if let Some(span) = try_lock!(self.by_id.read()).get(id) {
+        if let Some(span) = try_lock!(self.by_id().read()).get(id) {
             span.record_update(values);
         }
     }
 
     fn cares_about_span(&self, span: &span::Id) -> bool {
-        let spans = try_lock!(self.by_id.read(), else return false);
+        let spans = try_lock!(self.by_id().read(), else return false);
         spans.contains_key(span)
     }
 
@@ -621,7 +640,7 @@ impl EnvFilter {
             // dynamic filter that should be constructed for it. If so, it
             // should always be enabled, since it influences filtering.
             if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
+                let mut by_cs = try_lock!(self.by_cs().write(), else return self.base_interest());
                 by_cs.insert(metadata.callsite(), matcher);
                 return Interest::always();
             }
@@ -633,6 +652,20 @@ impl EnvFilter {
         } else {
             self.base_interest()
         }
+    }
+
+    fn by_id(&self) -> &RwLock<HashMap<span::Id, directive::SpanMatcher>> {
+        &self.inner.by_id
+    }
+
+    fn by_cs(
+        &self,
+    ) -> &RwLock<HashMap<callsite::Identifier, directive::MatchSet<field::CallsiteMatch>>> {
+        &self.inner.by_cs
+    }
+
+    fn scope(&self) -> &ThreadLocal<RefCell<Vec<LevelFilter>>> {
+        &self.inner.scope
     }
 }
 

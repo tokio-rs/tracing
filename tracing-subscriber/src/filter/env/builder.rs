@@ -2,9 +2,7 @@ use super::{
     directive::{self, Directive},
     EnvFilter, FromEnvError,
 };
-use crate::sync::RwLock;
 use std::env;
-use thread_local::ThreadLocal;
 use tracing::level_filters::STATIC_MAX_LEVEL;
 
 /// A [builder] for constructing new [`EnvFilter`]s.
@@ -294,9 +292,7 @@ impl Builder {
             statics,
             dynamics,
             has_dynamics,
-            by_id: RwLock::new(Default::default()),
-            by_cs: RwLock::new(Default::default()),
-            scope: ThreadLocal::new(),
+            inner: Default::default(),
             regex: self.regex,
         };
 
