@@ -523,6 +523,75 @@ impl<S> subscribe::Filter<S> for Box<dyn subscribe::Filter<S> + Send + Sync + 's
     filter_impl_body!();
 }
 
+// Implement Filter for Option<Filter> where None => allow
+#[cfg(feature = "registry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+impl<F, S> subscribe::Filter<S> for Option<F>
+where
+    F: subscribe::Filter<S>,
+{
+    #[inline]
+    fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+        self.as_ref()
+            .map(|inner| inner.enabled(meta, ctx))
+            .unwrap_or(true)
+    }
+
+    #[inline]
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        self.as_ref()
+            .map(|inner| inner.callsite_enabled(meta))
+            .unwrap_or_else(Interest::sometimes)
+    }
+
+    #[inline]
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        self.as_ref().and_then(|inner| inner.max_level_hint())
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &Event<'_>, ctx: &Context<'_, S>) -> bool {
+        self.as_ref()
+            .map(|inner| inner.event_enabled(event, ctx))
+            .unwrap_or(true)
+    }
+
+    #[inline]
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(inner) = self {
+            inner.on_new_span(attrs, id, ctx)
+        }
+    }
+
+    #[inline]
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        if let Some(inner) = self {
+            inner.on_record(id, values, ctx)
+        }
+    }
+
+    #[inline]
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(inner) = self {
+            inner.on_enter(id, ctx)
+        }
+    }
+
+    #[inline]
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(inner) = self {
+            inner.on_exit(id, ctx)
+        }
+    }
+
+    #[inline]
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        if let Some(inner) = self {
+            inner.on_close(id, ctx)
+        }
+    }
+}
+
 // === impl Filtered ===
 
 impl<S, F, C> Filtered<S, F, C> {
