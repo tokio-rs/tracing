@@ -478,6 +478,36 @@ macro_rules! filter_impl_body {
         fn max_level_hint(&self) -> Option<LevelFilter> {
             self.deref().max_level_hint()
         }
+
+        #[inline]
+        fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+            self.deref().event_enabled(event, cx)
+        }
+
+        #[inline]
+        fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_new_span(attrs, id, ctx)
+        }
+
+        #[inline]
+        fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+            self.deref().on_record(id, values, ctx)
+        }
+
+        #[inline]
+        fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_enter(id, ctx)
+        }
+
+        #[inline]
+        fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+            self.deref().on_exit(id, ctx)
+        }
+
+        #[inline]
+        fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+            self.deref().on_close(id, ctx)
+        }
     };
 }
 
