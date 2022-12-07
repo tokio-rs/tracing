@@ -5,6 +5,7 @@ use self::support::*;
 mod boxed;
 mod downcast_raw;
 mod filter_scopes;
+mod option;
 mod per_event;
 mod targets;
 mod trees;
