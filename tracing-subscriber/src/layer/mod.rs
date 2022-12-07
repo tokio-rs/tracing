@@ -462,11 +462,13 @@
 //!
 //! This crate's [`filter`] module provides a number of types which implement
 //! the [`Filter`] trait, such as [`LevelFilter`], [`Targets`], and
-//! [`FilterFn`]. These [`Filter`]s provide ready-made implementations of
-//! common forms of filtering. For custom filtering policies, the [`FilterFn`]
-//! and [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
+//! [`FilterFn`]. These [`Filter`]s provide ready-made implementations of common
+//! forms of filtering. For custom filtering policies, the [`FilterFn`] and
+//! [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
 //! function pointer. In addition, when more control is required, the [`Filter`]
-//! trait may also be implemented for user-defined types.
+//! trait may also be implemented for user-defined types. [`Option<Filter>`]
+//! also implements [`Filter`], where [`None`](Option::None) doesn't filter
+//! anything (that is, it allows everything).
 //!
 //! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!     <strong>Warning</strong>: Currently, the <a href="../struct.Registry.html">
