@@ -1082,12 +1082,11 @@ where
         };
         write!(writer, "{}", fmt_ctx)?;
 
-        let bold = writer.bold();
         let dimmed = writer.dimmed();
 
         let mut needs_space = false;
         if self.display_target {
-            write!(writer, "{}{}", bold.paint(meta.target()), dimmed.paint(":"))?;
+            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
             needs_space = true;
         }
 
@@ -1096,7 +1095,7 @@ where
                 if self.display_target {
                     writer.write_char(' ')?;
                 }
-                write!(writer, "{}{}", bold.paint(filename), dimmed.paint(":"))?;
+                write!(writer, "{}{}", dimmed.paint(filename), dimmed.paint(":"))?;
                 needs_space = true;
             }
         }
@@ -1106,9 +1105,9 @@ where
                 write!(
                     writer,
                     "{}{}{}{}",
-                    bold.prefix(),
+                    dimmed.prefix(),
                     line_number,
-                    bold.suffix(),
+                    dimmed.suffix(),
                     dimmed.paint(":")
                 )?;
                 needs_space = true;
@@ -2039,7 +2038,7 @@ pub(super) mod test {
         #[cfg(feature = "ansi")]
         #[test]
         fn with_ansi_true() {
-            let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[1mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
+            let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
             test_ansi(true, expected, crate::fmt::Subscriber::builder().compact())
         }
 
