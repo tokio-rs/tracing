@@ -1065,15 +1065,14 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let bold = writer.bold();
         let dimmed = writer.dimmed();
         if self.display_target {
-            write!(writer, "{}{}", bold.paint(meta.target()), dimmed.paint(":"))?;
+            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
         }
 
         if self.display_filename {
             if let Some(filename) = meta.file() {
-                write!(writer, "{}{}", bold.paint(filename), dimmed.paint(":"))?;
+                write!(writer, "{}{}", dimmed.paint(filename), dimmed.paint(":"))?;
             }
         }
 
@@ -1082,9 +1081,9 @@ where
                 write!(
                     writer,
                     "{}{}{}{}",
-                    bold.prefix(),
+                    dimmed.prefix(),
                     line_number,
-                    bold.suffix(),
+                    dimmed.suffix(),
                     dimmed.paint(":")
                 )?;
             }
