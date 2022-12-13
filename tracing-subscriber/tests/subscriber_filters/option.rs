@@ -1,7 +1,7 @@
 use super::*;
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
-fn filter<S>() -> filter::DynFilterFn<S> {
+fn filter_out_everything<S>() -> filter::DynFilterFn<S> {
     // Use dynamic filter fn to disable interest caching and max-level hints,
     // allowing us to put all of these tests in the same file.
     filter::dynamic_filter_fn(|_, _| false)
@@ -10,7 +10,7 @@ fn filter<S>() -> filter::DynFilterFn<S> {
 #[test]
 fn option_some() {
     let (subscribe, handle) = subscriber::mock().only().run_with_handle();
-    let subscribe = Box::new(subscribe.with_filter(Some(filter())));
+    let subscribe = subscribe.with_filter(Some(filter_out_everything()));
 
     let _guard = tracing_subscriber::registry().with(subscribe).set_default();
 

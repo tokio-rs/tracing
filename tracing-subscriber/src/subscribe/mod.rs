@@ -469,8 +469,9 @@
 //! [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
 //! function pointer. In addition, when more control is required, the [`Filter`]
 //! trait may also be implemented for user-defined types. [`Option<Filter>`]
-//! also implements [`Filter`], to allow for a (surprise!) optional filter -
-//! [`None`](Option::None) filters nothing (that is, allows everything through).
+//! also implements [`Filter`], which allows for an optional filter where
+//! [`None`](Option::None) filters out _nothing_ (that is, allows everything
+//! through).
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="compile_fail" style="white-space:normal;font:inherit;">
