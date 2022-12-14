@@ -28,13 +28,33 @@ fn option_none() {
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe = Box::new(subscribe.with_filter(None::<filter::DynFilterFn<_>>));
+    let subscribe = subscribe.with_filter(None::<filter::DynFilterFn<_>>);
 
     let _guard = tracing_subscriber::registry().with(subscribe).set_default();
 
     for i in 0..2 {
         tracing::info!(i);
     }
+
+    handle.assert_finished();
+}
+
+#[test]
+fn option_mixed() {
+    let (subscribe, handle) = subscriber::mock()
+        .event(expect::event())
+        .only()
+        .run_with_handle();
+    let subscribe = subscribe
+        .with_filter(filter::dynamic_filter_fn(|meta, _ctx| {
+            meta.target() == "interesting"
+        }))
+        .with_filter(None::<filter::DynFilterFn<_>>);
+
+    let _guard = tracing_subscriber::registry().with(subscribe).set_default();
+
+    tracing::info!(target: "interesting", x="foo");
+    tracing::info!(target: "boring", x="bar");
 
     handle.assert_finished();
 }
