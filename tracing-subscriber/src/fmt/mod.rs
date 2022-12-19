@@ -191,6 +191,7 @@
 //! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`fmt::format`]: mod@crate::fmt::format
+use sharded_slab::{Config as SlabConfig, DefaultConfig as DefaultSlabConfig};
 use std::{any::TypeId, error::Error, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
@@ -223,32 +224,42 @@ pub use self::{
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub struct Collector<
+    S = DefaultSlabConfig,
     N = format::DefaultFields,
     E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
-> {
-    inner: subscribe::Layered<F, Formatter<N, E, W>>,
+> where
+    S: SlabConfig,
+{
+    inner: subscribe::Layered<F, Formatter<S, N, E, W>>,
 }
 
 /// A collector that logs formatted representations of `tracing` events.
 /// This type only logs formatted events; it does not perform any filtering.
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
-pub type Formatter<N = format::DefaultFields, E = format::Format, W = fn() -> io::Stdout> =
-    subscribe::Layered<fmt_subscriber::Subscriber<Registry, N, E, W>, Registry>;
+pub type Formatter<
+    S = DefaultSlabConfig,
+    N = format::DefaultFields,
+    E = format::Format,
+    W = fn() -> io::Stdout,
+> = subscribe::Layered<fmt_subscriber::Subscriber<Registry<S>, N, E, W>, Registry<S>>;
 
 /// Configures and constructs `Collector`s.
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 #[must_use]
 pub struct CollectorBuilder<
+    S = DefaultSlabConfig,
     N = format::DefaultFields,
     E = format::Format,
     F = LevelFilter,
     W = fn() -> io::Stdout,
-> {
+> where
+    S: SlabConfig,
+{
     filter: F,
-    inner: Subscriber<Registry, N, E, W>,
+    inner: Subscriber<Registry<S>, N, E, W>,
 }
 
 /// Returns a new [`CollectorBuilder`] for configuring a [formatting collector].
@@ -360,14 +371,15 @@ impl Default for Collector {
 
 // === impl Collector ===
 
-impl<N, E, F, W> tracing_core::Collect for Collector<N, E, F, W>
+impl<S, N, E, F, W> tracing_core::Collect for Collector<S, N, E, F, W>
 where
+    S: SlabConfig,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<Registry, N> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + 'static,
+    E: FormatEvent<Registry<S>, N> + 'static,
+    F: subscribe::Subscribe<Formatter<S, N, E, W>> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    subscribe::Layered<F, Formatter<N, E, W>>: tracing_core::Collect,
-    fmt_subscriber::Subscriber<Registry, N, E, W>: subscribe::Subscribe<Registry>,
+    subscribe::Layered<F, Formatter<S, N, E, W>>: tracing_core::Collect,
+    fmt_subscriber::Subscriber<Registry<S>, N, E, W>: subscribe::Subscribe<Registry<S>>,
 {
     #[inline]
     fn register_callsite(&self, meta: &'static Metadata<'static>) -> Interest {
@@ -444,11 +456,12 @@ where
     }
 }
 
-impl<'a, N, E, F, W> LookupSpan<'a> for Collector<N, E, F, W>
+impl<'a, S, N, E, F, W> LookupSpan<'a> for Collector<S, N, E, F, W>
 where
-    subscribe::Layered<F, Formatter<N, E, W>>: LookupSpan<'a>,
+    subscribe::Layered<F, Formatter<S, N, E, W>>: LookupSpan<'a>,
+    S: SlabConfig,
 {
-    type Data = <subscribe::Layered<F, Formatter<N, E, W>> as LookupSpan<'a>>::Data;
+    type Data = <subscribe::Layered<F, Formatter<S, N, E, W>> as LookupSpan<'a>>::Data;
 
     fn span_data(&'a self, id: &span::Id) -> Option<Self::Data> {
         self.inner.span_data(id)
@@ -467,19 +480,20 @@ impl Default for CollectorBuilder {
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, F, W>
+impl<S, N, E, F, W> CollectorBuilder<S, N, E, F, W>
 where
+    S: SlabConfig + 'static,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<Registry, N> + 'static,
+    E: FormatEvent<Registry<S>, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscribe::Subscribe<Registry> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<S, N, E, W>> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry<S>, N, E, W>:
+        subscribe::Subscribe<Registry<S>> + Send + Sync + 'static,
 {
     /// Finish the builder, returning a new `FmtCollector`.
     #[must_use = "you may want to use `try_init` or similar to actually install the collector."]
-    pub fn finish(self) -> Collector<N, E, F, W> {
-        let collector = self.inner.with_collector(Registry::default());
+    pub fn finish(self) -> Collector<S, N, E, F, W> {
+        let collector = self.inner.with_collector(Registry::<S>::new());
         Collector {
             inner: self.filter.with_collector(collector),
         }
@@ -513,24 +527,52 @@ where
     pub fn init(self) {
         self.try_init().expect("Unable to install global collector")
     }
+
+    /// Configure slab config to use.
+    /// For example:
+    /// ```rust
+    /// use tracing_subscriber::{fmt, SlabConfig, DefaultSlabConfig};
+    ///
+    /// struct Config {}
+    /// impl SlabConfig for Config {
+    ///     const INITIAL_PAGE_SIZE: usize = 32;
+    ///     const MAX_THREADS: usize = 4096;
+    ///     const MAX_PAGES: usize = DefaultSlabConfig::MAX_PAGES;
+    /// }
+    ///
+    /// let collector = tracing_subscriber::fmt()
+    ///     .with_slab_config::<Config>()
+    ///     .finish();
+    /// ```
+    pub fn with_slab_config<S2>(self) -> CollectorBuilder<S2, N, E, F, W>
+    where
+        S2: SlabConfig,
+    {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.set_collector::<Registry<S2>>(),
+        }
+    }
 }
 
-impl<N, E, F, W> From<CollectorBuilder<N, E, F, W>> for tracing_core::Dispatch
+impl<S, N, E, F, W> From<CollectorBuilder<S, N, E, F, W>> for tracing_core::Dispatch
 where
+    S: SlabConfig + 'static,
     N: for<'writer> FormatFields<'writer> + 'static,
-    E: FormatEvent<Registry, N> + 'static,
+    E: FormatEvent<Registry<S>, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
-    F: subscribe::Subscribe<Formatter<N, E, W>> + Send + Sync + 'static,
-    fmt_subscriber::Subscriber<Registry, N, E, W>:
-        subscribe::Subscribe<Registry> + Send + Sync + 'static,
+    F: subscribe::Subscribe<Formatter<S, N, E, W>> + Send + Sync + 'static,
+    fmt_subscriber::Subscriber<Registry<S>, N, E, W>:
+        subscribe::Subscribe<Registry<S>> + Send + Sync + 'static,
 {
-    fn from(builder: CollectorBuilder<N, E, F, W>) -> tracing_core::Dispatch {
+    fn from(builder: CollectorBuilder<S, N, E, F, W>) -> tracing_core::Dispatch {
         tracing_core::Dispatch::new(builder.finish())
     }
 }
 
-impl<N, L, T, F, W> CollectorBuilder<N, format::Format<L, T>, F, W>
+impl<S, N, L, T, F, W> CollectorBuilder<S, N, format::Format<L, T>, F, W>
 where
+    S: SlabConfig,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
     /// Use the given [`timer`] for log message timestamps.
@@ -547,7 +589,7 @@ where
     /// [`UtcTime`]: time::UtcTime
     /// [`LocalTime`]: time::LocalTime
     /// [`time` crate]: https://docs.rs/time/0.3
-    pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<N, format::Format<L, T2>, F, W> {
+    pub fn with_timer<T2>(self, timer: T2) -> CollectorBuilder<S, N, format::Format<L, T2>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_timer(timer),
@@ -555,7 +597,7 @@ where
     }
 
     /// Do not emit timestamps with log messages.
-    pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
+    pub fn without_time(self) -> CollectorBuilder<S, N, format::Format<L, ()>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.without_time(),
@@ -613,7 +655,7 @@ where
     /// Enable ANSI terminal colors for formatted output.
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
-    pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_ansi(ansi),
             ..self
@@ -634,7 +676,7 @@ where
     pub fn log_internal_errors(
         self,
         log_internal_errors: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.log_internal_errors(log_internal_errors),
             ..self
@@ -645,7 +687,7 @@ where
     pub fn with_target(
         self,
         display_target: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_target(display_target),
             ..self
@@ -659,7 +701,7 @@ where
     pub fn with_file(
         self,
         display_filename: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_file(display_filename),
             ..self
@@ -673,7 +715,7 @@ where
     pub fn with_line_number(
         self,
         display_line_number: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_line_number(display_line_number),
             ..self
@@ -684,7 +726,7 @@ where
     pub fn with_level(
         self,
         display_level: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_level(display_level),
             ..self
@@ -698,7 +740,7 @@ where
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_thread_names(display_thread_names),
             ..self
@@ -712,7 +754,7 @@ where
     pub fn with_thread_ids(
         self,
         display_thread_ids: bool,
-    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+    ) -> CollectorBuilder<S, N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_thread_ids(display_thread_ids),
             ..self
@@ -722,7 +764,7 @@ where
     /// Sets the collector being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
-    pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
+    pub fn compact(self) -> CollectorBuilder<S, N, format::Format<format::Compact, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -737,7 +779,7 @@ where
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(
         self,
-    ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {
+    ) -> CollectorBuilder<S, format::Pretty, format::Format<format::Pretty, T>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.pretty(),
@@ -749,7 +791,9 @@ where
     /// See [`format::Json`](super::fmt::format::Json)
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
+    pub fn json(
+        self,
+    ) -> CollectorBuilder<S, format::JsonFields, format::Format<format::Json, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -762,14 +806,17 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+impl<S, T, F, W> CollectorBuilder<S, format::JsonFields, format::Format<format::Json, T>, F, W>
+where
+    S: SlabConfig,
+{
     /// Sets the json collector being built to flatten event metadata.
     ///
     /// See [`format::Json`](super::fmt::format::Json)
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<S, format::JsonFields, format::Format<format::Json, T>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.flatten_event(flatten_event),
@@ -783,7 +830,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<S, format::JsonFields, format::Format<format::Json, T>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_current_span(display_current_span),
@@ -797,7 +844,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> CollectorBuilder<S, format::JsonFields, format::Format<format::Json, T>, F, W> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_span_list(display_span_list),
@@ -805,9 +852,10 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
+impl<S, N, E, F, W> CollectorBuilder<S, N, E, reload::Subscriber<F>, W>
 where
-    Formatter<N, E, W>: tracing_core::Collect + 'static,
+    S: SlabConfig,
+    Formatter<S, N, E, W>: tracing_core::Collect + 'static,
 {
     /// Returns a `Handle` that may be used to reload the constructed collector's
     /// filter.
@@ -816,7 +864,10 @@ where
     }
 }
 
-impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
+impl<S, N, E, F, W> CollectorBuilder<S, N, E, F, W>
+where
+    S: SlabConfig,
+{
     /// Sets the Visitor that the collector being built will use to record
     /// fields.
     ///
@@ -837,7 +888,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .finish();
     /// # drop(collector)
     /// ```
-    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<N2, E, F, W>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> CollectorBuilder<S, N2, E, F, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -900,9 +951,9 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     pub fn with_env_filter(
         self,
         filter: impl Into<crate::EnvFilter>,
-    ) -> CollectorBuilder<N, E, crate::EnvFilter, W>
+    ) -> CollectorBuilder<S, N, E, crate::EnvFilter, W>
     where
-        Formatter<N, E, W>: tracing_core::Collect + 'static,
+        Formatter<S, N, E, W>: tracing_core::Collect + 'static,
     {
         let filter = filter.into();
         CollectorBuilder {
@@ -943,7 +994,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     pub fn with_max_level(
         self,
         filter: impl Into<LevelFilter>,
-    ) -> CollectorBuilder<N, E, LevelFilter, W> {
+    ) -> CollectorBuilder<S, N, E, LevelFilter, W> {
         let filter = filter.into();
         CollectorBuilder {
             filter,
@@ -988,7 +1039,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///
     /// [`reload_handle`]: CollectorBuilder::reload_handle
     /// [`reload::Handle`]: crate::reload::Handle
-    pub fn with_filter_reloading(self) -> CollectorBuilder<N, E, reload::Subscriber<F>, W> {
+    pub fn with_filter_reloading(self) -> CollectorBuilder<S, N, E, reload::Subscriber<F>, W> {
         let (filter, _) = reload::Subscriber::new(self.filter);
         CollectorBuilder {
             filter,
@@ -1016,11 +1067,12 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// ```
     ///
     /// [`Writer`]: struct@self::format::Writer
-    pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<N, E2, F, W>
+    pub fn event_format<E2>(self, fmt_event: E2) -> CollectorBuilder<S, N, E2, F, W>
     where
-        E2: FormatEvent<Registry, N> + 'static,
+        E2: FormatEvent<Registry<S>, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
         W: for<'writer> MakeWriter<'writer> + 'static,
+        S: 'static,
     {
         CollectorBuilder {
             filter: self.filter,
@@ -1042,7 +1094,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .with_writer(io::stderr)
     ///     .init();
     /// ```
-    pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<N, E, F, W2>
+    pub fn with_writer<W2>(self, make_writer: W2) -> CollectorBuilder<S, N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
     {
@@ -1076,7 +1128,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     /// [capturing]:
     /// https://doc.rust-lang.org/book/ch11-02-running-tests.html#showing-function-output
     /// [`TestWriter`]: writer::TestWriter
-    pub fn with_test_writer(self) -> CollectorBuilder<N, E, F, TestWriter> {
+    pub fn with_test_writer(self) -> CollectorBuilder<S, N, E, F, TestWriter> {
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.with_writer(TestWriter::default()),
@@ -1096,9 +1148,10 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .map_event_format(|e| e.compact())
     ///     .finish();
     /// ```
-    pub fn map_event_format<E2>(self, f: impl FnOnce(E) -> E2) -> CollectorBuilder<N, E2, F, W>
+    pub fn map_event_format<E2>(self, f: impl FnOnce(E) -> E2) -> CollectorBuilder<S, N, E2, F, W>
     where
-        E2: FormatEvent<Registry, N> + 'static,
+        S: 'static,
+        E2: FormatEvent<Registry<S>, N> + 'static,
         N: for<'writer> FormatFields<'writer> + 'static,
         W: for<'writer> MakeWriter<'writer> + 'static,
     {
@@ -1122,7 +1175,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .map_fmt_fields(|f| f.debug_alt())
     ///     .finish();
     /// ```
-    pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> CollectorBuilder<N2, E, F, W>
+    pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> CollectorBuilder<S, N2, E, F, W>
     where
         N2: for<'writer> FormatFields<'writer> + 'static,
     {
@@ -1149,7 +1202,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
     ///     .map_writer(move |w| stderr.or_else(w))
     ///     .finish();
     /// ```
-    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> CollectorBuilder<N, E, F, W2>
+    pub fn map_writer<W2>(self, f: impl FnOnce(W) -> W2) -> CollectorBuilder<S, N, E, F, W2>
     where
         W2: for<'writer> MakeWriter<'writer> + 'static,
     {

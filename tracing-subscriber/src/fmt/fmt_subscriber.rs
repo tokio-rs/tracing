@@ -654,6 +654,19 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             _inner: self._inner,
         }
     }
+
+    /// Updates the collector type.
+    pub fn set_collector<C2>(self) -> Subscriber<C2, N, E, W> {
+        Subscriber {
+            fmt_event: self.fmt_event,
+            fmt_fields: self.fmt_fields,
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            log_internal_errors: self.log_internal_errors,
+            _inner: PhantomData,
+        }
+    }
 }
 
 impl<C> Default for Subscriber<C> {

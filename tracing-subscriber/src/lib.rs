@@ -208,6 +208,8 @@ pub use subscribe::Subscribe;
 feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
+    pub use sharded_slab::Config as SlabConfig;
+    pub use sharded_slab::DefaultConfig as DefaultSlabConfig;
 
     ///
     pub fn registry() -> Registry {
