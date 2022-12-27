@@ -231,7 +231,7 @@ where
             Some(Expect::Event(mut expected)) => {
                 #[cfg(feature = "tracing-subscriber")]
                 {
-                    if expected.scope_mut().len() > 0 {
+                    if !expected.scope_mut().is_empty() {
                         unimplemented!(
                             "Expected scope for events is not supported with `MockCollector`."
                         )
