@@ -5,6 +5,8 @@
 //! chain of method calls to describe the assertions we wish to make
 //! about the event.
 //!
+//! # Examples
+//!
 //! ```
 //! use tracing::collect::with_default;
 //! use tracing_mock::{collector, expect};
@@ -75,10 +77,16 @@ impl ExpectedEvent {
         }
     }
 
-    /// Sets the expected fields to match an event.
+    /// Adds fields to expect when matching an event.
+    ///
+    /// If an event is recorded with fields that do not match the provided
+    /// [`ExpectedFields`], this expectation will fail.
     ///
     /// More information on the available validations is available on
-    /// the [`ExpectedFields`] docs.
+    /// the [`ExpectedFields`] documentation.
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -109,9 +117,13 @@ impl ExpectedEvent {
         }
     }
 
-    /// Sets the expected level to match an event.
+    /// Sets the [`Level`](tracing::Level) to expect when matching an event.
     ///
-    /// Only events recorded at `level` will be matched.
+    /// If an event is recorded at a different level, this expectation
+    /// will fail.
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -140,7 +152,12 @@ impl ExpectedEvent {
         }
     }
 
-    /// Sets the expected target to match an event.
+    /// Sets the target to expect when matching events.
+    ///
+    /// If an event is recorded with a different target, this expectation will fail.
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -201,6 +218,9 @@ impl ExpectedEvent {
 
     /// Adds a validation that the event has no explicit parent.
     ///
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
@@ -226,6 +246,9 @@ impl ExpectedEvent {
     }
 
     /// Sets the expected contextual parent to match an event.
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -255,6 +278,9 @@ impl ExpectedEvent {
     }
 
     /// Adds a validation that the event has no contextual parent.
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -286,9 +312,12 @@ impl ExpectedEvent {
     /// Validates that the event is emitted within the scope of the
     /// provided `spans`.
     ///
-    /// Note: This validation currently only works with a
+    /// **Note**: This validation currently only works with a
     /// [`MockSubscriber`], it doesn't perform any validation when used
     /// with a [`MockCollector`].
+    ///
+    ///
+    /// # Examples
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
