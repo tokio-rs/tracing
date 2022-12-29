@@ -395,7 +395,7 @@ fn instrument_precise(
 
     if input.sig.constness.is_some() {
         return Ok(quote! {
-            compile_error!("instrumenting const fn not supported")
+            compile_error!("the `#[instrument]` attribute may not be used with `const fn`s")
         }
         .into());
     }
