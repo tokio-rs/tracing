@@ -82,7 +82,7 @@
 extern crate proc_macro;
 
 use proc_macro2::TokenStream;
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::{Attribute, ItemFn, Signature, Visibility};
 
@@ -535,6 +535,14 @@ mod expand;
 /// }
 /// ```
 ///
+/// `const fn` cannot be instrumented, and will result in a compilation failure:
+///
+/// ```compile_fail
+/// # use tracing_attributes::instrument;
+/// #[instrument]
+/// const fn my_const_function() {}
+/// ```
+///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [name]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.name
 /// [target]: https://docs.rs/tracing/latest/tracing/struct.Metadata.html#method.target
@@ -584,6 +592,13 @@ fn instrument_precise(
 ) -> Result<proc_macro::TokenStream, syn::Error> {
     let input = syn::parse::<ItemFn>(item)?;
     let instrumented_function_name = input.sig.ident.to_string();
+
+    if input.sig.constness.is_some() {
+        return Ok(quote! {
+            compile_error!("the `#[instrument]` attribute may not be used with `const fn`s")
+        }
+        .into());
+    }
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
