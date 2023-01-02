@@ -189,14 +189,32 @@ impl ExpectedEvent {
         }
     }
 
-    /// Sets the expected explicit parent to match an event.
+    /// Configures this `ExpectedEvent` to expect an explicit parent span
+    /// when matching events or to be an explicit root.
+    ///
+    /// An _explicit_ parent span is one passed to the `span!` macro in the
+    /// `parent:` field.
+    ///
+    /// If `Some("parent_name")` is passed to `with_explicit_parent` then
+    /// the provided string is the name of the parent span to expect.
+    ///
+    /// To expect that an event is recorded with `parent: None`, `None`
+    /// can be passed to `with_explicit_parent` instead.
+
+    ///
+    /// Use [`ExpectedEvent::without_explicit_parent`] to expect that an event
+    /// is an explicit root (the span macro is invoked with `parent: None`).
+    ///
+    /// # Examples
+    ///
+    /// The explicit parent is matched by name.
     ///
     /// ```
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let event = expect::event()
-    ///     .with_explicit_parent("parent_span");
+    ///     .with_explicit_parent(Some("parent_span"));
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(event)
@@ -209,53 +227,40 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn with_explicit_parent(self, parent: &str) -> ExpectedEvent {
-        Self {
-            parent: Some(Parent::Explicit(parent.into())),
-            ..self
-        }
-    }
-
-    /// Adds a validation that the event has no explicit parent.
     ///
-    ///
-    /// # Examples
+    /// In the following example, we expect that the matched event is
+    /// an explicit root.
     ///
     /// ```
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let event = expect::event()
-    ///     .without_explicit_parent();
+    ///     .with_explicit_parent(None);
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(event)
     ///     .run_with_handle();
     ///
     /// with_default(collector, || {
-    ///     tracing::info!(field = &"value");
+    ///     tracing::info!(parent: None, field = &"value");
     /// });
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn without_explicit_parent(self) -> ExpectedEvent {
-        Self {
-            parent: Some(Parent::ExplicitRoot),
-            ..self
-        }
-    }
-
-    /// Sets the expected contextual parent to match an event.
     ///
+    /// If an event is recorded without an explicit parent, or if the
+    /// explicit parent has a different name, this expectation will
+    /// fail. In the example below, the expectation fails because the
+    /// event is contextually (and not explicitly) within the span
+    /// `parent_span`.
     ///
-    /// # Examples
-    ///
-    /// ```
+    /// ```should_panic
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let event = expect::event()
-    ///     .with_contextual_parent("parent_span");
+    ///     .with_explicit_parent(Some("parent_span"));
     ///
     /// let (collector, handle) = collector::mock()
     ///     .enter(expect::span())
@@ -270,24 +275,41 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn with_contextual_parent(self, parent: &str) -> ExpectedEvent {
+    pub fn with_explicit_parent(self, parent: Option<&str>) -> ExpectedEvent {
+        let parent = match parent {
+            Some(name) => Parent::Explicit(name.into()),
+            None => Parent::ExplicitRoot,
+        };
         Self {
-            parent: Some(Parent::Contextual(parent.into())),
+            parent: Some(parent),
             ..self
         }
     }
 
-    /// Adds a validation that the event has no contextual parent.
+    /// Configures this `ExpectedEvent` to match an event with a
+    /// contextually-determined parent span.
     ///
+    /// The provided string is the name of the parent span to expect.
+    /// To expect that the event is a contextually-determined root, pass
+    /// `None` instead.
+    ///
+    /// If an event is recorded which is not inside a span, has an explicitly
+    /// overridden parent span, or with a differently-named span as its
+    /// parent, this expectation will fail.
+    ///
+    /// To expect an event with an explicit parent span, use
+    /// [`ExpectedEvent::with_explicit_parent`].
     ///
     /// # Examples
+    ///
+    /// The explicit parent is matched by name.
     ///
     /// ```
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let event = expect::event()
-    ///     .with_contextual_parent("parent_span");
+    ///     .with_contextual_parent(Some("parent_span"));
     ///
     /// let (collector, handle) = collector::mock()
     ///     .enter(expect::span())
@@ -302,9 +324,62 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn without_contextual_parent(self) -> ExpectedEvent {
+    ///
+    /// Matching an event recorded outside of a span.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let event = expect::event()
+    ///     .with_contextual_parent(None);
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!(field = &"value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// This expectation will fail if the event is recorded with an
+    /// explicit parent.
+    ///
+    /// If an event is recorded without an explicit parent, or if the
+    /// explicit parent has a different name, this expectation will
+    /// fail. In the example below, the expectation fails because the
+    /// event is contextually (and not explicitly) within the span
+    /// `parent_span`.
+    ///
+    /// ```should_panic
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let event = expect::event()
+    ///     .with_contextual_parent(Some("parent_span"));
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .enter(expect::span())
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let parent = tracing::info_span!("parent_span");
+    ///     tracing::info!(parent: parent.id(), field = &"value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    pub fn with_contextual_parent(self, parent: Option<&str>) -> ExpectedEvent {
+        let parent = match parent {
+            Some(name) => Parent::Contextual(name.into()),
+            None => Parent::ContextualRoot,
+        };
         Self {
-            parent: Some(Parent::ContextualRoot),
+            parent: Some(parent),
             ..self
         }
     }
