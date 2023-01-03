@@ -82,9 +82,12 @@ impl ExpectedEvent {
     /// If an event is recorded with fields that do not match the provided
     /// [`ExpectedFields`], this expectation will fail.
     ///
-    /// More information on the available validations is available on
-    /// the [`ExpectedFields`] documentation.
+    /// If the provided field is not present on the recorded even, or
+    /// if the value for that field is different, then the expectation
+    /// will fail.
     ///
+    /// More information on the available validations is available in
+    /// the [`ExpectedFields`] documentation.
     ///
     /// # Examples
     ///
@@ -106,6 +109,26 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
+    /// A different field value will cause the expectation to fail.
+    ///
+    /// ```should_panic
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let event = expect::event()
+    ///     .with_fields(expect::field("field.name").with_value(&"field_value"));
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!(field.name = "different_field_value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
     /// [`ExpectedFields`]: struct@crate::field::ExpectedFields
     pub fn with_fields<I>(self, fields: I) -> Self
     where
@@ -122,7 +145,6 @@ impl ExpectedEvent {
     /// If an event is recorded at a different level, this expectation
     /// will fail.
     ///
-    ///
     /// # Examples
     ///
     /// ```
@@ -131,6 +153,26 @@ impl ExpectedEvent {
     ///
     /// let event = expect::event()
     ///     .at_level(tracing::Level::WARN);
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::warn!("this message is bad news");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    /// Expecting an event at `INFO` level will fail if the event is
+    /// recorded at any other level.
+    ///
+    /// ```should_panic
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let event = expect::event()
+    ///     .at_level(tracing::Level::INFO);
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(event)
@@ -156,7 +198,6 @@ impl ExpectedEvent {
     ///
     /// If an event is recorded with a different target, this expectation will fail.
     ///
-    ///
     /// # Examples
     ///
     /// ```
@@ -172,6 +213,26 @@ impl ExpectedEvent {
     ///
     /// with_default(collector, || {
     ///     tracing::info!(target: "some_target", field = &"value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// The test will fail if the target is different.
+    ///
+    /// ```should_panic
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let event = expect::event()
+    ///     .with_target("some_target");
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     tracing::info!(target: "a_different_target", field = &"value");
     /// });
     ///
     /// handle.assert_finished();
@@ -200,7 +261,6 @@ impl ExpectedEvent {
     ///
     /// To expect that an event is recorded with `parent: None`, `None`
     /// can be passed to `with_explicit_parent` instead.
-
     ///
     /// Use [`ExpectedEvent::without_explicit_parent`] to expect that an event
     /// is an explicit root (the span macro is invoked with `parent: None`).
@@ -387,22 +447,58 @@ impl ExpectedEvent {
     /// Validates that the event is emitted within the scope of the
     /// provided `spans`.
     ///
+    /// The spans must be provided reverse hierarchy order, so the
+    /// closest span to the event would be first, followed by its
+    /// parent, and so on.
+    ///
     /// **Note**: This validation currently only works with a
     /// [`MockSubscriber`], it doesn't perform any validation when used
     /// with a [`MockCollector`].
     ///
-    ///
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{collector, expect};
+    /// use tracing_mock::{expect, subscriber};
     /// use tracing_subscriber::{
     ///     filter::filter_fn, registry, subscribe::CollectExt, util::SubscriberInitExt, Subscribe,
     /// };
     ///
-    /// let span1 = expect
-    /// let event = expect::event()
-    ///     .in_scope([expect::span("parent_span")]);
+    /// let event = expect::event().in_scope([
+    ///     expect::span().named("parent_span"),
+    ///     expect::span().named("grandparent_span")
+    /// ]);
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .enter(expect::span())
+    ///     .enter(expect::span())
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// let _collect = registry()
+    ///     .with(subscriber.with_filter(filter_fn(move |_meta| true)))
+    ///     .set_default();
+    ///
+    /// let grandparent = tracing::info_span!("grandparent_span");
+    /// let _gp_guard = grandparent.enter();
+    /// let parent = tracing::info_span!("parent_span");
+    /// let _p_guard = parent.enter();
+    /// tracing::info!(field = &"value");    
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// The scope must match exactly, otherwise the expectation will fail.
+    ///
+    /// ```should_panic
+    /// use tracing_mock::{expect, subscriber};
+    /// use tracing_subscriber::{
+    ///     filter::filter_fn, registry, subscribe::CollectExt, util::SubscriberInitExt, Subscribe,
+    /// };
+    ///
+    /// let event = expect::event().in_scope([
+    ///     expect::span().named("parent_span"),
+    ///     expect::span().named("grandparent_span")
+    /// ]);
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .enter(expect::span())
@@ -414,12 +510,11 @@ impl ExpectedEvent {
     ///     .set_default();
     ///
     /// let parent = tracing::info_span!("parent_span");
-    /// let _guard = parent.enter();
+    /// let _p_guard = parent.enter();
     /// tracing::info!(field = &"value");
     ///
     /// handle.assert_finished();
     /// ```
-    ///
     /// [`MockSubscriber`]: struct@crate::subscriber::MockSubscriber
     /// [`MockCollector`]: struct@crate::collector::MockCollector
     #[cfg(feature = "tracing-subscriber")]
