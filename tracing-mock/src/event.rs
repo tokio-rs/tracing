@@ -262,8 +262,10 @@ impl ExpectedEvent {
     /// To expect that an event is recorded with `parent: None`, `None`
     /// can be passed to `with_explicit_parent` instead.
     ///
-    /// Use [`ExpectedEvent::without_explicit_parent`] to expect that an event
-    /// is an explicit root (the span macro is invoked with `parent: None`).
+    ///
+    /// If an event is recorded without an explicit parent, or if the
+    /// explicit parent has a different name, this expectation will
+    /// fail.
     ///
     /// # Examples
     ///
@@ -309,9 +311,7 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// If an event is recorded without an explicit parent, or if the
-    /// explicit parent has a different name, this expectation will
-    /// fail. In the example below, the expectation fails because the
+    /// In the example below, the expectation fails because the
     /// event is contextually (and not explicitly) within the span
     /// `parent_span`.
     ///
@@ -353,12 +353,12 @@ impl ExpectedEvent {
     /// To expect that the event is a contextually-determined root, pass
     /// `None` instead.
     ///
+    /// To expect an event with an explicit parent span, use
+    /// [`ExpectedEvent::with_explicit_parent`].
+    ///
     /// If an event is recorded which is not inside a span, has an explicitly
     /// overridden parent span, or with a differently-named span as its
     /// parent, this expectation will fail.
-    ///
-    /// To expect an event with an explicit parent span, use
-    /// [`ExpectedEvent::with_explicit_parent`].
     ///
     /// # Examples
     ///
@@ -405,14 +405,8 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// This expectation will fail if the event is recorded with an
-    /// explicit parent.
-    ///
-    /// If an event is recorded without an explicit parent, or if the
-    /// explicit parent has a different name, this expectation will
-    /// fail. In the example below, the expectation fails because the
-    /// event is contextually (and not explicitly) within the span
-    /// `parent_span`.
+    /// In the example below, the expectation fails because the
+    /// event is recorded with an explicit parent.
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -451,9 +445,12 @@ impl ExpectedEvent {
     /// closest span to the event would be first, followed by its
     /// parent, and so on.
     ///
+    /// If the spans provided do not match the hierarchy of the
+    /// recorded event, the expectation will fail.
+    ///
     /// **Note**: This validation currently only works with a
-    /// [`MockSubscriber`], it doesn't perform any validation when used
-    /// with a [`MockCollector`].
+    /// [`MockSubscriber`]. If used with a [`MockCollector`], the
+    /// expectation will fail directly as it is unimplemented.
     ///
     /// # Examples
     ///
