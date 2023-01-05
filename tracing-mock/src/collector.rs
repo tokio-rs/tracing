@@ -229,6 +229,14 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
+                #[cfg(feature = "tracing-subscriber")]
+                {
+                    if !expected.scope_mut().is_empty() {
+                        unimplemented!(
+                            "Expected scope for events is not supported with `MockCollector`."
+                        )
+                    }
+                }
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     let spans = self.spans.lock().unwrap();
