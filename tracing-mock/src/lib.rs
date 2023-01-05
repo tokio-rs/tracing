@@ -69,7 +69,7 @@ impl Parent {
             Parent::ContextualRoot => {
                 assert!(
                     provided_parent.is_none(),
-                    "[{}] expected {} to be contextual a root, but its parent was actually {:?} (name: {:?})",
+                    "[{}] expected {} to be a contextual root, but its parent was actually {:?} (name: {:?})",
                     collector_name,
                     ctx,
                     provided_parent,
