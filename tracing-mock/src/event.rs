@@ -35,7 +35,7 @@ use std::fmt;
 
 /// An expected event.
 ///
-/// For a detailed description and examples see the documentation for
+/// For a detailed description and examples, see the documentation for
 /// the methods and the [`event`] module.
 ///
 /// [`event`]: mod@crate::event
@@ -52,18 +52,20 @@ pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
 }
 
 impl ExpectedEvent {
-    /// Sets the expected name to match an event.
+    /// Sets a name to expect when matching an event.
     ///
-    /// By default an event's name takes takes the form:
+    /// By default, an event's name takes takes the form:
     /// `event <file>:<line>` where `<file>` and `<line>` refer to the
     /// location in the source code where the event was generated.
     ///
-    /// To overwrite the name of an event, it has to be constructed
-    /// directly instead of using one of the available macros.
+    /// To override the name of an event, it has to be constructed
+    /// directly, rather than by using the `tracing` crate's macros.
     ///
     /// In general, there are not many use cases for expecting an
-    /// event, as the value includes the file name and line number,
-    /// which can make it quite a fragile check.
+    /// event with a particular name, as the value includes the file
+    /// name and line number. Assertions about event names are
+    /// therefore quite fragile, since they will change as the source
+    /// code is modified.
     pub fn named<I>(self, name: I) -> Self
     where
         I: Into<String>,
@@ -82,7 +84,7 @@ impl ExpectedEvent {
     /// If an event is recorded with fields that do not match the provided
     /// [`ExpectedFields`], this expectation will fail.
     ///
-    /// If the provided field is not present on the recorded even, or
+    /// If the provided field is not present on the recorded event, or
     /// if the value for that field is different, then the expectation
     /// will fail.
     ///
@@ -109,7 +111,7 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// A different field value will cause the expectation to fail.
+    /// A different field value will cause the expectation to fail:
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -164,8 +166,9 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
+    ///
     /// Expecting an event at `INFO` level will fail if the event is
-    /// recorded at any other level.
+    /// recorded at any other level:
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -218,7 +221,7 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// The test will fail if the target is different.
+    /// The test will fail if the target is different:
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -262,14 +265,13 @@ impl ExpectedEvent {
     /// To expect that an event is recorded with `parent: None`, `None`
     /// can be passed to `with_explicit_parent` instead.
     ///
-    ///
     /// If an event is recorded without an explicit parent, or if the
     /// explicit parent has a different name, this expectation will
     /// fail.
     ///
     /// # Examples
     ///
-    /// The explicit parent is matched by name.
+    /// The explicit parent is matched by name:
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -291,7 +293,7 @@ impl ExpectedEvent {
     /// ```
     ///
     /// In the following example, we expect that the matched event is
-    /// an explicit root.
+    /// an explicit root:
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -312,8 +314,8 @@ impl ExpectedEvent {
     /// ```
     ///
     /// In the example below, the expectation fails because the
-    /// event is contextually (and not explicitly) within the span
-    /// `parent_span`.
+    /// event is contextually (rather than explicitly) within the span
+    /// `parent_span`:
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -362,7 +364,7 @@ impl ExpectedEvent {
     ///
     /// # Examples
     ///
-    /// The explicit parent is matched by name.
+    /// The explicit parent is matched by name:
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -385,7 +387,7 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// Matching an event recorded outside of a span.
+    /// Matching an event recorded outside of a span:
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -406,7 +408,7 @@ impl ExpectedEvent {
     /// ```
     ///
     /// In the example below, the expectation fails because the
-    /// event is recorded with an explicit parent.
+    /// event is recorded with an explicit parent:
     ///
     /// ```should_panic
     /// use tracing::collect::with_default;
@@ -484,7 +486,7 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// The scope must match exactly, otherwise the expectation will fail.
+    /// The scope must match exactly, otherwise the expectation will fail:
     ///
     /// ```should_panic
     /// use tracing_mock::{expect, subscriber};
