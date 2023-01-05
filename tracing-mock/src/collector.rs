@@ -473,7 +473,7 @@ where
     /// recorded first, then the expectation will fail.
     ///
     /// **Note**: The 2 spans, `consequence` and `cause` are matched
-    /// by `name `only.
+    /// by `name` only.
     ///
     /// # Examples
     ///
