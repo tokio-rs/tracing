@@ -70,19 +70,19 @@ branch.
 Below is an example that checks that an event contains a message:
 
 ```rust
-use tracing::collect::with_default;
-use tracing_mock::{collector, expect, field};
+use tracing::subscriber::with_default;
+use tracing_mock::{subscriber, expect, field};
 
 fn yak_shaving() {
     tracing::info!("preparing to shave yaks");
 }
 
-let (collector, handle) = collector::mock()
+let (subscriber, handle) = subscriber::mock()
     .event(expect::event().with_fields(field::msg("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
-with_default(collector, || {
+with_default(subscriber, || {
     yak_shaving();
 });
 
@@ -101,8 +101,8 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 - no further traces are received
 
 ```rust
-use tracing::collect::with_default;
-use tracing_mock::{collector, expect, field};
+use tracing::subscriber::with_default;
+use tracing_mock::{subscriber, expect, field};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
@@ -118,7 +118,7 @@ fn yak_shaving(number_of_yaks: u32) {
 let yak_count: u32 = 3;
 let span = expect::span().named("yak_shaving");
 
-let (collector, handle) = collector::mock()
+let (subscriber, handle) = subscriber::mock()
     .new_span(
         span.clone()
             .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
@@ -144,7 +144,7 @@ let (collector, handle) = collector::mock()
     .only()
     .run_with_handle();
 
-with_default(collector, || {
+with_default(subscriber, || {
     yak_shaving(yak_count);
 });
 

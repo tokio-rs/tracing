@@ -34,25 +34,32 @@ impl Parent {
         parent_name: Option<&str>,
         provided_parent: Option<tracing_core::span::Id>,
         ctx: impl std::fmt::Display,
-        collector_name: &str,
+        subscriber_name: &str,
     ) {
         match self {
             Parent::ExplicitRoot => {
                 assert!(
                     provided_parent.is_none(),
                     "[{}] expected {} to be an explicit root, but its parent was actually {:?} (name: {:?})",
-                    collector_name,
+                    subscriber_name,
                     ctx,
                     provided_parent,
                     parent_name,
                 );
             }
             Parent::Explicit(expected_parent) => {
+                assert!(
+                    provided_parent.is_some(),
+                    "[{}] expected {} to have explicit parent {}, but it has no explicit parent",
+                    subscriber_name,
+                    ctx,
+                    expected_parent,
+                );
                 assert_eq!(
                     Some(expected_parent.as_ref()),
                     parent_name,
                     "[{}] expected {} to have explicit parent {}, but its parent was actually {:?} (name: {:?})",
-                    collector_name,
+                    subscriber_name,
                     ctx,
                     expected_parent,
                     provided_parent,
@@ -62,8 +69,8 @@ impl Parent {
             Parent::ContextualRoot => {
                 assert!(
                     provided_parent.is_none(),
-                    "[{}] expected {} to have a contextual parent, but its parent was actually {:?} (name: {:?})",
-                    collector_name,
+                    "[{}] expected {} to be a contextual root, but its parent was actually {:?} (name: {:?})",
+                    subscriber_name,
                     ctx,
                     provided_parent,
                     parent_name,
@@ -71,15 +78,15 @@ impl Parent {
                 assert!(
                     parent_name.is_none(),
                     "[{}] expected {} to be contextual a root, but we were inside span {:?}",
-                    collector_name,
+                    subscriber_name,
                     ctx,
                     parent_name,
                 );
             }
             Parent::Contextual(expected_parent) => {
                 assert!(provided_parent.is_none(),
-                    "[{}] expected {} to have a contextual parent\nbut its parent was actually {:?} (name: {:?})",
-                    collector_name,
+                    "[{}] expected {} to have a contextual parent\nbut it has the explicit parent {:?} (name: {:?})",
+                    subscriber_name,
                     ctx,
                     provided_parent,
                     parent_name,
@@ -88,7 +95,7 @@ impl Parent {
                     Some(expected_parent.as_ref()),
                     parent_name,
                     "[{}] expected {} to have contextual parent {:?}, but got {:?}",
-                    collector_name,
+                    subscriber_name,
                     ctx,
                     expected_parent,
                     parent_name,
