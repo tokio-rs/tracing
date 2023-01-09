@@ -9,17 +9,17 @@
 //! tools. The `MockCollector` has expectations set on it which are later
 //! validated as the code under test is run.
 //!
-//! # Usage
+//! # Examples
 //!
 //! ```
 //! use tracing::collect::with_default;
 //! use tracing_mock::{collector, expect, field};
 //!
 //! let (collector, handle) = collector::mock()
-//!        // Expect a single event with a specified message
-//!        .event(expect::event().with_fields(field::msg("droids")))
-//!        .only()
-//!        .run_with_handle();
+//!     // Expect a single event with a specified message
+//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .only()
+//!     .run_with_handle();
 //!
 //! // Use `with_default` to apply the `MockCollector` for the duration
 //! // of the closure - this is what we are testing.
@@ -118,12 +118,14 @@ where
     ///
     /// # Examples
     ///
+    /// # Examples
+    ///
     /// ```
     /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
-    ///     .named("subscriber-1")
+    ///     .named("collector-1")
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
@@ -164,6 +166,8 @@ where
     /// with_default(collector, || {
     ///     tracing::info!("a");
     /// });
+    ///
+    /// # Examples
     ///
     /// handle.assert_finished();
     /// ```
