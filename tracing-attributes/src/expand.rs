@@ -14,6 +14,39 @@ use crate::{
     MaybeItemFn, MaybeItemFnRef,
 };
 
+#[derive(Debug, Default)]
+struct AsyncContext {
+    fake_return_edge: Option<proc_macro2::TokenStream>,
+}
+
+impl AsyncContext {
+    /// Adds a fake return statement that can be installed as the first thing in the
+    /// function body, so that we eagerly infer that the return type is what was declared
+    /// in the async fn signature.
+    fn with_fake_return_edge(mut self, ident: &Ident, output: &ReturnType) -> Self {
+        let (return_type, return_span) = if let ReturnType::Type(_, return_type) = &output {
+            (erase_impl_trait(return_type), return_type.span())
+        } else {
+            // Point at function name if we don't have an explicit return type
+            (syn::parse_quote! { () }, ident.span())
+        };
+        // The `#[allow(..)]` is given because the return statement is
+        // unreachable, but does affect inference, so it needs to be written
+        // exactly that way for it to do its magic.
+        let fake_return_edge = quote_spanned! {return_span=>
+            #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value)]
+            if false {
+                let __tracing_attr_fake_return: #return_type =
+                    unreachable!("this is just for type inference, and is unreachable code");
+                return __tracing_attr_fake_return;
+            }
+        };
+
+        self.fake_return_edge = Some(fake_return_edge);
+        self
+    }
+}
+
 /// Given an existing function, generate an instrumented version of that function
 pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     input: MaybeItemFnRef<'a, B>,
@@ -51,37 +84,13 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     let warnings = args.warnings();
 
-    let (return_type, return_span) = if let ReturnType::Type(_, return_type) = &output {
-        (erase_impl_trait(return_type), return_type.span())
-    } else {
-        // Point at function name if we don't have an explicit return type
-        (syn::parse_quote! { () }, ident.span())
-    };
-    // Install a fake return statement as the first thing in the function
-    // body, so that we eagerly infer that the return type is what we
-    // declared in the async fn signature.
-    // The `#[allow(..)]` is given because the return statement is
-    // unreachable, but does affect inference, so it needs to be written
-    // exactly that way for it to do its magic.
-    let fake_return_edge = quote_spanned! {return_span=>
-        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value)]
-        if false {
-            let __tracing_attr_fake_return: #return_type =
-                unreachable!("this is just for type inference, and is unreachable code");
-            return __tracing_attr_fake_return;
-        }
-    };
-    let block = quote! {
-        {
-            #fake_return_edge
-            #block
-        }
-    };
+    let async_context =
+        asyncness.map(|_| AsyncContext::default().with_fake_return_edge(ident, output));
 
     let body = gen_block(
-        &block,
+        block,
         params,
-        asyncness.is_some(),
+        async_context,
         args,
         instrumented_function_name,
         self_type,
@@ -103,7 +112,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 fn gen_block<B: ToTokens>(
     block: &B,
     params: &Punctuated<FnArg, Token![,]>,
-    async_context: bool,
+    async_context: Option<AsyncContext>,
     mut args: InstrumentArgs,
     instrumented_function_name: &str,
     self_type: Option<&TypePath>,
@@ -257,7 +266,30 @@ fn gen_block<B: ToTokens>(
     // If `err` is in args, instrument any resulting `Err`s.
     // If `ret` is in args, instrument any resulting `Ok`s when the function
     // returns `Result`s, otherwise instrument any resulting values.
-    if async_context {
+    if let Some(context) = async_context {
+        let block = if let Some(fake_return_edge) = context.fake_return_edge {
+            // Install the fake return edge.
+            quote! {
+                {
+                    // Because `quote` produces a stream of tokens _without_ whitespace,
+                    // the `if` and the block will appear directly next to each other.
+                    // This generates a clippy lint about suspicious `if/else` formatting.
+                    // Therefore, suppress the lint inside the generated code...
+                    #[allow(clippy::suspicious_else_formatting)]
+                    {
+                        #fake_return_edge
+                        // ...but turn the lint back on inside the function body.
+                        #[warn(clippy::suspicious_else_formatting)]
+                        #block
+                    }
+                }
+            }
+        } else {
+            // Re-quote the block for type matching.
+            quote! {
+                #block
+            }
+        };
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
@@ -697,7 +729,7 @@ impl<'block> AsyncInfo<'block> {
                     let instrumented_block = gen_block(
                         &async_expr.block,
                         &self.input.sig.inputs,
-                        true,
+                        Some(AsyncContext::default()),
                         args,
                         instrumented_function_name,
                         None,
