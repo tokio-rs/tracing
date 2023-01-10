@@ -351,8 +351,6 @@ where
     ///     tracing::info!("a");
     /// });
     ///
-    /// # Examples
-    ///
     /// handle.assert_finished();
     /// ```
     ///
