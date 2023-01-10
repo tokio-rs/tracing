@@ -1,18 +1,15 @@
-//! A `Collector` to receive and validate `tracing` data.
+//! An implementation of the [`Collect`] trait to receive and validate
+//! `tracing` data.
 //!
 //! # Overview
 //!
-//! [`tracing`] is a framework for instrumenting Rust programs to collect
-//! structured, event-based diagnostic information. `tracing-mock` provides
-//! tools for making assertions about what `tracing` diagnostics are emitted
-//! by code under test. The `MockCollector` is the central component in these
-//! tools. The `MockCollector` has expectations set on it which are later
+//! The [`MockCollector`] is the central component in these tools. The
+//! `MockCollector` has expectations set on it which are later
 //! validated as the code under test is run.
 //!
-//! # Usage
+//! # Examples
 //!
 //! ```
-//! use tracing::collect::with_default;
 //! use tracing_mock::{collector, expect, field};
 //!
 //! let (collector, handle) = collector::mock()
@@ -23,7 +20,7 @@
 //!
 //! // Use `with_default` to apply the `MockCollector` for the duration
 //! // of the closure - this is what we are testing.
-//! with_default(collector, || {
+//! tracing::collect::with_default(collector, || {
 //!     // These *are* the droids we are looking for
 //!     tracing::info!("droids");
 //! });
@@ -32,6 +29,116 @@
 //! // assertion is not met.
 //! handle.assert_finished();
 //! ```
+//!
+//! A more complex example may consider multiple spans and events with
+//! their respective fields:
+//!
+//! ```
+//! use tracing_mock::{collector, expect, field};
+//!
+//! let span = expect::span()
+//!     .named("my_span");
+//! let (collector, handle) = collector::mock()
+//!     // Enter a matching span
+//!     .enter(span.clone())
+//!     // Record an event with message "collect parting message"
+//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     // Record a value for the field `parting` on a matching span
+//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     // Exit a matching span
+//!     .exit(span)
+//!     // Expect no further messages to be recorded
+//!     .only()
+//!     // Return the collector and handle
+//!     .run_with_handle();
+//!
+//! // Use `with_default` to apply the `MockCollector` for the duration
+//! // of the closure - this is what we are testing.
+//! tracing::collect::with_default(collector, || {
+//!     let span = tracing::trace_span!(
+//!         "my_span",
+//!         greeting = "hello world",
+//!         parting = tracing::field::Empty
+//!     );
+//!
+//!     let _guard = span.enter();
+//!     tracing::info!("collect parting message");
+//!     let parting = "goodbye world!";
+//!
+//!     span.record("parting", &parting);
+//! });
+//!
+//! // Use the handle to check the assertions. This line will panic if an
+//! // assertion is not met.
+//! handle.assert_finished();
+//! ```
+//!
+//! If we modify the previous example so that we **don't** enter the
+//! span before recording an event, the test will fail:
+//!
+//! ```should_panic
+//! use tracing_mock::{collector, expect, field};
+//!
+//! let span = expect::span()
+//!     .named("my_span");
+//! let (collector, handle) = collector::mock()
+//!     .enter(span.clone())
+//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .exit(span)
+//!     .only()
+//!     .run_with_handle();
+//!
+//! // Use `with_default` to apply the `MockCollector` for the duration
+//! // of the closure - this is what we are testing.
+//! tracing::collect::with_default(collector, || {
+//!     let span = tracing::trace_span!(
+//!         "my_span",
+//!         greeting = "hello world",
+//!         parting = tracing::field::Empty
+//!     );
+//!
+//!     // Don't enter the span.
+//!     // let _guard = span.enter();
+//!     tracing::info!("collect parting message");
+//!     let parting = "goodbye world!";
+//!
+//!     span.record("parting", &parting);
+//! });
+//!
+//! // Use the handle to check the assertions. This line will panic if an
+//! // assertion is not met.
+//! handle.assert_finished();
+//! ```
+//!
+//! This will result in an error message such as the following:
+//!
+//! ```text
+//! thread 'main' panicked at '
+//! [main] expected to enter a span named `my_span`
+//! [main] but instead observed event Event {
+//!     fields: ValueSet {
+//!         message: collect parting message,
+//!         callsite: Identifier(0x10eda3278),
+//!     },
+//!     metadata: Metadata {
+//!         name: "event src/collector.rs:27",
+//!         target: "rust_out",
+//!         level: Level(
+//!             Info,
+//!         ),
+//!         module_path: "rust_out",
+//!         location: src/collector.rs:27,
+//!         fields: {message},
+//!         callsite: Identifier(0x10eda3278),
+//!         kind: Kind(EVENT),
+//!     },
+//!     parent: Current,
+//! }', tracing/tracing-mock/src/expect.rs:59:33
+//! ```
+//!
+//! [`Collect`]: trait@tracing::Collect
+//! [`MockCollector`]: struct@crate::collector::MockCollector
 use crate::{
     event::ExpectedEvent,
     expect::Expect,
@@ -83,9 +190,65 @@ pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
 }
 
 /// A handle which is used to invoke validation of expectations.
+///
+/// The handle is currently only used to assert that all the expected
+/// events and spans were seen.
+///
+/// For additional information and examples, see the [`collector`]
+/// module documentation.
+///
+/// [`collector`]: mod@crate::collector
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
 /// Create a new [`MockCollector`].
+///
+/// For additional information and examples, see the [`collector`]
+/// module and [`MockCollector`] documentation.
+///
+/// # Examples
+///
+///
+/// ```
+/// use tracing_mock::{collector, expect, field};
+///
+/// let span = expect::span()
+///     .named("my_span");
+/// let (collector, handle) = collector::mock()
+///     // Enter a matching span
+///     .enter(span.clone())
+///     // Record an event with message "collect parting message"
+///     .event(expect::event().with_fields(field::msg("collect parting message")))
+///     // Record a value for the field `parting` on a matching span
+///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+///     // Exit a matching span
+///     .exit(span)
+///     // Expect no further messages to be recorded
+///     .only()
+///     // Return the collector and handle
+///     .run_with_handle();
+///
+/// // Use `with_default` to apply the `MockCollector` for the duration
+/// // of the closure - this is what we are testing.
+/// tracing::collect::with_default(collector, || {
+///     let span = tracing::trace_span!(
+///         "my_span",
+///         greeting = "hello world",
+///         parting = tracing::field::Empty
+///     );
+///
+///     let _guard = span.enter();
+///     tracing::info!("collect parting message");
+///     let parting = "goodbye world!";
+///
+///     span.record("parting", &parting);
+/// });
+///
+/// // Use the handle to check the assertions. This line will panic if an
+/// // assertion is not met.
+/// handle.assert_finished();
+/// ```
+///
+/// [`collector`]: mod@crate::collector
 pub fn mock() -> MockCollector<fn(&Metadata<'_>) -> bool> {
     MockCollector {
         expected: VecDeque::new(),
@@ -118,20 +281,44 @@ where
     ///
     /// # Examples
     ///
-    /// ```
-    /// use tracing::collect::with_default;
+    /// In the following example, we create 2 collectors, both
+    /// expecting to receive an event. As we only record a single
+    /// event, the test will fail:
+    ///
+    /// ```should_panic
     /// use tracing_mock::{collector, expect};
     ///
-    /// let (collector, handle) = collector::mock()
-    ///     .named("subscriber-1")
+    /// let (collector_1, handle_1) = collector::mock()
+    ///     .named("collector-1")
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// let (collector_2, handle_2) = collector::mock()
+    ///     .named("collector-2")
+    ///     .event(expect::event())
+    ///     .run_with_handle();
+    ///
+    /// let _guard = tracing::collect::set_default(collector_2);
+    ///
+    /// tracing::collect::with_default(collector_1, || {
     ///     tracing::info!("a");
     /// });
     ///
-    /// handle.assert_finished();
+    /// handle_1.assert_finished();
+    /// handle_2.assert_finished();
+    /// ```
+    ///
+    /// In the test output, we see that the collector which didn't
+    /// received the event was the one named `collector-2`, which is
+    /// correct as the collector named `collector-1` was the default
+    /// when the event was recorded:
+    ///
+    /// ```text
+    /// [collector-2] more notifications expected: [
+    ///     Event(
+    ///         MockEvent,
+    ///     ),
+    /// ]', tracing-mock/src/collector.rs:1276:13
     /// ```
     pub fn named(self, name: impl ToString) -> Self {
         Self {
@@ -154,14 +341,13 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     /// });
     ///
@@ -171,14 +357,13 @@ where
     /// A span is entered before the event, causing the test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("span");
     ///     let _guard = span.enter();
     ///     tracing::info!("a");
@@ -210,7 +395,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -221,7 +405,7 @@ where
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     _ = tracing::info_span!("the span we're testing", testing = "yes");
     /// });
     ///
@@ -232,7 +416,6 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -243,7 +426,7 @@ where
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("an event");
     ///     _ = tracing::info_span!("the span we're testing", testing = "yes");
     /// });
@@ -272,7 +455,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -284,7 +466,7 @@ where
     ///     .only()
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("the span we're testing");
     ///     let _entered = span.enter();
     /// });
@@ -296,7 +478,6 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -308,7 +489,7 @@ where
     ///     .only()
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("an event");
     ///     let span = tracing::info_span!("the span we're testing");
     ///     let _entered = span.enter();
@@ -338,7 +519,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -349,7 +529,7 @@ where
     ///     .exit(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("the span we're testing");
     ///     let _entered = span.enter();
     /// });
@@ -361,7 +541,6 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -372,7 +551,7 @@ where
     ///     .exit(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("the span we're testing");
     ///     let _entered = span.enter();
     ///     tracing::info!("an event");
@@ -399,7 +578,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -409,7 +587,7 @@ where
     ///     .clone_span(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("the span we're testing");
     ///     _ = span.clone();
     /// });
@@ -421,7 +599,6 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -431,7 +608,7 @@ where
     ///     .clone_span(span)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::info_span!("the span we're testing");
     ///     tracing::info!("an event");
     ///     _ = span.clone();
@@ -478,7 +655,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let cause = expect::span().named("cause");
@@ -488,7 +664,7 @@ where
     ///     .follows_from(consequence, cause)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let cause = tracing::info_span!("cause");
     ///     let consequence = tracing::info_span!("consequence");
     ///
@@ -503,7 +679,6 @@ where
     /// this test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let cause = expect::span().named("cause");
@@ -513,7 +688,7 @@ where
     ///     .follows_from(consequence, cause)
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let cause = tracing::info_span!("another cause");
     ///     let consequence = tracing::info_span!("consequence");
     ///
@@ -544,7 +719,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -553,7 +727,7 @@ where
     ///     .record(span, expect::field("parting").with_value(&"goodbye world!"))
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::trace_span!(
     ///         "my_span",
     ///         greeting = "hello world",
@@ -569,7 +743,6 @@ where
     /// causing the test to fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let span = expect::span()
@@ -578,7 +751,7 @@ where
     ///     .record(span, expect::field("parting").with_value(&"goodbye world!"))
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     let span = tracing::trace_span!(
     ///         "my_span",
     ///         greeting = "hello world",
@@ -609,7 +782,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
@@ -618,7 +790,7 @@ where
     ///     .only()
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     ///     tracing::warn!("b");
     /// });
@@ -654,7 +826,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
@@ -663,7 +834,7 @@ where
     ///     .only()
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::debug!("a message we don't care about");
     ///     tracing::info!("a message we want to validate");
     /// });
@@ -691,14 +862,13 @@ where
     /// expect a single event, but receive three:
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     ///     tracing::info!("b");
     ///     tracing::info!("c");
@@ -710,7 +880,6 @@ where
     /// After including `only`, the test will fail:
     ///
     /// ```should_panic
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
@@ -718,7 +887,7 @@ where
     ///     .only()
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     ///     tracing::info!("b");
     ///     tracing::info!("c");
@@ -744,10 +913,9 @@ where
     /// codebase:
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::collector;
     ///
-    /// with_default(collector::mock().run(), || {
+    /// tracing::collect::with_default(collector::mock().run(), || {
     ///     let foo1 = tracing::span!(tracing::Level::TRACE, "foo");
     ///     let foo2 = foo1.clone();
     ///     // Two handles that point to the same span are equal.
@@ -769,7 +937,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// // collector and handle are returned from `run_with_handle()`
@@ -777,7 +944,7 @@ where
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     /// });
     ///
@@ -1108,14 +1275,13 @@ impl MockHandle {
     /// # Examples
     ///
     /// ```
-    /// use tracing::collect::with_default;
     /// use tracing_mock::{collector, expect};
     ///
     /// let (collector, handle) = collector::mock()
     ///     .event(expect::event())
     ///     .run_with_handle();
     ///
-    /// with_default(collector, || {
+    /// tracing::collect::with_default(collector, || {
     ///     tracing::info!("a");
     /// });
     ///
