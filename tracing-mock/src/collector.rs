@@ -21,10 +21,16 @@ use tracing::{
     Collect, Event, Metadata,
 };
 
-struct SpanState {
+pub(crate) struct SpanState {
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
+}
+
+impl SpanState {
+    pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
+        self.meta
+    }
 }
 
 struct Running<F: Fn(&Metadata<'_>) -> bool> {
@@ -329,9 +335,7 @@ where
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
-                    if let Some(name) = expected_span.name() {
-                        assert_eq!(name, span.name);
-                    }
+                    expected_span.check(span, &self.name);
                 }
                 Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
@@ -354,9 +358,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                if let Some(name) = expected_span.name() {
-                    assert_eq!(name, span.name);
-                }
+                expected_span.check(span, &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
