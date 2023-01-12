@@ -85,6 +85,7 @@ pub struct Subscriber {
     socket: UnixDatagram,
     field_prefix: Option<String>,
     syslog_identifier: String,
+    syslog_facility: Option<libc::c_int>,
 }
 
 #[cfg(unix)]
@@ -109,6 +110,7 @@ impl Subscriber {
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
                     .unwrap_or_else(String::new),
+                syslog_facility: None,
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -131,8 +133,8 @@ impl Subscriber {
 
     /// Sets the syslog identifier for this logger.
     ///
-    /// The syslog identifier comes from the classic syslog interface (`openlog()`
-    /// and `syslog()`) and tags log entries with a given identifier.
+    /// The syslog identifier comes from the classic syslog interface (`openlog(3)`
+    /// and `syslog(3)`) and tags log entries with a given identifier.
     /// Systemd exposes it in the `SYSLOG_IDENTIFIER` journal field, and allows
     /// filtering log messages by syslog identifier with `journalctl -t`.
     /// Unlike the unit (`journalctl -u`) this field is not trusted, i.e. applications
@@ -151,8 +153,37 @@ impl Subscriber {
     }
 
     /// Returns the syslog identifier in use.
+    ///
+    /// A syslog identifier can be set using [`Subscriber::with_syslog_identifier`].
     pub fn syslog_identifier(&self) -> &str {
         &self.syslog_identifier
+    }
+
+    /// Sets the syslog facility for this logger.
+    ///
+    /// The syslog facility comes from the classic syslog interface (`openlog(3)`
+    /// and `syslog(3)`). In syslog, the facility argument is used to specify
+    /// what type of program is logging the message. This lets the configuration
+    /// file specify that messages from different facilities will be handled
+    /// differently. Systemd exposes it in the `SYSLOG_FACILITY` journal field,
+    /// and allows filtering log messages by syslog facility with `journalctl
+    /// --facility`.
+    ///
+    /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+    /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
+    /// for more information.
+    ///
+    /// If not set, this field is left out.
+    pub fn with_syslog_facility(mut self, facility: libc::c_int) -> Self {
+        self.syslog_facility = Some(facility);
+        self
+    }
+
+    /// Returns the syslog facility in use.
+    ///
+    /// A syslog facility can be set using [`Subscriber::with_syslog_facility`].
+    pub fn syslog_facility(&self) -> Option<libc::c_int> {
+        self.syslog_facility
     }
 
     #[cfg(not(unix))]
@@ -257,6 +288,11 @@ where
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
+        if let Some(facility) = self.syslog_facility {
+            // libc definitions are bitshifted left by 3, but journald uses
+            // values without bitshift.
+            writeln!(buf, "SYSLOG_FACILITY={}", facility >> 3).unwrap();
+        }
 
         event.record(&mut EventVisitor::new(
             &mut buf,
