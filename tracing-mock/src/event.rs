@@ -48,7 +48,7 @@ pub struct ExpectedEvent {
 }
 
 pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect::event().with_fields(field::msg(message))
+    expect::event().with_fields(expect::message(message))
 }
 
 impl ExpectedEvent {
