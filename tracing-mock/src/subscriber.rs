@@ -184,6 +184,7 @@ use std::{
 /// ```
 ///
 /// [`subscriber`]: mod@crate::subscriber
+#[must_use]
 pub fn mock() -> MockSubscriberBuilder {
     MockSubscriberBuilder {
         expected: Default::default(),
@@ -196,12 +197,53 @@ pub fn mock() -> MockSubscriberBuilder {
 
 /// Create a [`MockSubscriberBuilder`] with a name already set.
 ///
-/// This constructor is equivalent to `subscriber::mock().named(name)`.
+/// This constructor is equivalent to calling
+/// [`MockSubscriberBuilder::named`] in the following way
+/// `subscriber::mock().named(name)`.
 ///
 /// For additional information and examples, see the [`subscriber`]
 /// module and [`MockSubscriberBuilder`] documentation.
 ///
+/// # Examples
+///
+/// The example from [`MockSubscriberBuilder::named`] could be
+/// rewritten as:
+///
+/// ```should_panic
+/// use tracing_mock::{subscriber, expect};
+/// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
+///
+/// let (subscriber_1, handle_1) = subscriber::named("subscriber-1")
+///     .event(expect::event())
+///     .run_with_handle();
+///
+/// let (subscriber_2, handle_2) = subscriber::named("subscriber-2")
+///     .event(expect::event())
+///     .run_with_handle();
+///
+/// let _collect = tracing_subscriber::registry()
+///     .with(
+///         subscriber_2.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true))
+///     )
+///     .set_default();
+/// {
+///     let _collect = tracing_subscriber::registry()
+///         .with(
+///             subscriber_1
+///                 .with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true))
+///         )
+///         .set_default();
+///
+///     tracing::info!("a");
+/// }
+///
+/// handle_1.assert_finished();
+/// handle_2.assert_finished();
+/// ```
+///
+/// [`named`]: fn@crate::subscriber::MockSubscriberBuilder::named
 /// [`subscriber`]: mod@crate::subscriber
+#[must_use]
 pub fn named(name: impl std::fmt::Display) -> MockSubscriberBuilder {
     mock().named(name)
 }
@@ -271,11 +313,16 @@ impl MockSubscriberBuilder {
     ///     .run_with_handle();
     ///
     /// let _collect = tracing_subscriber::registry()
-    ///     .with(subscriber_2.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
+    ///     .with(
+    ///         subscriber_2.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true))
+    ///     )
     ///     .set_default();
     /// {
     ///     let _collect = tracing_subscriber::registry()
-    ///         .with(subscriber_1.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
+    ///         .with(
+    ///             subscriber_1
+    ///                 .with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true))
+    ///         )
     ///         .set_default();
     ///
     ///     tracing::info!("a");
@@ -366,7 +413,7 @@ impl MockSubscriberBuilder {
     /// recorded next.
     ///
     /// This function accepts `Into<NewSpan>` instead of
-    /// [`ExpectedSpan`] directly, so it can be used to test
+    /// [`ExpectedSpan`] directly. [`NewSpan`] can be used to test
     /// span fields and the span parent.
     ///
     /// The new span doesn't need to be entered for this expectation
@@ -423,6 +470,9 @@ impl MockSubscriberBuilder {
     ///
     /// handle.assert_finished();
     /// ```
+    ///
+    /// [`ExpectedSpan`]: struct@crate::span::ExpectedSpan
+    /// [`NewSpan`]: struct@crate::span::NewSpan
     pub fn new_span<I>(mut self, new_span: I) -> Self
     where
         I: Into<NewSpan>,
@@ -435,7 +485,7 @@ impl MockSubscriberBuilder {
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// This expectation is generally accompanied by a call to
-    /// [`exit`], since an entered span will typically be exited. If used 
+    /// [`exit`], since an entered span will typically be exited. If used
     /// together with [`only`], this is likely necessary, because the span
     /// will be dropped before the test completes (except in rare cases,
     /// such as if [`std::mem::forget`] is used).
