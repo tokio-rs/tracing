@@ -1,5 +1,5 @@
-//! An implementation of the [`Subscribe`] trait to receive and validate
-//! `tracing` data.
+//! An implementation of the [`Subscribe`] trait which validates that
+//! the `tracing` data it recieves matches  the expected output for a test.
 //!
 //!
 //! The [`MockSubscriber`] is the central component in these tools. The
@@ -206,10 +206,10 @@ pub fn named(name: impl std::fmt::Display) -> MockSubscriberBuilder {
     mock().named(name)
 }
 
-/// A builder for the [`MockSubscriber`].
+/// A builder for constructing [`MockSubscriber`]s.
 ///
-/// Use the methods on this struct to set expectations which are
-/// validated by the [`MockSubscriber`].
+/// The methods on this builder set expectations which are then
+/// validated by the constructed [`MockSubscriber`].
 ///
 /// For a detailed description and examples see the documentation
 /// for the methods and the [`subscriber`] module.
@@ -221,9 +221,9 @@ pub struct MockSubscriberBuilder {
     name: String,
 }
 
-/// A subscriber which can be used to validate received traces.
+/// A subscriber which validates the traces it receives.
 ///
-/// The `MockSubscriber` is constructed with the
+/// A `MockSubscriber` is constructed with a
 /// [`MockSubscriberBuilder`]. For a detailed description and examples,
 /// see the documentation for that struct and for the [`subscriber`]
 /// module.
@@ -245,14 +245,14 @@ impl MockSubscriberBuilder {
     /// (*technically*, the name of the thread where it was created, which is
     /// the name of the test unless tests are run with `--test-threads=1`).
     /// When a test has only one mock subscriber, this is sufficient. However,
-    /// some tests may include multiple subscriber, in order to test
-    /// interactions between multiple subscriber. In that case, it can be
+    /// some tests may include multiple subscribers, in order to test
+    /// interactions between multiple subscribers. In that case, it can be
     /// helpful to give each subscriber a separate name to distinguish where the
     /// debugging output comes from.
     ///
     /// # Examples
     ///
-    /// In the following example, we create 2 subscribers, both
+    /// In the following example, we create two subscribers, both
     /// expecting to receive an event. As we only record a single
     /// event, the test will fail:
     ///
@@ -307,7 +307,7 @@ impl MockSubscriberBuilder {
         self
     }
 
-    /// Adds the expectation that an event matching the [`ExpectedEvent`]
+    /// Adds an expectation that an event matching the [`ExpectedEvent`]
     /// will be recorded next.
     ///
     /// The `event` can be a default mock which will match any event
@@ -362,7 +362,7 @@ impl MockSubscriberBuilder {
         self
     }
 
-    /// Adds the expectation that the creation of a span will be
+    /// Adds an expectation that the creation of a span will be
     /// recorded next.
     ///
     /// This function accepts `Into<NewSpan>` instead of
@@ -431,12 +431,14 @@ impl MockSubscriberBuilder {
         self
     }
 
-    /// Adds the expectation that entering a span matching the
+    /// Adds an expectation that entering a span matching the
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// This expectation is generally accompanied by a call to
-    /// [`exit`] as well. If used together with [`only`], this
-    /// is necessary.
+    /// [`exit`], since an entered span will typically be exited. If used 
+    /// together with [`only`], this is likely necessary, because the span
+    /// will be dropped before the test completes (except in rare cases,
+    /// such as if [`std::mem::forget`] is used).
     ///
     /// If the span that is entered doesn't match the [`ExpectedSpan`],
     /// or if something else (such as an event) is recorded first,
@@ -505,7 +507,7 @@ impl MockSubscriberBuilder {
         self
     }
 
-    /// Adds the expectation that exiting a span matching the
+    /// Adds an expectation that exiting a span matching the
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// As a span may be entered and exited multiple times,
@@ -641,7 +643,7 @@ impl MockSubscriberBuilder {
         self
     }
 
-    /// Consume the receiver and return a [`MockSubscriber`] which can
+    /// Consume this builder and return a [`MockSubscriber`] which can
     /// be set as the default subscriber.
     ///
     /// This function is similar to [`run_with_handle`], but it doesn't
@@ -683,7 +685,7 @@ impl MockSubscriberBuilder {
         }
     }
 
-    /// Consume the receiver and return a [`MockSubscriber`] which can
+    /// Consume this builder and return a [`MockSubscriber`] which can
     /// be set as the default subscriber and a [`MockHandle`] which can
     /// be used to validate the provided expectations.
     ///
