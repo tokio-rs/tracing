@@ -1,9 +1,7 @@
 //! An implementation of the [`Collect`] trait to receive and validate
 //! `tracing` data.
 //!
-//! # Overview
-//!
-//! The [`MockCollector`] is the central component in these tools. The
+//! The [`MockCollector`] is the central component of this crate. The
 //! `MockCollector` has expectations set on it which are later
 //! validated as the code under test is run.
 //!
@@ -249,6 +247,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 /// ```
 ///
 /// [`collector`]: mod@crate::collector
+#[must_use]
 pub fn mock() -> MockCollector<fn(&Metadata<'_>) -> bool> {
     MockCollector {
         expected: VecDeque::new(),
@@ -327,7 +326,7 @@ where
         }
     }
 
-    /// Adds the expectation that an event matching the [`ExpectedEvent`]
+    /// Adds an expectation that an event matching the [`ExpectedEvent`]
     /// will be recorded next.
     ///
     /// The `event` can be a default mock which will match any event
@@ -376,7 +375,7 @@ where
         self
     }
 
-    /// Adds the expectation that the creation of a span will be
+    /// Adds an expectation that the creation of a span will be
     /// recorded next.
     ///
     /// This function accepts `Into<NewSpan>` instead of
@@ -441,7 +440,7 @@ where
         self
     }
 
-    /// Adds the expectation that entering a span matching the
+    /// Adds an expectation that entering a span matching the
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// This expectation is generally accompanied by a call to
@@ -505,7 +504,7 @@ where
         self
     }
 
-    /// Adds the expectation that exiting a span matching the
+    /// Adds ab expectation that exiting a span matching the
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// As a span may be entered and exited multiple times,
@@ -566,7 +565,7 @@ where
         self
     }
 
-    /// Adds the expectation that cloning a span matching the
+    /// Adds an expectation that cloning a span matching the
     /// [`ExpectedSpan`] will be recorded next.
     ///
     /// The cloned span does need to be entered.
@@ -623,8 +622,8 @@ where
 
     /// **This method is deprecated.**
     ///
-    /// Adds the expectation that a span matching the [`ExpectedSpan`]
-    /// getting dropped` via the deprecated function
+    /// Adds an expectation that a span matching the [`ExpectedSpan`]
+    /// getting dropped via the deprecated function
     /// [`Collect::drop_span`] will be recorded next.
     ///
     /// Instead [`Collect::try_close`] should be used on the collector
@@ -638,7 +637,7 @@ where
         self
     }
 
-    /// Adds the expectation that a `follows_from` relationship will be
+    /// Adds an expectation that a `follows_from` relationship will be
     /// recorded next. Specifically that a span matching `consequence`
     /// follows from a span matching `cause`.
     ///
@@ -705,7 +704,7 @@ where
         self
     }
 
-    /// Adds the expectation that `fields` are recorded on a span
+    /// Adds an expectation that `fields` are recorded on a span
     /// matching the [`ExpectedSpan`] will be recorded next.
     ///
     /// For further information on how to specify the expected
@@ -815,7 +814,6 @@ where
     /// This method can be used to test the internals of `tracing`,
     /// but it is also useful to filter out traces on more verbose
     /// levels if you only want to verify above a certain level.
-    ///
     ///
     /// **Note**: this value determines a global filter, if
     /// `with_max_level_hint` is called on multiple collectors, the
