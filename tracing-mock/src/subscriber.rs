@@ -155,14 +155,14 @@ where
     }
 
     pub fn run(self) -> impl Subscriber {
-        let (subscriber, _) = self.run_with_handle();
-        subscriber
+        let (collector, _) = self.run_with_handle();
+        collector
     }
 
     pub fn run_with_handle(self) -> (impl Subscriber, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle(expected.clone(), self.name.clone());
-        let subscriber = Running {
+        let collector = Running {
             spans: Mutex::new(HashMap::new()),
             expected,
             current: Mutex::new(Vec::new()),
@@ -171,7 +171,7 @@ where
             max_level: self.max_level,
             name: self.name,
         };
-        (subscriber, handle)
+        (collector, handle)
     }
 }
 
@@ -229,6 +229,14 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
+                #[cfg(feature = "tracing-subscriber")]
+                {
+                    if expected.scope_mut().is_some() {
+                        unimplemented!(
+                            "Expected scope for events is not supported with `MockSubscriber`."
+                        )
+                    }
+                }
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     let spans = self.spans.lock().unwrap();
@@ -454,6 +462,7 @@ where
 }
 
 impl MockHandle {
+    #[cfg(feature = "tracing-subscriber")]
     pub(crate) fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
         Self(expected, name)
     }
