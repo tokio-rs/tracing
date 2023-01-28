@@ -103,9 +103,9 @@ where
 }
 
 impl WithContext {
-    pub(crate) fn with_context<'a>(
+    pub(crate) fn with_context(
         &self,
-        dispatch: &'a Dispatch,
+        dispatch: &Dispatch,
         id: &span::Id,
         mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool,
     ) {
