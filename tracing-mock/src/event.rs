@@ -43,7 +43,7 @@ use std::fmt;
 pub struct ExpectedEvent {
     pub(super) fields: Option<field::ExpectedFields>,
     pub(super) parent: Option<Parent>,
-    pub(super) in_spans: Vec<span::ExpectedSpan>,
+    pub(super) in_spans: Option<Vec<span::ExpectedSpan>>,
     pub(super) metadata: ExpectedMetadata,
 }
 
@@ -458,9 +458,7 @@ impl ExpectedEvent {
     ///
     /// ```
     /// use tracing_mock::{expect, subscriber};
-    /// use tracing_subscriber::{
-    ///     filter::filter_fn, registry, subscribe::CollectExt, util::SubscriberInitExt, Subscribe,
-    /// };
+    /// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
     ///
     /// let event = expect::event().in_scope([
     ///     expect::span().named("parent_span"),
@@ -473,8 +471,8 @@ impl ExpectedEvent {
     ///     .event(event)
     ///     .run_with_handle();
     ///
-    /// let _collect = registry()
-    ///     .with(subscriber.with_filter(filter_fn(move |_meta| true)))
+    /// let _collect = tracing_subscriber::registry()
+    ///     .with(subscriber.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
     ///     .set_default();
     ///
     /// let grandparent = tracing::info_span!("grandparent_span");
@@ -490,9 +488,7 @@ impl ExpectedEvent {
     ///
     /// ```should_panic
     /// use tracing_mock::{expect, subscriber};
-    /// use tracing_subscriber::{
-    ///     filter::filter_fn, registry, subscribe::CollectExt, util::SubscriberInitExt, Subscribe,
-    /// };
+    /// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
     ///
     /// let event = expect::event().in_scope([
     ///     expect::span().named("parent_span"),
@@ -504,8 +500,8 @@ impl ExpectedEvent {
     ///     .event(event)
     ///     .run_with_handle();
     ///
-    /// let _collect = registry()
-    ///     .with(subscriber.with_filter(filter_fn(move |_meta| true)))
+    /// let _collect = tracing_subscriber::registry()
+    ///     .with(subscriber.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
     ///     .set_default();
     ///
     /// let parent = tracing::info_span!("parent_span");
@@ -514,12 +510,39 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
+    ///
+    /// It is also possible to test that an event has no parent spans
+    /// by passing `None` to `in_scope`. If the event is within a
+    /// span, the test will fail:
+    ///
+    /// ```should_panic
+    /// use tracing_mock::{expect, subscriber};
+    /// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
+    ///
+    /// let event = expect::event().in_scope(None);
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .enter(expect::span())
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// let _collect = tracing_subscriber::registry()
+    ///     .with(subscriber.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
+    ///     .set_default();
+    ///
+    /// let parent = tracing::info_span!("parent_span");
+    /// let _guard = parent.enter();
+    /// tracing::info!(field = &"value");    
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
     /// [`MockSubscriber`]: struct@crate::subscriber::MockSubscriber
     /// [`MockCollector`]: struct@crate::collector::MockCollector
     #[cfg(feature = "tracing-subscriber")]
     pub fn in_scope(self, spans: impl IntoIterator<Item = span::ExpectedSpan>) -> Self {
         Self {
-            in_spans: spans.into_iter().collect(),
+            in_spans: Some(spans.into_iter().collect()),
             ..self
         }
     }
@@ -527,8 +550,8 @@ impl ExpectedEvent {
     /// Provides access to the expected scope (spans) for this expected
     /// event.
     #[cfg(feature = "tracing-subscriber")]
-    pub(crate) fn scope_mut(&mut self) -> &mut [span::ExpectedSpan] {
-        &mut self.in_spans[..]
+    pub(crate) fn scope_mut(&mut self) -> Option<&mut [span::ExpectedSpan]> {
+        self.in_spans.as_mut().map(|s| &mut s[..])
     }
 
     pub(crate) fn check(
@@ -596,8 +619,8 @@ impl fmt::Debug for ExpectedEvent {
             s.field("parent", &format_args!("{:?}", parent));
         }
 
-        if !self.in_spans.is_empty() {
-            s.field("in_spans", &self.in_spans);
+        if let Some(in_spans) = &self.in_spans {
+            s.field("in_spans", in_spans);
         }
 
         s.finish()
