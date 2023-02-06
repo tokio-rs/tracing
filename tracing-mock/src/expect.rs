@@ -6,6 +6,8 @@ use crate::{
     span::{ExpectedSpan, NewSpan},
 };
 
+use std::fmt;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Expect {
     Event(ExpectedEvent),
@@ -35,6 +37,13 @@ where
     ExpectedField {
         name: name.into(),
         value: ExpectedValue::Any,
+    }
+}
+
+pub fn message(message: impl fmt::Display) -> ExpectedField {
+    ExpectedField {
+        name: "message".to_string(),
+        value: ExpectedValue::Debug(message.to_string()),
     }
 }
 
