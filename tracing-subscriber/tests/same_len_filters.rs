@@ -61,13 +61,13 @@ fn same_num_fields_and_name_len() {
             expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("bar")),
+                .with_fields(expect::field("bar")),
         )
         .new_span(
             expect::span()
                 .named("baz")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("boz")),
+                .with_fields(expect::field("boz")),
         )
         .only()
         .run_with_handle();
