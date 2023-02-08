@@ -1315,7 +1315,7 @@ impl Span {
     }
 
     /// Returns this span's `Metadata`, if it is enabled.
-    pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
+    pub fn metadata(&self) -> Option<&Metadata<'_>> {
         self.meta
     }
 

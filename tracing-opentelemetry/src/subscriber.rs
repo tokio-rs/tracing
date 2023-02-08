@@ -11,8 +11,6 @@ use std::time::{Instant, SystemTime};
 use std::{any::TypeId, ptr::NonNull};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Collect, Event};
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::subscribe::Context;
 use tracing_subscriber::Subscribe;
@@ -118,16 +116,13 @@ struct SpanEventVisitor<'a, 'b> {
     exception_config: ExceptionFieldConfig,
 }
 
-impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
+impl<'a, 'b> field::Visit<'_> for SpanEventVisitor<'a, 'b> {
     /// Record events on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_bool(&mut self, field: &field::Field, value: bool) {
         match field.name() {
             "message" => self.event_builder.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.event_builder
                     .attributes
@@ -142,9 +137,6 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     fn record_f64(&mut self, field: &field::Field, value: f64) {
         match field.name() {
             "message" => self.event_builder.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.event_builder
                     .attributes
@@ -159,9 +151,6 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     fn record_i64(&mut self, field: &field::Field, value: i64) {
         match field.name() {
             "message" => self.event_builder.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.event_builder
                     .attributes
@@ -176,9 +165,6 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     fn record_str(&mut self, field: &field::Field, value: &str) {
         match field.name() {
             "message" => self.event_builder.name = value.to_string().into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.event_builder
                     .attributes
@@ -194,9 +180,6 @@ impl<'a, 'b> field::Visit for SpanEventVisitor<'a, 'b> {
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
         match field.name() {
             "message" => self.event_builder.name = format!("{:?}", value).into(),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => (),
             name => {
                 self.event_builder
                     .attributes
@@ -294,7 +277,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for SpanAttributeVisitor<'a> {
+impl<'a> field::Visit<'_> for SpanAttributeVisitor<'a> {
     /// Set attributes on the underlying OpenTelemetry [`Span`] from `bool` values.
     ///
     /// [`Span`]: opentelemetry::trace::Span
@@ -809,24 +792,9 @@ where
         if let Some(span) = ctx.event_span(event) {
             // Performing read operations before getting a write lock to avoid a deadlock
             // See https://github.com/tokio-rs/tracing/issues/763
-            #[cfg(feature = "tracing-log")]
-            let normalized_meta = event.normalized_metadata();
-            #[cfg(feature = "tracing-log")]
-            let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-            #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
 
-            let target = Key::new("target");
-
-            #[cfg(feature = "tracing-log")]
-            let target = if normalized_meta.is_some() {
-                target.string(meta.target().to_owned())
-            } else {
-                target.string(event.metadata().target())
-            };
-
-            #[cfg(not(feature = "tracing-log"))]
-            let target = target.string(meta.target());
+            let target = Key::new("target").string(meta.target().to_owned());
 
             let mut extensions = span.extensions_mut();
             let span_builder = extensions
@@ -853,18 +821,8 @@ where
                 }
 
                 if self.location {
-                    #[cfg(not(feature = "tracing-log"))]
-                    let normalized_meta: Option<tracing_core::Metadata<'_>> = None;
-                    let (file, module) = match &normalized_meta {
-                        Some(meta) => (
-                            meta.file().map(|s| Value::from(s.to_owned())),
-                            meta.module_path().map(|s| Value::from(s.to_owned())),
-                        ),
-                        None => (
-                            event.metadata().file().map(Value::from),
-                            event.metadata().module_path().map(Value::from),
-                        ),
-                    };
+                    let file = meta.file().map(String::from).map(Value::from);
+                    let module = meta.module_path().map(String::from).map(Value::from);
 
                     if let Some(file) = file {
                         otel_event

@@ -140,7 +140,7 @@ where
     /// {
     ///     fn on_event(&self, event: &Event, ctx: Context<C>) {
     ///         let span = ctx.event_span(event);
-    ///         println!("Event in span: {:?}", span.map(|s| s.name()));
+    ///         println!("Event in span: {:?}", span.map(|s| s.name().to_owned()));
     ///     }
     /// }
     ///
@@ -180,19 +180,6 @@ where
         }
     }
 
-    /// Returns metadata for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    #[inline]
-    pub fn metadata(&self, id: &span::Id) -> Option<&'static Metadata<'static>>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        let span = self.span(id)?;
-        Some(span.metadata())
-    }
-
     /// Returns [stored data] for the span with the given `id`, if it exists.
     ///
     /// If this returns `None`, then no span exists for that ID (either it has
@@ -208,7 +195,7 @@ where
     ///
     /// [stored data]: ../registry/struct.SpanRef.html
     #[inline]
-    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'_, C>>
+    pub fn span(&self, id: &span::Id) -> Option<registry::SpanRef<'a, C>>
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {

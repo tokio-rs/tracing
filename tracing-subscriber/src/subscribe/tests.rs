@@ -135,7 +135,7 @@ mod registry_tests {
         let last_event_span = Arc::new(Mutex::new(None));
 
         struct RecordingSubscriber {
-            last_event_span: Arc<Mutex<Option<&'static str>>>,
+            last_event_span: Arc<Mutex<Option<String>>>,
         }
 
         impl<C> Subscribe<C> for RecordingSubscriber
@@ -144,7 +144,7 @@ mod registry_tests {
         {
             fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
                 let span = ctx.event_span(event);
-                *self.last_event_span.lock().unwrap() = span.map(|s| s.name());
+                *self.last_event_span.lock().unwrap() = span.map(|s| s.name().into());
             }
         }
 
@@ -158,11 +158,14 @@ mod registry_tests {
 
                 let parent = tracing::info_span!("explicit");
                 tracing::info!(parent: &parent, "explicit span");
-                assert_eq!(*last_event_span.lock().unwrap(), Some("explicit"));
+                assert_eq!(last_event_span.lock().unwrap().as_deref(), Some("explicit"));
 
                 let _guard = tracing::info_span!("contextual").entered();
                 tracing::info!("contextual span");
-                assert_eq!(*last_event_span.lock().unwrap(), Some("contextual"));
+                assert_eq!(
+                    last_event_span.lock().unwrap().as_deref(),
+                    Some("contextual")
+                );
             },
         );
     }

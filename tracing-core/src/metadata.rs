@@ -54,9 +54,10 @@ use core::{
 /// [module path]: Self::module_path
 /// [collector]: super::collect::Collect
 /// [callsite identifiers]: Self::callsite
+#[derive(Clone)]
 pub struct Metadata<'a> {
     /// The name of the span described by this metadata.
-    name: &'static str,
+    name: &'a str,
 
     /// The part of the system that the span that this metadata describes
     /// occurred in.
@@ -252,7 +253,7 @@ impl<'a> Metadata<'a> {
     /// Construct new metadata for a span or event, with a name, target, level, field
     /// names, and optional source code location.
     pub const fn new(
-        name: &'static str,
+        name: &'a str,
         target: &'a str,
         level: Level,
         file: Option<&'a str>,
@@ -273,9 +274,32 @@ impl<'a> Metadata<'a> {
         }
     }
 
-    /// Returns the names of the fields on the described span or event.
-    pub fn fields(&self) -> &field::FieldSet {
+    /// Returns the kind of this callsite.
+    pub fn kind(&self) -> &Kind {
+        &self.kind
+    }
+
+    /// Returns the names of the fields on the described span or event,
+    /// excluding those used for [dynamic metadata][crate::dynamic].
+    pub fn fields(&self) -> field::FieldSet {
+        if self.is_dynamic() {
+            let magic = self.magic_fields();
+            self.fields.slice(magic.count()..)
+        } else {
+            self.fields.clone()
+        }
+    }
+
+    /// Returns the names of the fields on the described span or event,
+    /// *including* those used for [dynamic metadata][crate::dynamic].
+    pub fn fields_prenormal(&self) -> &field::FieldSet {
         &self.fields
+    }
+
+    /// Returns the names of the fields on the described span or event
+    /// used for [dynamic metadata][crate::dynamic].
+    pub(crate) fn magic_fields(&self) -> crate::dynamic::MagicFields {
+        crate::dynamic::MagicFields::new(&self.fields)
     }
 
     /// Returns the level of verbosity of the described span or event.
@@ -284,7 +308,7 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the name of the span.
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'a str {
         self.name
     }
 

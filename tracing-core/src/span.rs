@@ -180,7 +180,7 @@ impl<'a> Attributes<'a> {
     /// [Visitor].
     ///
     /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.values.record(visitor)
     }
 
@@ -211,6 +211,16 @@ impl<'a> Attributes<'a> {
     }
 }
 
+impl<'a> field::RecordFields<'a> for Attributes<'a> {
+    fn record(&self, visitor: &mut dyn field::Visit<'a>) {
+        Attributes::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.values.record_prenormal(visitor)
+    }
+}
+
 // ===== impl Record =====
 
 impl<'a> Record<'a> {
@@ -222,7 +232,7 @@ impl<'a> Record<'a> {
     /// Records all the fields in this `Record` with the provided [Visitor].
     ///
     /// [visitor]: super::field::Visit
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.values.record(visitor)
     }
 
@@ -234,6 +244,16 @@ impl<'a> Record<'a> {
     /// Returns true if this `Record` contains _no_ values.
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
+    }
+}
+
+impl<'a> field::RecordFields<'a> for Record<'a> {
+    fn record(&self, visitor: &mut dyn field::Visit<'a>) {
+        Record::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.values.record_prenormal(visitor)
     }
 }
 

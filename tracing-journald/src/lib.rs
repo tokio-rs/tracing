@@ -217,7 +217,7 @@ where
 
         writeln!(buf, "SPAN_NAME").unwrap();
         put_value(&mut buf, span.name().as_bytes());
-        put_metadata(&mut buf, span.metadata(), Some("SPAN_"));
+        put_metadata(&mut buf, &span.metadata(), Some("SPAN_"));
 
         attrs.record(&mut SpanVisitor {
             buf: &mut buf,
@@ -252,8 +252,8 @@ where
         }
 
         // Record event fields
-        put_priority(&mut buf, event.metadata());
-        put_metadata(&mut buf, event.metadata(), None);
+        put_priority(&mut buf, &event.metadata());
+        put_metadata(&mut buf, &event.metadata(), None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
@@ -284,7 +284,7 @@ impl SpanVisitor<'_> {
     }
 }
 
-impl Visit for SpanVisitor<'_> {
+impl Visit<'_> for SpanVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.put_span_prefix();
         put_field_length_encoded(self.buf, field.name(), |buf| {
@@ -323,7 +323,7 @@ impl<'a> EventVisitor<'a> {
     }
 }
 
-impl Visit for EventVisitor<'_> {
+impl Visit<'_> for EventVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {

@@ -22,14 +22,14 @@ use crate::{field, Metadata};
 #[derive(Debug)]
 pub struct Event<'a> {
     fields: &'a field::ValueSet<'a>,
-    metadata: &'static Metadata<'static>,
+    metadata: &'a Metadata<'a>,
     parent: Parent,
 }
 
 impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current collector.
-    pub fn dispatch(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'_>) {
+    pub fn dispatch(metadata: &'a Metadata<'a>, fields: &'a field::ValueSet<'_>) {
         let event = Event::new(metadata, fields);
         crate::dispatch::get_default(|current| {
             current.event(&event);
@@ -39,7 +39,7 @@ impl<'a> Event<'a> {
     /// Returns a new `Event` in the current span, with the specified metadata
     /// and set of values.
     #[inline]
-    pub fn new(metadata: &'static Metadata<'static>, fields: &'a field::ValueSet<'a>) -> Self {
+    pub fn new(metadata: &'a Metadata<'a>, fields: &'a field::ValueSet<'a>) -> Self {
         Event {
             fields,
             metadata,
@@ -52,7 +52,7 @@ impl<'a> Event<'a> {
     #[inline]
     pub fn new_child_of(
         parent: impl Into<Option<Id>>,
-        metadata: &'static Metadata<'static>,
+        metadata: &'a Metadata<'a>,
         fields: &'a field::ValueSet<'a>,
     ) -> Self {
         let parent = match parent.into() {
@@ -83,7 +83,7 @@ impl<'a> Event<'a> {
     ///
     /// [visitor]: super::field::Visit
     #[inline]
-    pub fn record(&self, visitor: &mut dyn field::Visit) {
+    pub fn record(&self, visitor: &mut dyn field::Visit<'a>) {
         self.fields.record(visitor);
     }
 
@@ -95,8 +95,10 @@ impl<'a> Event<'a> {
     /// Returns [metadata] describing this `Event`.
     ///
     /// [metadata]: super::Metadata
-    pub fn metadata(&self) -> &'static Metadata<'static> {
+    pub fn metadata(&self) -> Metadata<'a> {
         self.metadata
+            .normalized(self)
+            .unwrap_or_else(|| self.metadata.clone())
     }
 
     /// Returns true if the new event should be a root.
@@ -124,5 +126,15 @@ impl<'a> Event<'a> {
             Parent::Explicit(ref p) => Some(p),
             _ => None,
         }
+    }
+}
+
+impl<'a> field::RecordFields<'a> for Event<'a> {
+    fn record(&self, visitor: &mut dyn field::Visit<'a>) {
+        Event::record(self, visitor)
+    }
+
+    fn record_prenormal(&self, visitor: &mut dyn field::Visit<'a>) {
+        self.fields.record_prenormal(visitor)
     }
 }

@@ -24,11 +24,11 @@ pub struct VisitDelimited<D, V> {
 
 // === impl Delimited ===
 
-impl<D, V, T> MakeVisitor<T> for Delimited<D, V>
+impl<'a, D, V, T> MakeVisitor<'a, T> for Delimited<D, V>
 where
     D: AsRef<str> + Clone,
-    V: MakeVisitor<T>,
-    V::Visitor: VisitFmt,
+    V: MakeVisitor<'a, T>,
+    V::Visitor: VisitFmt<'a>,
 {
     type Visitor = VisitDelimited<D, V::Visitor>;
     fn make_visitor(&self, target: T) -> Self::Visitor {
@@ -63,9 +63,9 @@ impl<D, V> VisitDelimited<D, V> {
         }
     }
 
-    fn delimit(&mut self)
+    fn delimit<'a>(&mut self)
     where
-        V: VisitFmt,
+        V: VisitFmt<'a>,
         D: AsRef<str>,
     {
         if self.err.is_err() {
@@ -80,9 +80,9 @@ impl<D, V> VisitDelimited<D, V> {
     }
 }
 
-impl<D, V> Visit for VisitDelimited<D, V>
+impl<'a, D, V> Visit<'a> for VisitDelimited<D, V>
 where
-    V: VisitFmt,
+    V: VisitFmt<'a>,
     D: AsRef<str>,
 {
     fn record_i64(&mut self, field: &Field, value: i64) {
@@ -100,7 +100,7 @@ where
         self.inner.record_bool(field, value);
     }
 
-    fn record_str(&mut self, field: &Field, value: &str) {
+    fn record_str(&mut self, field: &Field, value: &'a str) {
         self.delimit();
         self.inner.record_str(field, value);
     }
@@ -111,9 +111,9 @@ where
     }
 }
 
-impl<D, V> VisitOutput<fmt::Result> for VisitDelimited<D, V>
+impl<'a, D, V> VisitOutput<'a, fmt::Result> for VisitDelimited<D, V>
 where
-    V: VisitFmt,
+    V: VisitFmt<'a>,
     D: AsRef<str>,
 {
     fn finish(self) -> fmt::Result {
@@ -122,9 +122,9 @@ where
     }
 }
 
-impl<D, V> VisitFmt for VisitDelimited<D, V>
+impl<'a, D, V> VisitFmt<'a> for VisitDelimited<D, V>
 where
-    V: VisitFmt,
+    V: VisitFmt<'a>,
     D: AsRef<str>,
 {
     fn writer(&mut self) -> &mut dyn fmt::Write {

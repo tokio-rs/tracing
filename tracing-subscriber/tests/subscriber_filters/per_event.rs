@@ -19,7 +19,7 @@ impl<S> Filter<S> for FilterEvent {
         _cx: &tracing_subscriber::subscribe::Context<'_, S>,
     ) -> bool {
         struct ShouldEnable(bool);
-        impl Visit for ShouldEnable {
+        impl Visit<'_> for ShouldEnable {
             fn record_bool(&mut self, field: &tracing_core::Field, value: bool) {
                 if field.name() == "enable" {
                     self.0 = value;

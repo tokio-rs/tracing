@@ -33,13 +33,13 @@ pub struct ErrorSubscriber<C, F = DefaultFields> {
 // so that we can downcast to something aware of them without knowing those
 // types at the callsite.
 pub(crate) struct WithContext(
-    fn(&Dispatch, &span::Id, f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool),
+    fn(&Dispatch, &span::Id, f: &mut dyn for<'a> FnMut(&'a Metadata<'a>, &str) -> bool),
 );
 
 impl<C, F> Subscribe<C> for ErrorSubscriber<C, F>
 where
     C: Collect + for<'span> LookupSpan<'span>,
-    F: for<'writer> FormatFields<'writer> + 'static,
+    F: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Notifies this subscriber that a new span was constructed with the given
     /// `Attributes` and `Id`.
@@ -72,7 +72,7 @@ where
 
 impl<C, F> ErrorSubscriber<C, F>
 where
-    F: for<'writer> FormatFields<'writer> + 'static,
+    F: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     C: Collect + for<'span> LookupSpan<'span>,
 {
     /// Returns a new `ErrorSubscriber` with the provided [field formatter].
@@ -89,7 +89,7 @@ where
     fn get_context(
         dispatch: &Dispatch,
         id: &span::Id,
-        f: &mut dyn FnMut(&'static Metadata<'static>, &str) -> bool,
+        f: &mut dyn for<'a> FnMut(&'a Metadata<'a>, &str) -> bool,
     ) {
         let collector = dispatch
             .downcast_ref::<C>()
@@ -99,9 +99,9 @@ where
             .expect("registry should have a span for the current ID");
         for span in span.scope() {
             let cont = if let Some(fields) = span.extensions().get::<FormattedFields<F>>() {
-                f(span.metadata(), fields.fields.as_str())
+                f(&span.metadata(), fields.fields.as_str())
             } else {
-                f(span.metadata(), "")
+                f(&span.metadata(), "")
             };
             if !cont {
                 break;
@@ -115,7 +115,7 @@ impl WithContext {
         &self,
         dispatch: &Dispatch,
         id: &span::Id,
-        mut f: impl FnMut(&'static Metadata<'static>, &str) -> bool,
+        mut f: impl for<'m> FnMut(&'m Metadata<'m>, &str) -> bool,
     ) {
         (self.0)(dispatch, id, &mut f)
     }

@@ -11,9 +11,6 @@ use tracing_core::{
     Collect, Event, Level,
 };
 
-#[cfg(feature = "tracing-log")]
-use tracing_log::NormalizeEvent;
-
 use nu_ansi_term::{Color, Style};
 
 /// An excessively pretty, human-readable event formatter.
@@ -169,7 +166,7 @@ impl Pretty {
 impl<C, N, T> FormatEvent<C, N> for Format<Pretty, T>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
@@ -178,11 +175,6 @@ where
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
-        #[cfg(feature = "tracing-log")]
-        let normalized_meta = event.normalized_metadata();
-        #[cfg(feature = "tracing-log")]
-        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
-        #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
         write!(&mut writer, "  ")?;
 
@@ -322,8 +314,12 @@ where
     }
 }
 
-impl<'writer> FormatFields<'writer> for Pretty {
-    fn format_fields<R: RecordFields>(&self, writer: Writer<'writer>, fields: R) -> fmt::Result {
+impl<'visit, 'writer> FormatFields<'visit, 'writer> for Pretty {
+    fn format_fields<R: RecordFields<'visit>>(
+        &self,
+        writer: Writer<'writer>,
+        fields: R,
+    ) -> fmt::Result {
         let mut v = PrettyVisitor::new(writer, true);
         fields.record(&mut v);
         v.finish()
@@ -332,7 +328,7 @@ impl<'writer> FormatFields<'writer> for Pretty {
     fn add_fields(
         &self,
         current: &'writer mut FormattedFields<Self>,
-        fields: &span::Record<'_>,
+        fields: &span::Record<'visit>,
     ) -> fmt::Result {
         let empty = current.is_empty();
         let writer = current.as_writer();
@@ -372,11 +368,11 @@ impl PrettyFields {
     }
 }
 
-impl<'a> MakeVisitor<Writer<'a>> for PrettyFields {
-    type Visitor = PrettyVisitor<'a>;
+impl<'visit, 'writer> MakeVisitor<'visit, Writer<'writer>> for PrettyFields {
+    type Visitor = PrettyVisitor<'writer>;
 
     #[inline]
-    fn make_visitor(&self, mut target: Writer<'a>) -> Self::Visitor {
+    fn make_visitor(&self, mut target: Writer<'writer>) -> Self::Visitor {
         if let Some(ansi) = self.ansi {
             target = target.with_ansi(ansi);
         }
@@ -425,7 +421,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for PrettyVisitor<'a> {
+impl<'a> field::Visit<'_> for PrettyVisitor<'a> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;
@@ -464,9 +460,6 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         let bold = self.bold();
         match field.name() {
             "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => self.result = Ok(()),
             name if name.starts_with("r#") => self.write_padded(&format_args!(
                 "{}{}{}: {:?}",
                 bold.prefix(),
@@ -485,14 +478,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
     }
 }
 
-impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
+impl<'a> VisitOutput<'_, fmt::Result> for PrettyVisitor<'a> {
     fn finish(mut self) -> fmt::Result {
         write!(&mut self.writer, "{}", self.style.suffix())?;
         self.result
     }
 }
 
-impl<'a> VisitFmt for PrettyVisitor<'a> {
+impl<'a> VisitFmt<'_> for PrettyVisitor<'a> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut self.writer
     }

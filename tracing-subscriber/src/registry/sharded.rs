@@ -10,14 +10,21 @@ use crate::{
     },
     sync::RwLock,
 };
+use once_cell::sync::OnceCell;
 use std::{
     cell::{self, Cell, RefCell},
+    convert::TryInto,
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
+    dynamic::{
+        MAGIC_FIELD_FILE, MAGIC_FIELD_LEVEL, MAGIC_FIELD_LINE, MAGIC_FIELD_MODULE_PATH,
+        MAGIC_FIELD_NAME, MAGIC_FIELD_TARGET,
+    },
+    field,
     span::{self, Current, Id},
-    Collect, Event, Interest, Metadata,
+    Collect, Event, Interest, Level, Metadata,
 };
 
 /// A shared, reusable store for spans.
@@ -123,11 +130,82 @@ pub struct Data<'a> {
 struct DataInner {
     filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
+    patch: MetadataPatch,
     parent: Option<Id>,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
     pub(crate) extensions: RwLock<ExtensionsInner>,
+}
+
+#[derive(Debug, Default)]
+struct MetadataPatch {
+    name: OnceCell<Box<str>>,
+    target: OnceCell<Box<str>>,
+    level: OnceCell<Level>,
+    file: OnceCell<Box<str>>,
+    line: OnceCell<u32>,
+    module: OnceCell<Box<str>>,
+}
+
+impl MetadataPatch {
+    fn normalize<'a: 'c, 'b: 'c, 'c>(&'a self, prepatch: &'b Metadata<'b>) -> Metadata<'c> {
+        Metadata::new(
+            self.name
+                .get()
+                .map(|s| &**s)
+                .unwrap_or_else(|| prepatch.name()),
+            self.target
+                .get()
+                .map(|s| &**s)
+                .unwrap_or_else(|| prepatch.target()),
+            *self.level.get().unwrap_or_else(|| prepatch.level()),
+            self.file.get().map(|s| &**s).or_else(|| prepatch.file()),
+            self.line.get().copied().or_else(|| prepatch.line()),
+            self.module
+                .get()
+                .map(|s| &**s)
+                .or_else(|| prepatch.module_path()),
+            prepatch.fields(),
+            prepatch.kind().clone(),
+        )
+    }
+}
+
+impl field::Visit<'_> for &MetadataPatch {
+    fn record_u64(&mut self, field: &field::Field, value: u64) {
+        #[allow(clippy::single_match)]
+        match field.name() {
+            MAGIC_FIELD_LINE => {
+                self.line
+                    .get_or_init(|| value.try_into().unwrap_or(u32::MAX));
+            }
+            _ => {}
+        }
+    }
+
+    fn record_str(&mut self, field: &field::Field, value: &str) {
+        match field.name() {
+            MAGIC_FIELD_NAME => {
+                self.name.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_TARGET => {
+                self.target.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_LEVEL => {
+                self.level.get_or_try_init(|| value.parse::<Level>()).ok();
+            }
+            MAGIC_FIELD_FILE => {
+                self.file.get_or_init(|| value.into());
+            }
+            MAGIC_FIELD_MODULE_PATH => {
+                self.module.get_or_init(|| value.into());
+            }
+            _ => {}
+        }
+    }
+
+    fn record_debug(&mut self, _: &field::Field, _: &dyn core::fmt::Debug) {}
 }
 
 // === impl Registry ===
@@ -253,6 +331,7 @@ impl Collect for Registry {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
                 data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
+                data.record(attrs);
                 #[cfg(debug_assertions)]
                 {
                     if data.filter_map != FilterMap::default() {
@@ -270,8 +349,15 @@ impl Collect for Registry {
 
     /// This is intentionally not implemented, as recording fields
     /// on a span is the responsibility of subscribers atop of this registry.
+    //  ...but we do some fixing up of dynamically injected span metadata here.
+    //  See tracing_core::dynamic for an overview.
     #[inline]
-    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+    fn record(&self, id: &span::Id, record: &span::Record<'_>) {
+        let span = self
+            .get(id)
+            .unwrap_or_else(|| panic!("tried to record {:?}, but no span exists with that ID", id));
+        span.record(record);
+    }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {}
 
@@ -417,8 +503,8 @@ impl<'a> SpanData<'a> for Data<'a> {
         idx_to_id(self.inner.key())
     }
 
-    fn metadata(&self) -> &'static Metadata<'static> {
-        self.inner.metadata
+    fn metadata(&self) -> Metadata<'_> {
+        self.inner.metadata()
     }
 
     fn parent(&self) -> Option<&Id> {
@@ -479,6 +565,7 @@ impl Default for DataInner {
         Self {
             filter_map: FilterMap::default(),
             metadata: &NULL_METADATA,
+            patch: MetadataPatch::default(),
             parent: None,
             ref_count: AtomicUsize::new(0),
             extensions: RwLock::new(ExtensionsInner::new()),
@@ -523,6 +610,17 @@ impl Clear for DataInner {
             .clear();
 
         self.filter_map = FilterMap::default();
+        self.patch = MetadataPatch::default();
+    }
+}
+
+impl DataInner {
+    fn record<'a>(&self, record: impl field::RecordFields<'a>) {
+        record.record_prenormal(&mut &self.patch);
+    }
+
+    fn metadata(&self) -> Metadata<'_> {
+        self.patch.normalize(self.metadata)
     }
 }
 
@@ -588,8 +686,8 @@ mod tests {
 
     #[derive(Default)]
     struct CloseState {
-        open: HashMap<&'static str, Weak<()>>,
-        closed: Vec<(&'static str, Weak<()>)>,
+        open: HashMap<String, Weak<()>>,
+        closed: Vec<(String, Weak<()>)>,
     }
 
     struct SetRemoved(Arc<()>);
@@ -604,7 +702,7 @@ mod tests {
             let is_removed = Arc::new(());
             assert!(
                 lock.open
-                    .insert(span.name(), Arc::downgrade(&is_removed))
+                    .insert(span.name().into(), Arc::downgrade(&is_removed))
                     .is_none(),
                 "test subscriber saw multiple spans with the same name, the test is probably messed up"
             );
@@ -627,7 +725,7 @@ mod tests {
             if let Ok(mut lock) = self.inner.lock() {
                 if let Some(is_removed) = lock.open.remove(name) {
                     assert!(is_removed.upgrade().is_some());
-                    lock.closed.push((name, is_removed));
+                    lock.closed.push((name.into(), is_removed));
                 }
             }
         }
@@ -651,7 +749,7 @@ mod tests {
         }
 
         fn is_closed(&self, span: &str) -> bool {
-            self.closed.iter().any(|(name, _)| name == &span)
+            self.closed.iter().any(|(name, _)| name == span)
         }
     }
 
@@ -686,7 +784,7 @@ mod tests {
 
         fn assert_removed(&self, span: &str) {
             let lock = self.state.lock().unwrap();
-            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == span) {
                 Some((_, is_removed)) => is_removed,
                 None => panic!(
                     "expected {} to be removed from the registry, but it was not closed {}",
@@ -707,7 +805,7 @@ mod tests {
 
         fn assert_not_removed(&self, span: &str) {
             let lock = self.state.lock().unwrap();
-            let is_removed = match lock.closed.iter().find(|(name, _)| name == &span) {
+            let is_removed = match lock.closed.iter().find(|(name, _)| name == span) {
                 Some((_, is_removed)) => is_removed,
                 None if lock.is_open(span) => return,
                 None => unreachable!(),
@@ -722,21 +820,16 @@ mod tests {
         #[allow(unused)] // may want this for future tests
         fn assert_last_closed(&self, span: Option<&str>) {
             let lock = self.state.lock().unwrap();
-            let last = lock.closed.last().map(|(span, _)| span);
-            assert_eq!(
-                last,
-                span.as_ref(),
-                "expected {:?} to have closed last",
-                span
-            );
+            let last = lock.closed.last().map(|(span, _)| &**span);
+            assert_eq!(last, span, "expected {:?} to have closed last", span);
         }
 
         fn assert_closed_in_order(&self, order: impl AsRef<[&'static str]>) {
             let lock = self.state.lock().unwrap();
             let order = order.as_ref();
-            for (i, name) in order.iter().enumerate() {
+            for (i, &name) in order.iter().enumerate() {
                 assert_eq!(
-                    lock.closed.get(i).map(|(span, _)| span),
+                    lock.closed.get(i).map(|(span, _)| &**span),
                     Some(name),
                     "expected close order: {:?}, actual: {:?}",
                     order,

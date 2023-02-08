@@ -12,7 +12,7 @@ use std::{
 use tracing_core::{
     field,
     span::{Attributes, Current, Id, Record},
-    Collect, Event, Metadata,
+    Collect, Event,
 };
 
 /// A [`Subscriber`] that logs formatted representations of `tracing` events.
@@ -83,7 +83,7 @@ impl<C> Subscriber<C> {
 impl<C, N, E, W> Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
     /// Sets the [event formatter][`FormatEvent`] that the subscriber will use to
@@ -339,7 +339,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
 
 impl<C, N, L, T, W> Subscriber<C, N, format::Format<L, T>, W>
 where
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
 {
     /// Use the given [`timer`] for span and event timestamps.
     ///
@@ -499,7 +499,7 @@ where
     /// Sets the subscriber being built to use a [less verbose formatter](format::Compact).
     pub fn compact(self) -> Subscriber<C, N, format::Format<format::Compact, T>, W>
     where
-        N: for<'writer> FormatFields<'writer> + 'static,
+        N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event.compact(),
@@ -611,7 +611,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// fields.
     pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Subscriber<C, N2, E, W>
     where
-        N2: for<'writer> FormatFields<'writer> + 'static,
+        N2: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event,
@@ -642,7 +642,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// ```
     pub fn map_fmt_fields<N2>(self, f: impl FnOnce(N) -> N2) -> Subscriber<C, N2, E, W>
     where
-        N2: for<'writer> FormatFields<'writer> + 'static,
+        N2: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     {
         Subscriber {
             fmt_event: self.fmt_event,
@@ -673,7 +673,7 @@ impl<C> Default for Subscriber<C> {
 impl<C, N, E, W> Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
@@ -759,7 +759,7 @@ macro_rules! with_event_from_span {
             (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
         )*];
         let vs = fs.value_set(&v);
-        let $event = Event::new_child_of($id, meta, &vs);
+        let $event = Event::new_child_of($id, &meta, &vs);
         $code
     };
 }
@@ -767,7 +767,7 @@ macro_rules! with_event_from_span {
 impl<C, N, E, W> subscribe::Subscribe<C> for Subscriber<C, N, E, W>
 where
     C: Collect + for<'a> LookupSpan<'a>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'visit, 'writer> FormatFields<'visit, 'writer> + 'static,
     E: FormatEvent<C, N> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
@@ -802,8 +802,8 @@ where
         if self.fmt_span.trace_new() {
             with_event_from_span!(id, span, "message" = "new", |event| {
                 drop(extensions);
-                drop(span);
                 self.on_event(&event, ctx);
+                drop(span);
             });
         }
     }
@@ -840,8 +840,8 @@ where
             if self.fmt_span.trace_enter() {
                 with_event_from_span!(id, span, "message" = "enter", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -860,8 +860,8 @@ where
             if self.fmt_span.trace_exit() {
                 with_event_from_span!(id, span, "message" = "exit", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -890,15 +890,15 @@ where
                     "time.idle" = t_idle,
                     |event| {
                         drop(extensions);
-                        drop(span);
                         self.on_event(&event, ctx);
+                        drop(span);
                     }
                 );
             } else {
                 with_event_from_span!(id, span, "message" = "close", |event| {
                     drop(extensions);
-                    drop(span);
                     self.on_event(&event, ctx);
+                    drop(span);
                 });
             }
         }
@@ -934,7 +934,7 @@ where
                 )
                 .is_ok()
             {
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
+                let mut writer = self.make_writer.make_writer_for(&event.metadata());
                 let res = io::Write::write_all(&mut writer, buf.as_bytes());
                 if self.log_internal_errors {
                     if let Err(e) = res {
@@ -944,7 +944,7 @@ where
             } else if self.log_internal_errors {
                 let err_msg = format!("Unable to format the following event. Name: {}; Fields: {:?}\n",
                     event.metadata().name(), event.fields());
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
+                let mut writer = self.make_writer.make_writer_for(&event.metadata());
                 let res = io::Write::write_all(&mut writer, err_msg.as_bytes());
                 if let Err(e) = res {
                     eprintln!("[tracing-subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);
@@ -983,12 +983,12 @@ impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
     }
 }
 
-impl<'cx, 'writer, C, N> FormatFields<'writer> for FmtContext<'cx, C, N>
+impl<'cx, 'visit, 'writer, C, N> FormatFields<'visit, 'writer> for FmtContext<'cx, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: FormatFields<'writer> + 'static,
+    N: FormatFields<'visit, 'writer> + 'static,
 {
-    fn format_fields<R: RecordFields>(
+    fn format_fields<R: RecordFields<'visit>>(
         &self,
         writer: format::Writer<'writer>,
         fields: R,
@@ -1000,7 +1000,7 @@ where
 impl<'a, C, N> FmtContext<'a, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
+    N: for<'f, 'writer> FormatFields<'f, 'writer> + 'static,
 {
     /// Visits every span in the current context with a closure.
     ///
@@ -1018,18 +1018,6 @@ where
             }
         }
         Ok(())
-    }
-
-    /// Returns metadata for the span with the given `id`, if it exists.
-    ///
-    /// If this returns `None`, then no span exists for that ID (either it has
-    /// closed or the ID is invalid).
-    #[inline]
-    pub fn metadata(&self, id: &Id) -> Option<&'static Metadata<'static>>
-    where
-        C: for<'lookup> LookupSpan<'lookup>,
-    {
-        self.ctx.metadata(id)
     }
 
     /// Returns [stored data] for the span with the given `id`, if it exists.
@@ -1191,7 +1179,7 @@ mod test {
     use crate::Registry;
     use format::FmtSpan;
     use regex::Regex;
-    use tracing::collect::with_default;
+    use tracing::{collect::with_default, Metadata};
     use tracing_core::dispatch::Dispatch;
 
     #[test]
