@@ -40,9 +40,10 @@ quote = "1.0.20"
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
-tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
+tracing-mock = { path = "../tracing-mock" }
 tokio-test = "0.4.2"
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["env-filter"] }
+tracing-test = { path = "../tracing-test" }
 async-trait = "0.1.56"
 trybuild = "1.0.64"
 rustversion = "1.0.9"

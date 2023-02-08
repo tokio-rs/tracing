@@ -1,6 +1,7 @@
 use tracing::Instrument;
 use tracing::{collect::with_default, Level};
-use tracing_mock::*;
+use tracing_mock::{collector, expect};
+use tracing_test::{block_on_future, PollN};
 
 #[test]
 fn enter_exit_is_reasonable() {

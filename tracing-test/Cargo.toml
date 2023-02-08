@@ -1,0 +1,26 @@
+## BIG SCARY NOTE
+# This crate is internal and to be used for testing only. It should not
+# be published to crates.io ever. If the functionality is needed outside
+# the tracing project, it should be moved back to tracing-mock.
+
+[package]
+name = "tracing-test"
+version = "0.1.0"
+authors = [
+    "Eliza Weisman <eliza@buoyant.io>",
+    "Tokio Contributors <team@tokio.rs>",
+]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/tracing"
+homepage = "https://tokio.rs"
+edition = "2018"
+rust-version = "1.49.0"
+publish = false
+
+[dependencies]
+tokio-test = "0.4.2"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
