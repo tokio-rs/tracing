@@ -28,6 +28,7 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
+    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
@@ -38,7 +39,9 @@ use std::{
     },
     thread::{spawn, JoinHandle},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{
+    format_description, parsing::Parsed, Duration, OffsetDateTime, PrimitiveDateTime, Time,
+};
 
 mod builder;
 mod compress;
@@ -594,10 +597,10 @@ impl Inner {
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(|entry| {
                 let entry = entry.ok()?;
-                let metadata = entry.metadata().ok()?;
 
                 // the appender only creates files, not directories or symlinks,
                 // so we should never delete a dir or symlink.
+                let metadata = entry.metadata().ok()?;
                 if !metadata.is_file() {
                     return None;
                 }
@@ -624,12 +627,20 @@ impl Inner {
                 if let Some(suffix) = &log_suffix {
                     filename = filename.strip_suffix(suffix)?;
                 }
-                if Date::parse(filename, &self.date_format).is_err() {
-                    return None;
-                }
 
-                let created = metadata.created().ok()?;
-                Some((entry.path(), created, need_compress))
+                let datetime = {
+                    let mut parsed = Parsed::new()
+                        .with_hour_24(0)
+                        .unwrap()
+                        .with_minute(0)
+                        .unwrap();
+                    parsed
+                        .parse_items(filename.as_bytes(), &self.date_format)
+                        .ok()?;
+                    PrimitiveDateTime::try_from(parsed).ok()?
+                };
+
+                Some((entry.path(), datetime, need_compress))
             })
             .collect::<Vec<_>>()
         });
@@ -643,8 +654,8 @@ impl Inner {
         };
         if let Some(max_files) = self.max_files {
             if files.len() >= max_files {
-                // sort the files by their creation timestamps.
-                files.sort_by_key(|(_, created_at, _)| *created_at);
+                // sort the files by the datetime in filename, and prefer plaintext to avoid corrupted compression
+                files.sort_by_key(|(_, datetime, need_compress)| (*datetime, *need_compress));
 
                 // delete files, so that (n-1) files remain, because we will create another log file
                 for (file, _, _) in files.drain(..=files.len() - max_files) {
@@ -1109,11 +1120,6 @@ mod test {
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
 
-        // depending on the filesystem, the creation timestamp's resolution may
-        // be as coarse as one second, so we need to wait a bit here to ensure
-        // that the next file actually is newer than the old one.
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
         tracing::info!("file 2");
 
         // advance time by one second
@@ -1123,9 +1129,6 @@ mod test {
 
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
-
-        // again, sleep to ensure that the creation timestamps actually differ.
-        std::thread::sleep(std::time::Duration::from_secs(1));
 
         tracing::info!("file 3");
 
@@ -1210,11 +1213,6 @@ mod test {
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
 
-        // depending on the filesystem, the creation timestamp's resolution may
-        // be as coarse as one second, so we need to wait a bit here to ensure
-        // that the next file actually is newer than the old one.
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
         tracing::info!("file 2");
 
         drop(default);
@@ -1272,11 +1270,6 @@ mod test {
 
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
-
-        // depending on the filesystem, the creation timestamp's resolution may
-        // be as coarse as one second, so we need to wait a bit here to ensure
-        // that the next file actually is newer than the old one.
-        std::thread::sleep(std::time::Duration::from_secs(1));
 
         tracing::info!("file 2");
 
