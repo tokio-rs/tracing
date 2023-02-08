@@ -83,9 +83,9 @@ pub(crate) struct WithContext(
 impl WithContext {
     // This function allows a function to be called in the context of the
     // "remembered" subscriber.
-    pub(crate) fn with_context<'a>(
+    pub(crate) fn with_context(
         &self,
-        dispatch: &'a tracing::Dispatch,
+        dispatch: &tracing::Dispatch,
         id: &span::Id,
         mut f: impl FnMut(&mut OtelData, &dyn PreSampledTracer),
     ) {
