@@ -407,6 +407,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    pub(crate) track_thread_name_length: bool,
 }
 
 // === impl Writer ===
@@ -585,6 +586,7 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            track_thread_name_length: true,
         }
     }
 }
@@ -605,6 +607,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            track_thread_name_length: self.track_thread_name_length,
         }
     }
 
@@ -644,6 +647,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            track_thread_name_length: self.track_thread_name_length,
         }
     }
 
@@ -675,6 +679,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            track_thread_name_length: self.track_thread_name_length,
         }
     }
 
@@ -704,6 +709,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            track_thread_name_length: self.track_thread_name_length,
         }
     }
 
@@ -720,6 +726,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            track_thread_name_length: self.track_thread_name_length,
         }
     }
 
@@ -765,6 +772,17 @@ impl<F, T> Format<F, T> {
     pub fn with_thread_names(self, display_thread_name: bool) -> Format<F, T> {
         Format {
             display_thread_name,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the length of the [name] of the current thread is
+    /// tracked for padding.
+    ///
+    /// [name]: std::thread#naming-threads
+    pub fn with_thread_names_length_tracking(self, track_thread_name_length: bool) -> Format<F, T> {
+        Format {
+            track_thread_name_length,
             ..self
         }
     }
@@ -928,7 +946,11 @@ where
             let current_thread = std::thread::current();
             match current_thread.name() {
                 Some(name) => {
-                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                    write!(
+                        writer,
+                        "{} ",
+                        FmtThreadName::new(name, self.track_thread_name_length)
+                    )?;
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
@@ -1056,7 +1078,11 @@ where
             let current_thread = std::thread::current();
             match current_thread.name() {
                 Some(name) => {
-                    write!(writer, "{} ", FmtThreadName::new(name))?;
+                    write!(
+                        writer,
+                        "{} ",
+                        FmtThreadName::new(name, self.track_thread_name_length)
+                    )?;
                 }
                 // fall-back to thread id when name is absent and ids are not enabled
                 None if !self.display_thread_id => {
@@ -1401,11 +1427,12 @@ impl Style {
 
 struct FmtThreadName<'a> {
     name: &'a str,
+    track_length: bool,
 }
 
 impl<'a> FmtThreadName<'a> {
-    pub(crate) fn new(name: &'a str) -> Self {
-        Self { name }
+    pub(crate) fn new(name: &'a str, track_length: bool) -> Self {
+        Self { name, track_length }
     }
 }
 
@@ -1418,27 +1445,31 @@ impl<'a> fmt::Display for FmtThreadName<'a> {
 
         // Track the longest thread name length we've seen so far in an atomic,
         // so that it can be updated by any thread.
-        static MAX_LEN: AtomicUsize = AtomicUsize::new(0);
-        let len = self.name.len();
-        // Snapshot the current max thread name length.
-        let mut max_len = MAX_LEN.load(Relaxed);
+        if self.track_length {
+            static MAX_LEN: AtomicUsize = AtomicUsize::new(0);
+            let len = self.name.len();
+            // Snapshot the current max thread name length.
+            let mut max_len = MAX_LEN.load(Relaxed);
 
-        while len > max_len {
-            // Try to set a new max length, if it is still the value we took a
-            // snapshot of.
-            match MAX_LEN.compare_exchange(max_len, len, AcqRel, Acquire) {
-                // We successfully set the new max value
-                Ok(_) => break,
-                // Another thread set a new max value since we last observed
-                // it! It's possible that the new length is actually longer than
-                // ours, so we'll loop again and check whether our length is
-                // still the longest. If not, we'll just use the newer value.
-                Err(actual) => max_len = actual,
+            while len > max_len {
+                // Try to set a new max length, if it is still the value we took a
+                // snapshot of.
+                match MAX_LEN.compare_exchange(max_len, len, AcqRel, Acquire) {
+                    // We successfully set the new max value
+                    Ok(_) => break,
+                    // Another thread set a new max value since we last observed
+                    // it! It's possible that the new length is actually longer than
+                    // ours, so we'll loop again and check whether our length is
+                    // still the longest. If not, we'll just use the newer value.
+                    Err(actual) => max_len = actual,
+                }
             }
-        }
 
-        // pad thread name using `max_len`
-        write!(f, "{:>width$}", self.name, width = max_len)
+            // pad thread name using `max_len`
+            write!(f, "{:>width$}", self.name, width = max_len)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }
 
