@@ -20,11 +20,17 @@ keywords = ["logging", "tracing", "file-appender", "non-blocking-writer"]
 edition = "2018"
 rust-version = "1.53.0"
 
+[features]
+gzip = ["flate2"]
+
 [dependencies]
+brotli = { version = "3.3.4", optional = true, default-features = false, features = ["std"] }
+cfg-if = "1.0.0"
 crossbeam-channel = "0.5.5"
-time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
+flate2 = { version = "1.0.25", optional = true }
 parking_lot = { optional = true, version = "0.12.1" }
 thiserror = "1.0.31"
+time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
