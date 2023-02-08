@@ -270,6 +270,8 @@ mod expand;
 /// }
 /// ```
 ///
+/// The level of the error value event defaults to `ERROR`.
+///
 /// Similarly, overriding the level of the `err` event :
 ///
 /// ```
