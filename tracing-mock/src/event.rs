@@ -28,9 +28,7 @@
 //!
 //! [`collector`]: mod@crate::collector
 //! [`expect::event`]: fn@crate::expect::event
-#![allow(missing_docs)]
-use super::{expect, field, metadata::ExpectedMetadata, span, Parent};
-
+use super::{field, metadata::ExpectedMetadata, span, Parent};
 use std::fmt;
 
 /// An expected event.
@@ -45,10 +43,6 @@ pub struct ExpectedEvent {
     pub(super) parent: Option<Parent>,
     pub(super) in_spans: Option<Vec<span::ExpectedSpan>>,
     pub(super) metadata: ExpectedMetadata,
-}
-
-pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect::event().with_fields(expect::message(message))
 }
 
 impl ExpectedEvent {
@@ -141,6 +135,13 @@ impl ExpectedEvent {
             ..self
         }
     }
+
+    // pub fn with_msg(message: impl fmt::Display) -> Self
+    // {
+    //     Self {
+
+    //     }
+    // }
 
     /// Sets the [`Level`](tracing::Level) to expect when matching an event.
     ///

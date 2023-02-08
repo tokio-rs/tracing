@@ -93,10 +93,7 @@
 //! [`MockCollector`]: struct@crate::collector::MockCollector
 //! [`collector`]: mod@crate::collector
 //! [`expect::span`]: fn@crate::expect::span
-#![allow(missing_docs)]
-use crate::{
-    collector::SpanState, expect, field::ExpectedFields, metadata::ExpectedMetadata, Parent,
-};
+use crate::{collector::SpanState, field::ExpectedFields, metadata::ExpectedMetadata, Parent};
 use std::fmt;
 
 /// A mock span.
@@ -131,13 +128,6 @@ pub struct NewSpan {
     pub(crate) span: ExpectedSpan,
     pub(crate) fields: ExpectedFields,
     pub(crate) parent: Option<Parent>,
-}
-
-pub fn named<I>(name: I) -> ExpectedSpan
-where
-    I: Into<String>,
-{
-    expect::span().named(name)
 }
 
 impl ExpectedSpan {
