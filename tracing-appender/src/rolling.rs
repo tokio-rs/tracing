@@ -560,6 +560,7 @@ impl Inner {
             max_files,
         };
         let filename = inner.join_date(&now);
+        inner.prune_old_logs(&filename);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
         Ok((inner, writer))
     }
@@ -584,7 +585,7 @@ impl Inner {
         }
     }
 
-    fn prune_old_logs(&self) {
+    fn prune_old_logs(&self, new_filename: &str) {
         let log_prefix = self
             .log_filename_prefix
             .as_ref()
@@ -608,6 +609,10 @@ impl Inner {
                 let filename = entry.file_name();
                 // if the filename is not a UTF-8 string, skip it.
                 let filename = filename.to_str()?;
+                // exclude current log file
+                if filename == new_filename {
+                    return None;
+                }
                 // strip compressed file extension
                 let (need_compress, mut filename) = compress_ext
                     .and_then(|compress_ext| {
@@ -709,9 +714,9 @@ impl Inner {
         if let Err(err) = file.flush() {
             eprintln!("Couldn't flush previous writer: {}", err);
         }
-        self.prune_old_logs();
 
         let filename = self.join_date(&now);
+        self.prune_old_logs(&filename);
         match create_writer(&self.log_directory, &filename) {
             Ok(new_file) => *file = new_file,
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
