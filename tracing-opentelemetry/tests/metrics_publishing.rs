@@ -1,4 +1,5 @@
 use opentelemetry::{
+    attributes::AttributeSet,
     metrics::MetricsError,
     sdk::{
         export::metrics::{
@@ -14,6 +15,7 @@ use opentelemetry::{
         },
     },
     Context,
+    KeyValue,
 };
 use std::cmp::Ordering;
 use tracing::Collect;
@@ -30,6 +32,7 @@ async fn u64_counter_is_exported() {
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -46,6 +49,7 @@ async fn u64_counter_is_exported_i64_at_instrumentation_point() {
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -62,6 +66,7 @@ async fn f64_counter_is_exported() {
         InstrumentKind::Counter,
         NumberKind::F64,
         Number::from(1.000000123_f64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -78,6 +83,7 @@ async fn i64_up_down_counter_is_exported() {
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(-5_i64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -94,6 +100,7 @@ async fn i64_up_down_counter_is_exported_u64_at_instrumentation_point() {
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(5_i64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -110,6 +117,7 @@ async fn f64_up_down_counter_is_exported() {
         InstrumentKind::UpDownCounter,
         NumberKind::F64,
         Number::from(99.123_f64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -126,6 +134,7 @@ async fn u64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::U64,
         Number::from(9_u64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -142,6 +151,7 @@ async fn i64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::I64,
         Number::from(-19_i64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -158,10 +168,101 @@ async fn f64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::F64,
         Number::from(777.0012_f64),
+        AttributeSet::default(),
     );
 
     tracing::collect::with_default(subscriber, || {
         tracing::info!(histogram.abcdefg_racecar = 777.0012_f64);
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn str_attribute_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "hello_world".to_string(),
+        InstrumentKind::Counter,
+        NumberKind::U64,
+        Number::from(1_u64),
+        AttributeSet::from_attributes([
+            KeyValue::new("foo", "bar"),
+            KeyValue::new("baz", "qux"),
+        ]),
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        tracing::info!(
+            monotonic_counter.hello_world = 1_u64,
+            attribute.foo = "bar",
+            attribute.baz = "qux",
+        );
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn i64_attribute_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "hello_world".to_string(),
+        InstrumentKind::Counter,
+        NumberKind::U64,
+        Number::from(1_u64),
+        AttributeSet::from_attributes([
+            KeyValue::new("foo", 1_i64)
+        ]),
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        tracing::info!(
+            monotonic_counter.hello_world = 1_u64,
+            attribute.foo = 1_i64,
+        );
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn f64_attribute_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "hello_world".to_string(),
+        InstrumentKind::Counter,
+        NumberKind::U64,
+        Number::from(1_u64),
+        AttributeSet::from_attributes([
+            KeyValue::new("foo", 1_f64)
+        ]),
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        tracing::info!(
+            monotonic_counter.hello_world = 1_u64,
+            attribute.foo = 1_f64,
+        );
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn bool_attribute_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "hello_world".to_string(),
+        InstrumentKind::Counter,
+        NumberKind::U64,
+        Number::from(1_u64),
+        AttributeSet::from_attributes([
+            KeyValue::new("foo", false)
+        ]),
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        tracing::info!(
+            monotonic_counter.hello_world = 1_u64,
+            attribute.foo = false,
+        );
     });
 
     exporter.export().unwrap();
@@ -172,6 +273,7 @@ fn init_subscriber(
     expected_instrument_kind: InstrumentKind,
     expected_number_kind: NumberKind,
     expected_value: Number,
+    expected_attributes: AttributeSet,
 ) -> (impl Collect + 'static, TestExporter) {
     let controller = opentelemetry::sdk::metrics::controllers::basic(processors::factory(
         selectors::simple::histogram(vec![-10.0, 100.0]),
@@ -184,6 +286,7 @@ fn init_subscriber(
         expected_instrument_kind,
         expected_number_kind,
         expected_value,
+        expected_attributes,
         controller: controller.clone(),
     };
 
@@ -199,6 +302,7 @@ struct TestExporter {
     expected_instrument_kind: InstrumentKind,
     expected_number_kind: NumberKind,
     expected_value: Number,
+    expected_attributes: AttributeSet,
     controller: BasicController,
 }
 
@@ -258,6 +362,10 @@ impl TestExporter {
                         self.expected_instrument_kind
                     ),
                 };
+
+                assert_eq!(record.attributes().len(), self.expected_attributes.len());
+                record.attributes().iter().zip(self.expected_attributes.iter())
+                    .for_each(|(exported, expected)| assert_eq!(exported, expected));
 
                 // The following are the same regardless of the individual metric.
                 assert_eq!(INSTRUMENTATION_LIBRARY_NAME, library.name);

@@ -6,6 +6,7 @@ use opentelemetry::{
     metrics::{Counter, Histogram, Meter, MeterProvider, UpDownCounter},
     sdk::metrics::controllers::BasicController,
     Context as OtelContext,
+    KeyValue,
 };
 use tracing_subscriber::{registry::LookupSpan, subscribe::Context, Subscribe};
 
@@ -15,6 +16,7 @@ const INSTRUMENTATION_LIBRARY_NAME: &str = "tracing/tracing-opentelemetry";
 const METRIC_PREFIX_MONOTONIC_COUNTER: &str = "monotonic_counter.";
 const METRIC_PREFIX_COUNTER: &str = "counter.";
 const METRIC_PREFIX_HISTOGRAM: &str = "histogram.";
+const METRIC_PREFIX_ATTRIBUTE: &str = "attribute.";
 const I64_MAX: u64 = i64::MAX as u64;
 
 #[derive(Default)]
@@ -48,6 +50,7 @@ impl Instruments {
         meter: &Meter,
         instrument_type: InstrumentType,
         metric_name: &'static str,
+        attributes: &[KeyValue],
     ) {
         fn update_or_insert<T>(
             map: &MetricsMap<T>,
@@ -78,7 +81,7 @@ impl Instruments {
                     &self.u64_counter,
                     metric_name,
                     || meter.u64_counter(metric_name).init(),
-                    |ctr| ctr.add(cx, value, &[]),
+                    |ctr| ctr.add(cx, value, attributes),
                 );
             }
             InstrumentType::CounterF64(value) => {
@@ -86,7 +89,7 @@ impl Instruments {
                     &self.f64_counter,
                     metric_name,
                     || meter.f64_counter(metric_name).init(),
-                    |ctr| ctr.add(cx, value, &[]),
+                    |ctr| ctr.add(cx, value, attributes),
                 );
             }
             InstrumentType::UpDownCounterI64(value) => {
@@ -94,7 +97,7 @@ impl Instruments {
                     &self.i64_up_down_counter,
                     metric_name,
                     || meter.i64_up_down_counter(metric_name).init(),
-                    |ctr| ctr.add(cx, value, &[]),
+                    |ctr| ctr.add(cx, value, attributes),
                 );
             }
             InstrumentType::UpDownCounterF64(value) => {
@@ -102,7 +105,7 @@ impl Instruments {
                     &self.f64_up_down_counter,
                     metric_name,
                     || meter.f64_up_down_counter(metric_name).init(),
-                    |ctr| ctr.add(cx, value, &[]),
+                    |ctr| ctr.add(cx, value, attributes),
                 );
             }
             InstrumentType::HistogramU64(value) => {
@@ -110,7 +113,7 @@ impl Instruments {
                     &self.u64_histogram,
                     metric_name,
                     || meter.u64_histogram(metric_name).init(),
-                    |rec| rec.record(cx, value, &[]),
+                    |rec| rec.record(cx, value, attributes),
                 );
             }
             InstrumentType::HistogramI64(value) => {
@@ -118,7 +121,7 @@ impl Instruments {
                     &self.i64_histogram,
                     metric_name,
                     || meter.i64_histogram(metric_name).init(),
-                    |rec| rec.record(cx, value, &[]),
+                    |rec| rec.record(cx, value, attributes),
                 );
             }
             InstrumentType::HistogramF64(value) => {
@@ -126,7 +129,7 @@ impl Instruments {
                     &self.f64_histogram,
                     metric_name,
                     || meter.f64_histogram(metric_name).init(),
-                    |rec| rec.record(cx, value, &[]),
+                    |rec| rec.record(cx, value, attributes),
                 );
             }
         };
@@ -136,6 +139,7 @@ impl Instruments {
 pub(crate) struct MetricVisitor<'a> {
     pub(crate) instruments: &'a Instruments,
     pub(crate) meter: &'a Meter,
+    pub(crate) attributes: &'a [KeyValue],
 }
 
 impl<'a> Visit for MetricVisitor<'a> {
@@ -151,6 +155,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterU64(value),
                 metric_name,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             if value <= I64_MAX {
@@ -159,6 +164,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                     self.meter,
                     InstrumentType::UpDownCounterI64(value as i64),
                     metric_name,
+                    self.attributes,
                 );
             } else {
                 eprintln!(
@@ -174,6 +180,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramU64(value),
                 metric_name,
+                self.attributes,
             );
         }
     }
@@ -186,6 +193,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterF64(value),
                 metric_name,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             self.instruments.update_metric(
@@ -193,6 +201,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::UpDownCounterF64(value),
                 metric_name,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_HISTOGRAM) {
             self.instruments.update_metric(
@@ -200,6 +209,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramF64(value),
                 metric_name,
+                self.attributes,
             );
         }
     }
@@ -212,6 +222,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::CounterU64(value as u64),
                 metric_name,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_COUNTER) {
             self.instruments.update_metric(
@@ -219,6 +230,7 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::UpDownCounterI64(value),
                 metric_name,
+                self.attributes,
             );
         } else if let Some(metric_name) = field.name().strip_prefix(METRIC_PREFIX_HISTOGRAM) {
             self.instruments.update_metric(
@@ -226,7 +238,43 @@ impl<'a> Visit for MetricVisitor<'a> {
                 self.meter,
                 InstrumentType::HistogramI64(value),
                 metric_name,
+                self.attributes,
             );
+        }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct AttributeVisitor {
+    pub(crate) attributes: Vec<KeyValue>
+}
+
+impl Visit for AttributeVisitor {
+    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {
+        // Do nothing
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
+            self.attributes.push(KeyValue::new(attribute_name, value.to_owned()));
+        }
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
+            self.attributes.push(KeyValue::new(attribute_name, value));
+        }
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
+            self.attributes.push(KeyValue::new(attribute_name, value));
+        }
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if let Some(attribute_name) = field.name().strip_prefix(METRIC_PREFIX_ATTRIBUTE) {
+            self.attributes.push(KeyValue::new(attribute_name, value));
         }
     }
 }
@@ -323,6 +371,24 @@ impl<'a> Visit for MetricVisitor<'a> {
 /// info!(counter.baz = (i64::MAX as u64) + 1)
 /// ```
 ///
+/// # Attributes
+///
+/// Attributes may optionally be specified by adding one or more key-value pairs
+/// with the prefix `attribute.` to the event. Attributes may be of type `str`,
+/// `i64`, `f64` or `bool`.
+///
+/// For example:
+/// ```
+/// # use tracing::info;
+/// info!(counter.foo = 1, attribute.bar = "baz");
+///
+/// info!(
+///     monotonic_counter.foo = 1,
+///     attribute.bar = "abc",
+///     attribute.baz = false,
+/// );
+/// ```
+///
 /// # Implementation Details
 ///
 /// `MetricsSubscriber` holds a set of maps, with each map corresponding to a
@@ -357,9 +423,13 @@ where
     C: Collect + for<'span> LookupSpan<'span>,
 {
     fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, C>) {
+        let mut attribute_visitor = AttributeVisitor::default();
+        event.record(&mut attribute_visitor);
+
         let mut metric_visitor = MetricVisitor {
             instruments: &self.instruments,
             meter: &self.meter,
+            attributes: &attribute_visitor.attributes
         };
         event.record(&mut metric_visitor);
     }
