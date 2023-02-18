@@ -1573,7 +1573,7 @@ macro_rules! info {
         $crate::event!(target: $target, $crate::Level::INFO, { ?$($k).+ $($field)* })
     );
     (target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
-        $crate::event!(target: $target, $crate::Level::INFO, { $($k).+ $($field)* })
+        $crate::event!(target: $target, $crate::Level::INFO, { %$($k).+ $($field)* })
     );
     (target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, $crate::Level::INFO, {}, $($arg)+)
