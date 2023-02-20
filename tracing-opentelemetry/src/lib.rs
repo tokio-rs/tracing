@@ -142,3 +142,15 @@ pub struct OtelData {
     /// The otel span data recorded during the current tracing span.
     pub builder: opentelemetry::trace::SpanBuilder,
 }
+
+use std::time::SystemTime;
+
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+fn now() -> SystemTime {
+    SystemTime::now()
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+fn now() -> SystemTime {
+    SystemTime::UNIX_EPOCH + std::time::Duration::from_millis(js_sys::Date::now() as u64)
+}
