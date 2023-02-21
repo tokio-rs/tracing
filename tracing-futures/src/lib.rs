@@ -71,7 +71,6 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
-#![doc(html_root_url = "https://docs.rs/tracing-futures/0.2.4")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
@@ -83,7 +82,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -568,12 +566,12 @@ mod tests {
         #[test]
         fn future_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
-                .done()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
+                .only()
                 .run_with_handle();
             with_default(collector, || {
                 PollN::new_ok(2)
@@ -587,12 +585,12 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
-                .done()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
+                .only()
                 .run_with_handle();
             with_default(collector, || {
                 PollN::new_err(2)
@@ -607,15 +605,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -638,7 +636,7 @@ mod tests {
         //         .drop_span(span::mock().named("b"))
         //         .exit(span::mock().named("a"))
         //         .drop_span(span::mock().named("a"))
-        //         .done()
+        //         .only()
         //         .run_with_handle();
         //     let mut runtime = tokio::runtime::Runtime::new().unwrap();
         //     with_default(collector, || {
@@ -668,15 +666,15 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
@@ -690,13 +688,13 @@ mod tests {
         #[test]
         fn sink_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .enter(span::mock().named("foo"))
-                .exit(span::mock().named("foo"))
-                .drop_span(span::mock().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
+                .drop_span(expect::span().named("foo"))
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(sink::drain(), tracing::trace_span!("foo"))

@@ -154,14 +154,18 @@ impl NonBlocking {
         writer: T,
         buffered_lines_limit: usize,
         is_lossy: bool,
+        thread_name: String,
     ) -> (NonBlocking, WorkerGuard) {
         let (sender, receiver) = bounded(buffered_lines_limit);
 
         let (shutdown_sender, shutdown_receiver) = bounded(0);
 
         let worker = Worker::new(receiver, writer, shutdown_receiver);
-        let worker_guard =
-            WorkerGuard::new(worker.worker_thread(), sender.clone(), shutdown_sender);
+        let worker_guard = WorkerGuard::new(
+            worker.worker_thread(thread_name),
+            sender.clone(),
+            shutdown_sender,
+        );
 
         (
             Self {
@@ -187,6 +191,7 @@ impl NonBlocking {
 pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
     is_lossy: bool,
+    thread_name: String,
 }
 
 impl NonBlockingBuilder {
@@ -207,9 +212,22 @@ impl NonBlockingBuilder {
         self
     }
 
+    /// Override the worker thread's name.
+    ///
+    /// The default worker thread name is "tracing-appender".
+    pub fn thread_name(mut self, name: &str) -> NonBlockingBuilder {
+        self.thread_name = name.to_string();
+        self
+    }
+
     /// Completes the builder, returning the configured `NonBlocking`.
     pub fn finish<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
-        NonBlocking::create(writer, self.buffered_lines_limit, self.is_lossy)
+        NonBlocking::create(
+            writer,
+            self.buffered_lines_limit,
+            self.is_lossy,
+            self.thread_name,
+        )
     }
 }
 
@@ -218,6 +236,7 @@ impl Default for NonBlockingBuilder {
         NonBlockingBuilder {
             buffered_lines_limit: DEFAULT_BUFFERED_LINES_LIMIT,
             is_lossy: true,
+            thread_name: "tracing-appender".to_string(),
         }
     }
 }

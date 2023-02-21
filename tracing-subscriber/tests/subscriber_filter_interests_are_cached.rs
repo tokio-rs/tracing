@@ -1,12 +1,10 @@
 #![cfg(feature = "registry")]
-mod support;
-use self::support::*;
-
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use tracing::{Collect, Level};
+use tracing_mock::{expect, subscriber};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
@@ -23,9 +21,9 @@ fn subscriber_filter_interests_are_cached() {
     });
 
     let (expect, handle) = subscriber::mock()
-        .event(event::mock().at_level(Level::INFO))
-        .event(event::mock().at_level(Level::INFO))
-        .done()
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::INFO))
+        .only()
         .run_with_handle();
 
     let subscriber = tracing_subscriber::registry().with(expect.with_filter(filter));

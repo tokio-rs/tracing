@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{field, metadata, Parent};
+use super::{expect, field::ExpectedFields, metadata::ExpectedMetadata, Parent};
 use std::fmt;
 
 /// A mock span.
@@ -7,37 +7,31 @@ use std::fmt;
 /// This is intended for use with the mock subscriber API in the
 /// `subscriber` module.
 #[derive(Clone, Default, Eq, PartialEq)]
-pub struct MockSpan {
-    pub(crate) metadata: metadata::Expect,
+pub struct ExpectedSpan {
+    pub(crate) metadata: ExpectedMetadata,
 }
 
 #[derive(Default, Eq, PartialEq)]
 pub struct NewSpan {
-    pub(crate) span: MockSpan,
-    pub(crate) fields: field::Expect,
+    pub(crate) span: ExpectedSpan,
+    pub(crate) fields: ExpectedFields,
     pub(crate) parent: Option<Parent>,
 }
 
-pub fn mock() -> MockSpan {
-    MockSpan {
-        ..Default::default()
-    }
-}
-
-pub fn named<I>(name: I) -> MockSpan
+pub fn named<I>(name: I) -> ExpectedSpan
 where
     I: Into<String>,
 {
-    mock().named(name)
+    expect::span().named(name)
 }
 
-impl MockSpan {
+impl ExpectedSpan {
     pub fn named<I>(self, name: I) -> Self
     where
         I: Into<String>,
     {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 name: Some(name.into()),
                 ..self.metadata
             },
@@ -46,7 +40,7 @@ impl MockSpan {
 
     pub fn at_level(self, level: tracing::Level) -> Self {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 level: Some(level),
                 ..self.metadata
             },
@@ -58,7 +52,7 @@ impl MockSpan {
         I: Into<String>,
     {
         Self {
-            metadata: metadata::Expect {
+            metadata: ExpectedMetadata {
                 target: Some(target.into()),
                 ..self.metadata
             },
@@ -103,7 +97,7 @@ impl MockSpan {
 
     pub fn with_field<I>(self, fields: I) -> NewSpan
     where
-        I: Into<field::Expect>,
+        I: Into<ExpectedFields>,
     {
         NewSpan {
             span: self,
@@ -113,7 +107,7 @@ impl MockSpan {
     }
 }
 
-impl fmt::Debug for MockSpan {
+impl fmt::Debug for ExpectedSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("MockSpan");
 
@@ -133,7 +127,7 @@ impl fmt::Debug for MockSpan {
     }
 }
 
-impl fmt::Display for MockSpan {
+impl fmt::Display for ExpectedSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.metadata.name.is_some() {
             write!(f, "a span{}", self.metadata)
@@ -143,8 +137,8 @@ impl fmt::Display for MockSpan {
     }
 }
 
-impl From<MockSpan> for NewSpan {
-    fn from(span: MockSpan) -> Self {
+impl From<ExpectedSpan> for NewSpan {
+    fn from(span: ExpectedSpan) -> Self {
         Self {
             span,
             ..Default::default()
@@ -177,7 +171,7 @@ impl NewSpan {
 
     pub fn with_field<I>(self, fields: I) -> NewSpan
     where
-        I: Into<field::Expect>,
+        I: Into<ExpectedFields>,
     {
         NewSpan {
             fields: fields.into(),

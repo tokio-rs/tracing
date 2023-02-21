@@ -96,7 +96,6 @@
 //! [`tracing::Event`]: tracing_core::Event
 //! [`Collect`]: tracing::Collect
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
-#![doc(html_root_url = "https://docs.rs/tracing-log/0.1.1")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
@@ -109,7 +108,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
