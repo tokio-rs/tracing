@@ -140,7 +140,7 @@ use crate::{
     span, Event, LevelFilter, Metadata,
 };
 
-use core::{any::Any, fmt, sync::atomic::Ordering};
+use core::{any::Any, fmt, marker::PhantomData, sync::atomic::Ordering};
 
 #[cfg(feature = "portable-atomic")]
 use portable_atomic::{AtomicBool, AtomicUsize};
@@ -263,12 +263,26 @@ struct State {
 #[cfg(feature = "std")]
 struct Entered<'a>(&'a State);
 
+/// A trait that implements `Sync`, but not `Send`. Used with PhantomData, this
+/// can mark a struct as `!Send`.
+#[cfg(feature = "std")]
+trait NotSend: Sync {}
+
 /// A guard that resets the current default dispatcher to the prior
 /// default dispatcher when dropped.
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
-pub struct DefaultGuard(Option<Dispatch>);
+pub struct DefaultGuard(
+    Option<Dispatch>,
+    /// ```compile_fail
+    /// use tracing_core::dispatch::*;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for DefaultGuard {}
+    /// ```
+    PhantomData<dyn NotSend>,
+);
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -297,14 +311,24 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
     f()
 }
 
-/// Sets the dispatch as the default dispatch for the duration of the lifetime
-/// of the returned DefaultGuard
+/// Sets this dispatch as the current thread's default dispatch for the duration
+/// of the lifetime of the returned [`DefaultGuard`].
 ///
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///
 /// **Note**: This function required the Rust standard library.
 /// `no_std` users should use [`set_global_default`] instead.
+///
+/// </pre></div>
+///
+/// <div class="example-wrap" style="display:inline-block">
+/// <pre class="ignore" style="white-space:normal;font:inherit;">
+///
+/// **Note**: Because this sets the dispatch for the current thread only, the returned
+/// [`DefaultGuard`] does not implement [`Send`]. If the guard was sent to another thread and
+/// dropped there, we'd try to restore the dispatch value for the wrong thread. Thus,
+/// [`DefaultGuard`] should not be sent between threads.
 ///
 /// </pre></div>
 #[cfg(feature = "std")]
@@ -1030,7 +1054,7 @@ impl State {
             .ok();
         EXISTS.store(true, Ordering::Release);
         SCOPED_COUNT.fetch_add(1, Ordering::Release);
-        DefaultGuard(prior)
+        DefaultGuard(prior, PhantomData)
     }
 
     #[inline]
@@ -1092,6 +1116,9 @@ mod test {
         collect::Interest,
         metadata::{Kind, Level, Metadata},
     };
+
+    trait AssertSync: Sync {}
+    impl AssertSync for DefaultGuard {}
 
     #[test]
     fn dispatch_is() {
