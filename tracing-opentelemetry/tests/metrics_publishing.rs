@@ -13,7 +13,7 @@ use opentelemetry::{
             selectors,
         },
     },
-    Context,
+    Context, Key, Value,
 };
 use std::cmp::Ordering;
 use tracing::Collect;
@@ -30,10 +30,28 @@ async fn u64_counter_is_exported() {
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
         tracing::info!(monotonic_counter.hello_world = 1_u64);
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn u64_counter_with_attributes_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "hello_world".to_string(),
+        InstrumentKind::Counter,
+        NumberKind::U64,
+        Number::from(1_u64),
+        vec![(Key::from_static_str("status_code"), Value::from("200"))],
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        tracing::info!(monotonic_counter.hello_world = 1_u64, status_code = 200);
     });
 
     exporter.export().unwrap();
@@ -46,6 +64,7 @@ async fn u64_counter_is_exported_i64_at_instrumentation_point() {
         InstrumentKind::Counter,
         NumberKind::U64,
         Number::from(1_u64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -62,6 +81,7 @@ async fn f64_counter_is_exported() {
         InstrumentKind::Counter,
         NumberKind::F64,
         Number::from(1.000000123_f64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -78,6 +98,7 @@ async fn i64_up_down_counter_is_exported() {
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(-5_i64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -94,6 +115,7 @@ async fn i64_up_down_counter_is_exported_u64_at_instrumentation_point() {
         InstrumentKind::UpDownCounter,
         NumberKind::I64,
         Number::from(5_i64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -110,6 +132,7 @@ async fn f64_up_down_counter_is_exported() {
         InstrumentKind::UpDownCounter,
         NumberKind::F64,
         Number::from(99.123_f64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -126,10 +149,29 @@ async fn u64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::U64,
         Number::from(9_u64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
         tracing::info!(histogram.abcdefg = 9_u64);
+    });
+
+    exporter.export().unwrap();
+}
+
+#[tokio::test]
+async fn u64_histogram_with_attributes_is_exported() {
+    let (subscriber, exporter) = init_subscriber(
+        "abcdefg".to_string(),
+        InstrumentKind::Histogram,
+        NumberKind::U64,
+        Number::from(9_u64),
+        vec![(Key::from_static_str("status_code"), Value::from("404"))],
+    );
+
+    tracing::collect::with_default(subscriber, || {
+        let status_code = 404;
+        tracing::info!(histogram.abcdefg = 9_u64, status_code);
     });
 
     exporter.export().unwrap();
@@ -142,6 +184,7 @@ async fn i64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::I64,
         Number::from(-19_i64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -158,6 +201,7 @@ async fn f64_histogram_is_exported() {
         InstrumentKind::Histogram,
         NumberKind::F64,
         Number::from(777.0012_f64),
+        Vec::new(),
     );
 
     tracing::collect::with_default(subscriber, || {
@@ -172,6 +216,7 @@ fn init_subscriber(
     expected_instrument_kind: InstrumentKind,
     expected_number_kind: NumberKind,
     expected_value: Number,
+    expected_attributes: Vec<(Key, Value)>,
 ) -> (impl Collect + 'static, TestExporter) {
     let controller = opentelemetry::sdk::metrics::controllers::basic(processors::factory(
         selectors::simple::histogram(vec![-10.0, 100.0]),
@@ -184,6 +229,7 @@ fn init_subscriber(
         expected_instrument_kind,
         expected_number_kind,
         expected_value,
+        expected_attributes,
         controller: controller.clone(),
     };
 
@@ -199,6 +245,7 @@ struct TestExporter {
     expected_instrument_kind: InstrumentKind,
     expected_number_kind: NumberKind,
     expected_value: Number,
+    expected_attributes: Vec<(Key, Value)>,
     controller: BasicController,
 }
 
@@ -211,6 +258,17 @@ impl TestExporter {
                 assert_eq!(
                     self.expected_instrument_kind,
                     *record.descriptor().instrument_kind()
+                );
+                let attributes = record
+                    .attributes()
+                    .into_iter()
+                    .collect::<Vec<(&Key, &Value)>>();
+                assert_eq!(
+                    attributes,
+                    self.expected_attributes
+                        .iter()
+                        .map(|(k, v)| (k, v))
+                        .collect::<Vec<(&Key, &Value)>>()
                 );
                 assert_eq!(
                     self.expected_number_kind,
@@ -245,7 +303,7 @@ impl TestExporter {
                             .unwrap();
 
                         let counts = histogram.counts();
-                        if dbg!(self.expected_value.to_i64(&self.expected_number_kind)) > 100 {
+                        if self.expected_value.to_i64(&self.expected_number_kind) > 100 {
                             assert_eq!(counts, &[0.0, 0.0, 1.0]);
                         } else if self.expected_value.to_i64(&self.expected_number_kind) > 0 {
                             assert_eq!(counts, &[0.0, 1.0, 0.0]);
