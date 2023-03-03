@@ -188,6 +188,7 @@ where
             // that the fields are not supposed to be missing.
             Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
         };
+        serializer.serialize_entry("id", &self.0.id().into_u64())?;
         serializer.serialize_entry("name", self.0.metadata().name())?;
         serializer.end()
     }
