@@ -460,7 +460,7 @@ mod test {
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
         split_directives(dirs.as_ref())
-            .filter_map(|s| s.parse().ok())
+            .filter_map(|s| Directive::parse(s, false).ok())
             .collect()
     }
 
@@ -862,13 +862,41 @@ mod test {
 
     #[test]
     fn parse_directives_with_whitespace() {
-        let dirs = parse_directives("target1=info,\ntarget2=debug,  target3=warn");
+        let dirs = parse_directives(
+            "target1=info,\ntarget2=debug,  target3[span{x=\"hello there\"}]=warn\t",
+        );
         assert_eq!(dirs.len(), 3, "\nparsed: {:#?}", dirs);
-        assert_eq!(dirs[0].target, Some("target1".to_string()));
-        assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[1].target, Some("target2".to_string()));
-        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[2].target, Some("target3".to_string()));
-        assert_eq!(dirs[2].level, LevelFilter::WARN);
+        assert_eq!(
+            dirs[0],
+            Directive {
+                in_span: None,
+                fields: vec![],
+                target: Some("target1".to_string()),
+                level: LevelFilter::INFO,
+            }
+        );
+        assert_eq!(
+            dirs[1],
+            Directive {
+                in_span: None,
+                fields: vec![],
+                target: Some("target2".to_string()),
+                level: LevelFilter::DEBUG
+            }
+        );
+        assert_eq!(
+            dirs[2],
+            Directive {
+                in_span: Some("span".to_string()),
+                fields: vec![field::Match {
+                    name: "x".to_string(),
+                    value: Some(field::ValueMatch::Debug(field::MatchDebug::new(
+                        "\"hello there\""
+                    )))
+                }],
+                target: Some("target3".to_string()),
+                level: LevelFilter::WARN
+            }
+        );
     }
 }
