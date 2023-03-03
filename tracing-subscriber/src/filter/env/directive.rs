@@ -450,20 +450,22 @@ impl SpanMatcher {
     }
 }
 
+pub(super) fn split_directives(dirs: &str) -> impl Iterator<Item = &str> {
+    dirs.split(',').map(str::trim).filter(|s| !s.is_empty())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
+        split_directives(dirs.as_ref())
             .filter_map(|s| s.parse().ok())
             .collect()
     }
 
     fn expect_parse(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
+        split_directives(dirs.as_ref())
             .map(|s| {
                 s.parse()
                     .unwrap_or_else(|err| panic!("directive '{:?}' should parse: {}", s, err))
@@ -856,5 +858,17 @@ mod test {
 
         let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
         assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+    }
+
+    #[test]
+    fn parse_directives_with_whitespace() {
+        let dirs = parse_directives("target1=info,\ntarget2=debug,  target3=warn");
+        assert_eq!(dirs.len(), 3, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target1".to_string()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[1].target, Some("target2".to_string()));
+        assert_eq!(dirs[1].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[2].target, Some("target3".to_string()));
+        assert_eq!(dirs[2].level, LevelFilter::WARN);
     }
 }
