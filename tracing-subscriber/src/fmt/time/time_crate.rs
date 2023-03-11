@@ -50,21 +50,15 @@ pub struct UtcTime<F> {
 #[cfg(feature = "local-time")]
 impl LocalTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current [local time] in the
-    /// [RFC 3339] format (a subset of the [ISO 8601] timestamp format).
+    /// [RFC 3339] format (a subset of the [ISO 8601] timestamp format),
+    /// but with a variable number of decimal digits.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use tracing_subscriber::fmt::{self, time};
-    ///
-    /// let collector = tracing_subscriber::fmt()
-    ///     .with_timer(time::LocalTime::rfc_3339());
-    /// # drop(collector);
-    /// ```
+    /// Use [`LocalTime::iso_8601`] instead.
     ///
     /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
+    #[deprecated(note = "this has a variable number of decimal digits, use `LocalTime::iso_8601()` instead")]
     pub fn rfc_3339() -> Self {
         Self::new(well_known::Rfc3339)
     }
@@ -204,21 +198,15 @@ where
 
 impl UtcTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current [UTC time] in the
-    /// [RFC 3339] format, which is a subset of the [ISO 8601] timestamp format.
+    /// [RFC 3339] format, which is a subset of the [ISO 8601] timestamp format,
+    /// but with a variable number of decimal digits.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use tracing_subscriber::fmt::{self, time};
-    ///
-    /// let collector = tracing_subscriber::fmt()
-    ///     .with_timer(time::UtcTime::rfc_3339());
-    /// # drop(collector);
-    /// ```
+    /// Use [`UtcTime::iso_8601`] instead.
     ///
     /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
+    #[deprecated(note = "this has a variable number of decimal digits, use `UtcTime::iso_8601()` instead")]
     pub fn rfc_3339() -> Self {
         Self::new(well_known::Rfc3339)
     }
