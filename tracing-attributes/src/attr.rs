@@ -239,8 +239,7 @@ impl Parse for Skips {
         let _ = input.parse::<kw::skip>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let names: Punctuated<Ident, Token![,]> =
-            content.parse_terminated(Ident::parse_any, Token![,])?;
+        let names = content.parse_terminated(Ident::parse_any, Token![,])?;
         let mut skips = HashSet::new();
         for name in names {
             if skips.contains(&name) {
@@ -291,7 +290,7 @@ impl Parse for Fields {
         let _ = input.parse::<kw::fields>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let fields: Punctuated<_, Token![,]> = content.parse_terminated(Field::parse, Token![,])?;
+        let fields = content.parse_terminated(Field::parse, Token![,])?;
         Ok(Self(fields))
     }
 }
