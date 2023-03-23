@@ -35,7 +35,7 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "1.0.40"
-syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+syn = { version = "2.0.7", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
 quote = "1.0.20"
 
 [dev-dependencies]
