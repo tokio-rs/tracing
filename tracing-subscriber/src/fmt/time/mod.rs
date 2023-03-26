@@ -1,7 +1,18 @@
 //! Formatters for event timestamps.
 use crate::fmt::format::Writer;
+#[cfg(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+))]
+pub(crate) use instant::{self as system_time, Instant};
 use std::fmt;
-use std::time::Instant;
+#[cfg(not(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+)))]
+pub(crate) use std::time::{self as system_time, Instant};
 
 mod datetime;
 
@@ -121,7 +132,7 @@ impl FormatTime for SystemTime {
         write!(
             w,
             "{}",
-            datetime::DateTime::from(std::time::SystemTime::now())
+            datetime::DateTime::from(system_time::SystemTime::now())
         )
     }
 }

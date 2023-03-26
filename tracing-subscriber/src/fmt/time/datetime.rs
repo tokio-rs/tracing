@@ -193,6 +193,7 @@
 // obstacle to adoption, that text has been removed.
 
 
+use super::system_time;
 use std::fmt;
 
 /// A date/time type which exists primarily to convert `SystemTime` timestamps into an ISO 8601
@@ -243,8 +244,8 @@ impl fmt::Display for DateTime {
     }
 }
 
-impl From<std::time::SystemTime> for DateTime {
-    fn from(timestamp: std::time::SystemTime) -> DateTime {
+impl From<system_time::SystemTime> for DateTime {
+    fn from(timestamp: system_time::SystemTime) -> DateTime {
         let (t, nanos) = match timestamp.duration_since(std::time::UNIX_EPOCH) {
             Ok(duration) => {
                 debug_assert!(duration.as_secs() <= std::i64::MAX as u64);

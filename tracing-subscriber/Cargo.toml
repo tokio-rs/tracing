@@ -32,6 +32,7 @@ fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
 json = ["tracing-serde", "serde", "serde_json"]
+wasm-bindgen = ["instant"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
 local-time = ["time/local-offset"]
@@ -62,6 +63,9 @@ parking_lot = { version = "0.12.1", optional = true }
 # registry
 sharded-slab = { version = "0.1.4", optional = true }
 thread_local = { version = "1.1.4", optional = true }
+
+[target.'cfg(all(target_family = "wasm", not(any(target_os = "emscripten", target_os = "wasi"))))'.dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"], optional = true }
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }

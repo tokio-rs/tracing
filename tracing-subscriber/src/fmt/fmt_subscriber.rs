@@ -1,14 +1,12 @@
 use crate::{
     field::RecordFields,
+    fmt::time::Instant,
     fmt::{format, FormatEvent, FormatFields, MakeWriter, TestWriter},
     registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
-use std::{
-    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
-    time::Instant,
-};
+use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull};
 use tracing_core::{
     field,
     span::{Attributes, Current, Id, Record},
