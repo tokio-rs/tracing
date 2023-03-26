@@ -275,9 +275,17 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     }
 
     /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> Self {
+        #[cfg(not(feature = "ansi"))]
+        if ansi {
+            const ERROR: &str =
+                "tracing-subscriber: enabled ANSI terminal colors without the `ansi` crate feature";
+            #[cfg(debug_assertions)]
+            panic!("{}", ERROR);
+            #[cfg(not(debug_assertions))]
+            eprintln!("{}", ERROR);
+        }
+
         Subscriber {
             is_ansi: ansi,
             ..self

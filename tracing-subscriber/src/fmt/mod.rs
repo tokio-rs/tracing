@@ -611,8 +611,6 @@ where
     }
 
     /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
         CollectorBuilder {
             inner: self.inner.with_ansi(ansi),
