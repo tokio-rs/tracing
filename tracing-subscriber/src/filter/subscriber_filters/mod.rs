@@ -541,7 +541,7 @@ where
     fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
         self.as_ref()
             .map(|inner| inner.callsite_enabled(meta))
-            .unwrap_or_else(Interest::sometimes)
+            .unwrap_or_else(Interest::always)
     }
 
     #[inline]
