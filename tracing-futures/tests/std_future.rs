@@ -4,12 +4,15 @@ use tracing_mock::*;
 
 #[test]
 fn enter_exit_is_reasonable() {
+    let span = expect::span().named("foo");
     let (collector, handle) = collector::mock()
-        .enter(expect::span().named("foo"))
-        .exit(expect::span().named("foo"))
-        .enter(expect::span().named("foo"))
-        .exit(expect::span().named("foo"))
-        .drop_span(expect::span().named("foo"))
+        .enter(span.clone())
+        .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
         .only()
         .run_with_handle();
     with_default(collector, || {
@@ -21,12 +24,15 @@ fn enter_exit_is_reasonable() {
 
 #[test]
 fn error_ends_span() {
+    let span = expect::span().named("foo");
     let (collector, handle) = collector::mock()
-        .enter(expect::span().named("foo"))
-        .exit(expect::span().named("foo"))
-        .enter(expect::span().named("foo"))
-        .exit(expect::span().named("foo"))
-        .drop_span(expect::span().named("foo"))
+        .enter(span.clone())
+        .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
         .only()
         .run_with_handle();
     with_default(collector, || {
