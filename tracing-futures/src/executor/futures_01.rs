@@ -4,16 +4,6 @@ use futures_01::{
     Future,
 };
 
-macro_rules! deinstrument_err {
-    ($e:expr) => {
-        $e.map_err(|e| {
-            let kind = e.kind();
-            let future = e.into_future().inner;
-            ExecuteError::new(kind, future)
-        })
-    };
-}
-
 impl<T, F> Executor<F> for Instrumented<T>
 where
     T: Executor<Instrumented<F>>,
@@ -21,7 +11,11 @@ where
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let future = future.instrument(self.span.clone());
-        deinstrument_err!(self.inner.execute(future))
+        self.inner
+            .as_ref()
+            .unwrap()
+            .execute(future)
+            .map_err(|e| ExecuteError::new(e.kind(), e.into_future().inner.take().unwrap()))
     }
 }
 
@@ -32,7 +26,9 @@ where
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let future = self.with_dispatch(future);
-        deinstrument_err!(self.inner.execute(future))
+        self.inner
+            .execute(future)
+            .map_err(|e| ExecuteError::new(e.kind(), e.into_future().inner))
     }
 }
 
@@ -59,7 +55,7 @@ mod tokio {
         ) -> Result<(), SpawnError> {
             // TODO: get rid of double box somehow?
             let future = Box::new(future.instrument(self.span.clone()));
-            self.inner.spawn(future)
+            self.inner.as_mut().unwrap().spawn(future)
         }
     }
 
@@ -68,11 +64,14 @@ mod tokio {
         T: TypedExecutor<Instrumented<F>>,
     {
         fn spawn(&mut self, future: F) -> Result<(), SpawnError> {
-            self.inner.spawn(future.instrument(self.span.clone()))
+            self.inner
+                .as_mut()
+                .unwrap()
+                .spawn(future.instrument(self.span.clone()))
         }
 
         fn status(&self) -> Result<(), SpawnError> {
-            self.inner.status()
+            self.inner.as_ref().unwrap().status()
         }
     }
 
@@ -90,7 +89,7 @@ mod tokio {
             F: Future<Item = (), Error = ()> + Send + 'static,
         {
             let future = future.instrument(self.span.clone());
-            self.inner.spawn(future);
+            self.inner.as_mut().unwrap().spawn(future);
             self
         }
 
@@ -116,7 +115,7 @@ mod tokio {
             E: Send + 'static,
         {
             let future = future.instrument(self.span.clone());
-            self.inner.block_on(future)
+            self.inner.as_mut().unwrap().block_on(future)
         }
 
         /// Return an instrumented handle to the runtime's executor.
@@ -127,7 +126,11 @@ mod tokio {
         /// `tokio::runtime::TaskExecutor`, but instruments the spawned
         /// futures prior to spawning them.
         pub fn executor(&self) -> Instrumented<TaskExecutor> {
-            self.inner.executor().instrument(self.span.clone())
+            self.inner
+                .as_ref()
+                .unwrap()
+                .executor()
+                .instrument(self.span.clone())
         }
     }
 
@@ -141,7 +144,7 @@ mod tokio {
             F: Future<Item = (), Error = ()> + 'static,
         {
             let future = future.instrument(self.span.clone());
-            self.inner.spawn(future);
+            self.inner.as_mut().unwrap().spawn(future);
             self
         }
 
@@ -176,7 +179,7 @@ mod tokio {
             E: 'static,
         {
             let future = future.instrument(self.span.clone());
-            self.inner.block_on(future)
+            self.inner.as_mut().unwrap().block_on(future)
         }
 
         /// Get a new instrumented handle to spawn futures on the single-threaded
@@ -189,7 +192,11 @@ mod tokio {
         /// `tokio::runtime::current_thread::Handle`, but instruments the spawned
         /// futures prior to spawning them.
         pub fn handle(&self) -> Instrumented<current_thread::Handle> {
-            self.inner.handle().instrument(self.span.clone())
+            self.inner
+                .as_ref()
+                .unwrap()
+                .handle()
+                .instrument(self.span.clone())
         }
     }
 

@@ -15,7 +15,10 @@ where
     /// tasks.
     fn spawn_obj(&self, future: FutureObj<'static, ()>) -> Result<(), SpawnError> {
         let future = future.instrument(self.span.clone());
-        self.inner.spawn_obj(FutureObj::new(Box::new(future)))
+        self.inner
+            .as_ref()
+            .unwrap()
+            .spawn_obj(FutureObj::new(Box::new(future)))
     }
 
     /// Determines whether the executor is able to spawn new tasks.
@@ -26,7 +29,7 @@ where
     /// not guaranteed, to yield an error.
     #[inline]
     fn status(&self) -> Result<(), SpawnError> {
-        self.inner.status()
+        self.inner.as_ref().unwrap().status()
     }
 }
 
@@ -74,6 +77,8 @@ where
     fn spawn_local_obj(&self, future: LocalFutureObj<'static, ()>) -> Result<(), SpawnError> {
         let future = future.instrument(self.span.clone());
         self.inner
+            .as_ref()
+            .unwrap()
             .spawn_local_obj(LocalFutureObj::new(Box::new(future)))
     }
 
@@ -85,7 +90,7 @@ where
     /// not guaranteed, to yield an error.
     #[inline]
     fn status_local(&self) -> Result<(), SpawnError> {
-        self.inner.status_local()
+        self.inner.as_ref().unwrap().status_local()
     }
 }
 

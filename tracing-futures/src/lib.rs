@@ -102,6 +102,7 @@
 #[cfg(feature = "std-future")]
 use pin_project_lite::pin_project;
 
+use core::hint::unreachable_unchecked;
 #[cfg(feature = "std-future")]
 use core::{pin::Pin, task::Context};
 
@@ -147,7 +148,10 @@ pub trait Instrument: Sized {
     ///
     /// [entered]: tracing::span::Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
-        Instrumented { inner: self, span }
+        Instrumented {
+            inner: Some(self),
+            span,
+        }
     }
 
     /// Instruments this type with the [current] `Span`, returning an
@@ -243,8 +247,16 @@ pin_project! {
     #[derive(Debug, Clone)]
     pub struct Instrumented<T> {
         #[pin]
-        inner: T,
+        inner: Option<T>,
         span: Span,
+    }
+
+    impl<T> PinnedDrop for Instrumented<T> {
+        fn drop(this: Pin<&mut Self>) {
+            let mut this = this.project();
+            let _enter = this.span.enter();
+            this.inner.set(None);
+        }
     }
 }
 
@@ -252,7 +264,7 @@ pin_project! {
 #[cfg(not(feature = "std-future"))]
 #[derive(Debug, Clone)]
 pub struct Instrumented<T> {
-    inner: T,
+    inner: Option<T>,
     span: Span,
 }
 
@@ -289,7 +301,7 @@ impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
-        this.inner.poll(cx)
+        this.inner.as_pin_mut().unwrap().poll(cx)
     }
 }
 
@@ -301,7 +313,7 @@ impl<T: futures_01::Future> futures_01::Future for Instrumented<T> {
 
     fn poll(&mut self) -> futures_01::Poll<Self::Item, Self::Error> {
         let _enter = self.span.enter();
-        self.inner.poll()
+        unsafe { self.inner.as_mut().unwrap_unchecked().poll() }
     }
 }
 
@@ -313,7 +325,7 @@ impl<T: futures_01::Stream> futures_01::Stream for Instrumented<T> {
 
     fn poll(&mut self) -> futures_01::Poll<Option<Self::Item>, Self::Error> {
         let _enter = self.span.enter();
-        self.inner.poll()
+        unsafe { self.inner.as_mut().unwrap_unchecked().poll() }
     }
 }
 
@@ -328,12 +340,12 @@ impl<T: futures_01::Sink> futures_01::Sink for Instrumented<T> {
         item: Self::SinkItem,
     ) -> futures_01::StartSend<Self::SinkItem, Self::SinkError> {
         let _enter = self.span.enter();
-        self.inner.start_send(item)
+        unsafe { self.inner.as_mut().unwrap_unchecked().start_send(item) }
     }
 
     fn poll_complete(&mut self) -> futures_01::Poll<(), Self::SinkError> {
         let _enter = self.span.enter();
-        self.inner.poll_complete()
+        unsafe { self.inner.as_mut().unwrap_unchecked().poll_complete() }
     }
 }
 
@@ -346,9 +358,12 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Option<Self::Item>> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        T::poll_next(this.inner, cx)
+        T::poll_next(
+            unsafe { this.inner.as_mut().as_pin_mut().unwrap_unchecked() },
+            cx,
+        )
     }
 }
 
@@ -364,33 +379,45 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        T::poll_ready(this.inner, cx)
+        T::poll_ready(
+            unsafe { this.inner.as_mut().as_pin_mut().unwrap_unchecked() },
+            cx,
+        )
     }
 
     fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        T::start_send(this.inner, item)
+        T::start_send(
+            unsafe { this.inner.as_mut().as_pin_mut().unwrap_unchecked() },
+            item,
+        )
     }
 
     fn poll_flush(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        T::poll_flush(this.inner, cx)
+        T::poll_flush(
+            unsafe { this.inner.as_mut().as_pin_mut().unwrap_unchecked() },
+            cx,
+        )
     }
 
     fn poll_close(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        T::poll_close(this.inner, cx)
+        T::poll_close(
+            unsafe { this.inner.as_mut().as_pin_mut().unwrap_unchecked() },
+            cx,
+        )
     }
 }
 
@@ -407,33 +434,33 @@ impl<T> Instrumented<T> {
 
     /// Borrows the wrapped type.
     pub fn inner(&self) -> &T {
-        &self.inner
+        unsafe { self.inner.as_ref().unwrap_unchecked() }
     }
 
     /// Mutably borrows the wrapped type.
     pub fn inner_mut(&mut self) -> &mut T {
-        &mut self.inner
+        unsafe { self.inner.as_mut().unwrap_unchecked() }
     }
 
     /// Get a pinned reference to the wrapped type.
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner
+        unsafe { self.project_ref().inner.as_pin_ref().unwrap_unchecked() }
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner
+        unsafe { self.project().inner.as_pin_mut().unwrap_unchecked() }
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
-    pub fn into_inner(self) -> T {
-        self.inner
+    pub fn into_inner(mut self) -> T {
+        unsafe { self.inner.take().unwrap_unchecked() }
     }
 }
 
@@ -565,12 +592,15 @@ mod tests {
 
         #[test]
         fn future_enter_exit_is_reasonable() {
+            let span = expect::span().named("foo");
             let (collector, handle) = collector::mock()
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .drop_span(expect::span().named("foo"))
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .drop_span(span)
                 .only()
                 .run_with_handle();
             with_default(collector, || {
@@ -584,12 +614,15 @@ mod tests {
 
         #[test]
         fn future_error_ends_span() {
+            let span = expect::span().named("foo");
             let (collector, handle) = collector::mock()
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .drop_span(expect::span().named("foo"))
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .drop_span(span)
                 .only()
                 .run_with_handle();
             with_default(collector, || {
@@ -604,16 +637,19 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
+            let span = expect::span().named("foo");
             let (collector, handle) = collector::mock()
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .drop_span(expect::span().named("foo"))
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .drop_span(span)
                 .run_with_handle();
             with_default(collector, || {
                 stream::iter_ok::<_, ()>(&[1, 2, 3])
@@ -665,16 +701,21 @@ mod tests {
 
         #[test]
         fn stream_enter_exit_is_reasonable() {
+            let span = expect::span().named("foo");
             let (collector, handle) = collector::mock()
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .enter(expect::span().named("foo"))
-                .exit(expect::span().named("foo"))
-                .drop_span(expect::span().named("foo"))
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .enter(span.clone())
+                .exit(span.clone())
+                .drop_span(span)
                 .run_with_handle();
             with_default(collector, || {
                 Instrument::instrument(stream::iter(&[1, 2, 3]), tracing::trace_span!("foo"))
