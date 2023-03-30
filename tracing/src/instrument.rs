@@ -1,4 +1,5 @@
 use crate::span::Span;
+use core::hint::unreachable_unchecked;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::{future::Future, marker::Sized};
@@ -80,7 +81,10 @@ pub trait Instrument: Sized {
     /// [disabled]: super::Span::is_disabled()
     /// [`Future`]: std::future::Future
     fn instrument(self, span: Span) -> Instrumented<Self> {
-        Instrumented { inner: self, span }
+        Instrumented {
+            inner: Some(self),
+            span,
+        }
     }
 
     /// Instruments this type with the [current] [`Span`], returning an
@@ -289,8 +293,16 @@ pin_project! {
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct Instrumented<T> {
         #[pin]
-        inner: T,
+        inner: Option<T>,
         span: Span,
+    }
+
+    impl<T> PinnedDrop for Instrumented<T> {
+        fn drop(this: Pin<&mut Self>) {
+            let mut this = this.project();
+            let _enter = this.span.enter();
+            this.inner.set(None);
+        }
     }
 }
 
@@ -302,7 +314,8 @@ impl<T: Future> Future for Instrumented<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
         let _enter = this.span.enter();
-        this.inner.poll(cx)
+        // SAFETY:
+        unsafe { this.inner.as_pin_mut().unwrap_unchecked().poll(cx) }
     }
 }
 
@@ -321,31 +334,33 @@ impl<T> Instrumented<T> {
 
     /// Borrows the wrapped type.
     pub fn inner(&self) -> &T {
-        &self.inner
+        unsafe { self.inner.as_ref().unwrap_unchecked() }
     }
 
     /// Mutably borrows the wrapped type.
     pub fn inner_mut(&mut self) -> &mut T {
-        &mut self.inner
+        unsafe { self.inner.as_mut().unwrap_unchecked() }
     }
 
     /// Get a pinned reference to the wrapped type.
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner
+        unsafe { self.project_ref().inner.as_pin_ref().unwrap_unchecked() }
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner
+        unsafe { self.project().inner.as_pin_mut().unwrap_unchecked() }
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
-    pub fn into_inner(self) -> T {
-        self.inner
+    pub fn into_inner(mut self) -> T {
+        unsafe { self.inner.take().unwrap_unchecked() }
     }
 }
+
+unsafe fn unwrap_() {}
 
 // === impl WithDispatch ===
 
