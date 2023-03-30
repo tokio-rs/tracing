@@ -78,6 +78,8 @@ fn test_async() {
         .enter(span.clone())
         .event(expect::event().at_level(Level::ERROR))
         .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
         .drop_span(span)
         .only()
         .run_with_handle();
@@ -131,6 +133,8 @@ fn test_mut_async() {
         .exit(span.clone())
         .enter(span.clone())
         .event(expect::event().at_level(Level::ERROR))
+        .exit(span.clone())
+        .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .only()
