@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -5,9 +6,13 @@ use std::{
 
 pub mod collector;
 pub mod event;
+pub mod expect;
 pub mod field;
 mod metadata;
 pub mod span;
+
+#[cfg(feature = "tracing-subscriber")]
+pub mod subscriber;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Parent {
@@ -43,6 +48,13 @@ impl Parent {
                 );
             }
             Parent::Explicit(expected_parent) => {
+                assert!(
+                    provided_parent.is_some(),
+                    "[{}] expected {} to have explicit parent {}, but it has no explicit parent",
+                    collector_name,
+                    ctx,
+                    expected_parent,
+                );
                 assert_eq!(
                     Some(expected_parent.as_ref()),
                     parent_name,
@@ -57,7 +69,7 @@ impl Parent {
             Parent::ContextualRoot => {
                 assert!(
                     provided_parent.is_none(),
-                    "[{}] expected {} to have a contextual parent, but its parent was actually {:?} (name: {:?})",
+                    "[{}] expected {} to be a contextual root, but its parent was actually {:?} (name: {:?})",
                     collector_name,
                     ctx,
                     provided_parent,
@@ -73,7 +85,7 @@ impl Parent {
             }
             Parent::Contextual(expected_parent) => {
                 assert!(provided_parent.is_none(),
-                    "[{}] expected {} to have a contextual parent\nbut its parent was actually {:?} (name: {:?})",
+                    "[{}] expected {} to have a contextual parent\nbut it has the explicit parent {:?} (name: {:?})",
                     collector_name,
                     ctx,
                     provided_parent,

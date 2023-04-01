@@ -132,7 +132,6 @@
 //! [`Dispatch`]: dispatch::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
-#![doc(html_root_url = "https://docs.rs/tracing-core/0.1.17")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
@@ -146,7 +145,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,

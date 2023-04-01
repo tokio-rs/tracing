@@ -2,13 +2,13 @@ use std::fmt;
 use tracing_core::Metadata;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct Expect {
-    pub name: Option<String>,
-    pub level: Option<tracing::Level>,
-    pub target: Option<String>,
+pub(crate) struct ExpectedMetadata {
+    pub(crate) name: Option<String>,
+    pub(crate) level: Option<tracing::Level>,
+    pub(crate) target: Option<String>,
 }
 
-impl Expect {
+impl ExpectedMetadata {
     pub(crate) fn check(
         &self,
         actual: &Metadata<'_>,
@@ -53,7 +53,7 @@ impl Expect {
     }
 }
 
-impl fmt::Display for Expect {
+impl fmt::Display for ExpectedMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref name) = self.name {
             write!(f, " named `{}`", name)?;

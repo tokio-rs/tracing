@@ -117,7 +117,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -134,8 +133,7 @@
     while_true
 )]
 
-pub use error::Error;
-
+use error::Error;
 use error::Kind;
 use once_cell::sync::Lazy;
 use std::cell::Cell;

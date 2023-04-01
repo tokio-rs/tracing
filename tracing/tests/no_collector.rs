@@ -7,7 +7,7 @@ use tracing_mock::*;
 #[test]
 fn no_collector_disables_global() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/1999
-    let (collector, handle) = collector::mock().done().run_with_handle();
+    let (collector, handle) = collector::mock().only().run_with_handle();
     collect::set_global_default(collector).expect("setting global default must succeed");
     collect::with_default(collect::NoCollector::default(), || {
         tracing::info!("this should not be recorded");

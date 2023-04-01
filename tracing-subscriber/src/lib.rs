@@ -47,7 +47,7 @@
 //!
 //! ## Feature Flags
 //!
-//! - `std`: Enables APIs that depend on the on the Rust standard library
+//! - `std`: Enables APIs that depend on the Rust standard library
 //!   (enabled by default).
 //! - `alloc`: Depend on [`liballoc`] (enabled by "std").
 //! - `env-filter`: Enables the [`EnvFilter`] type, which implements filtering
@@ -129,7 +129,6 @@
 //! [`time` crate]: https://crates.io/crates/time
 //! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
-#![doc(html_root_url = "https://docs.rs/tracing-subscriber/0.2.25")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
@@ -150,7 +149,6 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
-    const_err,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
