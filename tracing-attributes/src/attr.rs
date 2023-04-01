@@ -460,14 +460,29 @@ impl Parse for Level {
     }
 }
 
-impl ToTokens for Level {
+impl Level {
+    pub(crate) fn with_tracing<T: ToTokens>(self, tracing: T) -> LevelWithTracing<T> {
+        LevelWithTracing {
+            level: self,
+            tracing,
+        }
+    }
+}
+
+pub(crate) struct LevelWithTracing<T: ToTokens> {
+    level: Level,
+    tracing: T,
+}
+
+impl<T: ToTokens> ToTokens for LevelWithTracing<T> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Level::Trace => tokens.extend(quote!(tracing::Level::TRACE)),
-            Level::Debug => tokens.extend(quote!(tracing::Level::DEBUG)),
-            Level::Info => tokens.extend(quote!(tracing::Level::INFO)),
-            Level::Warn => tokens.extend(quote!(tracing::Level::WARN)),
-            Level::Error => tokens.extend(quote!(tracing::Level::ERROR)),
+        let tracing = &self.tracing;
+        match self.level {
+            Level::Trace => tokens.extend(quote!(#tracing::Level::TRACE)),
+            Level::Debug => tokens.extend(quote!(#tracing::Level::DEBUG)),
+            Level::Info => tokens.extend(quote!(#tracing::Level::INFO)),
+            Level::Warn => tokens.extend(quote!(#tracing::Level::WARN)),
+            Level::Error => tokens.extend(quote!(#tracing::Level::ERROR)),
             Level::Path(ref pat) => tokens.extend(quote!(#pat)),
         }
     }

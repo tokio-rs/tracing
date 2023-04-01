@@ -116,9 +116,9 @@ fn gen_block<B: ToTokens>(
         .map(|name| quote!(#name))
         .unwrap_or_else(|| quote!(#instrumented_function_name));
 
-    let args_level = args.level();
-    let level = args_level.clone();
     let tracing = args.tracing();
+    let args_level = args.level();
+    let level = args_level.clone().with_tracing(&tracing);
 
     let follows_from = args.follows_from.iter();
     let follows_from = quote! {
@@ -236,7 +236,7 @@ fn gen_block<B: ToTokens>(
 
     let err_event = match args.err_args {
         Some(event_args) => {
-            let level_tokens = event_args.level(Level::Error);
+            let level_tokens = event_args.level(Level::Error).with_tracing(&tracing);
             match event_args.mode {
                 FormatMode::Default | FormatMode::Display => Some(quote!(
                     #tracing::event!(target: #target, #level_tokens, error = %e)
@@ -251,7 +251,7 @@ fn gen_block<B: ToTokens>(
 
     let ret_event = match args.ret_args {
         Some(event_args) => {
-            let level_tokens = event_args.level(args_level);
+            let level_tokens = event_args.level(args_level).with_tracing(&tracing);
             match event_args.mode {
                 FormatMode::Display => Some(quote!(
                     #tracing::event!(target: #target, #level_tokens, return = %x)
