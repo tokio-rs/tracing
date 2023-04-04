@@ -232,6 +232,19 @@ impl<T: Parse> Parse for ExprArg<T> {
     }
 }
 
+struct IdentOrSelf(Ident);
+impl Parse for IdentOrSelf {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        Ok(Self(
+            if let Ok(self_token) = input.parse::<Token![self]>() {
+                Ident::new("self", self_token.span)
+            } else {
+                input.parse()?
+            },
+        ))
+    }
+}
+
 struct Skips(HashSet<Ident>);
 
 impl Parse for Skips {
@@ -239,16 +252,16 @@ impl Parse for Skips {
         let _ = input.parse::<kw::skip>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let names: Punctuated<Ident, Token![,]> = content.parse_terminated(Ident::parse_any)?;
+        let names: Punctuated<IdentOrSelf, Token![,]> = Punctuated::parse_terminated(&content)?;
         let mut skips = HashSet::new();
         for name in names {
-            if skips.contains(&name) {
+            if skips.contains(&name.0) {
                 return Err(syn::Error::new(
-                    name.span(),
+                    name.0.span(),
                     "tried to skip the same field twice",
                 ));
             } else {
-                skips.insert(name);
+                skips.insert(name.0);
             }
         }
         Ok(Self(skips))
@@ -290,7 +303,7 @@ impl Parse for Fields {
         let _ = input.parse::<kw::fields>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let fields: Punctuated<_, Token![,]> = content.parse_terminated(Field::parse)?;
+        let fields: Punctuated<_, Token![,]> = Punctuated::parse_terminated(&content)?;
         Ok(Self(fields))
     }
 }
