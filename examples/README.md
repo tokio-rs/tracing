@@ -72,12 +72,6 @@ This directory contains a collection of examples that demonstrate the use of the
     unstructured logs from dependencies as `tracing` events, by instrumenting
     [this example][echo] from `hyper`, and using `tracing-log` to record logs
     emitted by `hyper`.
-- **tracing-opentelemetry**:
-  + `opentelemetry`: Demonstrates how `tracing-opentelemetry` can be used to
-    export and visualize `tracing` span data.
-  + `opentelemetry-remote-context`: Demonstrates how `tracing-opentelemetry`
-    can be used to extract and inject remote context when traces span multiple
-    systems.
 
 [tasks]: (https://docs.rs/tokio/0.2.21/tokio/task/index.html)
 [tokio-proxy]: https://github.com/tokio-rs/tokio/blob/v0.1.x/tokio/examples/proxy.rs
