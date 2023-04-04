@@ -133,17 +133,11 @@ jobs:
         - tracing-macros
         - tracing-serde
         - tracing-tower
-        - tracing-opentelemetry
         - tracing
         - tracing-subscriber
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-
+    - uses: dtolnay/rust-toolchain@stable
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
     - name: cargo hack check
@@ -194,7 +188,6 @@ jobs:
         - tracing-serde
         - tracing-subscriber
         - tracing-tower
-        - tracing-opentelemetry
         - tracing
         toolchain:
         - 1.49.0
@@ -295,7 +288,6 @@ jobs:
         - tracing-journald
         - tracing-log
         - tracing-macros
-        - tracing-opentelemetry
         - tracing-serde
         - tracing-subscriber
         - tracing-tower

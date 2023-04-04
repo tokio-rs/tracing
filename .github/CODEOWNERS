@@ -8,8 +8,5 @@
 # David contributed the Registry implementation.
 /tracing-subscriber/registry    @davidbarsky @hawkw @tokio-rs/tracing
 
-# Julian contributed the OpenTelemetry implementation.
-/tracing-opentelemetry/    @jtescher @tokio-rs/tracing
-
 # Zeki contributed the TracingAppender implementation
 /tracing-appender/              @zekisherif  @tokio-rs/tracing

@@ -305,11 +305,6 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
-  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
-  tracing systems for processing and visualization.
-  ([crates.io][otel-crates]|[docs][otel-docs])
-
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
@@ -337,7 +332,6 @@ The crates included as part of Tracing are:
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
-[`tracing-opentelemetry`]: tracing-opentelemetry
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
