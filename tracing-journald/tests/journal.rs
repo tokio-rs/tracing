@@ -122,7 +122,7 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
     let stdout = String::from_utf8(
         Command::new("journalctl")
             // We pass --all to circumvent journalctl's default limit of 4096 bytes for field values
-            .args(&["--user", "--output=json", "--all"])
+            .args(["--user", "--output=json", "--all"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
             .arg(format!("TEST_NAME={}", test_name))
