@@ -121,7 +121,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.49.0). This
+    # Run `cargo check` on our minimum supported Rust version (1.56.0). This
     # checks with minimal versions; maximal versions are checked above.
     name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
@@ -143,20 +143,8 @@ jobs:
         - tracing-tower
         - tracing
         toolchain:
-        - 1.49.0
+        - 1.56.0
         - stable
-        # TODO(eliza): remove this when appender is on the same MSRV.
-        #              same for tracing subscriber
-        exclude:
-        - subcrate: tracing-appender
-          toolchain: 1.49.0
-        - subcrate: tracing-subscriber
-          toolchain: 1.49.0
-        include:
-        - subcrate: tracing-appender
-          toolchain: 1.53.0
-        - subcrate: tracing-subscriber
-          toolchain: 1.50.0
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly
