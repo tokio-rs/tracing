@@ -368,7 +368,7 @@ where
     CURRENT_STATE
         .try_with(|state| {
             if let Some(entered) = state.enter() {
-                return f(&*entered.current());
+                return f(&entered.current());
             }
 
             f(&Dispatch::none())
@@ -390,7 +390,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
     CURRENT_STATE
         .try_with(|state| {
             let entered = state.enter()?;
-            Some(f(&*entered.current()))
+            Some(f(&entered.current()))
         })
         .ok()?
 }
