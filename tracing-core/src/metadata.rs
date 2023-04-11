@@ -273,6 +273,7 @@ impl<'a> Metadata<'a> {
     }
 
     /// Returns the names of the fields on the described span or event.
+    #[inline]
     pub fn fields(&self) -> &field::FieldSet {
         &self.fields
     }
