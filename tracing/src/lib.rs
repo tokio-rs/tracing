@@ -1074,9 +1074,8 @@ pub mod __macro_support {
             }
         }
 
-        pub fn is_enabled(&self, interest: Interest) -> bool {
-            interest.is_always()
-                || crate::dispatch::get_default(|default| default.enabled(self.meta))
+        pub fn is_enabled(&self) -> bool {
+            crate::dispatch::get_default(|default| default.enabled(self.meta))
         }
 
         #[inline]
