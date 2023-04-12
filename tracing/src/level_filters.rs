@@ -62,33 +62,37 @@ pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 /// `Span` constructors should compare the level against this value to
 /// determine if those spans or events are enabled.
 ///
-/// [module-level documentation]: super#compile-time-filters
-pub const STATIC_MAX_LEVEL: LevelFilter = MAX_LEVEL;
+/// [module-level documentation]: self#compile-time-filters
+pub const STATIC_MAX_LEVEL: LevelFilter = get_max_level_inner();
 
-cfg_if::cfg_if! {
-    if #[cfg(all(not(debug_assertions), feature = "release_max_level_off"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::OFF;
-    } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_error"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::ERROR;
-    } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_warn"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::WARN;
-    } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_info"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::INFO;
-    } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_debug"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::DEBUG;
-    } else if #[cfg(all(not(debug_assertions), feature = "release_max_level_trace"))] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
-    } else if #[cfg(feature = "max_level_off")] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::OFF;
-    } else if #[cfg(feature = "max_level_error")] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::ERROR;
-    } else if #[cfg(feature = "max_level_warn")] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::WARN;
-    } else if #[cfg(feature = "max_level_info")] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::INFO;
-    } else if #[cfg(feature = "max_level_debug")] {
-        const MAX_LEVEL: LevelFilter = LevelFilter::DEBUG;
+const fn get_max_level_inner() -> LevelFilter {
+    if cfg!(not(debug_assertions)) {
+        if cfg!(feature = "release_max_level_off") {
+            LevelFilter::OFF
+        } else if cfg!(feature = "release_max_level_error") {
+            LevelFilter::ERROR
+        } else if cfg!(feature = "release_max_level_warn") {
+            LevelFilter::WARN
+        } else if cfg!(feature = "release_max_level_info") {
+            LevelFilter::INFO
+        } else if cfg!(feature = "release_max_level_debug") {
+            LevelFilter::DEBUG
+        } else {
+            // Same as branch cfg!(feature = "release_max_level_trace")
+            LevelFilter::TRACE
+        }
+    } else if cfg!(feature = "max_level_off") {
+        LevelFilter::OFF
+    } else if cfg!(feature = "max_level_error") {
+        LevelFilter::ERROR
+    } else if cfg!(feature = "max_level_warn") {
+        LevelFilter::WARN
+    } else if cfg!(feature = "max_level_info") {
+        LevelFilter::INFO
+    } else if cfg!(feature = "max_level_debug") {
+        LevelFilter::DEBUG
     } else {
-        const MAX_LEVEL: LevelFilter = LevelFilter::TRACE;
+        // Same as branch cfg!(feature = "max_level_trace")
+        LevelFilter::TRACE
     }
 }
