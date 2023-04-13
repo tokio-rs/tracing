@@ -422,7 +422,7 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn metadata(&self) -> &'static Metadata<'static> {
-        (*self).inner.metadata
+        self.inner.metadata
     }
 
     fn parent(&self) -> Option<&Id> {

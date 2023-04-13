@@ -93,6 +93,6 @@ error[E0308]: mismatched types
 42 |   async fn extra_semicolon() -> i32 {
    |  ___________________________________^
 43 | |     1;
-   | |      - help: remove this semicolon
+   | |      - help: remove this semicolon to return this value
 44 | | }
    | |_^ expected `i32`, found `()`
