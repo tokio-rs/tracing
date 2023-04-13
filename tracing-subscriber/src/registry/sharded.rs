@@ -9,6 +9,7 @@ use crate::{
         LookupSpan, SpanData,
     },
     sync::RwLock,
+    DefaultSlabConfig, SlabConfig,
 };
 use std::{
     cell::{self, Cell, RefCell},
@@ -89,8 +90,11 @@ use tracing_core::{
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
-pub struct Registry {
-    spans: Pool<DataInner>,
+pub struct Registry<S = DefaultSlabConfig>
+where
+    S: SlabConfig,
+{
+    spans: Pool<DataInner, S>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
     next_filter_id: u8,
 }
@@ -108,9 +112,12 @@ pub struct Registry {
 #[cfg(feature = "registry")]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "registry", feature = "std"))))]
 #[derive(Debug)]
-pub struct Data<'a> {
+pub struct Data<'a, S>
+where
+    S: SlabConfig,
+{
     /// Immutable reference to the pooled `DataInner` entry.
-    inner: Ref<'a, DataInner>,
+    inner: Ref<'a, DataInner, S>,
 }
 
 /// Stored data associated with a span.
@@ -130,15 +137,24 @@ struct DataInner {
     pub(crate) extensions: RwLock<ExtensionsInner>,
 }
 
-// === impl Registry ===
-
-impl Default for Registry {
-    fn default() -> Self {
+impl<S> Registry<S>
+where
+    S: SlabConfig,
+{
+    /// Create new Registry with specified SlabConfig.
+    pub fn new() -> Self {
         Self {
-            spans: Pool::new(),
+            spans: Pool::new_with_config::<S>(),
             current_spans: ThreadLocal::new(),
             next_filter_id: 0,
         }
+    }
+}
+
+// === impl Registry ===
+impl Default for Registry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -173,14 +189,20 @@ fn id_to_idx(id: &Id) -> usize {
 ///    greater than 0, `CloseGuard` decrements the counter by one and
 ///    _does not_ remove the span from the [`Registry`].
 ///
-pub(crate) struct CloseGuard<'a> {
+pub(crate) struct CloseGuard<'a, S>
+where
+    S: SlabConfig,
+{
     id: Id,
-    registry: &'a Registry,
+    registry: &'a Registry<S>,
     is_closing: bool,
 }
 
-impl Registry {
-    fn get(&self, id: &Id) -> Option<Ref<'_, DataInner>> {
+impl<S> Registry<S>
+where
+    S: SlabConfig,
+{
+    fn get(&self, id: &Id) -> Option<Ref<'_, DataInner, S>> {
         self.spans.get(id_to_idx(id))
     }
 
@@ -188,7 +210,7 @@ impl Registry {
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
     ///
-    pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_> {
+    pub(crate) fn start_close(&self, id: Id) -> CloseGuard<'_, S> {
         CLOSE_COUNT.with(|count| {
             let c = count.get();
             count.set(c + 1);
@@ -217,7 +239,10 @@ thread_local! {
     static CLOSE_COUNT: Cell<usize> = Cell::new(0);
 }
 
-impl Collect for Registry {
+impl<S> Collect for Registry<S>
+where
+    S: SlabConfig + 'static,
+{
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         if self.has_per_subscriber_filters() {
             return FilterState::take_interest().unwrap_or_else(Interest::always);
@@ -362,8 +387,11 @@ impl Collect for Registry {
     }
 }
 
-impl<'a> LookupSpan<'a> for Registry {
-    type Data = Data<'a>;
+impl<'a, S> LookupSpan<'a> for Registry<S>
+where
+    S: SlabConfig + 'a,
+{
+    type Data = Data<'a, S>;
 
     fn span_data(&'a self, id: &Id) -> Option<Self::Data> {
         let inner = self.get(id)?;
@@ -379,13 +407,19 @@ impl<'a> LookupSpan<'a> for Registry {
 
 // === impl CloseGuard ===
 
-impl<'a> CloseGuard<'a> {
+impl<'a, S> CloseGuard<'a, S>
+where
+    S: SlabConfig,
+{
     pub(crate) fn set_closing(&mut self) {
         self.is_closing = true;
     }
 }
 
-impl<'a> Drop for CloseGuard<'a> {
+impl<'a, S> Drop for CloseGuard<'a, S>
+where
+    S: SlabConfig,
+{
     fn drop(&mut self) {
         // If this returns with an error, we are already panicking. At
         // this point, there's nothing we can really do to recover
@@ -412,7 +446,10 @@ impl<'a> Drop for CloseGuard<'a> {
 
 // === impl Data ===
 
-impl<'a> SpanData<'a> for Data<'a> {
+impl<'a, S> SpanData<'a> for Data<'a, S>
+where
+    S: SlabConfig,
+{
     fn id(&self) -> Id {
         idx_to_id(self.inner.key())
     }

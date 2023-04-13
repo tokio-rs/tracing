@@ -507,7 +507,10 @@ impl<'a> field::Visit for JsonVisitor<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+    use crate::fmt::{
+        format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder,
+        DefaultSlabConfig,
+    };
 
     use tracing::{self, collect::with_default};
 
@@ -521,7 +524,7 @@ mod test {
         }
     }
 
-    fn collector() -> CollectorBuilder<JsonFields, Format<Json>> {
+    fn collector() -> CollectorBuilder<DefaultSlabConfig, JsonFields, Format<Json>> {
         crate::fmt::CollectorBuilder::default().json()
     }
 
@@ -795,7 +798,7 @@ mod test {
 
     fn test_json<T>(
         expected: &str,
-        builder: crate::fmt::CollectorBuilder<JsonFields, Format<Json>>,
+        builder: crate::fmt::CollectorBuilder<DefaultSlabConfig, JsonFields, Format<Json>>,
         producer: impl FnOnce() -> T,
     ) {
         let make_writer = MockMakeWriter::default();
@@ -817,7 +820,7 @@ mod test {
 
     fn test_json_with_line_number<T>(
         expected: &str,
-        builder: crate::fmt::CollectorBuilder<JsonFields, Format<Json>>,
+        builder: crate::fmt::CollectorBuilder<DefaultSlabConfig, JsonFields, Format<Json>>,
         producer: impl FnOnce() -> T,
     ) {
         let make_writer = MockMakeWriter::default();
