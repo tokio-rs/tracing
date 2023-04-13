@@ -48,7 +48,7 @@ once_cell = { optional = true, version = "1.13.0" }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
-nu-ansi-term = { version = "0.46.0", optional = true }
+nu-ansi-term = { version = "0.47.0", optional = true }
 time = { version = "0.3.2", features = ["formatting"], optional = true }
 
 # only required by the json feature
