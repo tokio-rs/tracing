@@ -39,9 +39,9 @@ proc-macro = true
 async-await = []
 
 [dependencies]
-proc-macro2 = "1"
-syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
-quote = "1"
+proc-macro2 = "1.0.40"
+syn = { version = "1.0.98", default-features = false, features = ["full", "parsing", "printing", "visit-mut", "clone-impls", "extra-traits", "proc-macro"] }
+quote = "1.0.20"
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.1.35" }
