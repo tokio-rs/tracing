@@ -58,6 +58,8 @@ fn follows_from_async_test() {
         .follows_from(consequence.clone(), cause_b)
         .follows_from(consequence.clone(), cause_c)
         .enter(consequence.clone())
+        .exit(consequence.clone())
+        .enter(consequence.clone())
         .exit(consequence)
         .only()
         .run_with_handle();

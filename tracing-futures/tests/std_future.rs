@@ -9,6 +9,8 @@ fn enter_exit_is_reasonable() {
         .exit(expect::span().named("foo"))
         .enter(expect::span().named("foo"))
         .exit(expect::span().named("foo"))
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
         .drop_span(expect::span().named("foo"))
         .only()
         .run_with_handle();
@@ -22,6 +24,8 @@ fn enter_exit_is_reasonable() {
 #[test]
 fn error_ends_span() {
     let (collector, handle) = collector::mock()
+        .enter(expect::span().named("foo"))
+        .exit(expect::span().named("foo"))
         .enter(expect::span().named("foo"))
         .exit(expect::span().named("foo"))
         .enter(expect::span().named("foo"))

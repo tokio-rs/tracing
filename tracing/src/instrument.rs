@@ -1,7 +1,11 @@
 use crate::span::Span;
-use core::pin::Pin;
-use core::task::{Context, Poll};
-use core::{future::Future, marker::Sized};
+use core::{
+    future::Future,
+    marker::Sized,
+    mem::{self, ManuallyDrop},
+    pin::Pin,
+    task::{Context, Poll},
+};
 use pin_project_lite::pin_project;
 
 #[cfg(feature = "std")]
@@ -80,7 +84,10 @@ pub trait Instrument: Sized {
     /// [disabled]: super::Span::is_disabled()
     /// [`Future`]: std::future::Future
     fn instrument(self, span: Span) -> Instrumented<Self> {
-        Instrumented { inner: self, span }
+        Instrumented {
+            inner: ManuallyDrop::new(self),
+            span,
+        }
     }
 
     /// Instruments this type with the [current] [`Span`], returning an
@@ -289,8 +296,23 @@ pin_project! {
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct Instrumented<T> {
         #[pin]
-        inner: T,
+        inner: ManuallyDrop<T>,
         span: Span,
+    }
+
+    impl<T> PinnedDrop for Instrumented<T> {
+        fn drop(this: Pin<&mut Self>) {
+            let this = this.project();
+            let _enter = this.span.enter();
+            // SAFETY: 1. `Pin::get_unchecked_mut()` is safe, because isn't
+            //             different from wrapping `T` in `Option` and calling
+            //             `Pin::set(&mut this.inner, None)`, except avoiding
+            //             additional memory overhead.
+            //         2. `ManuallyDrop::drop()` is safe, because
+            //            `PinnedDrop::drop()` is guaranteed to be called only
+            //            once.
+            unsafe { ManuallyDrop::drop(this.inner.get_unchecked_mut()) }
+        }
     }
 }
 
@@ -300,9 +322,11 @@ impl<T: Future> Future for Instrumented<T> {
     type Output = T::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
+        let mut this = self.project();
         let _enter = this.span.enter();
-        this.inner.poll(cx)
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
+        inner.poll(cx)
     }
 }
 
@@ -331,19 +355,29 @@ impl<T> Instrumented<T> {
 
     /// Get a pinned reference to the wrapped type.
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        unsafe { self.project_ref().inner.map_unchecked(|v| &**v) }
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        unsafe { self.project().inner.map_unchecked_mut(|v| &mut **v) }
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
-        self.inner
+        let span: *const Span = &self.span;
+        let inner: *const ManuallyDrop<T> = &self.inner;
+        mem::forget(self);
+        // SAFETY: Those pointers are valid for reads, because `Drop` didn't
+        //         run, and properly aligned, because `Instrumented` isn't
+        //         `#[repr(packed)]`.
+        let _span = unsafe { span.read() };
+        let inner = unsafe { inner.read() };
+        ManuallyDrop::into_inner(inner)
     }
 }
 
