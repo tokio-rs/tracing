@@ -399,7 +399,7 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Option<Self::Item>> {
         let (span, inner) = self.project().span_and_inner_pin_mut();
-        let _enter = this.span.enter();
+        let _enter = span.enter();
         T::poll_next(inner, cx)
     }
 }
@@ -417,13 +417,13 @@ where
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let (span, inner) = self.project().span_and_inner_pin_mut();
-        let _enter = this.span.enter();
+        let _enter = span.enter();
         T::poll_ready(inner, cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
         let (span, inner) = self.project().span_and_inner_pin_mut();
-        let _enter = this.span.enter();
+        let _enter = span.enter();
         T::start_send(inner, item)
     }
 
@@ -432,7 +432,7 @@ where
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let (span, inner) = self.project().span_and_inner_pin_mut();
-        let _enter = this.span.enter();
+        let _enter = span.enter();
         T::poll_flush(inner, cx)
     }
 
@@ -441,7 +441,7 @@ where
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let (span, inner) = self.project().span_and_inner_pin_mut();
-        let _enter = this.span.enter();
+        let _enter = span.enter();
         T::poll_close(inner, cx)
     }
 }
