@@ -122,13 +122,13 @@ pub mod executor;
 ///
 /// [span]: mod@tracing::span
 pub trait Instrument: Sized {
-    /// Instruments this type with the provided `Span`, returning an
-    /// `Instrumented` wrapper.
+    /// Instruments this type with the provided [`Span`], returning an
+    /// [`Instrumented`] wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// If the instrumented type is a future, stream, or sink, the attached
+    /// [`Span`] will be [entered] every time it is polled or [`Drop`]ped. If
+    /// the instrumented type is a future executor, every future spawned on that
+    /// executor will be instrumented by the attached [`Span`].
     ///
     /// # Examples
     ///
@@ -149,21 +149,22 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: tracing::span::Span::enter()
+    /// [entered]: Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
-        Instrumented {
-            inner: ManuallyDrop::new(self),
-            span,
-        }
+        #[cfg(feature = "std-future")]
+        let inner = ManuallyDrop::new(self);
+        #[cfg(not(feature = "std-future"))]
+        let inner = self;
+        Instrumented { inner, span }
     }
 
-    /// Instruments this type with the [current] `Span`, returning an
-    /// `Instrumented` wrapper.
+    /// Instruments this type with the [current] [`Span`], returning an
+    /// [`Instrumented`] wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// If the instrumented type is a future, stream, or sink, the attached
+    /// [`Span`] will be [entered] every time it is polled or [`Drop`]ped. If
+    /// the instrumented type is a future executor, every future spawned on that
+    /// executor will be instrumented by the attached [`Span`].
     ///
     /// This can be used to propagate the current span when spawning a new future.
     ///
@@ -187,8 +188,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: tracing::span::Span::current()
-    /// [entered]: tracing::span::Span::enter()
+    /// [current]: Span::current()
+    /// [entered]: Span::enter()
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -247,11 +248,52 @@ pub trait WithCollector: Sized {
 #[cfg(feature = "std-future")]
 pin_project! {
     /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
+    #[project = InstrumentedProj]
+    #[project_ref = InstrumentedProjRef]
     #[derive(Debug, Clone)]
     pub struct Instrumented<T> {
+        // `ManuallyDrop` is used here to to enter instrument `Drop` by entering
+        // `Span` and executing `ManuallyDrop::drop`.
         #[pin]
         inner: ManuallyDrop<T>,
         span: Span,
+    }
+
+    impl<T> PinnedDrop for Instrumented<T> {
+        fn drop(this: Pin<&mut Self>) {
+            let this = this.project();
+            let _enter = this.span.enter();
+            // SAFETY: 1. `Pin::get_unchecked_mut()` is safe, because this isn't
+            //             different from wrapping `T` in `Option` and calling
+            //             `Pin::set(&mut this.inner, None)`, except avoiding
+            //             additional memory overhead.
+            //         2. `ManuallyDrop::drop()` is safe, because
+            //            `PinnedDrop::drop()` is guaranteed to be called only
+            //            once.
+            unsafe { ManuallyDrop::drop(this.inner.get_unchecked_mut()) }
+        }
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<'a, T> InstrumentedProj<'a, T> {
+    /// Get a pinned mutable reference to the wrapped type.
+    fn inner_pin_mut(self) -> Pin<&'a mut T> {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        unsafe { self.inner.map_unchecked_mut(|v| &mut **v) }
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<'a, T> InstrumentedProjRef<'a, T> {
+    /// Get a pinned reference to the wrapped type.
+    fn inner_pin_ref(self) -> Pin<&'a T> {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        unsafe { self.inner.map_unchecked(|v| &**v) }
     }
 }
 
@@ -296,7 +338,7 @@ impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         inner.poll(cx)
     }
@@ -357,9 +399,7 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
     ) -> futures::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
-        T::poll_next(inner, cx)
+        T::poll_next(this.inner_pin_mut(), cx)
     }
 }
 
@@ -377,7 +417,7 @@ where
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_ready(inner, cx)
     }
@@ -385,7 +425,7 @@ where
     fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::start_send(inner, item)
     }
@@ -396,7 +436,7 @@ where
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_flush(inner, cx)
     }
@@ -407,7 +447,7 @@ where
     ) -> futures::task::Poll<Result<(), Self::Error>> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_close(inner, cx)
     }
@@ -438,22 +478,23 @@ impl<T> Instrumented<T> {
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
-        unsafe { self.project_ref().inner.map_unchecked(|v| &**v) }
+        self.project_ref().inner_pin_ref()
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
-        unsafe { self.project().inner.map_unchecked_mut(|v| &mut **v) }
+        self.project().inner_pin_mut()
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
+        // To manually destructure `Instrumented` without `Drop`, we save
+        // pointers to the fields and use `mem::forget` to leave those pointers
+        // valid.
         let span: *const Span = &self.span;
         let inner: *const ManuallyDrop<T> = &self.inner;
         mem::forget(self);
@@ -599,6 +640,8 @@ mod tests {
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
@@ -614,6 +657,8 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (collector, handle) = collector::mock()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
@@ -634,6 +679,8 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))

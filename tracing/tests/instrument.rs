@@ -6,10 +6,9 @@
 use std::{future::Future, pin::Pin, task};
 
 use futures::FutureExt as _;
-use tracing::{collect::with_default, Instrument as _, Level, Span};
+use tracing::{collect::with_default, Instrument as _, Level};
 use tracing_mock::*;
 
-#[allow(clippy::let_underscore_future)]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_on_drop() {
@@ -18,7 +17,7 @@ fn span_on_drop() {
 
     impl Drop for AssertSpanOnDrop {
         fn drop(&mut self) {
-            assert!(!Span::current().is_none());
+            tracing::info!("Drop");
         }
     }
 
@@ -35,11 +34,21 @@ fn span_on_drop() {
 
     let collector = collector::mock()
         .enter(expect::span().named("foo"))
+        .event(
+            expect::event()
+                .with_contextual_parent(Some("foo"))
+                .at_level(Level::INFO),
+        )
         .exit(expect::span().named("foo"))
         .enter(expect::span().named("foo"))
         .exit(expect::span().named("foo"))
         .drop_span(expect::span().named("foo"))
         .enter(expect::span().named("bar"))
+        .event(
+            expect::event()
+                .with_contextual_parent(Some("bar"))
+                .at_level(Level::INFO),
+        )
         .exit(expect::span().named("bar"))
         .drop_span(expect::span().named("bar"))
         .only()
@@ -53,6 +62,6 @@ fn span_on_drop() {
             .unwrap();
 
         // never polled
-        let _ = Fut(Some(AssertSpanOnDrop)).instrument(tracing::span!(Level::TRACE, "bar"));
+        drop(Fut(Some(AssertSpanOnDrop)).instrument(tracing::span!(Level::TRACE, "bar")));
     });
 }
