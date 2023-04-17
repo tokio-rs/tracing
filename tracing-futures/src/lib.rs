@@ -277,23 +277,26 @@ pin_project! {
 
 #[cfg(feature = "std-future")]
 impl<'a, T> InstrumentedProj<'a, T> {
-    /// Get a pinned mutable reference to the wrapped type.
-    fn inner_pin_mut(self) -> Pin<&'a mut T> {
+    /// Get a mutable reference to the [`Span`] a pinned mutable reference to
+    /// the wrapped type.
+    fn span_and_inner_pin_mut(self) -> (&'a mut Span, Pin<&'a mut T>) {
         // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
         //         and `inner` is valid, because `ManuallyDrop::drop` is called
         //         only inside `Drop` of the `Instrumented`.
-        unsafe { self.inner.map_unchecked_mut(|v| &mut **v) }
+        let inner = unsafe { self.inner.map_unchecked_mut(|v| &mut **v) };
+        (self.span, inner)
     }
 }
 
 #[cfg(feature = "std-future")]
 impl<'a, T> InstrumentedProjRef<'a, T> {
-    /// Get a pinned reference to the wrapped type.
-    fn inner_pin_ref(self) -> Pin<&'a T> {
+    /// Get a reference to the [`Span`] a pinned reference to the wrapped type.
+    fn span_and_inner_pin_ref(self) -> (&'a Span, Pin<&'a T>) {
         // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
         //         and `inner` is valid, because `ManuallyDrop::drop` is called
         //         only inside `Drop` of the `Instrumented`.
-        unsafe { self.inner.map_unchecked(|v| &**v) }
+        let inner = unsafe { self.inner.map_unchecked(|v| &**v) };
+        (self.span, inner)
     }
 }
 
@@ -336,10 +339,8 @@ impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     type Output = T::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
-        let mut this = self.project();
-        let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
         inner.poll(cx)
     }
 }
@@ -397,10 +398,8 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Option<Self::Item>> {
-        let mut this = self.project();
+        let (span, inner) = self.project().span_and_inner_pin_mut();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_next(inner, cx)
     }
 }
@@ -417,18 +416,14 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let mut this = self.project();
+        let (span, inner) = self.project().span_and_inner_pin_mut();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_ready(inner, cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
-        let mut this = self.project();
+        let (span, inner) = self.project().span_and_inner_pin_mut();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::start_send(inner, item)
     }
 
@@ -436,10 +431,8 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let mut this = self.project();
+        let (span, inner) = self.project().span_and_inner_pin_mut();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_flush(inner, cx)
     }
 
@@ -447,10 +440,8 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let mut this = self.project();
+        let (span, inner) = self.project().span_and_inner_pin_mut();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         T::poll_close(inner, cx)
     }
 }
@@ -480,14 +471,14 @@ impl<T> Instrumented<T> {
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner_pin_ref()
+        self.project_ref().span_and_inner_pin_ref().1
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner_pin_mut()
+        self.project().span_and_inner_pin_mut().1
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
