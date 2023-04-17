@@ -492,18 +492,23 @@ impl<T> Instrumented<T> {
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
-        // To manually destructure `Instrumented` without `Drop`, we save
-        // pointers to the fields and use `mem::forget` to leave those pointers
-        // valid.
-        let span: *const Span = &self.span;
-        let inner: *const ManuallyDrop<T> = &self.inner;
-        mem::forget(self);
-        // SAFETY: Those pointers are valid for reads, because `Drop` didn't
-        //         run, and properly aligned, because `Instrumented` isn't
-        //         `#[repr(packed)]`.
-        let _span = unsafe { span.read() };
-        let inner = unsafe { inner.read() };
-        ManuallyDrop::into_inner(inner)
+        #[cfg(feature = "std-future")]
+        {
+            // To manually destructure `Instrumented` without `Drop`, we save
+            // pointers to the fields and use `mem::forget` to leave those pointers
+            // valid.
+            let span: *const Span = &self.span;
+            let inner: *const ManuallyDrop<T> = &self.inner;
+            mem::forget(self);
+            // SAFETY: Those pointers are valid for reads, because `Drop` didn't
+            //         run, and properly aligned, because `Instrumented` isn't
+            //         `#[repr(packed)]`.
+            let _span = unsafe { span.read() };
+            let inner = unsafe { inner.read() };
+            ManuallyDrop::into_inner(inner)
+        }
+        #[cfg(not(feature = "std-future"))]
+        self.inner
     }
 }
 
