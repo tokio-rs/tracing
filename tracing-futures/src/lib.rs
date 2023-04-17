@@ -399,7 +399,9 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
     ) -> futures::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        T::poll_next(this.inner_pin_mut(), cx)
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
+        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
+        T::poll_next(inner, cx)
     }
 }
 
