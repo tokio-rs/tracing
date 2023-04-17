@@ -321,22 +321,25 @@ pin_project! {
 }
 
 impl<'a, T> InstrumentedProj<'a, T> {
-    /// Get a pinned mutable reference to the wrapped type.
-    fn inner_pin_mut(self) -> Pin<&'a mut T> {
+    /// Get a mutable reference to the [`Span`] a pinned mutable reference to
+    /// the wrapped type.
+    fn span_and_inner_pin_mut(self) -> (&'a mut Span, Pin<&'a mut T>) {
         // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
         //         and `inner` is valid, because `ManuallyDrop::drop` is called
         //         only inside `Drop` of the `Instrumented`.
-        unsafe { self.inner.map_unchecked_mut(|v| &mut **v) }
+        let inner = unsafe { self.inner.map_unchecked_mut(|v| &mut **v) };
+        (self.span, inner)
     }
 }
 
 impl<'a, T> InstrumentedProjRef<'a, T> {
-    /// Get a pinned reference to the wrapped type.
-    fn inner_pin_ref(self) -> Pin<&'a T> {
+    /// Get a reference to the [`Span`] a pinned reference to the wrapped type.
+    fn span_and_inner_pin_ref(self) -> (&'a Span, Pin<&'a T>) {
         // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
         //         and `inner` is valid, because `ManuallyDrop::drop` is called
         //         only inside `Drop` of the `Instrumented`.
-        unsafe { self.inner.map_unchecked(|v| &**v) }
+        let inner = unsafe { self.inner.map_unchecked(|v| &**v) };
+        (self.span, inner)
     }
 }
 
@@ -346,10 +349,8 @@ impl<T: Future> Future for Instrumented<T> {
     type Output = T::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut this = self.project();
-        let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
-        let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
         inner.poll(cx)
     }
 }
@@ -379,12 +380,12 @@ impl<T> Instrumented<T> {
 
     /// Get a pinned reference to the wrapped type.
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner_pin_ref()
+        self.project_ref().span_and_inner_pin_ref().1
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner_pin_mut()
+        self.project().span_and_inner_pin_mut().1
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
