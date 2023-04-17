@@ -1,5 +1,4 @@
 use crate::{Instrument, Instrumented, WithDispatch};
-use core::mem::ManuallyDrop;
 use futures_01::{
     future::{ExecuteError, Executor},
     Future,
@@ -14,7 +13,7 @@ where
         let future = future.instrument(self.span.clone());
         self.inner.execute(future).map_err(|e| {
             let kind = e.kind();
-            let future = ManuallyDrop::into_inner(e.into_future().inner);
+            let future = e.into_future().into_inner();
             ExecuteError::new(kind, future)
         })
     }

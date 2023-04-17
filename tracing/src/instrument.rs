@@ -22,7 +22,7 @@ pub trait Instrument: Sized {
     /// `Instrumented` wrapper.
     ///
     /// The attached [`Span`] will be [entered] every time the instrumented
-    /// [`Future`] is polled.
+    /// [`Future`] is polled or [`Drop`]ped.
     ///
     /// # Examples
     ///
@@ -94,7 +94,7 @@ pub trait Instrument: Sized {
     /// `Instrumented` wrapper.
     ///
     /// The attached [`Span`] will be [entered] every time the instrumented
-    /// [`Future`] is polled.
+    /// [`Future`] is polled or [`Drop`]ped.
     ///
     /// This can be used to propagate the current span when spawning a new future.
     ///
@@ -292,9 +292,13 @@ pin_project! {
     ///
     /// [`Future`]: std::future::Future
     /// [`Span`]: crate::Span
+    #[project = InstrumentedProj]
+    #[project_ref = InstrumentedProjRef]
     #[derive(Debug, Clone)]
     #[must_use = "futures do nothing unless you `.await` or poll them"]
     pub struct Instrumented<T> {
+        // `ManuallyDrop` is used here to to enter instrument `Drop` by entering
+        // `Span` and executing `ManuallyDrop::drop`.
         #[pin]
         inner: ManuallyDrop<T>,
         span: Span,
@@ -304,7 +308,7 @@ pin_project! {
         fn drop(this: Pin<&mut Self>) {
             let this = this.project();
             let _enter = this.span.enter();
-            // SAFETY: 1. `Pin::get_unchecked_mut()` is safe, because isn't
+            // SAFETY: 1. `Pin::get_unchecked_mut()` is safe, because this isn't
             //             different from wrapping `T` in `Option` and calling
             //             `Pin::set(&mut this.inner, None)`, except avoiding
             //             additional memory overhead.
@@ -316,6 +320,26 @@ pin_project! {
     }
 }
 
+impl<'a, T> InstrumentedProj<'a, T> {
+    /// Get a pinned mutable reference to the wrapped type.
+    fn inner_pin_mut(self) -> Pin<&'a mut T> {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        unsafe { self.inner.map_unchecked_mut(|v| &mut **v) }
+    }
+}
+
+impl<'a, T> InstrumentedProjRef<'a, T> {
+    /// Get a pinned reference to the wrapped type.
+    fn inner_pin_ref(self) -> Pin<&'a T> {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        unsafe { self.inner.map_unchecked(|v| &**v) }
+    }
+}
+
 // === impl Instrumented ===
 
 impl<T: Future> Future for Instrumented<T> {
@@ -324,7 +348,7 @@ impl<T: Future> Future for Instrumented<T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         let _enter = this.span.enter();
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move.
         let inner = unsafe { this.inner.as_mut().map_unchecked_mut(|v| &mut **v) };
         inner.poll(cx)
     }
@@ -355,20 +379,21 @@ impl<T> Instrumented<T> {
 
     /// Get a pinned reference to the wrapped type.
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
-        unsafe { self.project_ref().inner.map_unchecked(|v| &**v) }
+        self.project_ref().inner_pin_ref()
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` wont move.
-        unsafe { self.project().inner.map_unchecked_mut(|v| &mut **v) }
+        self.project().inner_pin_mut()
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
+        // To manually destructure `Instrumented` without `Drop`, we save
+        // pointers to the fields and use `mem::forget` to leave those pointers
+        // valid.
         let span: *const Span = &self.span;
         let inner: *const ManuallyDrop<T> = &self.inner;
         mem::forget(self);
