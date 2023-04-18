@@ -40,6 +40,7 @@ tokio-threadpool = { version = "0.1.18", optional = true }
 mio = { version = "0.6.23", optional = true }
 
 [dev-dependencies]
+futures = "0.3.21"
 tokio-test = "0.4.2"
 tracing-core = { path = "../tracing-core", version = "0.1.28" }
 tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
