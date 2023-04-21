@@ -1,7 +1,10 @@
 #![cfg(feature = "registry")]
-mod support;
-use self::support::*;
 use tracing::Level;
+use tracing_mock::{
+    event,
+    layer::{self, MockLayer},
+    subscriber,
+};
 use tracing_subscriber::{filter::DynFilterFn, prelude::*};
 
 #[test]
@@ -102,7 +105,7 @@ fn filter<S>() -> DynFilterFn<S> {
     DynFilterFn::new(|metadata, _| metadata.level() <= &Level::INFO)
 }
 
-fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
+fn unfiltered(name: &str) -> (MockLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::TRACE))
         .event(event::mock().at_level(Level::DEBUG))
@@ -113,7 +116,7 @@ fn unfiltered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
         .run_with_handle()
 }
 
-fn filtered(name: &str) -> (ExpectLayer, subscriber::MockHandle) {
+fn filtered(name: &str) -> (MockLayer, subscriber::MockHandle) {
     layer::named(name)
         .event(event::mock().at_level(Level::INFO))
         .event(event::mock().at_level(Level::WARN))

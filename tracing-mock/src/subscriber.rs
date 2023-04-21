@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 use super::{
     event::MockEvent,
+    expectation::Expect,
     field as mock_field,
     span::{MockSpan, NewSpan},
 };
@@ -19,22 +20,6 @@ use tracing::{
     subscriber::Interest,
     Event, Metadata, Subscriber,
 };
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Expect {
-    Event(MockEvent),
-    FollowsFrom {
-        consequence: MockSpan,
-        cause: MockSpan,
-    },
-    Enter(MockSpan),
-    Exit(MockSpan),
-    CloneSpan(MockSpan),
-    DropSpan(MockSpan),
-    Visit(MockSpan, mock_field::Expect),
-    NewSpan(NewSpan),
-    Nothing,
-}
 
 struct SpanState {
     name: &'static str,
@@ -471,7 +456,7 @@ where
 }
 
 impl MockHandle {
-    pub fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
+    pub(crate) fn new(expected: Arc<Mutex<VecDeque<Expect>>>, name: String) -> Self {
         Self(expected, name)
     }
 
@@ -488,7 +473,7 @@ impl MockHandle {
 }
 
 impl Expect {
-    pub fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
+    pub(crate) fn bad(&self, name: impl AsRef<str>, what: fmt::Arguments<'_>) {
         let name = name.as_ref();
         match self {
             Expect::Event(e) => panic!(

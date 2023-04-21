@@ -1,12 +1,9 @@
 #![cfg(feature = "env-filter")]
 
-#[path = "../support.rs"]
-mod support;
-use self::support::*;
-
 mod per_layer;
 
 use tracing::{self, subscriber::with_default, Level};
+use tracing_mock::{event, field, layer, span, subscriber};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,

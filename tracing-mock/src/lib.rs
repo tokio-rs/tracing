@@ -4,10 +4,14 @@ use std::{
 };
 
 pub mod event;
+mod expectation;
 pub mod field;
 mod metadata;
 pub mod span;
 pub mod subscriber;
+
+#[cfg(feature = "tracing-subscriber")]
+pub mod layer;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Parent {

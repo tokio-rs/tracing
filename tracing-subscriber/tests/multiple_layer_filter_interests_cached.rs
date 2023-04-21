@@ -1,12 +1,10 @@
 #![cfg(feature = "registry")]
-mod support;
-use self::support::*;
-
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use tracing::{Level, Subscriber};
+use tracing_mock::{event, layer};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
