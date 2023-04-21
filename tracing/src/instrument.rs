@@ -1,4 +1,3 @@
-
 use crate::{
     dispatcher::{self, Dispatch},
     span::Span,
