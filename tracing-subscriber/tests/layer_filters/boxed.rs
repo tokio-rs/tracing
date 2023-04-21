@@ -1,7 +1,8 @@
 use super::*;
+use tracing_mock::layer::MockLayer;
 use tracing_subscriber::{filter, prelude::*, Layer};
 
-fn layer() -> (ExpectLayer, subscriber::MockHandle) {
+fn layer() -> (MockLayer, subscriber::MockHandle) {
     layer::mock().done().run_with_handle()
 }
 

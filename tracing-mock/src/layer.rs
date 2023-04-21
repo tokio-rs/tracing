@@ -1,14 +1,12 @@
-#![allow(missing_docs, dead_code)]
-pub use tracing_mock::{event, field, span, subscriber};
-
+use crate::{
+    event::MockEvent,
+    expectation::Expect,
+    span::{MockSpan, NewSpan},
+    subscriber::MockHandle,
+};
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
-};
-use tracing_mock::{
-    event::MockEvent,
-    span::{MockSpan, NewSpan},
-    subscriber::{Expect, MockHandle},
 };
 use tracing_subscriber::{
     layer::{Context, Layer},
@@ -21,49 +19,34 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub mod layer {
-    use super::ExpectLayerBuilder;
-
-    pub fn mock() -> ExpectLayerBuilder {
-        ExpectLayerBuilder {
-            expected: Default::default(),
-            name: std::thread::current()
-                .name()
-                .map(String::from)
-                .unwrap_or_default(),
-        }
-    }
-
-    pub fn named(name: impl std::fmt::Display) -> ExpectLayerBuilder {
-        mock().named(name)
+#[must_use]
+pub fn mock() -> MockLayerBuilder {
+    MockLayerBuilder {
+        expected: Default::default(),
+        name: std::thread::current()
+            .name()
+            .map(String::from)
+            .unwrap_or_default(),
     }
 }
 
-pub struct ExpectLayerBuilder {
+#[must_use]
+pub fn named(name: impl std::fmt::Display) -> MockLayerBuilder {
+    mock().named(name)
+}
+
+pub struct MockLayerBuilder {
     expected: VecDeque<Expect>,
     name: String,
 }
 
-pub struct ExpectLayer {
+pub struct MockLayer {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
     name: String,
 }
 
-impl ExpectLayerBuilder {
-    /// Overrides the name printed by the mock subscriber's debugging output.
-    ///
-    /// The debugging output is displayed if the test panics, or if the test is
-    /// run with `--nocapture`.
-    ///
-    /// By default, the mock subscriber's name is the  name of the test
-    /// (*technically*, the name of the thread where it was created, which is
-    /// the name of the test unless tests are run with `--test-threads=1`).
-    /// When a test has only one mock subscriber, this is sufficient. However,
-    /// some tests may include multiple subscribers, in order to test
-    /// interactions between multiple subscribers. In that case, it can be
-    /// helpful to give each subscriber a separate name to distinguish where the
-    /// debugging output comes from.
+impl MockLayerBuilder {
     pub fn named(mut self, name: impl fmt::Display) -> Self {
         use std::fmt::Write;
         if !self.name.is_empty() {
@@ -74,13 +57,21 @@ impl ExpectLayerBuilder {
         self
     }
 
-    pub fn enter(mut self, span: MockSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
+    pub fn event(mut self, event: MockEvent) -> Self {
+        self.expected.push_back(Expect::Event(event));
         self
     }
 
-    pub fn event(mut self, event: MockEvent) -> Self {
-        self.expected.push_back(Expect::Event(event));
+    pub fn new_span<I>(mut self, new_span: I) -> Self
+    where
+        I: Into<NewSpan>,
+    {
+        self.expected.push_back(Expect::NewSpan(new_span.into()));
+        self
+    }
+
+    pub fn enter(mut self, span: MockSpan) -> Self {
+        self.expected.push_back(Expect::Enter(span));
         self
     }
 
@@ -94,43 +85,27 @@ impl ExpectLayerBuilder {
         self
     }
 
-    pub fn record<I>(mut self, span: MockSpan, fields: I) -> Self
-    where
-        I: Into<field::Expect>,
-    {
-        self.expected.push_back(Expect::Visit(span, fields.into()));
-        self
-    }
-
-    pub fn new_span<I>(mut self, new_span: I) -> Self
-    where
-        I: Into<NewSpan>,
-    {
-        self.expected.push_back(Expect::NewSpan(new_span.into()));
-        self
-    }
-
-    pub fn run(self) -> ExpectLayer {
-        ExpectLayer {
+    pub fn run(self) -> MockLayer {
+        MockLayer {
             expected: Arc::new(Mutex::new(self.expected)),
             name: self.name,
             current: Mutex::new(Vec::new()),
         }
     }
 
-    pub fn run_with_handle(self) -> (ExpectLayer, MockHandle) {
+    pub fn run_with_handle(self) -> (MockLayer, MockHandle) {
         let expected = Arc::new(Mutex::new(self.expected));
         let handle = MockHandle::new(expected.clone(), self.name.clone());
-        let layer = ExpectLayer {
+        let subscriber = MockLayer {
             expected,
             name: self.name,
             current: Mutex::new(Vec::new()),
         };
-        (layer, handle)
+        (subscriber, handle)
     }
 }
 
-impl ExpectLayer {
+impl MockLayer {
     fn check_span_ref<'spans, S>(
         &self,
         expected: &MockSpan,
@@ -191,9 +166,9 @@ impl ExpectLayer {
     }
 }
 
-impl<S> Layer<S> for ExpectLayer
+impl<C> Layer<C> for MockLayer
 where
-    S: Subscriber + for<'a> LookupSpan<'a>,
+    C: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn register_callsite(
         &self,
@@ -203,7 +178,7 @@ where
         tracing_core::Interest::always()
     }
 
-    fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, S>) {
+    fn on_record(&self, _: &Id, _: &Record<'_>, _: Context<'_, C>) {
         unimplemented!(
             "so far, we don't have any tests that need an `on_record` \
             implementation.\nif you just wrote one that does, feel free to \
@@ -211,7 +186,7 @@ where
         );
     }
 
-    fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, cx: Context<'_, C>) {
         let name = event.metadata().name();
         println!(
             "[{}] event: {}; level: {}; target: {}",
@@ -262,11 +237,15 @@ where
         }
     }
 
-    fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, S>) {
-        // TODO: it should be possible to expect spans to follow from other spans
+    fn on_follows_from(&self, _span: &Id, _follows: &Id, _: Context<'_, C>) {
+        unimplemented!(
+            "so far, we don't have any tests that need an `on_follows_from` \
+            implementation.\nif you just wrote one that does, feel free to \
+            implement it!"
+        );
     }
 
-    fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
+    fn on_new_span(&self, span: &Attributes<'_>, id: &Id, cx: Context<'_, C>) {
         let meta = span.metadata();
         println!(
             "[{}] new_span: name={:?}; target={:?}; id={:?};",
@@ -290,7 +269,7 @@ where
         }
     }
 
-    fn on_enter(&self, id: &Id, cx: Context<'_, S>) {
+    fn on_enter(&self, id: &Id, cx: Context<'_, C>) {
         let span = cx
             .span(id)
             .unwrap_or_else(|| panic!("[{}] no span for ID {:?}", self.name, id));
@@ -305,7 +284,7 @@ where
         self.current.lock().unwrap().push(id.clone());
     }
 
-    fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
+    fn on_exit(&self, id: &Id, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `exit()` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -334,7 +313,7 @@ where
         };
     }
 
-    fn on_close(&self, id: Id, cx: Context<'_, S>) {
+    fn on_close(&self, id: Id, cx: Context<'_, C>) {
         if std::thread::panicking() {
             // `try_close` can be called in `drop` impls, so we must guard against
             // double panics.
@@ -380,14 +359,14 @@ where
         }
     }
 
-    fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, S>) {
+    fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
     }
 }
 
-impl fmt::Debug for ExpectLayer {
+impl fmt::Debug for MockLayer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = f.debug_struct("ExpectLayer");
+        let mut s = f.debug_struct("MockLayer");
         s.field("name", &self.name);
 
         if let Ok(expected) = self.expected.try_lock() {

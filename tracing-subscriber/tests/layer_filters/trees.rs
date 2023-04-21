@@ -1,4 +1,5 @@
 use super::*;
+use tracing_mock::layer::MockLayer;
 
 #[test]
 fn basic_trees() {
@@ -54,7 +55,7 @@ fn basic_trees() {
 
 #[test]
 fn filter_span_scopes() {
-    fn target_layer(target: &'static str) -> (ExpectLayer, subscriber::MockHandle) {
+    fn target_layer(target: &'static str) -> (MockLayer, subscriber::MockHandle) {
         layer::named(format!("target_{}", target))
             .enter(span::mock().with_target(target).at_level(Level::INFO))
             .event(

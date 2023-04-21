@@ -1,17 +1,18 @@
 #![cfg(feature = "registry")]
-mod support;
-use self::support::*;
-
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use tracing::{Level, Subscriber};
+use tracing_mock::{
+    event,
+    layer::{self, MockLayer},
+};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
 fn vec_layer_filter_interests_are_cached() {
-    let mk_filtered = |level: Level, subscriber: ExpectLayer| {
+    let mk_filtered = |level: Level, subscriber: MockLayer| {
         let seen = Arc::new(Mutex::new(HashMap::new()));
         let filter = filter::filter_fn({
             let seen = seen.clone();

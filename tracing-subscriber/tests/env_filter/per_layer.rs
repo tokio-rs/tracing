@@ -2,6 +2,7 @@
 //! `Layer` filter).
 #![cfg(feature = "registry")]
 use super::*;
+use tracing_mock::{event, field, layer, span};
 
 #[test]
 fn level_filter_event() {
