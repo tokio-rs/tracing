@@ -122,17 +122,17 @@ impl Directive {
     pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
         static DIRECTIVE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(
             r"(?x)
-            ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
-                #                 ^^^.
-                #                     `note: we match log level names case-insensitively
+            ^(?P<global_level>(?i-u:trace|debug|info|warn|error|off|[0-5]))$ |
+                #                   ^^^.
+                #                       `note: we match log level names case-insensitively
             ^
             (?: # target name or span name
-                (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
+                (?P<target>[[:word:]:-]+)|(?P<span>\[[^\]]*\])
             ){1,2}
             (?: # level or nothing
-                =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
-                    #          ^^^.
-                    #              `note: we match log level names case-insensitively
+                =(?P<level>(?i-u:trace|debug|info|warn|error|off|[0-5]))?
+                    #            ^^^.
+                    #                `note: we match log level names case-insensitively
             )?
             $
             "
@@ -151,7 +151,7 @@ impl Directive {
                     (?:=[^,]+)?
                 )
                 # trailing comma or EOS
-                (?:,\s?|$)
+                (?:,[[:space:]]?|$)
             "#).unwrap());
 
         let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
