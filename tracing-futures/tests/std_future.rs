@@ -67,19 +67,13 @@ fn span_on_drop() {
 
     let subscriber = subscriber::mock()
         .enter(span::mock().named("foo"))
-        .event(
-            event::mock()
-                .at_level(Level::INFO),
-        )
+        .event(event::mock().at_level(Level::INFO))
         .exit(span::mock().named("foo"))
         .enter(span::mock().named("foo"))
         .exit(span::mock().named("foo"))
         .drop_span(span::mock().named("foo"))
         .enter(span::mock().named("bar"))
-        .event(
-            event::mock()
-                .at_level(Level::INFO),
-        )
+        .event(event::mock().at_level(Level::INFO))
         .exit(span::mock().named("bar"))
         .drop_span(span::mock().named("bar"))
         .done()
