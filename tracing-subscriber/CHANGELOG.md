@@ -1,3 +1,40 @@
+# 0.3.17 (April 21, 2023)
+
+This release of `tracing-subscriber` fixes a build error when using `env-filter`
+with recent versions of the `regex` crate. It also introduces several minor API
+improvements.
+
+### Fixed
+
+- **env-filter**: Add "unicode-case" and "unicode-perl" to the `regex`
+  dependency, fixing a build error with recent versions of `regex` ([#2566])
+- A number of minor documentation typos and other fixes ([#2384], [#2378],
+  [#2368], [#2548])
+
+### Added
+
+- **filter**: Add `fmt::Display` impl for `filter::Targets` ([#2343])
+- **fmt**: Made `with_ansi(false)` no longer require the "ansi" feature, so that
+  ANSI formatting escapes can be disabled without requiring ANSI-specific
+  dependencies ([#2532])
+
+### Changed
+
+- **fmt**: Dim targets in the `Compact` formatter, matching the default
+  formatter ([#2409])
+
+Thanks to @keepsimple1, @andrewhalle, @LeoniePhiline, @LukeMathWalker,
+@howardjohn, @daxpedda, and @dbidwell94 for contributing to this release!
+
+[#2566]: https://github.com/tokio-rs/tracing/pull/2566
+[#2384]: https://github.com/tokio-rs/tracing/pull/2384
+[#2378]: https://github.com/tokio-rs/tracing/pull/2378
+[#2368]: https://github.com/tokio-rs/tracing/pull/2368
+[#2548]: https://github.com/tokio-rs/tracing/pull/2548
+[#2343]: https://github.com/tokio-rs/tracing/pull/2343
+[#2532]: https://github.com/tokio-rs/tracing/pull/2532
+[#2409]: https://github.com/tokio-rs/tracing/pull/2409
+
 # 0.3.16 (October 6, 2022)
 
 This release of `tracing-subscriber` fixes a regression introduced in
