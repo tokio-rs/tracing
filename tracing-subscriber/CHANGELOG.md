@@ -16,7 +16,7 @@ improvements.
 - **filter**: Add `fmt::Display` impl for `filter::Targets` ([#2343])
 - **fmt**: Made `with_ansi(false)` no longer require the "ansi" feature, so that
   ANSI formatting escapes can be disabled without requiring ANSI-specific
-  dependencies ([#2535])
+  dependencies ([#2532])
 
 ### Changed
 
@@ -32,7 +32,7 @@ Thanks to @keepsimple1, @andrewhalle, @LeoniePhiline, @LukeMathWalker,
 [#2368]: https://github.com/tokio-rs/tracing/pull/2368
 [#2548]: https://github.com/tokio-rs/tracing/pull/2548
 [#2343]: https://github.com/tokio-rs/tracing/pull/2343
-[#2535]: https://github.com/tokio-rs/tracing/pull/2535
+[#2532]: https://github.com/tokio-rs/tracing/pull/2532
 [#2409]: https://github.com/tokio-rs/tracing/pull/2409
 
 # 0.3.16 (October 6, 2022)
