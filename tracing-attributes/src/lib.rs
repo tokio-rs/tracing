@@ -16,7 +16,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing-attributes = "0.1.23"
+//! tracing-attributes = "0.1.24"
 //! ```
 //!
 //! The [`#[instrument]`][instrument] attribute can now be added to a function
