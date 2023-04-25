@@ -1,3 +1,65 @@
+# 0.1.38 (April 25th, 2023)
+
+This `tracing` release changes the `Drop` implementation for `Instrumented`
+`Future`s so that the attached `Span` is entered when dropping the `Future`. This
+means that events emitted by the `Future`'s `Drop` implementation will now be
+recorded within its `Span`. It also adds `#[inline]` hints to methods called in
+the `event!` macro's expansion, for an improvement in both binary size and
+performance.
+
+Additionally, this release updates the `tracing-attributes` dependency to
+[v0.1.24][attrs-0.1.24], which updates the [`syn`] dependency to v2.x.x.
+`tracing-attributes` v0.1.24 also includes improvements to the `#[instrument]`
+macro; see [the `tracing-attributes` 0.1.24 release notes][attrs-0.1.24] for
+details.
+
+### Added
+
+- `Instrumented` futures will now enter the attached `Span` in their `Drop`
+  implementation, allowing events emitted when dropping the future to occur
+  within the span ([#2562])
+- `#[inline]` attributes for methods called by the `event!` macros, making
+  generated code smaller ([#2555])
+- **attributes**: `level` argument to `#[instrument(err)]` and
+  `#[instrument(ret)]` to override the level of
+  the generated return value event ([#2335])
+- **attributes**: Improved compiler error message when `#[instrument]` is added to a `const fn`
+  ([#2418])
+
+### Changed
+
+- `tracing-attributes`: updated to [0.1.24][attrs-0.1.24]
+- Removed unneeded `cfg-if` dependency ([#2553])
+- **attributes**: Updated [`syn`] dependency to 2.0 ([#2516])
+
+### Fixed
+
+- **attributes**: Fix `clippy::unreachable` warnings in `#[instrument]`-generated code ([#2356])
+- **attributes**: Removed unused "visit" feature flag from `syn` dependency ([#2530])
+
+### Documented
+
+- **attributes**: Documented default level for `#[instrument(err)]` ([#2433])
+- **attributes**: Improved documentation for levels in `#[instrument]` ([#2350])
+
+Thanks to @nitnelave, @jsgf, @Abhicodes-crypto, @LukeMathWalker, @andrewpollack,
+@quad, @klensy, @davidpdrsn, @dbidwell94, @ldm0, @NobodyXu, @ilsv, and @daxpedda
+for contributing to this release!
+
+[`syn`]: https://crates.io/crates/syn
+[attrs-0.1.24]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-attributes-0.1.24
+[#2565]: https://github.com/tokio-rs/tracing/pull/2565
+[#2555]: https://github.com/tokio-rs/tracing/pull/2555
+[#2553]: https://github.com/tokio-rs/tracing/pull/2553
+[#2335]: https://github.com/tokio-rs/tracing/pull/2335
+[#2418]: https://github.com/tokio-rs/tracing/pull/2418
+[#2516]: https://github.com/tokio-rs/tracing/pull/2516
+[#2356]: https://github.com/tokio-rs/tracing/pull/2356
+[#2530]: https://github.com/tokio-rs/tracing/pull/2530
+[#2433]: https://github.com/tokio-rs/tracing/pull/2433
+[#2350]: https://github.com/tokio-rs/tracing/pull/2350
+
 # 0.1.37 (October 6, 2022)
 
 This release of `tracing` incorporates changes from `tracing-core`
