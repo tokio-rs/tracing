@@ -98,7 +98,7 @@ fn main() {
 ```toml
 [dependencies]
 tracing = "0.1"
-tracing-subscriber = "0.2.0"
+tracing-subscriber = "0.3.0"
 ```
 
 This subscriber will be used as the default in all threads for the remainder of the duration
@@ -250,7 +250,7 @@ my_future
 is as long as the future's.
 
 The second, and preferred, option is through the
-[`#[instrument]`](https://docs.rs/tracing/0.1.37/tracing/attr.instrument.html)
+[`#[instrument]`](https://docs.rs/tracing/0.1.38/tracing/attr.instrument.html)
 attribute:
 
 ```rust
@@ -297,7 +297,7 @@ span.in_scope(|| {
 // Dropping the span will close it, indicating that it has ended.
 ```
 
-The [`#[instrument]`](https://docs.rs/tracing/0.1.37/tracing/attr.instrument.html) attribute macro
+The [`#[instrument]`](https://docs.rs/tracing/0.1.38/tracing/attr.instrument.html) attribute macro
 can reduce some of this boilerplate:
 
 ```rust
