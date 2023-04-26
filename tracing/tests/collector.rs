@@ -64,7 +64,7 @@ fn event_macros_dont_infinite_loop() {
 fn boxed_collector() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
@@ -97,7 +97,7 @@ fn arced_collector() {
 
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),

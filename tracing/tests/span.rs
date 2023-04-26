@@ -337,7 +337,7 @@ fn entered_api() {
 fn moved_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
@@ -368,7 +368,7 @@ fn dotted_field_name() {
         .new_span(
             expect::span()
                 .named("foo")
-                .with_field(expect::field("fields.bar").with_value(&true).only()),
+                .with_fields(expect::field("fields.bar").with_value(&true).only()),
         )
         .only()
         .run_with_handle();
@@ -384,7 +384,7 @@ fn dotted_field_name() {
 fn borrowed_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&display("hello from my span"))
                     .only(),
@@ -427,7 +427,7 @@ fn move_field_out_of_struct() {
     };
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("x")
                     .with_value(&debug(3.234))
                     .and(expect::field("y").with_value(&debug(-1.223)))
@@ -437,7 +437,7 @@ fn move_field_out_of_struct() {
         .new_span(
             expect::span()
                 .named("bar")
-                .with_field(expect::field("position").with_value(&debug(&pos)).only()),
+                .with_fields(expect::field("position").with_value(&debug(&pos)).only()),
         )
         .run_with_handle();
 
@@ -460,7 +460,7 @@ fn move_field_out_of_struct() {
 fn float_values() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("x")
                     .with_value(&3.234)
                     .and(expect::field("y").with_value(&-1.223))
@@ -487,7 +487,7 @@ fn add_field_after_new_span() {
         .new_span(
             span::mock()
                 .named("foo")
-                .with_field(expect::field("bar").with_value(&5)
+                .with_fields(expect::field("bar").with_value(&5)
                 .and(expect::field("baz").with_value).only()),
         )
         .record(
@@ -544,7 +544,7 @@ fn add_fields_only_after_new_span() {
 fn record_new_value_for_field() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&5)
                     .and(expect::field("baz").with_value(&false))
@@ -575,7 +575,7 @@ fn record_new_value_for_field() {
 fn record_new_values_for_fields() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("foo").with_field(
+            expect::span().named("foo").with_fields(
                 expect::field("bar")
                     .with_value(&4)
                     .and(expect::field("baz").with_value(&false))
@@ -776,7 +776,7 @@ fn contextual_child() {
 fn display_shorthand() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("my_span").with_field(
+            expect::span().named("my_span").with_fields(
                 expect::field("my_field")
                     .with_value(&display("hello world"))
                     .only(),
@@ -796,7 +796,7 @@ fn display_shorthand() {
 fn debug_shorthand() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("my_span").with_field(
+            expect::span().named("my_span").with_fields(
                 expect::field("my_field")
                     .with_value(&debug("hello world"))
                     .only(),
@@ -816,7 +816,7 @@ fn debug_shorthand() {
 fn both_shorthands() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("my_span").with_field(
+            expect::span().named("my_span").with_fields(
                 expect::field("display_field")
                     .with_value(&display("hello world"))
                     .and(expect::field("debug_field").with_value(&debug("hello world")))

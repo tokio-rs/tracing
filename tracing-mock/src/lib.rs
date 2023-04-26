@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
+
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -15,7 +17,7 @@ pub mod span;
 pub mod subscriber;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Parent {
+pub(crate) enum Parent {
     ContextualRoot,
     Contextual(String),
     ExplicitRoot,
@@ -29,7 +31,7 @@ pub struct PollN<T, E> {
 }
 
 impl Parent {
-    pub fn check_parent_name(
+    pub(crate) fn check_parent_name(
         &self,
         parent_name: Option<&str>,
         provided_parent: Option<tracing_core::span::Id>,
