@@ -1,8 +1,11 @@
 // A separate test crate for `Option<Filter>` for isolation from other tests
 // that may influence the interest cache.
 
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
-use tracing_mock::{subscriber, expect};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
+use tracing_mock::{expect, subscriber};
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
 /// A `None` filter should always be interested in events, and it should not
@@ -14,8 +17,7 @@ fn none_interest_cache() {
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe_none = subscribe_none
-        .with_filter(None::<filter::DynFilterFn<_>>);
+    let subscribe_none = subscribe_none.with_filter(None::<filter::DynFilterFn<_>>);
 
     let times_filtered = Arc::new(AtomicUsize::new(0));
     let (subscribe_filter_fn, handle_filter_fn) = subscriber::mock()
@@ -23,14 +25,13 @@ fn none_interest_cache() {
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe_filter_fn = subscribe_filter_fn
-        .with_filter(filter::filter_fn({
-            let times_filtered = Arc::clone(&times_filtered);
-            move |_| {
-                times_filtered.fetch_add(1, Ordering::Relaxed);
-                true
-            }
-        }));
+    let subscribe_filter_fn = subscribe_filter_fn.with_filter(filter::filter_fn({
+        let times_filtered = Arc::clone(&times_filtered);
+        move |_| {
+            times_filtered.fetch_add(1, Ordering::Relaxed);
+            true
+        }
+    }));
 
     let subscriber = tracing_subscriber::registry()
         .with(subscribe_none)

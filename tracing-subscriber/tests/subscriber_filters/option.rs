@@ -1,6 +1,10 @@
 use super::*;
 use tracing::Collect;
-use tracing_subscriber::{filter::{self, LevelFilter}, prelude::*, Subscribe};
+use tracing_subscriber::{
+    filter::{self, LevelFilter},
+    prelude::*,
+    Subscribe,
+};
 
 fn filter_out_everything<S>() -> filter::DynFilterFn<S> {
     // Use dynamic filter fn to disable interest caching and max-level hints,
@@ -69,8 +73,7 @@ fn none_max_level_hint() {
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe_none = subscribe_none
-        .with_filter(None::<filter::DynFilterFn<_>>);
+    let subscribe_none = subscribe_none.with_filter(None::<filter::DynFilterFn<_>>);
     assert!(subscribe_none.max_level_hint().is_none());
 
     let (subscribe_filter_fn, handle_filter_fn) = subscriber::mock()
@@ -78,12 +81,14 @@ fn none_max_level_hint() {
         .only()
         .run_with_handle();
     let max_level = Level::INFO;
-    let subscribe_filter_fn = subscribe_filter_fn
-        .with_filter(filter::dynamic_filter_fn(move |meta, _| {
-            return meta.level() <= &max_level
-        })
-        .with_max_level_hint(max_level));
-    assert_eq!(subscribe_filter_fn.max_level_hint(), Some(LevelFilter::INFO));
+    let subscribe_filter_fn = subscribe_filter_fn.with_filter(
+        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &max_level)
+            .with_max_level_hint(max_level),
+    );
+    assert_eq!(
+        subscribe_filter_fn.max_level_hint(),
+        Some(LevelFilter::INFO)
+    );
 
     let subscriber = tracing_subscriber::registry()
         .with(subscribe_none)
@@ -109,24 +114,24 @@ fn some_max_level_hint() {
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe_some = subscribe_some
-        .with_filter(Some(
-            filter::dynamic_filter_fn(move |meta, _| {
-                return meta.level() <= &Level::DEBUG
-            }).with_max_level_hint(Level::DEBUG)
-        ));
+    let subscribe_some = subscribe_some.with_filter(Some(
+        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &Level::DEBUG)
+            .with_max_level_hint(Level::DEBUG),
+    ));
     assert_eq!(subscribe_some.max_level_hint(), Some(LevelFilter::DEBUG));
 
     let (subscribe_filter_fn, handle_filter_fn) = subscriber::mock()
         .event(expect::event())
         .only()
         .run_with_handle();
-    let subscribe_filter_fn = subscribe_filter_fn
-        .with_filter(filter::dynamic_filter_fn(move |meta, _| {
-            return meta.level() <= &Level::INFO
-        })
-        .with_max_level_hint(Level::INFO));
-    assert_eq!(subscribe_filter_fn.max_level_hint(), Some(LevelFilter::INFO));
+    let subscribe_filter_fn = subscribe_filter_fn.with_filter(
+        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &Level::INFO)
+            .with_max_level_hint(Level::INFO),
+    );
+    assert_eq!(
+        subscribe_filter_fn.max_level_hint(),
+        Some(LevelFilter::INFO)
+    );
 
     let subscriber = tracing_subscriber::registry()
         .with(subscribe_some)
