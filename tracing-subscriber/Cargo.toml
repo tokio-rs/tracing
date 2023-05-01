@@ -20,7 +20,7 @@ categories = [
     "asynchronous",
 ]
 keywords = ["logging", "tracing", "metrics", "subscriber"]
-rust-version = "1.50.0"
+rust-version = "1.56.0"
 
 [features]
 
@@ -42,7 +42,7 @@ tracing-core = { path = "../tracing-core", version = "0.2", default-features = f
 # only required by the `env-filter` feature
 tracing = { optional = true, path = "../tracing", version = "0.2", default-features = false }
 matchers = { optional = true, version = "0.1.0" }
-regex = { optional = true, version = "1.6.0", default-features = false, features = ["std"] }
+regex = { optional = true, version = "1.6.0", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
 smallvec = { optional = true, version = "1.9.0" }
 once_cell = { optional = true, version = "1.13.0" }
 

@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.49+][msrv]*
+//! *Compiler support: [requires `rustc` 1.56+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,14 +41,14 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.49. The current Tracing version is not guaranteed to build on
+//! version is 1.56. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
@@ -79,7 +79,7 @@
 )]
 
 use proc_macro2::TokenStream;
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::{Attribute, ItemFn, Signature, Visibility};
 
@@ -270,6 +270,8 @@ mod expand;
 /// }
 /// ```
 ///
+/// The level of the error value event defaults to `ERROR`.
+///
 /// Similarly, overriding the level of the `err` event :
 ///
 /// ```
@@ -342,6 +344,14 @@ mod expand;
 /// }
 /// ```
 ///
+/// `const fn` cannot be instrumented, and will result in a compilation failure:
+///
+/// ```compile_fail
+/// # use tracing_attributes::instrument;
+/// #[instrument]
+/// const fn my_const_function() {}
+/// ```
+///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
@@ -384,6 +394,13 @@ fn instrument_precise(
 ) -> Result<proc_macro::TokenStream, syn::Error> {
     let input = syn::parse::<ItemFn>(item)?;
     let instrumented_function_name = input.sig.ident.to_string();
+
+    if input.sig.constness.is_some() {
+        return Ok(quote! {
+            compile_error!("the `#[instrument]` attribute may not be used with `const fn`s")
+        }
+        .into());
+    }
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
