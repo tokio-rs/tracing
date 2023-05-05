@@ -1,13 +1,13 @@
 //! `Span` and `Event` key-value data.
 //!
-//! Spans and events may be annotated with key-value data, referred to as known
-//! as _fields_. These fields consist of a mapping from a key (corresponding to
+//! Spans and events may be annotated with key-value data, referred to as _fields_.
+//! These fields consist of a mapping from a key (corresponding to
 //! a `&str` but represented internally as an array index) to a [`Value`].
 //!
 //! # `Value`s and `Subscriber`s
 //!
 //! `Subscriber`s consume `Value`s as fields attached to [span]s or [`Event`]s.
-//! The set of field keys on a given span or is defined on its [`Metadata`].
+//! The set of field keys on a given span or event is defined on its [`Metadata`].
 //! When a span is created, it provides [`Attributes`] to the `Subscriber`'s
 //! [`new_span`] method, containing any fields whose values were provided when
 //! the span was created; and may call the `Subscriber`'s [`record`] method
