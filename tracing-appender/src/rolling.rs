@@ -30,11 +30,12 @@ use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
-    io::{self, Write},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use zip::{write::FileOptions, CompressionMethod, ZipWriter};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -108,6 +109,7 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    zipping: bool,
 }
 
 // === impl RollingFileAppender ===
@@ -174,6 +176,8 @@ impl RollingFileAppender {
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
     ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
     ///     .filename_suffix("log") // log file names will be suffixed with `.log`
+    ///     .max_files(5) // keep maximum 5 log files at a time
+    ///     .zipping(true) // zip the finalized log files
     ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
     ///     .expect("initializing rolling file appender failed");
     /// # drop(file_appender);
@@ -190,6 +194,7 @@ impl RollingFileAppender {
             ref prefix,
             ref suffix,
             ref max_files,
+            ref zipping,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -200,6 +205,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            *zipping,
         )?;
         Ok(Self {
             state,
@@ -525,6 +531,7 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
+        zip: bool,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
@@ -542,6 +549,7 @@ impl Inner {
             ),
             rotation,
             max_files,
+            zipping: zip,
         };
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
@@ -568,31 +576,59 @@ impl Inner {
         }
     }
 
-    fn prune_old_logs(&self, max_files: usize) {
-        let files = fs::read_dir(&self.log_directory).map(|dir| {
-            dir.filter_map(|entry| {
-                let entry = entry.ok()?;
-                let metadata = entry.metadata().ok()?;
+    // creating a custom error type should have been better for this function, but since across the library I haven't seen custom errors, but usage of `io::Result`,
+    // I decided to follow the convention
+    fn list_log_files(
+        &self,
+        include_zip_files: bool,
+    ) -> io::Result<Vec<(fs::DirEntry, std::time::SystemTime)>> {
+        let files = fs::read_dir(&self.log_directory)?
+            .filter_map(|entry| {
+                let entry = entry
+                    .map_err(|e| {
+                        io::Error::new(
+                            io::ErrorKind::Other,
+                            format!("Error reading an entry from the log directory: {}", e),
+                        )
+                    })
+                    .ok()?;
 
-                // the appender only creates files, not directories or symlinks,
-                // so we should never delete a dir or symlink.
+                let metadata = entry
+                    .metadata()
+                    .map_err(|e| {
+                        io::Error::new(
+                            io::ErrorKind::Other,
+                            format!("Error reading metadata of an entry: {}", e),
+                        )
+                    })
+                    .ok()?;
+
                 if !metadata.is_file() {
                     return None;
                 }
 
                 let filename = entry.file_name();
-                // if the filename is not a UTF-8 string, skip it.
-                let filename = filename.to_str()?;
+                let filename = filename
+                    .to_str()
+                    .ok_or_else(|| {
+                        io::Error::new(io::ErrorKind::Other, "Filename is not a UTF-8 string")
+                    })
+                    .ok()?;
+
                 if let Some(prefix) = &self.log_filename_prefix {
                     if !filename.starts_with(prefix) {
                         return None;
                     }
                 }
 
-                if let Some(suffix) = &self.log_filename_suffix {
-                    if !filename.ends_with(suffix) {
+                match (&self.zipping, &self.log_filename_suffix) {
+                    (true, _) if !include_zip_files && filename.ends_with("zip") => {
                         return None;
                     }
+                    (false, Some(suffix)) if !filename.ends_with(suffix) => {
+                        return None;
+                    }
+                    _ => (),
                 }
 
                 if self.log_filename_prefix.is_none()
@@ -605,10 +641,14 @@ impl Inner {
                 let created = metadata.created().ok()?;
                 Some((entry, created))
             })
-            .collect::<Vec<_>>()
-        });
+            .collect();
 
-        let mut files = match files {
+        Ok(files)
+    }
+
+    fn prune_old_logs(&self, max_files: usize) {
+        // Read the log directory to find the log files
+        let mut files = match self.list_log_files(true) {
             Ok(files) => files,
             Err(error) => {
                 eprintln!("Error reading the log directory/files: {}", error);
@@ -634,11 +674,61 @@ impl Inner {
         }
     }
 
+    // This function is called after each refresh (rotating to a new file). Thus, it only zips the latest log file
+    fn zip_log(&self) -> io::Result<()> {
+        // Read the log directory to find the log files
+        let mut files = self
+            .list_log_files(false)
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+
+        // sort the files by their creation timestamps.
+        files.sort_by_key(|(_, created_at)| *created_at);
+
+        let (file, _) = files.last().unwrap();
+        // Get input file path and read its content
+        let input_file_path = file.path();
+        let mut file_contents = Vec::new();
+        let mut input_file = File::open(&input_file_path)?;
+        input_file.read_to_end(&mut file_contents)?;
+
+        // Replace the file extension with .zip
+        let output_file_path = input_file_path.with_extension("zip");
+
+        // Create a new ZIP archive and write the input file's content to it
+        let output_file = File::create(&output_file_path)?;
+        let mut zip_writer = ZipWriter::new(output_file);
+        let file_options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o755);
+
+        // Add the input file to the ZIP archive
+        let input_file_name = input_file_path.file_name().unwrap();
+        zip_writer.start_file(input_file_name.to_string_lossy(), file_options)?;
+        zip_writer.write_all(&file_contents)?;
+
+        // Finish writing the ZIP archive
+        zip_writer.finish()?;
+
+        println!(
+            "Successfully compressed {:?} to {:?}",
+            input_file_path, output_file_path
+        );
+        std::fs::remove_file(&input_file_path)?;
+
+        Ok(())
+    }
+
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
         let filename = self.join_date(&now);
 
         if let Some(max_files) = self.max_files {
             self.prune_old_logs(max_files);
+        }
+
+        if self.zipping {
+            if let Err(err) = self.zip_log() {
+                eprintln!("Couldn't successfully zip the latest log file: {}", err);
+            }
         }
 
         match create_writer(&self.log_directory, &filename) {
@@ -829,6 +919,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                false,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -941,6 +1032,7 @@ mod test {
             Some("test_make_writer".to_string()),
             None,
             None,
+            false,
         )
         .unwrap();
 
@@ -1023,6 +1115,7 @@ mod test {
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            false,
         )
         .unwrap();
 
@@ -1106,4 +1199,197 @@ mod test {
             }
         }
     }
+}
+
+#[test]
+fn test_zipping() {
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::prelude::*;
+
+    let format = format_description::parse(
+        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+     sign:mandatory]:[offset_minute]:[offset_second]",
+    )
+    .unwrap();
+
+    let now = OffsetDateTime::parse("2023-05-01 10:01:00 +00:00:00", &format).unwrap();
+    let directory = tempfile::tempdir().expect("failed to create tempdir");
+    let (state, writer) = Inner::new(
+        now,
+        Rotation::HOURLY,
+        directory.path(),
+        Some("test_zip_log".to_string()),
+        None,
+        None,
+        true,
+    )
+    .unwrap();
+
+    let clock = Arc::new(Mutex::new(now));
+    let now = {
+        let clock = clock.clone();
+        Box::new(move || *clock.lock().unwrap())
+    };
+    let appender = RollingFileAppender { state, writer, now };
+    let default = tracing_subscriber::fmt()
+        .without_time()
+        .with_level(false)
+        .with_target(false)
+        .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+        .with_writer(appender)
+        .finish()
+        .set_default();
+
+    tracing::info!("file 1");
+
+    // advance time by one hour
+    (*clock.lock().unwrap()) += Duration::hours(1);
+
+    // depending on the filesystem, the creation timestamp's resolution may
+    // be as coarse as one second, so we need to wait a bit here to ensure
+    // that the next file actually is newer than the old one.
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    tracing::info!("file 2");
+
+    drop(default);
+
+    let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+    println!("dir={:?}", dir_contents);
+
+    let mut found_zip = false;
+    let mut found_original = false;
+
+    for entry in dir_contents {
+        let entry = entry.expect("Expected dir entry");
+        let path = entry.path();
+
+        println!("entry={:?}", entry);
+
+        if path.extension().unwrap() == "zip" {
+            found_zip = true;
+            let zip_file = fs::File::open(&path).expect("Failed to open zip file");
+            let mut archive = zip::ZipArchive::new(zip_file).expect("Failed to read zip file");
+
+            assert_eq!(
+                archive.len(),
+                1,
+                "Expected exactly one file in the zip archive"
+            );
+
+            let mut file = archive
+                .by_index(0)
+                .expect("Failed to get the file from the archive");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .expect("Failed to read the file content");
+
+            assert_eq!(
+                "file 1\n", contents,
+                "Unexpected content in the zipped log file"
+            );
+        } else {
+            let filename = path.file_name().unwrap().to_str().unwrap();
+            if filename.starts_with("test_zip_log") && filename.ends_with("2023-05-01-10") {
+                found_original = true;
+            }
+        }
+    }
+
+    assert!(
+        found_zip,
+        "Expected to find a zip file in the log directory"
+    );
+    assert!(!found_original, "Expected the first log file to be removed");
+}
+
+#[test]
+fn test_integration_prune_and_zip() {
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::prelude::*;
+
+    let format = format_description::parse(
+        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+     sign:mandatory]:[offset_minute]:[offset_second]",
+    )
+    .unwrap();
+
+    let now = OffsetDateTime::parse("2023-05-01 10:01:00 +00:00:00", &format).unwrap();
+    let directory = tempfile::tempdir().expect("failed to create tempdir");
+    let (state, writer) = Inner::new(
+        now,
+        Rotation::HOURLY,
+        directory.path(),
+        Some("test_integration_prune_and_zip".to_string()),
+        None,
+        Some(2),
+        true,
+    )
+    .unwrap();
+
+    let clock = Arc::new(Mutex::new(now));
+    let now = {
+        let clock = clock.clone();
+        Box::new(move || *clock.lock().unwrap())
+    };
+    let appender = RollingFileAppender { state, writer, now };
+    let default = tracing_subscriber::fmt()
+        .without_time()
+        .with_level(false)
+        .with_target(false)
+        .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+        .with_writer(appender)
+        .finish()
+        .set_default();
+
+    for i in 0..5 {
+        tracing::info!("file {}", i);
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        // depending on the filesystem, the creation timestamp's resolution may
+        // be as coarse as one second, so we need to wait a bit here to ensure
+        // that the next file actually is newer than the old one.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
+    drop(default);
+
+    let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+    println!("dir={:?}", dir_contents);
+
+    let mut zip_count = 0;
+    let mut non_zip_count = 0;
+
+    for entry in dir_contents {
+        let entry = entry.expect("Expected dir entry");
+        let path = entry.path();
+
+        println!("entry={:?}", entry);
+
+        if path.extension().unwrap() == "zip" {
+            zip_count += 1;
+            let zip_file = fs::File::open(&path).expect("Failed to open zip file");
+            let archive = zip::ZipArchive::new(zip_file).expect("Failed to read zip file");
+
+            assert_eq!(
+                archive.len(),
+                1,
+                "Expected exactly one file in the zip archive"
+            );
+        } else {
+            non_zip_count += 1;
+        }
+    }
+
+    assert_eq!(
+        zip_count, 1,
+        "Expected to find exactly 1 zip files in the log directory"
+    );
+
+    assert_eq!(
+        non_zip_count, 1,
+        "Expected to find exactly 1 non-zip files in the log directory"
+    );
 }

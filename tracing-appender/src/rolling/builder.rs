@@ -11,6 +11,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) zipping: bool,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -54,6 +55,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            zipping: false,
         }
     }
 
@@ -229,6 +231,49 @@ impl Builder {
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
             max_files: Some(n),
+            ..self
+        }
+    }
+
+    /// zips the finalized log files. Zipped logs are not excluded from the rotation!
+    ///
+    /// When a new log file is created, if there are `n` or more
+    /// existing log files in the directory, the oldest will be deleted.
+    /// If no value is supplied, the `RollingAppender` will not remove any files.
+    ///
+    /// Files are considered candidates for zipping based on the following
+    /// criteria:
+    ///
+    /// * The file must not be a directory or symbolic link.
+    /// * If the appender is configured with a [`filename_prefix`], the file
+    ///   name must start with that prefix.
+    /// * If the appender is configured with a [`filename_suffix`], the file
+    ///   name must end with that suffix.
+    /// * If the appender has neither a filename prefix nor a suffix, then the
+    ///   file name must parse as a valid date based on the appender's date
+    ///   format.
+    ///
+    /// [`filename_prefix`]: Self::filename_prefix
+    /// [`filename_suffix`]: Self::filename_suffix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .zipping(true) // enable zipping
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn zipping(self, flag: bool) -> Self {
+        Self {
+            zipping: flag,
             ..self
         }
     }
