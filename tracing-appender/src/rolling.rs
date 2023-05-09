@@ -180,7 +180,7 @@ impl RollingFileAppender {
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
     ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
     ///     .filename_suffix("log") // log file names will be suffixed with `.log`
-    ///     .max_files(5) // keep maximum 5 log files at a time
+    ///     .max_log_files(5) // keep maximum 5 log files at a time
     ///     .zipping(true) // zip the finalized log files
     ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
     ///     .expect("initializing rolling file appender failed");
