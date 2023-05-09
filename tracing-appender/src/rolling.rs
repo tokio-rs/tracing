@@ -35,6 +35,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
+#[cfg(feature = "zipping")]
 use zip::{write::FileOptions, CompressionMethod, ZipWriter};
 
 mod builder;
@@ -675,6 +676,7 @@ impl Inner {
     }
 
     // This function is called after each refresh (rotating to a new file). Thus, it only zips the latest log file
+    #[cfg(feature = "zipping")]
     fn zip_log(&self) -> io::Result<()> {
         // Read the log directory to find the log files
         let mut files = self
@@ -725,6 +727,8 @@ impl Inner {
             self.prune_old_logs(max_files);
         }
 
+        // don't know how long this might take, should we start this in a thread?
+        #[cfg(feature = "zipping")]
         if self.zipping {
             if let Err(err) = self.zip_log() {
                 eprintln!("Couldn't successfully zip the latest log file: {}", err);
@@ -1201,6 +1205,7 @@ mod test {
     }
 }
 
+#[cfg(feature = "zipping")]
 #[test]
 fn test_zipping() {
     use std::sync::{Arc, Mutex};
@@ -1303,6 +1308,7 @@ fn test_zipping() {
     assert!(!found_original, "Expected the first log file to be removed");
 }
 
+#[cfg(feature = "zipping")]
 #[test]
 fn test_integration_prune_and_zip() {
     use std::sync::{Arc, Mutex};
