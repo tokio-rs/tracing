@@ -30,11 +30,14 @@ use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
-    io::{self, Read, Write},
+    io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
+
+#[cfg(feature = "zipping")]
+use io::Read;
 #[cfg(feature = "zipping")]
 use zip::{write::FileOptions, CompressionMethod, ZipWriter};
 
