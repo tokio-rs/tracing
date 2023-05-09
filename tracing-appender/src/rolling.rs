@@ -705,6 +705,8 @@ impl Inner {
 
         let output_filename = format!("{}.zip", input_filename);
 
+        let output_file_path = input_file_path.with_file_name(output_filename);
+
         // Create a new ZIP archive and write the input file's content to it
         let output_file = File::create(&output_file_path)?;
         let mut zip_writer = ZipWriter::new(output_file);
