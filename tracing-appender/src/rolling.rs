@@ -37,9 +37,7 @@ use std::{
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
 #[cfg(feature = "zipping")]
-use io::Read;
-#[cfg(feature = "zipping")]
-use zip::{write::FileOptions, CompressionMethod, ZipWriter};
+use lz4::EncoderBuilder;
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -692,41 +690,30 @@ impl Inner {
         let (file, _) = files.last().unwrap();
         // Get input file path and read its content
         let input_file_path = file.path();
-        let mut file_contents = Vec::new();
         let mut input_file = File::open(&input_file_path)?;
-        input_file.read_to_end(&mut file_contents)?;
 
-        // Add `.zip` extension to the filename
+        // Add `.lz4` extension to the filename
         let input_filename = input_file_path
             .file_name()
             .expect("Filename should be present")
             .to_str()
             .expect("Filename should be valid UTF-8");
 
-        let output_filename = format!("{}.zip", input_filename);
+        let output_filename = format!("{}.lz4", input_filename);
 
         let output_file_path = input_file_path.with_file_name(output_filename);
 
         // Create a new ZIP archive and write the input file's content to it
-        let output_file = File::create(&output_file_path)?;
-        let mut zip_writer = ZipWriter::new(output_file);
-        let file_options = FileOptions::default()
-            .compression_method(CompressionMethod::Deflated)
-            .unix_permissions(0o755);
+        let output_file = File::create(output_file_path)?;
+        let mut encoder = EncoderBuilder::new().level(4).build(output_file)?;
 
-        // Add the input file to the ZIP archive
-        let input_file_name = input_file_path.file_name().unwrap();
-        zip_writer.start_file(input_file_name.to_string_lossy(), file_options)?;
-        zip_writer.write_all(&file_contents)?;
+        io::copy(&mut input_file, &mut encoder)?;
 
-        // Finish writing the ZIP archive
-        zip_writer.finish()?;
+        let (_output, result) = encoder.finish();
 
-        println!(
-            "Successfully compressed {:?} to {:?}",
-            input_file_path, output_file_path
-        );
-        std::fs::remove_file(&input_file_path)?;
+        result?;
+
+        fs::remove_file(input_file_path)?;
 
         Ok(())
     }
@@ -1219,6 +1206,7 @@ mod test {
 #[cfg(feature = "zipping")]
 #[test]
 fn test_zipping() {
+    use std::io::Read;
     use std::sync::{Arc, Mutex};
     use tracing_subscriber::prelude::*;
 
@@ -1282,27 +1270,18 @@ fn test_zipping() {
 
         println!("entry={:?}", entry);
 
-        if path.extension().unwrap() == "zip" {
+        if path.extension().unwrap() == "lz4" {
             found_zip = true;
             let zip_file = fs::File::open(&path).expect("Failed to open zip file");
-            let mut archive = zip::ZipArchive::new(zip_file).expect("Failed to read zip file");
-
-            assert_eq!(
-                archive.len(),
-                1,
-                "Expected exactly one file in the zip archive"
-            );
-
-            let mut file = archive
-                .by_index(0)
-                .expect("Failed to get the file from the archive");
+            let mut decoder = lz4::Decoder::new(zip_file).expect("Failed to create lz4 decoder");
             let mut contents = String::new();
-            file.read_to_string(&mut contents)
+            decoder
+                .read_to_string(&mut contents)
                 .expect("Failed to read the file content");
 
             assert_eq!(
                 "file 1\n", contents,
-                "Unexpected content in the zipped log file"
+                "Unexpected content in the lz4 compressed log file"
             );
         } else {
             let filename = path.file_name().unwrap().to_str().unwrap();
@@ -1385,16 +1364,8 @@ fn test_integration_prune_and_zip() {
 
         println!("entry={:?}", entry);
 
-        if path.extension().unwrap() == "zip" {
+        if path.extension().unwrap() == "lz4" {
             zip_count += 1;
-            let zip_file = fs::File::open(&path).expect("Failed to open zip file");
-            let archive = zip::ZipArchive::new(zip_file).expect("Failed to read zip file");
-
-            assert_eq!(
-                archive.len(),
-                1,
-                "Expected exactly one file in the zip archive"
-            );
         } else {
             non_zip_count += 1;
         }
@@ -1402,11 +1373,11 @@ fn test_integration_prune_and_zip() {
 
     assert_eq!(
         zip_count, 1,
-        "Expected to find exactly 1 zip files in the log directory"
+        "Expected to find exactly 1 zip file in the log directory"
     );
 
     assert_eq!(
         non_zip_count, 1,
-        "Expected to find exactly 1 non-zip files in the log directory"
+        "Expected to find exactly 1 non-zip file in the log directory"
     );
 }
