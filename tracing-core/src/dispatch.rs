@@ -426,7 +426,7 @@ fn finalize_reservation(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultErro
 /// Creates a global default reservation, see [`GlobalDefaultReservation`].
 /// Useful if setting up the default dispatch requires work that may cause threads to interact
 /// with [`get_default`], since doing so before setting up the global dispatcher will
-/// cause that thread to permanently get [`NONE`] as their dispatcher.
+/// cause that thread to permanently get [`Dispatch::none()`] as their dispatcher.
 pub fn reserve_global_default() -> Result<GlobalDefaultReservation, SetGlobalDefaultError> {
     if GLOBAL_INIT
         .compare_exchange(UNINITIALIZED, RESERVED, Ordering::SeqCst, Ordering::SeqCst)
