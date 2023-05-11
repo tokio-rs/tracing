@@ -433,8 +433,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
 #[cfg(not(feature = "std"))]
 #[doc(hidden)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
-    let dispatch = get_global()?;
-    Some(f(&dispatch))
+    Some(f(get_global()))
 }
 
 /// Executes a closure with a reference to the current [dispatcher].
@@ -445,11 +444,7 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
-    if let Some(d) = get_global() {
-        f(d)
-    } else {
-        f(&NONE)
-    }
+    f(&get_global())
 }
 
 #[inline]
