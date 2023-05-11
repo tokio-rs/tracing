@@ -397,9 +397,9 @@ where
                 return f(&entered.current());
             }
 
-            f(&Dispatch::none())
+            f(&NONE)
         })
-        .unwrap_or_else(|_| f(&Dispatch::none()))
+        .unwrap_or_else(|_| f(&NONE))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
@@ -448,7 +448,7 @@ where
     if let Some(d) = get_global() {
         f(d)
     } else {
-        f(&Dispatch::none())
+        f(&NONE)
     }
 }
 
