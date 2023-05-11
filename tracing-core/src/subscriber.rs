@@ -699,6 +699,14 @@ impl Subscriber for NoSubscriber {
     fn exit(&self, _span: &span::Id) {}
 }
 
+impl NoSubscriber {
+    /// Returns a new `NoSubscriber`.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self(())
+    }
+}
+
 impl<S> Subscriber for Box<S>
 where
     S: Subscriber + ?Sized,
