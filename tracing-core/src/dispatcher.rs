@@ -197,6 +197,9 @@ thread_local! {
 static EXISTS: AtomicBool = AtomicBool::new(false);
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
+#[cfg(feature = "std")]
+static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
+
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
@@ -365,6 +368,12 @@ pub fn get_default<T, F>(mut f: F) -> T
 where
     F: FnMut(&Dispatch) -> T,
 {
+    if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
+        // fast path if no scoped dispatcher has been set; just use the global
+        // default.
+        return f(get_global().unwrap_or(&Dispatch::none()));
+    }
+
     CURRENT_STATE
         .try_with(|state| {
             if let Some(entered) = state.enter() {
@@ -387,6 +396,12 @@ where
 #[doc(hidden)]
 #[inline(never)]
 pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
+    if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
+        // fast path if no scoped dispatcher has been set; just use the global
+        // default.
+        return Some(f(get_global()?));
+    }
+
     CURRENT_STATE
         .try_with(|state| {
             let entered = state.enter()?;
@@ -792,6 +807,7 @@ impl State {
             .ok()
             .flatten();
         EXISTS.store(true, Ordering::Release);
+        SCOPED_COUNT.fetch_add(1, Ordering::Release);
         DefaultGuard(prior)
     }
 
@@ -838,6 +854,7 @@ impl Drop for DefaultGuard {
         // could then also attempt to access the same thread local
         // state -- causing a clash.
         let prev = CURRENT_STATE.try_with(|state| state.default.replace(self.0.take()));
+        SCOPED_COUNT.fetch_sub(1, Ordering::Release);
         drop(prev)
     }
 }
