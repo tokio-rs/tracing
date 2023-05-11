@@ -1,3 +1,34 @@
+# 0.1.31 (May 11, 2023)
+
+This release of `tracing-core` fixes a bug that caused threads which call
+`dispatcher::get_default` _before_ a global default subscriber is set to never
+see the global default once it is set. In addition, it includes improvements for
+instrumentation performance in some cases, especially when using a global
+default dispatcher.
+
+### Fixed
+
+- Fixed incorrect thread-local caching of `Dispatch::none` if
+  `dispatcher::get_default` is called before `dispatcher::set_global_default`
+  ([#2593])
+
+### Changed
+
+- Cloning a `Dispatch` that points at a global default subscriber no longer
+  requires an `Arc` reference count increment, improving performance
+  substantially ([#2593])
+- `dispatcher::get_default` no longer attempts to access a thread local if the
+  scoped dispatcher is not in use, improving performance when the default
+  dispatcher is global ([#2593])
+- Added `#[inline]` annotations called by the `event!` and `span!` macros to
+  reduce the size of macro-generated code and improve recording performance
+  ([#2555])
+
+Thanks to new contributor @ldm0 for contributing to this release!
+
+[#2593]: https://github.com/tokio-rs/tracing/pull/2593
+[#2555]: https://github.com/tokio-rs/tracing/pull/2555
+
 # 0.1.30 (October 6, 2022)
 
 This release of `tracing-core` adds a new `on_register_dispatch` method to the
