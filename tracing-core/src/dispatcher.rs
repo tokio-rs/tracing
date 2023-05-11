@@ -140,7 +140,7 @@ use crate::stdlib::{
 
 #[cfg(feature = "std")]
 use crate::stdlib::{
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, RefCell, Ref},
     error,
 };
 
@@ -875,10 +875,11 @@ impl State {
 #[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
-    fn current(&self) -> RefMut<'a, Dispatch> {
-        let default = self.0.default.borrow_mut();
-        RefMut::map(default, |default| {
-            default.get_or_insert_with(|| get_global().clone())
+    fn current(&self) -> Ref<'a, Dispatch> {
+        let default = self.0.default.borrow();
+        Ref::map(default, |default| match default {
+            Some(default) => default,
+            None => get_global(),
         })
     }
 }
