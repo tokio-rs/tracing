@@ -148,7 +148,7 @@ use core::{
 
 #[cfg(feature = "std")]
 use std::{
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, RefCell},
     error,
 };
 
@@ -220,6 +220,7 @@ static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 const INITIALIZED: usize = 2;
+const RESERVED: usize = 3;
 
 static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
@@ -365,6 +366,78 @@ pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultEr
     }
 }
 
+/// A global default dispatch reservation, it's a guard which can be used to prevent
+/// threads from setting the none-dispatcher as their dispatcher while it is active.
+/// If dropped, the none-dispatcher is set, consume using `finalize_global_default` with
+/// the ready dispatcher to finish setup.
+#[derive(Debug)]
+pub struct GlobalDefaultReservation(());
+
+impl GlobalDefaultReservation {
+    /// Sets the global default dispatcher to the one specified.
+    /// See [`set_global_default`]
+    pub fn finalize_global_default(
+        self,
+        dispatcher: Dispatch,
+    ) -> Result<(), SetGlobalDefaultError> {
+        std::mem::forget(self);
+        finalize_reservation(dispatcher)
+    }
+}
+
+impl Drop for GlobalDefaultReservation {
+    fn drop(&mut self) {
+        let _ = finalize_reservation(NONE.clone());
+    }
+}
+
+fn finalize_reservation(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
+    if GLOBAL_INIT
+        .compare_exchange(RESERVED, INITIALIZING, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        #[cfg(feature = "alloc")]
+        let collector = {
+            let collector = match dispatcher.collector {
+                Kind::Global(s) => s,
+                Kind::Scoped(s) => unsafe {
+                    // safety: this leaks the collector onto the heap. the
+                    // reference count will always be at least 1.
+                    &*Arc::into_raw(s)
+                },
+            };
+            Kind::Global(collector)
+        };
+
+        #[cfg(not(feature = "alloc"))]
+        let collector = dispatcher.collector;
+
+        unsafe {
+            GLOBAL_DISPATCH = Dispatch { collector };
+        }
+        GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
+        EXISTS.store(true, Ordering::Release);
+        Ok(())
+    } else {
+        Err(SetGlobalDefaultError { _no_construct: () })
+    }
+}
+
+/// Creates a global default reservation, see [`GlobalDefaultReservation`].
+/// Useful if setting up the default dispatch requires work that may cause threads to interact
+/// with [`get_default`], since doing so before setting up the global dispatcher will
+/// cause that thread to permanently get [`NONE`] as their dispatcher.
+pub fn reserve_global_default() -> Result<GlobalDefaultReservation, SetGlobalDefaultError> {
+    if GLOBAL_INIT
+        .compare_exchange(UNINITIALIZED, RESERVED, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        Ok(GlobalDefaultReservation(()))
+    } else {
+        Err(SetGlobalDefaultError { _no_construct: () })
+    }
+}
+
 /// Returns true if a `tracing` dispatcher has ever been set.
 ///
 /// This may be used to completely elide trace points if tracing is not in use
@@ -447,13 +520,14 @@ where
                 let _guard = Entered(&state.can_enter);
 
                 let mut default = state.default.borrow_mut();
-                let default = default
-                    // if the local default for this thread has never been set,
-                    // populate it with the global default, so we don't have to
-                    // keep getting the global on every `get_default_slow` call.
-                    .get_or_insert_with(|| get_global().clone());
-
-                return f(&*default);
+                return if let Some(d) = default.as_ref() {
+                    f(d)
+                } else if let Some(g) = get_global_if_not_reserved() {
+                    default.replace(g.clone());
+                    f(g)
+                } else {
+                    f(&NONE)
+                };
             }
 
             f(&Dispatch::none())
@@ -475,7 +549,7 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
     CURRENT_STATE
         .try_with(|state| {
             let entered = state.enter()?;
-            Some(f(&entered.current()))
+            Some(entered.with_current(f))
         })
         .ok()?
 }
@@ -509,6 +583,26 @@ pub(crate) fn get_global() -> &'static Dispatch {
         // This is safe given the invariant that setting the global dispatcher
         // also sets `GLOBAL_INIT` to `INITIALIZED`.
         &GLOBAL_DISPATCH
+    }
+}
+
+#[inline(always)]
+pub(crate) fn get_global_if_not_reserved() -> Option<&'static Dispatch> {
+    match GLOBAL_INIT.load(Ordering::Acquire) {
+        // We only end up here if not using [`reserve_global_dispatch`] before utilizing tracing code
+        // it's a potential memory leak, call [`reserve_global_dispatch`] immediately in your application.
+        UNINITIALIZED => Some(&NONE),
+        // We will have a dispatcher in the future, but for now we don't
+        RESERVED | INITIALIZING => None,
+        // We're done setting up the dispatcher
+        INITIALIZED => unsafe {
+            // This is safe given the invariant that setting the global dispatcher
+            // also sets `GLOBAL_INIT` to `INITIALIZED`.
+            Some(&GLOBAL_DISPATCH)
+        },
+        _ => {
+            unreachable!()
+        }
     }
 }
 
@@ -1027,11 +1121,16 @@ impl State {
 #[cfg(feature = "std")]
 impl<'a> Entered<'a> {
     #[inline]
-    fn current(&self) -> RefMut<'a, Dispatch> {
-        let default = self.0.default.borrow_mut();
-        RefMut::map(default, |default| {
-            default.get_or_insert_with(|| get_global().clone())
-        })
+    fn with_current<T>(&self, f: impl FnOnce(&Dispatch) -> T) -> T {
+        let mut default = self.0.default.borrow_mut();
+        if let Some(d) = default.as_ref() {
+            f(d)
+        } else if let Some(g) = get_global_if_not_reserved() {
+            default.replace(g.clone());
+            f(g)
+        } else {
+            f(&NONE)
+        }
     }
 }
 
@@ -1235,5 +1334,46 @@ mod test {
         drop(guard);
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoCollector>());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn dispatch_reservation_happy() {
+        struct TestCollector();
+        impl Collect for TestCollector {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
+                true
+            }
+
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                span::Id::from_u64(15)
+            }
+
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+
+            fn event(&self, _: &Event<'_>) {}
+
+            fn enter(&self, _: &span::Id) {}
+
+            fn exit(&self, _: &span::Id) {}
+
+            fn current_span(&self) -> span::Current {
+                span::Current::unknown()
+            }
+        }
+        let reservation = reserve_global_default().unwrap();
+        assert!(set_global_default(NONE.clone()).is_err());
+        // Calling get_default would previously permanently set the thread local dispatch
+        get_default(|col| {
+            assert!(col.downcast_ref::<NoCollector>().is_some());
+        });
+        reservation
+            .finalize_global_default(Dispatch::new(TestCollector()))
+            .unwrap();
+        get_default(|col| {
+            assert!(col.downcast_ref::<TestCollector>().is_some());
+        });
     }
 }
