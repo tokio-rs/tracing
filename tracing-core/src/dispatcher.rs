@@ -140,7 +140,7 @@ use crate::stdlib::{
 
 #[cfg(feature = "std")]
 use crate::stdlib::{
-    cell::{Cell, RefCell, Ref},
+    cell::{Cell, Ref, RefCell},
     error,
 };
 
@@ -746,14 +746,15 @@ impl Default for Dispatch {
 impl fmt::Debug for Dispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.subscriber {
-            Kind::Scoped(ref s) => f.debug_tuple("Dispatch::Scoped")
+            Kind::Scoped(ref s) => f
+                .debug_tuple("Dispatch::Scoped")
                 .field(&format_args!("{:p}", s))
                 .finish(),
-            Kind::Global(s) => f.debug_tuple("Dispatch::Global")
+            Kind::Global(s) => f
+                .debug_tuple("Dispatch::Global")
                 .field(&format_args!("{:p}", s))
                 .finish(),
         }
-
     }
 }
 
@@ -798,10 +799,12 @@ impl WeakDispatch {
 impl fmt::Debug for WeakDispatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.subscriber {
-            Kind::Scoped(ref s) => f.debug_tuple("WeakDispatch::Scoped")
+            Kind::Scoped(ref s) => f
+                .debug_tuple("WeakDispatch::Scoped")
                 .field(&format_args!("{:p}", s))
                 .finish(),
-            Kind::Global(s) => f.debug_tuple("WeakDispatch::Global")
+            Kind::Global(s) => f
+                .debug_tuple("WeakDispatch::Global")
                 .field(&format_args!("{:p}", s))
                 .finish(),
         }
@@ -814,7 +817,6 @@ impl Registrar {
         self.0.upgrade().map(|subscriber| Dispatch { subscriber })
     }
 }
-
 
 // ===== impl State =====
 
@@ -835,7 +837,6 @@ impl Kind<Weak<dyn Subscriber + Send + Sync>> {
         }
     }
 }
-
 
 // ===== impl State =====
 

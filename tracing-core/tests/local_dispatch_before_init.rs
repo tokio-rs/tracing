@@ -1,7 +1,10 @@
 mod common;
 
 use common::*;
-use tracing_core::{subscriber::NoSubscriber, dispatcher::{Dispatch, self}};
+use tracing_core::{
+    dispatcher::{self, Dispatch},
+    subscriber::NoSubscriber,
+};
 
 /// This test reproduces the following issues:
 /// - https://github.com/tokio-rs/tracing/issues/2587
@@ -14,7 +17,8 @@ fn local_dispatch_before_init() {
     // Temporarily override the default dispatcher with a scoped dispatcher.
     // Using a scoped dispatcher makes the thread local state attempt to cache
     // the scoped default.
-    #[cfg(feature = "std")] {
+    #[cfg(feature = "std")]
+    {
         dispatcher::with_default(&Dispatch::new(TestSubscriberB), || {
             dispatcher::get_default(|current| {
                 assert!(
@@ -36,5 +40,4 @@ fn local_dispatch_before_init() {
             "default subscriber not set"
         );
     });
-
 }
