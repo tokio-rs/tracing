@@ -26,10 +26,13 @@
 //! let file_appender = RollingFileAppender::new(Rotation::HOURLY, "/some/directory", "prefix.log");
 //! # }
 //! ```
-use crate::sync::{RwLock, RwLockReadGuard};
+use crate::{
+    sync::{Mutex, MutexGuard},
+    BuilderFn,
+};
 use std::{
     fmt::{self, Debug},
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
@@ -85,7 +88,7 @@ pub use builder::{Builder, InitError};
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 pub struct RollingFileAppender {
     state: Inner,
-    writer: RwLock<File>,
+    writer: Mutex<Box<dyn Write + Send>>,
     #[cfg(test)]
     now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
 }
@@ -96,10 +99,15 @@ pub struct RollingFileAppender {
 ///
 /// [writer]: std::io::Write
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
-#[derive(Debug)]
-pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
+pub struct RollingWriter<'a>(MutexGuard<'a, Box<dyn Write + Send>>);
+// I've changed the above from `ReadGuard` to `WriteGuard`. Please double check if it's ok
 
-#[derive(Debug)]
+impl<'a> fmt::Debug for RollingWriter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RollingWriter").finish()
+    }
+}
+
 struct Inner {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
@@ -108,6 +116,21 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    writer_builder: BuilderFn,
+}
+
+impl fmt::Debug for Inner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Inner")
+            .field("log_directory", &self.log_directory)
+            .field("log_filename_prefix", &self.log_filename_prefix)
+            .field("log_filename_suffix", &self.log_filename_suffix)
+            .field("rotation", &self.rotation)
+            .field("next_date", &self.next_date)
+            .field("max_files", &self.max_files)
+            .field("writer_builder", &"custom writer function")
+            .finish()
+    }
 }
 
 // === impl RollingFileAppender ===
@@ -184,15 +207,18 @@ impl RollingFileAppender {
         Builder::new()
     }
 
+    // method to create `RollingFileAppender`
     fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
         let Builder {
-            ref rotation,
-            ref prefix,
-            ref suffix,
-            ref max_files,
+            rotation,
+            prefix,
+            suffix,
+            max_files,
+            writer_builder,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
+
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
@@ -200,6 +226,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            writer_builder.clone(),
         )?;
         Ok(Self {
             state,
@@ -226,7 +253,7 @@ impl io::Write for RollingFileAppender {
         if let Some(current_time) = self.state.should_rollover(now) {
             let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
-            self.state.refresh_writer(now, writer);
+            self.state.refresh_writer(now, &mut *writer);
         }
         writer.write(buf)
     }
@@ -246,10 +273,10 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
             if self.state.advance_date(now, current_time) {
-                self.state.refresh_writer(now, &mut self.writer.write());
+                self.state.refresh_writer(now, &mut self.writer.lock());
             }
         }
-        RollingWriter(self.writer.read())
+        RollingWriter(self.writer.lock())
     }
 }
 
@@ -259,7 +286,6 @@ impl fmt::Debug for RollingFileAppender {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RollingFileAppender")
             .field("state", &self.state)
-            .field("writer", &self.writer)
             .finish()
     }
 }
@@ -507,11 +533,11 @@ impl Rotation {
 
 impl io::Write for RollingWriter<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&*self.0).write(buf)
+        self.0.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&*self.0).flush()
+        self.0.flush()
     }
 }
 
@@ -525,10 +551,18 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
-    ) -> Result<(Self, RwLock<File>), builder::InitError> {
+        writer_builder: Option<BuilderFn>,
+    ) -> Result<(Self, Mutex<Box<dyn Write + Send>>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
         let next_date = rotation.next_date(&now);
+
+        let default_builder =
+            std::sync::Arc::new(|writer: Box<dyn Write + Send>| -> Box<dyn Write + Send> {
+                writer
+            });
+
+        let writer_builder = writer_builder.unwrap_or(default_builder);
 
         let inner = Inner {
             log_directory,
@@ -542,9 +576,14 @@ impl Inner {
             ),
             rotation,
             max_files,
+            writer_builder: writer_builder.clone(),
         };
         let filename = inner.join_date(&now);
-        let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
+
+        let writer_box = create_writer(inner.log_directory.as_ref(), &filename, writer_builder)?;
+
+        let writer = Mutex::new(writer_box);
+
         Ok((inner, writer))
     }
 
@@ -634,19 +673,19 @@ impl Inner {
         }
     }
 
-    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
+    fn refresh_writer(&self, now: OffsetDateTime, writer: &mut Box<dyn Write + Send>) {
         let filename = self.join_date(&now);
 
         if let Some(max_files) = self.max_files {
             self.prune_old_logs(max_files);
         }
 
-        match create_writer(&self.log_directory, &filename) {
+        match create_writer(&self.log_directory, &filename, self.writer_builder.clone()) {
             Ok(new_file) => {
-                if let Err(err) = file.flush() {
+                if let Err(err) = writer.flush() {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
-                *file = new_file;
+                *writer = new_file;
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }
@@ -686,7 +725,11 @@ impl Inner {
     }
 }
 
-fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
+fn create_writer(
+    directory: &Path,
+    filename: &str,
+    writer_builder: BuilderFn,
+) -> Result<Box<dyn Write + Send>, InitError> {
     let path = directory.join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);
@@ -697,11 +740,16 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
             fs::create_dir_all(parent).map_err(InitError::ctx("failed to create log directory"))?;
             return open_options
                 .open(path)
+                .map(|f| Box::new(f) as Box<dyn Write + Send>)
                 .map_err(InitError::ctx("failed to create initial log file"));
         }
     }
 
-    new_file.map_err(InitError::ctx("failed to create initial log file"))
+    let writer = new_file.map(|f| Box::new(f) as Box<dyn Write + Send>);
+
+    writer
+        .map(|w| writer_builder(w))
+        .map_err(InitError::ctx("failed to create initial log file"))
 }
 
 #[cfg(test)]
@@ -829,6 +877,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                None,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -941,6 +990,7 @@ mod test {
             Some("test_make_writer".to_string()),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -1023,6 +1073,7 @@ mod test {
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            None,
         )
         .unwrap();
 
