@@ -255,27 +255,18 @@ impl Builder {
         }
     }
 
-    /// Wraps the default File writer, with the given writer (for example: an Encoder)
+    /// Wraps the current file writer with the provided writer
     ///
-    /// Can be used for adding compression to the RollingFileAppender
-    /// if a compression writer is supplied, the current writer will be wrapped with the encoder
-    /// and will compress the contents on the fly.
-    ///
+    /// With this approach, compression can be enabled if a compression writer builder is provided
     ///
     /// # Examples
     ///
     /// ```
-    /// use tracing_appender::rolling::RollingFileAppender;
-    /// use lz4::{EncoderBuilder, BlockMode, BlockSize};
+    /// use tracing_appender::rolling::{RollingFileAppender};
+    /// use snap::write::FrameEncoder;
     ///
-    /// let Write + Send + SyncrFn = Box::new(|writer| EncoderBuilder::new()
-    ///     .block_mode(BlockMode::Linked)
-    ///     .block_size(BlockSize::Max1MB)
-    ///     .level(4).build(writer));
-    ///
-    /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
-    ///     .writer_builder(Write + Send + SyncFn)
+    ///     .writer_builder(FrameEncoder::new) // snappy encoder will wrap the default file writer
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
