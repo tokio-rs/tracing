@@ -557,12 +557,11 @@ impl Inner {
         let date_format = rotation.date_format();
         let next_date = rotation.next_date(&now);
 
-        let default_builder =
+        let writer_builder = writer_builder.unwrap_or_else(|| {
             std::sync::Arc::new(|writer: Box<dyn Write + Send>| -> Box<dyn Write + Send> {
                 writer
-            });
-
-        let writer_builder = writer_builder.unwrap_or(default_builder);
+            })
+        });
 
         let inner = Inner {
             log_directory,
