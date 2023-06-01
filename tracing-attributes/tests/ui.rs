@@ -12,3 +12,10 @@ fn const_instrument() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/ui/const_instrument.rs");
 }
+
+#[rustversion::stable]
+#[test]
+fn invalid_keyword_instrument() {
+    let t = trybuild::TestCases::new();
+    t.compile_fail("tests/ui/invalid_keyword_instrument.rs");
+}

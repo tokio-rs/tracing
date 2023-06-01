@@ -2,6 +2,7 @@ use std::iter;
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
+use syn::parse::Parse;
 use syn::visit_mut::VisitMut;
 use syn::{
     punctuated::Punctuated, spanned::Spanned, Block, Expr, ExprAsync, ExprCall, FieldPat, FnArg,
@@ -10,7 +11,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -189,9 +190,16 @@ fn gen_block<B: ToTokens>(
                 // If any parameters have the same name as a custom field, skip
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
+                    fields.0.iter().all(|Field { ref name, .. }| match name {
+                        FieldName::Ident(name) => {
+                            let first = name.first();
+                            first != name.last() || !first.iter().any(|name| name == &param)
+                        }
+                        FieldName::Literal(name) => {
+                            // If the literal string would be a valid ident, apply the same overwrite logic.
+                            let literal_ident = name.parse_with(syn::Ident::parse);
+                            !literal_ident.iter().any(|name| name == param)
+                        }
                     })
                 } else {
                     true

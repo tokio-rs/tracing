@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use syn::parse::discouraged::Speculative;
 use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
 
 use proc_macro2::TokenStream;
@@ -268,7 +269,7 @@ pub(crate) struct Fields(pub(crate) Punctuated<Field, Token![,]>);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Field {
-    pub(crate) name: Punctuated<Ident, Token![.]>,
+    pub(crate) name: FieldName,
     pub(crate) value: Option<Expr>,
     pub(crate) kind: FieldKind,
 }
@@ -306,7 +307,7 @@ impl Parse for Field {
             input.parse::<Token![?]>()?;
             kind = FieldKind::Debug;
         };
-        let name = Punctuated::parse_separated_nonempty_with(input, Ident::parse_any)?;
+        let name = FieldName::parse(input)?;
         let value = if input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
             if input.peek(Token![%]) {
@@ -353,6 +354,37 @@ impl ToTokens for FieldKind {
             FieldKind::Debug => tokens.extend(quote! { ? }),
             FieldKind::Display => tokens.extend(quote! { % }),
             _ => {}
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum FieldName {
+    Ident(Punctuated<Ident, Token![.]>),
+    Literal(LitStr),
+}
+
+impl Parse for FieldName {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let ahead = input.fork();
+        if let Ok(ident) = Punctuated::parse_separated_nonempty_with(&ahead, Ident::parse_any) {
+            input.advance_to(&ahead);
+            return Ok(Self::Ident(ident));
+        }
+        if let Ok(lit) = input.parse::<LitStr>() {
+            return Ok(Self::Literal(lit));
+        }
+        Err(ahead.error(
+            "expected \"field.name\" (string literal) or field.name (punctuated identifier)",
+        ))
+    }
+}
+
+impl ToTokens for FieldName {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            FieldName::Ident(ident) => ident.to_tokens(tokens),
+            FieldName::Literal(lit) => lit.to_tokens(tokens),
         }
     }
 }
