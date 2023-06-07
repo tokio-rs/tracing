@@ -7,7 +7,7 @@
 //! # `Value`s and `Collect`s
 //!
 //! Collectors consume `Value`s as fields attached to [span]s or [`Event`]s.
-//! The set of field keys on a given span or is defined on its [`Metadata`].
+//! The set of field keys on a given span or event is defined on its [`Metadata`].
 //! When a span is created, it provides [`Attributes`] to the collector's
 //! [`new_span`] method, containing any fields whose values were provided when
 //! the span was created; and may call the collector's [`record`] method
