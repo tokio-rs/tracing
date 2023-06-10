@@ -192,7 +192,7 @@
 //!
 //! You can find more examples showing how to use this crate [here][examples].
 //!
-//! [RAII]: https://github.com/rust-unofficial/patterns/blob/master/patterns/behavioural/RAII.md
+//! [RAII]: https://github.com/rust-unofficial/patterns/blob/main/src/patterns/behavioural/RAII.md
 //! [examples]: https://github.com/tokio-rs/tracing/tree/master/examples
 //!
 //! ### Events
