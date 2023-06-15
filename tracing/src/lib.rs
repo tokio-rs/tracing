@@ -310,6 +310,16 @@
 //! # }
 //!```
 //!
+//! Constant expressions can also be used as field name.
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! const RESOURCE_NAME: &str = "foo";
+//! // this span will have the field `foo = "some_id"`
+//! span!(Level::TRACE, "get", { RESOURCE_NAME } = "some_id");
+//! # }
+//!```
+//!
 //! The `?` sigil is shorthand that specifies a field should be recorded using
 //! its [`fmt::Debug`] implementation:
 //! ```
