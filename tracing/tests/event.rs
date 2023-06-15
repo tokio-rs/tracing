@@ -401,3 +401,18 @@ fn string_field() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn constant_field_name() {
+    let (collector, handle) = collector::mock()
+        .event(expect::event().with_fields(expect::field("foo").with_value(&"bar").only()))
+        .only()
+        .run_with_handle();
+    with_default(collector, || {
+        const FOO: &str = "foo";
+        tracing::event!(Level::INFO, { FOO } = "bar");
+    });
+
+    handle.assert_finished();
+}

@@ -831,3 +831,22 @@ fn both_shorthands() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn constant_field_name() {
+    let (collector, handle) = collector::mock()
+        .new_span(
+            expect::span()
+                .named("my_span")
+                .with_field(expect::field("foo").with_value(&"bar").only()),
+        )
+        .only()
+        .run_with_handle();
+    with_default(collector, || {
+        const FOO: &str = "foo";
+        tracing::span!(Level::TRACE, "my_span", { FOO } = "bar");
+    });
+
+    handle.assert_finished();
+}
