@@ -254,14 +254,14 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.49. The current Tracing version is not guaranteed to build on Rust
+version is 1.56. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
 versions before it will always be supported. For example, if the current stable
-compiler version is 1.45, the minimum supported version will not be increased
-past 1.42, three minor versions prior. Increasing the minimum supported compiler
+compiler version is 1.69, the minimum supported version will not be increased
+past 1.66, three minor versions prior. Increasing the minimum supported compiler
 version is not considered a semver breaking change as long as doing so complies
 with this policy.
 
@@ -307,11 +307,6 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
-  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
-  tracing systems for processing and visualization.
-  ([crates.io][otel-crates]|[docs][otel-docs])
-
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
@@ -339,7 +334,6 @@ The crates included as part of Tracing are:
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
-[`tracing-opentelemetry`]: tracing-opentelemetry
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
