@@ -1,4 +1,8 @@
 #![deny(warnings)]
+// We call all macros in this module with `no_implicit_prelude` to ensure they do not depend on the standard prelude.
+#![no_implicit_prelude]
+extern crate tracing;
+
 use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
     span, span_enabled, trace, trace_span, warn, warn_span, Level,
@@ -111,80 +115,80 @@ fn error_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_root() {
-    span!(target: "foo_events", parent: None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", parent: None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", parent: None, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
-    span!(target: "foo_events", parent: None, Level::TRACE, "foo");
-    span!(target: "foo_events", parent: None, Level::TRACE, "bar",);
-    span!(parent: None, Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(parent: None, Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
-    span!(parent: None, Level::DEBUG, "foo");
-    span!(parent: None, Level::DEBUG, "bar",);
+    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
+    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
+    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
+    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo");
+    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "bar",);
+    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo", bar.baz = 2, quux = 3);
+    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
+    span!(parent: ::core::option::Option::None, Level::DEBUG, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span_root() {
-    trace_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
-    trace_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 4,);
-    trace_span!(target: "foo_events", parent: None, "foo");
-    trace_span!(target: "foo_events", parent: None, "bar",);
-    trace_span!(parent: None, "foo", bar.baz = 2, quux = 3);
-    trace_span!(parent: None, "foo", bar.baz = 2, quux = 4,);
-    trace_span!(parent: None, "foo");
-    trace_span!(parent: None, "bar",);
+    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    trace_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    trace_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    trace_span!(parent: ::core::option::Option::None, "foo");
+    trace_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span_root() {
-    debug_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
-    debug_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 4,);
-    debug_span!(target: "foo_events", parent: None, "foo");
-    debug_span!(target: "foo_events", parent: None, "bar",);
-    debug_span!(parent: None, "foo", bar.baz = 2, quux = 3);
-    debug_span!(parent: None, "foo", bar.baz = 2, quux = 4,);
-    debug_span!(parent: None, "foo");
-    debug_span!(parent: None, "bar",);
+    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    debug_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    debug_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    debug_span!(parent: ::core::option::Option::None, "foo");
+    debug_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span_root() {
-    info_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
-    info_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 4,);
-    info_span!(target: "foo_events", parent: None, "foo");
-    info_span!(target: "foo_events", parent: None, "bar",);
-    info_span!(parent: None, "foo", bar.baz = 2, quux = 3);
-    info_span!(parent: None, "foo", bar.baz = 2, quux = 4,);
-    info_span!(parent: None, "foo");
-    info_span!(parent: None, "bar",);
+    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    info_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    info_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    info_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    info_span!(parent: ::core::option::Option::None, "foo");
+    info_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span_root() {
-    warn_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
-    warn_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 4,);
-    warn_span!(target: "foo_events", parent: None, "foo");
-    warn_span!(target: "foo_events", parent: None, "bar",);
-    warn_span!(parent: None, "foo", bar.baz = 2, quux = 3);
-    warn_span!(parent: None, "foo", bar.baz = 2, quux = 4,);
-    warn_span!(parent: None, "foo");
-    warn_span!(parent: None, "bar",);
+    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    warn_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    warn_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    warn_span!(parent: ::core::option::Option::None, "foo");
+    warn_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span_root() {
-    error_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 3);
-    error_span!(target: "foo_events", parent: None, "foo", bar.baz = 2, quux = 4,);
-    error_span!(target: "foo_events", parent: None, "foo");
-    error_span!(target: "foo_events", parent: None, "bar",);
-    error_span!(parent: None, "foo", bar.baz = 2, quux = 3);
-    error_span!(parent: None, "foo", bar.baz = 2, quux = 4,);
-    error_span!(parent: None, "foo");
-    error_span!(parent: None, "bar",);
+    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    error_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    error_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    error_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    error_span!(parent: ::core::option::Option::None, "foo");
+    error_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -605,144 +609,144 @@ fn error() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_root() {
-    event!(parent: None, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
     event!(
-        parent: None,
+        parent: ::core::option::Option::None,
         Level::DEBUG,
         foo = 3,
         bar.baz = 2,
         quux = false
     );
-    event!(parent: None, Level::DEBUG, foo = 3, bar.baz = 3,);
-    event!(parent: None, Level::DEBUG, "foo");
-    event!(parent: None, Level::DEBUG, "foo: {}", 3);
-    event!(parent: None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
-    event!(parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(parent: None, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
-    event!(target: "foo_events", parent: None, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
-    event!(target: "foo_events", parent: None, Level::DEBUG, foo = 3, bar.baz = 3,);
-    event!(target: "foo_events", parent: None, Level::DEBUG, "foo");
-    event!(target: "foo_events", parent: None, Level::DEBUG, "foo: {}", 3);
-    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
-    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(target: "foo_events", parent: None, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
+    event!(parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
+    event!(parent: ::core::option::Option::None, Level::DEBUG, "foo: {}", 3);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, "foo");
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, "foo: {}", 3);
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_root() {
-    trace!(parent: None, foo = ?3, bar.baz = %2, quux = false);
-    trace!(parent: None, foo = 3, bar.baz = 2, quux = false);
-    trace!(parent: None, foo = 3, bar.baz = 3,);
-    trace!(parent: None, "foo");
-    trace!(parent: None, "foo: {}", 3);
-    trace!(parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    trace!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    trace!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    trace!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    trace!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    trace!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
-    trace!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
-    trace!(target: "foo_events", parent: None, "foo");
-    trace!(target: "foo_events", parent: None, "foo: {}", 3);
-    trace!(target: "foo_events", parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    trace!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    trace!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    trace!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    trace!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    trace!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    trace!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    trace!(parent: ::core::option::Option::None, "foo");
+    trace!(parent: ::core::option::Option::None, "foo: {}", 3);
+    trace!(parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
+    trace!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    trace!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    trace!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    trace!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    trace!(target: "foo_events", parent: ::core::option::Option::None, "foo: {}", 3);
+    trace!(target: "foo_events", parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    trace!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    trace!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    trace!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_root() {
-    debug!(parent: None, foo = ?3, bar.baz = %2, quux = false);
-    debug!(parent: None, foo = 3, bar.baz = 2, quux = false);
-    debug!(parent: None, foo = 3, bar.baz = 3,);
-    debug!(parent: None, "foo");
-    debug!(parent: None, "foo: {}", 3);
-    debug!(parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    debug!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    debug!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    debug!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    debug!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    debug!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
-    debug!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
-    debug!(target: "foo_events", parent: None, "foo");
-    debug!(target: "foo_events", parent: None, "foo: {}", 3);
-    debug!(target: "foo_events", parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    debug!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    debug!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    debug!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    debug!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    debug!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    debug!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    debug!(parent: ::core::option::Option::None, "foo");
+    debug!(parent: ::core::option::Option::None, "foo: {}", 3);
+    debug!(parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
+    debug!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    debug!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    debug!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    debug!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    debug!(target: "foo_events", parent: ::core::option::Option::None, "foo: {}", 3);
+    debug!(target: "foo_events", parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    debug!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    debug!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    debug!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_root() {
-    info!(parent: None, foo = ?3, bar.baz = %2, quux = false);
-    info!(parent: None, foo = 3, bar.baz = 2, quux = false);
-    info!(parent: None, foo = 3, bar.baz = 3,);
-    info!(parent: None, "foo");
-    info!(parent: None, "foo: {}", 3);
-    info!(parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    info!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    info!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    info!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    info!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    info!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
-    info!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
-    info!(target: "foo_events", parent: None, "foo");
-    info!(target: "foo_events", parent: None, "foo: {}", 3);
-    info!(target: "foo_events", parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    info!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    info!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    info!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    info!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    info!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    info!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    info!(parent: ::core::option::Option::None, "foo");
+    info!(parent: ::core::option::Option::None, "foo: {}", 3);
+    info!(parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
+    info!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    info!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    info!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    info!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    info!(target: "foo_events", parent: ::core::option::Option::None, "foo: {}", 3);
+    info!(target: "foo_events", parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    info!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    info!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    info!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_root() {
-    warn!(parent: None, foo = ?3, bar.baz = %2, quux = false);
-    warn!(parent: None, foo = 3, bar.baz = 2, quux = false);
-    warn!(parent: None, foo = 3, bar.baz = 3,);
-    warn!(parent: None, "foo");
-    warn!(parent: None, "foo: {}", 3);
-    warn!(parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    warn!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    warn!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    warn!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    warn!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    warn!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
-    warn!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
-    warn!(target: "foo_events", parent: None, "foo");
-    warn!(target: "foo_events", parent: None, "foo: {}", 3);
-    warn!(target: "foo_events", parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    warn!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    warn!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    warn!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    warn!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    warn!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    warn!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    warn!(parent: ::core::option::Option::None, "foo");
+    warn!(parent: ::core::option::Option::None, "foo: {}", 3);
+    warn!(parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
+    warn!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    warn!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    warn!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    warn!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    warn!(target: "foo_events", parent: ::core::option::Option::None, "foo: {}", 3);
+    warn!(target: "foo_events", parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    warn!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    warn!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    warn!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_root() {
-    error!(parent: None, foo = ?3, bar.baz = %2, quux = false);
-    error!(parent: None, foo = 3, bar.baz = 2, quux = false);
-    error!(parent: None, foo = 3, bar.baz = 3,);
-    error!(parent: None, "foo");
-    error!(parent: None, "foo: {}", 3);
-    error!(parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    error!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    error!(parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    error!(parent: None, { foo = 2, bar.baz = 78 }, "quux");
-    error!(parent: None, { foo = ?2, bar.baz = %78 }, "quux");
-    error!(target: "foo_events", parent: None, foo = 3, bar.baz = 2, quux = false);
-    error!(target: "foo_events", parent: None, foo = 3, bar.baz = 3,);
-    error!(target: "foo_events", parent: None, "foo");
-    error!(target: "foo_events", parent: None, "foo: {}", 3);
-    error!(target: "foo_events", parent: None, { foo = 3, bar.baz = 80 }, "quux");
-    error!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
-    error!(target: "foo_events", parent: None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    error!(target: "foo_events", parent: None, { foo = 2, bar.baz = 78, }, "quux");
+    error!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    error!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    error!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    error!(parent: ::core::option::Option::None, "foo");
+    error!(parent: ::core::option::Option::None, "foo: {}", 3);
+    error!(parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
+    error!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    error!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    error!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
+    error!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    error!(target: "foo_events", parent: ::core::option::Option::None, "foo: {}", 3);
+    error!(target: "foo_events", parent: ::core::option::Option::None, { foo = 3, bar.baz = 80 }, "quux");
+    error!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
+    error!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
+    error!(target: "foo_events", parent: ::core::option::Option::None, { foo = 2, bar.baz = 78, }, "quux");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -913,7 +917,7 @@ fn field_shorthand_only() {
 #[test]
 fn borrow_val_events() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/954
-    let mut foo = (String::new(), String::new());
+    let mut foo = (::std::string::String::new(), ::std::string::String::new());
     let zero = &mut foo.0;
     trace!(one = ?foo.1);
     debug!(one = ?foo.1);
@@ -927,7 +931,7 @@ fn borrow_val_events() {
 #[test]
 fn borrow_val_spans() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/954
-    let mut foo = (String::new(), String::new());
+    let mut foo = (::std::string::String::new(), ::std::string::String::new());
     let zero = &mut foo.0;
     let _span = trace_span!("span", one = ?foo.1);
     let _span = debug_span!("span", one = ?foo.1);
