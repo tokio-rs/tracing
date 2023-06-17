@@ -318,40 +318,40 @@ macro_rules! impl_values {
 
 macro_rules! ty_to_nonzero {
     (u8) => {
-        NonZeroU8
+        ::core::num::NonZeroU8
     };
     (u16) => {
-        NonZeroU16
+        ::core::num::NonZeroU16
     };
     (u32) => {
-        NonZeroU32
+        ::core::num::NonZeroU32
     };
     (u64) => {
-        NonZeroU64
+        ::core::num::NonZeroU64
     };
     (u128) => {
-        NonZeroU128
+        ::core::num::NonZeroU128
     };
     (usize) => {
-        NonZeroUsize
+        ::core::num::NonZeroUsize
     };
     (i8) => {
-        NonZeroI8
+        ::core::num::NonZeroI8
     };
     (i16) => {
-        NonZeroI16
+        ::core::num::NonZeroI16
     };
     (i32) => {
-        NonZeroI32
+        ::core::num::NonZeroI32
     };
     (i64) => {
-        NonZeroI64
+        ::core::num::NonZeroI64
     };
     (i128) => {
-        NonZeroI128
+        ::core::num::NonZeroI128
     };
     (isize) => {
-        NonZeroIsize
+        ::core::num::NonZeroIsize
     };
 }
 
@@ -950,7 +950,7 @@ macro_rules! impl_valid_len {
     ( $( $len:tt ),+ ) => {
         $(
             impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
+                [(&'a Field, ::core::option::Option<&'a (dyn Value + 'a)>); $len] {}
         )+
     }
 }

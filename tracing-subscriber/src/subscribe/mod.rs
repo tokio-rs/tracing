@@ -1723,13 +1723,13 @@ macro_rules! subscriber_impl_body {
         }
 
         #[inline]
-        fn max_level_hint(&self) -> Option<LevelFilter> {
+        fn max_level_hint(&self) -> ::core::option::Option<LevelFilter> {
             self.deref().max_level_hint()
         }
 
         #[doc(hidden)]
         #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        unsafe fn downcast_raw(&self, id: TypeId) -> ::core::option::Option<NonNull<()>> {
             self.deref().downcast_raw(id)
         }
     };
