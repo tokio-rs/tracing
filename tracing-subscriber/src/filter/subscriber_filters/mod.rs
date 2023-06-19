@@ -475,7 +475,7 @@ macro_rules! filter_impl_body {
         }
 
         #[inline]
-        fn max_level_hint(&self) -> ::core::option::Option<LevelFilter> {
+        fn max_level_hint(&self) -> Option<LevelFilter> {
             self.deref().max_level_hint()
         }
     };
