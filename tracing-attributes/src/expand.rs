@@ -64,7 +64,10 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // unreachable, but does affect inference, so it needs to be written
     // exactly that way for it to do its magic.
     let fake_return_edge = quote_spanned! {return_span=>
-        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value, clippy::unreachable)]
+        #[allow(
+            unknown_lints, unreachable_code, clippy::diverging_sub_expression,
+            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore
+        )]
         if false {
             let __tracing_attr_fake_return: #return_type =
                 unreachable!("this is just for type inference, and is unreachable code");
@@ -477,10 +480,7 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
         ),
-        Pat::TupleStruct(PatTupleStruct {
-            pat: PatTuple { elems, .. },
-            ..
-        }) => Box::new(
+        Pat::TupleStruct(PatTupleStruct { elems, .. }) => Box::new(
             elems
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
@@ -564,7 +564,7 @@ impl<'block> AsyncInfo<'block> {
         // last expression of the block: it determines the return value of the
         // block, this is quite likely a `Box::pin` statement or an async block
         let (last_expr_stmt, last_expr) = block.stmts.iter().rev().find_map(|stmt| {
-            if let Stmt::Expr(expr) = stmt {
+            if let Stmt::Expr(expr, _semi) = stmt {
                 Some((stmt, expr))
             } else {
                 None
