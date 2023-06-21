@@ -1,3 +1,14 @@
+# 0.1.26 (June 21th, 2023)
+
+This release of `tracing-attributes` fixes warnings due to `allow` attributes in
+generated code that allow lints which may not exist on earlier versions of rustc.
+
+### Fixed
+
+- Allow `unknown_lints` in macro-generated code ([#2626])
+
+Thanks to @mladedav for contributing to this release!
+
 # 0.1.25 (June 19th, 2023)
 
 This release of `tracing-attributes` fixes the Clippy lint
