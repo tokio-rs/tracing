@@ -310,7 +310,7 @@
 //! # }
 //!```
 //!
-//! Constant expressions can also be used as field name.
+//! Constant expressions can also be used as field names:
 //! ```
 //! # use tracing::{span, Level};
 //! # fn main() {
