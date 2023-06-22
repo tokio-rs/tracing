@@ -837,15 +837,26 @@ fn both_shorthands() {
 fn constant_field_name() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span()
-                .named("my_span")
-                .with_field(expect::field("foo").with_value(&"bar").only()),
+            expect::span().named("my_span").with_field(
+                expect::field("foo")
+                    .with_value(&"bar")
+                    .and(expect::field("constant string").with_value(&"also works"))
+                    .and(expect::field("foo.bar").with_value(&"baz"))
+                    .only(),
+            ),
         )
         .only()
         .run_with_handle();
+
     with_default(collector, || {
         const FOO: &str = "foo";
-        tracing::span!(Level::TRACE, "my_span", { FOO } = "bar");
+        tracing::span!(
+            Level::TRACE,
+            "my_span",
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+        );
     });
 
     handle.assert_finished();
