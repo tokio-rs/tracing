@@ -7,6 +7,7 @@ use tracing_mock::{expect, layer, span, subscriber};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
+    Registry,
 };
 
 #[test]
@@ -95,7 +96,7 @@ fn level_filter_event_with_target_and_span_global() {
 
     let cool_span = span::named("cool_span");
     let uncool_span = span::named("uncool_span");
-    let (subscriber, handle) = subscriber::mock()
+    let (layer, handle) = layer::mock()
         .enter(cool_span.clone())
         .event(
             expect::event()
@@ -108,7 +109,7 @@ fn level_filter_event_with_target_and_span_global() {
         .only()
         .run_with_handle();
 
-    let subscriber = subscriber.with(filter);
+    let subscriber = Registry::default().with(filter).with(layer);
 
     with_default(subscriber, || {
         {
