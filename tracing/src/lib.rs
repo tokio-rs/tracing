@@ -989,7 +989,6 @@ pub mod __macro_support {
     use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicU8, Ordering};
-    use tracing_core::Once;
 
     /// Callsite implementation used by macro-generated code.
     ///
@@ -1101,9 +1100,9 @@ pub mod __macro_support {
         #[inline]
         pub fn interest(&'static self) -> Interest {
             match self.interest.load(Ordering::Relaxed) {
-                0 => Interest::never(),
-                1 => Interest::sometimes(),
-                2 => Interest::always(),
+                Self::INTEREST_NEVER => Interest::never(),
+                Self::INTEREST_SOMETIMES => Interest::sometimes(),
+                Self::INTEREST_ALWAYS => Interest::always(),
                 _ => self.register(),
             }
         }
