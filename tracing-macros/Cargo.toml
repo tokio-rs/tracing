@@ -17,6 +17,9 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 rust-version = "1.56.0"
 
+[features]
+assert_matches = []
+
 [dependencies]
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 
