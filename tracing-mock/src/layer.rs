@@ -76,7 +76,7 @@
 //!
 //! ```should_panic
 //! use tracing_mock::{expect, field, layer};
-//! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};  
+//! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 //!
 //! let span = expect::span()
 //!     .named("my_span");
@@ -123,7 +123,7 @@ use crate::{
 };
 use tracing_core::{
     span::{Attributes, Id, Record},
-    Event, Subscriber,
+    Event, Metadata, Subscriber,
 };
 use tracing_subscriber::{
     layer::{Context, Layer},
@@ -188,6 +188,8 @@ use std::{
 pub fn mock() -> MockLayerBuilder {
     MockLayerBuilder {
         expected: Default::default(),
+        enabled: true,
+        event_enabled: true,
         name: std::thread::current()
             .name()
             .map(String::from)
@@ -259,6 +261,8 @@ pub fn named(name: impl std::fmt::Display) -> MockLayerBuilder {
 
 pub struct MockLayerBuilder {
     expected: VecDeque<Expect>,
+    enabled: bool,
+    event_enabled: bool,
     name: String,
 }
 
@@ -273,6 +277,8 @@ pub struct MockLayerBuilder {
 pub struct MockLayer {
     expected: Arc<Mutex<VecDeque<Expect>>>,
     current: Mutex<Vec<Id>>,
+    enabled: bool,
+    event_enabled: bool,
     name: String,
 }
 
@@ -350,6 +356,16 @@ impl MockLayerBuilder {
         } else {
             self.name = name.to_string();
         }
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn event_enabled(mut self, event_enabled: bool) -> Self {
+        self.event_enabled = event_enabled;
         self
     }
 
@@ -729,6 +745,8 @@ impl MockLayerBuilder {
     pub fn run(self) -> MockLayer {
         MockLayer {
             expected: Arc::new(Mutex::new(self.expected)),
+            enabled: self.enabled,
+            event_enabled: self.event_enabled,
             name: self.name,
             current: Mutex::new(Vec::new()),
         }
@@ -764,6 +782,8 @@ impl MockLayerBuilder {
         let handle = MockHandle::new(expected.clone(), self.name.clone());
         let subscriber = MockLayer {
             expected,
+            enabled: self.enabled,
+            event_enabled: self.event_enabled,
             name: self.name,
             current: Mutex::new(Vec::new()),
         };
@@ -893,6 +913,10 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, C>) {
+        if !self.enabled || !self.event_enabled {
+            return;
+        }
+
         let name = event.metadata().name();
         println!(
             "[{}] event: {}; level: {}; target: {}",
@@ -1039,6 +1063,14 @@ where
 
     fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
+    }
+
+    fn enabled(&self, _metadata: &Metadata<'_>, _ctx: Context<'_, C>) -> bool {
+        self.enabled
+    }
+
+    fn event_enabled(&self, _event: &Event<'_>, _ctx: Context<'_, C>) -> bool {
+        self.event_enabled
     }
 }
 

@@ -1802,11 +1802,17 @@ feature! {
         }
 
         fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, S>) -> bool {
-            self.iter().all(|l| l.enabled(metadata, ctx.clone()))
+            // We can't use `any()` here because we *must* iterate over
+            // all the subscribers, rather than short-circuiting, in case any of
+            // them are using per-layer filtering.
+            self.iter().fold(false, |enabled, l| enabled | l.enabled(metadata, ctx.clone()))
         }
 
         fn event_enabled(&self, event: &Event<'_>, ctx: Context<'_, S>) -> bool {
-            self.iter().all(|l| l.event_enabled(event, ctx.clone()))
+            // We can't use `any()` here because we *must* iterate over
+            // all the subscribers, rather than short-circuiting, in case any of
+            // them are using per-layer filtering.
+            self.iter().fold(false, |event_enabled, l| event_enabled | l.event_enabled(event, ctx.clone()))
         }
 
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
