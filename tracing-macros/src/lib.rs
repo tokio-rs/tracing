@@ -77,13 +77,13 @@ macro_rules! trace_assert {
         if !$cond {
             $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed");
         }
-        assert!($cond)
+        std::assert!($cond)
     }};
     ($cond:expr, $($arg:tt)+) => {{
         if !$cond {
             $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed", $($arg)+);
         }
-        assert!($cond)
+        std::assert!($cond)
     }};
 }
 
@@ -112,7 +112,7 @@ macro_rules! trace_assert_eq {
                 if !(*left_val == *right_val) {
                     $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed", left = ?left_val, right = ?right_val);
                 }
-                assert_eq!($left, $right);
+                std::assert_eq!($left, $right);
             }
         }
     };
@@ -122,7 +122,7 @@ macro_rules! trace_assert_eq {
                 if !(*left_val == *right_val) {
                     $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed", left = ?left_val, right = ?right_val, $($arg)+);
                 }
-                assert_eq!($left, $right);
+                std::assert_eq!($left, $right);
             }
         }
     };
@@ -153,7 +153,7 @@ macro_rules! trace_assert_ne {
                 if *left_val == *right_val {
                     $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed", left = ?left_val, right = ?right_val);
                 }
-                assert_ne!($left, $right);
+                std::assert_ne!($left, $right);
             }
         }
     };
@@ -163,7 +163,7 @@ macro_rules! trace_assert_ne {
                 if *left_val == *right_val {
                     $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, assert="failed", left = ?left_val, right = ?right_val, $($arg)+);
                 }
-                assert_ne!($left, $right);
+                std::assert_ne!($left, $right);
             }
         }
     };
@@ -233,6 +233,17 @@ macro_rules! trace_assert_matches {
 /// let c = Ok("abc".to_string());
 /// trace_debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100, ?a, ?b, ?c);
 /// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_debug_assert_matches;
+/// # use tracing_macros::trace_assert_matches;
+/// let x: Option<u32> = Some(4);
+/// if cfg!(debug_assertions) {
+///     trace_debug_assert_matches!(x, None);
+/// } else {
+///     trace_assert_matches!(x, None);
+/// }
+/// ```
 #[cfg(feature = "assert_matches")]
 #[macro_export]
 macro_rules! trace_debug_assert_matches {
@@ -273,6 +284,16 @@ macro_rules! trace_debug_assert_matches {
 /// let a = 3; let b = 27;
 /// trace_debug_assert!(a + b == 30, a, b);
 /// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_debug_assert;
+/// # use tracing_macros::trace_assert;
+/// if cfg!(debug_assertions) {
+///     trace_debug_assert!(1 == 2);
+/// } else {
+///     trace_assert!(1 == 2);
+/// }
+/// ```
 #[macro_export]
 macro_rules! trace_debug_assert {
     ($($arg:tt)*) => {
@@ -296,6 +317,16 @@ macro_rules! trace_debug_assert {
 /// let a = 3;
 /// let b = 1 + 2;
 /// trace_debug_assert_eq!(a, b);
+/// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_debug_assert_eq;
+/// # use tracing_macros::trace_assert_eq;
+/// if cfg!(debug_assertions) {
+///     trace_debug_assert_eq!(1, 2);
+/// } else {
+///     trace_assert_eq!(1, 2);
+/// }
 /// ```
 #[macro_export]
 macro_rules! trace_debug_assert_eq {
@@ -321,6 +352,16 @@ macro_rules! trace_debug_assert_eq {
 /// let b = 2;
 /// trace_debug_assert_ne!(a, b);
 /// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_debug_assert_ne;
+/// # use tracing_macros::trace_assert_ne;
+/// if cfg!(debug_assertions) {
+///     trace_debug_assert_ne!(1, 1);
+/// } else {
+///     trace_assert_ne!(1, 1);
+/// }
+/// ```
 #[macro_export]
 macro_rules! trace_debug_assert_ne {
     ($($arg:tt)*) => {
@@ -328,4 +369,80 @@ macro_rules! trace_debug_assert_ne {
             $crate::trace_assert_ne!($($arg)*);
         }
     };
+}
+
+/// This macro works like [`unreachable!`], but generates a [`tracing`] [`tracing::event!`] before [`std::panic!`]ing.
+/// This is useful when you want to log the context of the panic without having to put all the context
+/// into the panic message.
+/// We did not call it `unreachable` because `core::macros` is imported as default and redirecting from `unreachable` to `$crate::unreachable` does not work.
+///
+/// Based on [`std::unreachable!`].
+///
+/// # Examples
+///
+/// ```
+/// # use tracing_macros::trace_unreachable;
+/// # use tracing_attributes::instrument;
+/// # #[allow(dead_code)]
+/// #[instrument]
+/// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
+///     for i in 0.. {
+///         if 3*i < i { panic!("u32 overflow"); }
+///         if x < 3*i { return i-1; }
+///     }
+///     trace_unreachable!("The loop should always return");
+/// }
+/// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_unreachable;
+/// trace_unreachable!(msg="This always panics");
+/// ```
+#[macro_export]
+macro_rules! trace_unreachable {
+    ($($arg:tt)*) => {{
+        $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, unreachable=true, $($arg)*);
+        unreachable!()
+    }};
+}
+/// This macro works like [`todo!`], but generates a [`tracing`] [`tracing::event!`] before [`std::panic!`]ing.
+/// This is useful when you want to log the context of the panic without having to put all the context
+/// into the panic message.
+/// We did not call it `todo` because `core::macros` is imported as default and redirecting from `todo` to `$crate::todo` does not work.
+///
+/// Based on [`std::todo!`].
+///
+/// # Examples
+///
+/// ```
+/// # use tracing_macros::trace_todo;
+/// # use tracing_attributes::instrument;
+/// # #[allow(dead_code)]
+/// #[instrument]
+/// fn divide_by_three(x: u32) -> u32 {
+///     trace_todo!()
+/// }
+/// ```
+///
+/// ```should_panic
+/// # use tracing_macros::trace_todo;
+/// # use tracing_attributes::instrument;
+/// # #[allow(dead_code)]
+/// #[instrument]
+/// fn divide_by_three(x: u32) -> u32 {
+///     let b = 4;
+///     trace_todo!(?b)
+/// }
+/// divide_by_three(4);
+/// ```
+#[macro_export]
+macro_rules! trace_todo {
+    () => {{
+        $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, todo=true);
+        todo!()
+    }};
+    ($($arg:tt)+) => {{
+        $crate::tracing::event!(target: module_path!(), $crate::tracing::Level::ERROR, todo=true, $($arg)*);
+        todo!()
+    }};
 }

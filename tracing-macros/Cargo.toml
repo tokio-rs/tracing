@@ -25,6 +25,7 @@ tracing = { path = "../tracing", version = "0.2", default-features = false, feat
 
 [dev-dependencies]
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
+tracing-attributes = { path = "../tracing-attributes", version = "0.2" }
 
 [badges]
 maintenance = { status = "experimental" }
