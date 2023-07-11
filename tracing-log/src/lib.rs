@@ -307,9 +307,9 @@ macro_rules! log_cs {
             "log event",
             "log",
             $level,
-            None,
-            None,
-            None,
+            ::core::option::Option::None,
+            ::core::option::Option::None,
+            ::core::option::Option::None,
             field::FieldSet::new(FIELD_NAMES, identify_callsite!(&$cs)),
             Kind::EVENT,
         );
