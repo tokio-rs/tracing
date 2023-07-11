@@ -1729,7 +1729,7 @@ macro_rules! subscriber_impl_body {
 
         #[doc(hidden)]
         #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        unsafe fn downcast_raw(&self, id: TypeId) -> ::core::option::Option<NonNull<()>> {
             self.deref().downcast_raw(id)
         }
     };
