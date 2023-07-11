@@ -1086,7 +1086,7 @@ macro_rules! impl_valid_len {
     ( $( $len:tt ),+ ) => {
         $(
             impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
+                [(&'a Field, ::core::option::Option<&'a (dyn Value + 'a)>); $len] {}
         )+
     }
 }
