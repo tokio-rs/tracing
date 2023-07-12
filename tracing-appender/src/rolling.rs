@@ -445,6 +445,7 @@ enum RotationKind {
     Hourly,
     Daily,
     Never,
+    Custom(Duration),
 }
 
 impl Rotation {
@@ -456,6 +457,17 @@ impl Rotation {
     pub const DAILY: Self = Self(RotationKind::Daily);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
+    /// Provides a custom rotation
+    pub fn custom(duration: Duration) -> Result<Self, String> {
+        if !duration.is_positive() {
+            Err("Custom Rotation duration must be positive".to_string())
+        } else if duration > Duration::weeks(52 * 10) {
+            // 10 years... Ridiculous, but we need to cap it somewhere to avoid overflow.
+            Err("Custom Rotation duration must be less than 10 years".to_string())
+        } else {
+            Ok(Self(RotationKind::Custom(duration)))
+        }
+    }
 
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
@@ -463,6 +475,9 @@ impl Rotation {
             Rotation::HOURLY => *current_date + Duration::hours(1),
             Rotation::DAILY => *current_date + Duration::days(1),
             Rotation::NEVER => return None,
+            // This is safe from overflow because we only create a `Rotation::Custom` if the
+            // duration is positive and less than 10 years.
+            Self(RotationKind::Custom(duration)) => *current_date + duration,
         };
         Some(self.round_date(&unrounded_next_date))
     }
@@ -489,6 +504,21 @@ impl Rotation {
             Rotation::NEVER => {
                 unreachable!("Rotation::NEVER is impossible to round.")
             }
+            Self(RotationKind::Custom(duration)) => {
+                let current_nanos = date.unix_timestamp_nanos();
+                let duration_nanos = duration.whole_nanoseconds();
+
+                // find how many nanoseconds after the expected rotation time we are
+                let nanos_above = current_nanos % duration_nanos;
+                // subtract that from the current time to get the time of the last rotation
+                let new_nanos = current_nanos - nanos_above;
+                // even if duration_nanos > current_nanos, which shouldn't be possible
+                // since duration is added to date in `next_date`, this is still safe:
+                // new nanos must be between 0 (duration >= current) and the current nanos (nanos_above == 0)
+                // so we can safely create a new OffsetDateTime from the new nanos.
+                OffsetDateTime::from_unix_timestamp_nanos(new_nanos)
+                    .expect("Invalid time; this is a bug in tracing-appender")
+            }
         }
     }
 
@@ -498,6 +528,21 @@ impl Rotation {
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+            Self(RotationKind::Custom(duration)) => {
+                if duration >= Duration::DAY {
+                    format_description::parse("[year]-[month]-[day]")
+                } else if duration >= Duration::HOUR {
+                    format_description::parse("[year]-[month]-[day]-[hour]")
+                } else if duration >= Duration::MINUTE {
+                    format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                } else if duration >= Duration::SECOND {
+                    format_description::parse("[year]-[month]-[day]-[hour]-[minute]-[second]")
+                } else {
+                    format_description::parse(
+                        "[year]-[month]-[day]-[hour]-[minute]-[second]-[subsecond]",
+                    )
+                }
+            }
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
     }
