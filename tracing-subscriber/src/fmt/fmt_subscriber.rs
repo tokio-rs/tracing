@@ -6,7 +6,7 @@ use crate::{
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{
-    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
+    any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
     time::Instant,
 };
 use tracing_core::{
@@ -234,9 +234,15 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// This method is primarily expected to be used with the
     /// [`reload::Handle::modify`](crate::reload::Handle::modify) method when changing
     /// the writer.
+    ///
+    /// If the `NO_COLOR` environment variable is set to a non-empty value,
+    /// `with_ansi(true)` will have no effect.
+    ///
+    /// [`NO_COLOR` environment variable]: https://no-color.org/
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn set_ansi(&mut self, ansi: bool) {
+        let ansi = ansi & env::var("NO_COLOR").map_or(true, |v| v.is_empty());
         self.is_ansi = ansi;
     }
 
@@ -282,6 +288,9 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// feature flag enabled will panic if debug assertions are enabled, or
     /// print a warning otherwise.
     ///
+    /// If the `NO_COLOR` environment variable is set to a non-empty value,
+    /// `with_ansi(true)` will have no effect.
+    ///
     /// This method itself is still available without the feature flag. This
     /// is to allow ANSI escape codes to be explicitly *disabled* without
     /// having to opt-in to the dependencies required to emit ANSI formatting.
@@ -289,6 +298,8 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// ANSI escape codes can ensure that they are not used, regardless of
     /// whether or not other crates in the dependency graph enable the "ansi"
     /// feature flag.
+    ///
+    /// [`NO_COLOR` environment variable]: https://no-color.org/
     pub fn with_ansi(self, ansi: bool) -> Self {
         #[cfg(not(feature = "ansi"))]
         if ansi {
@@ -300,6 +311,7 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
             eprintln!("{}", ERROR);
         }
 
+        let ansi = ansi & env::var("NO_COLOR").map_or(true, |v| v.is_empty());
         Subscriber {
             is_ansi: ansi,
             ..self
@@ -680,12 +692,16 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
 
 impl<C> Default for Subscriber<C> {
     fn default() -> Self {
+        // only enable ANSI when the feature is enabled, and the NO_COLOR
+        // environment variable is unset or empty.
+        let ansi = cfg!(feature = "ansi") && env::var("NO_COLOR").map_or(true, |v| v.is_empty());
+
         Subscriber {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
-            is_ansi: cfg!(feature = "ansi"),
+            is_ansi: ansi,
             log_internal_errors: false,
             _inner: PhantomData,
         }
@@ -1504,5 +1520,59 @@ mod test {
              fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
         );
+    }
+
+    // Because we need to modify an environment variable for these test cases,
+    // we do them all in a single test.
+    #[cfg(feature = "ansi")]
+    #[test]
+    fn subscriber_no_color() {
+        // save off the existing value of NO_COLOR
+        const NO_COLOR: &str = "NO_COLOR";
+        let saved_no_color = std::env::var(NO_COLOR);
+
+        let cases: Vec<(Option<&str>, bool)> = vec![
+            (Some("0"), false),   // any non-empty value disables ansi
+            (Some("off"), false), // any non-empty value disables ansi
+            (Some("1"), false),
+            (Some(""), true), // empty value does not disable ansi
+            (None, true),
+        ];
+
+        for (var, ansi) in cases {
+            if let Some(value) = var {
+                env::set_var(NO_COLOR, value);
+            } else {
+                env::remove_var(NO_COLOR);
+            }
+
+            let subscriber: Subscriber<()> = fmt::Subscriber::default();
+            assert_eq!(
+                subscriber.is_ansi, ansi,
+                "NO_COLOR={:?}; Subscriber::default().is_ansi should be {}",
+                var, ansi
+            );
+
+            let subscriber: Subscriber<()> = fmt::Subscriber::default().with_ansi(true);
+            assert_eq!(
+                subscriber.is_ansi, ansi,
+                "NO_COLOR={:?}; Subscriber::default().with_ansi(true).is_ansi should be {}",
+                var, ansi
+            );
+
+            let mut subscriber: Subscriber<()> = fmt::Subscriber::default();
+            subscriber.set_ansi(true);
+            assert_eq!(
+                subscriber.is_ansi, ansi,
+                "NO_COLOR={:?}; subscriber.set_ansi(true); subscriber.is_ansi should be {}",
+                var, ansi
+            );
+        }
+
+        if let Ok(value) = saved_no_color {
+            env::set_var(NO_COLOR, value);
+        } else {
+            env::remove_var(NO_COLOR);
+        }
     }
 }
