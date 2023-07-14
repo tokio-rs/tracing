@@ -754,6 +754,7 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
+    use time::ext::NumericalDuration;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -812,6 +813,11 @@ mod test {
     }
 
     #[test]
+    fn write_custom_log() {
+        test_appender(Rotation::custom(20.minutes()).unwrap(), "custom.log");
+    }
+
+    #[test]
     fn test_rotations() {
         // per-minute basis
         let now = OffsetDateTime::now_utc();
@@ -835,6 +841,19 @@ mod test {
     }
 
     #[test]
+    fn test_custom_rotations() {
+        let now = OffsetDateTime::now_utc().replace_time(Time::from_hms(0, 0, 20).unwrap());
+        let duration = Duration::seconds(20);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 20.seconds(), next);
+
+        let now = OffsetDateTime::now_utc().replace_time(Time::from_hms(1, 0, 20).unwrap());
+        let duration = Duration::minutes(120);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 59.minutes() + 40.seconds(), next);
+    }
+
+    #[test]
     #[should_panic(
         expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
     )]
@@ -853,6 +872,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
 
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let now = now + Duration::nanoseconds(12345);
 
         struct TestCase {
             expected: &'static str,
@@ -959,6 +979,49 @@ mod test {
                 rotation: Rotation::NEVER,
                 prefix: None,
                 suffix: Some("log"),
+            },
+            // custom
+            TestCase {
+                expected: "2020-02-01-10-01-00-000012345",
+                rotation: Rotation::custom(100.nanoseconds()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10-01-00",
+                rotation: Rotation::custom(1.seconds()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10-01",
+                rotation: Rotation::custom(30.minutes()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10",
+                rotation: Rotation::custom(1.hours()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10",
+                rotation: Rotation::custom(12.hours()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::custom(1.days()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::custom(100.weeks()).unwrap(),
+                prefix: None,
+                suffix: None,
             },
         ];
         for test_case in test_cases {
