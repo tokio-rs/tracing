@@ -461,7 +461,7 @@ impl Rotation {
     pub fn custom(duration: Duration) -> Result<Self, String> {
         if !duration.is_positive() {
             Err("Custom Rotation duration must be positive".to_string())
-        } else if duration > Duration::weeks(52 * 10) {
+        } else if duration > Duration::days(365 * 10) {
             // 10 years... Ridiculous, but we need to cap it somewhere to avoid overflow.
             Err("Custom Rotation duration must be less than 10 years".to_string())
         } else {
