@@ -511,7 +511,6 @@ impl Rotation {
                 // find how many nanoseconds after the next rotation time we are
                 // Use euclidean division to properly handle negative date values
                 let nanos_above = date_nanos.rem_euclid(duration_nanos);
-
                 let round_nanos = date_nanos - nanos_above;
 
                 // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
