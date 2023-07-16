@@ -505,18 +505,22 @@ impl Rotation {
                 unreachable!("Rotation::NEVER is impossible to round.")
             }
             Self(RotationKind::Custom(duration)) => {
-                let current_nanos = date.unix_timestamp_nanos();
+                let date_nanos = date.unix_timestamp_nanos();
                 let duration_nanos = duration.whole_nanoseconds();
 
-                // find how many nanoseconds after the expected rotation time we are
-                let nanos_above = current_nanos % duration_nanos;
-                // subtract that from the current time to get the time of the last rotation
-                let new_nanos = current_nanos - nanos_above;
-                // even if duration_nanos > current_nanos, which shouldn't be possible
-                // since duration is added to date in `next_date`, this is still safe:
-                // new nanos must be between 0 (duration >= current) and the current nanos (nanos_above == 0)
-                // so we can safely create a new OffsetDateTime from the new nanos.
-                OffsetDateTime::from_unix_timestamp_nanos(new_nanos)
+                // find how many nanoseconds after the next rotation time we are
+                // Use euclidean division to properly handle negative date values
+                let nanos_above = date_nanos.rem_euclid(duration_nanos);
+
+                let round_nanos = date_nanos - nanos_above;
+
+                // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
+                // thus, `date_nanos >= round_nanos > date_nanos - duration_nanos`
+                // `date_nanos` is already a valid `OffsetDateTime`, and
+                // `date_nanos - duration_nanos` equals the `current_date` from `Rotation::next_date`.
+                // Since `round_nanos` is between these two valid values, it must also be a valid
+                // input to `OffsetDateTime::from_unix_timestamp_nanos`.
+                OffsetDateTime::from_unix_timestamp_nanos(round_nanos)
                     .expect("Invalid time; this is a bug in tracing-appender")
             }
         }
@@ -851,6 +855,23 @@ mod test {
         let duration = Duration::minutes(120);
         let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
         assert_eq!(now + 59.minutes() + 40.seconds(), next);
+
+        let now = OffsetDateTime::UNIX_EPOCH + 50.days() + 11.hours();
+        let duration = Duration::days(7);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 5.days() + 13.hours(), next);
+
+        // negative timestamps, -23 hours, 59 minutes
+        let now = OffsetDateTime::UNIX_EPOCH - 23.hours() - 59.minutes();
+        let duration = Duration::minutes(30);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 29.minutes(), next);
+
+        // negative timestamps, -12 hours
+        let now = OffsetDateTime::UNIX_EPOCH - 12.hours();
+        let duration = Duration::days(1);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 12.hours(), next);
     }
 
     #[test]
