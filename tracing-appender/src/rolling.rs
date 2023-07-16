@@ -507,9 +507,11 @@ impl Rotation {
             Self(RotationKind::Custom(duration)) => {
                 let date_nanos = date.unix_timestamp_nanos();
                 let duration_nanos = duration.whole_nanoseconds();
+                debug_assert!(duration_nanos > 0);
 
-                // find how many nanoseconds after the next rotation time we are
-                // Use euclidean division to properly handle negative date values
+                // find how many nanoseconds after the next rotation time we are.
+                // Use euclidean division to properly handle negative date values.
+                // This is safe because `Duration` is always positive.
                 let nanos_above = date_nanos.rem_euclid(duration_nanos);
                 let round_nanos = date_nanos - nanos_above;
 
