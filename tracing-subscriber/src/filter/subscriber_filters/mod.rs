@@ -146,7 +146,7 @@ pub(crate) struct FilterState {
 /// Extra counters added to `FilterState` used only to make debug assertions.
 #[cfg(debug_assertions)]
 #[derive(Debug, Default)]
-struct DebugCounters {
+pub(crate) struct DebugCounters {
     /// How many per-subscriber filters have participated in the current `enabled`
     /// call?
     in_filter_pass: Cell<usize>,
@@ -607,7 +607,7 @@ where
         self.subscriber.on_register_dispatch(collector);
     }
 
-    fn on_subscribe(&mut self, collector: &mut C) {
+    fn on_subscribe(&mut self, collector: &C) {
         self.id = MagicPsfDowncastMarker(collector.register_filter());
         self.subscriber.on_subscribe(collector);
     }
@@ -782,6 +782,9 @@ where
 // === impl FilterId ===
 
 impl FilterId {
+    /// Maximum number of filter IDs
+    pub const MAX_ID: u8 = u64::BITS as _;
+
     const fn disabled() -> Self {
         Self(u64::MAX)
     }
@@ -792,7 +795,8 @@ impl FilterId {
     }
 
     pub(crate) fn new(id: u8) -> Self {
-        assert!(id < 64, "filter IDs may not be greater than 64");
+        let max_id = Self::MAX_ID;
+        assert!(id < max_id, "filter IDs may not be greater than {}", max_id);
         Self(1 << id as usize)
     }
 
@@ -921,6 +925,14 @@ impl<F, S> FilterExt<S> for F where F: subscribe::Filter<S> {}
 // === impl FilterMap ===
 
 impl FilterMap {
+    pub(crate) fn from_bits(bits: u64) -> Self {
+        Self { bits }
+    }
+
+    pub(crate) fn to_bits(self) -> u64 {
+        self.bits
+    }
+
     pub(crate) fn set(self, FilterId(mask): FilterId, enabled: bool) -> Self {
         if mask == u64::MAX {
             return self;
@@ -1130,6 +1142,26 @@ impl FilterState {
         }
 
         map
+    }
+
+    pub(crate) fn replace_filter_map(&self, map: FilterMap) -> FilterMap {
+        self.enabled.replace(map)
+    }
+
+    #[cfg(debug_assertions)]
+    pub(crate) fn take_counters(&self) -> DebugCounters {
+        DebugCounters {
+            in_filter_pass: self.counters.in_filter_pass.take().into(),
+            in_interest_pass: self.counters.in_interest_pass.take().into(),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    pub(crate) fn set_counters(&self, counters: DebugCounters) {
+        let in_filter_pass = counters.in_filter_pass.get();
+        let in_interest_pass = counters.in_interest_pass.get();
+        self.counters.in_filter_pass.set(in_filter_pass);
+        self.counters.in_interest_pass.set(in_interest_pass);
     }
 }
 /// This is a horrible and bad abuse of the downcasting system to expose

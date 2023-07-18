@@ -161,8 +161,8 @@ pub struct Registration<T = &'static dyn Callsite> {
     next: AtomicPtr<Registration<T>>,
 }
 
-pub(crate) use self::inner::register_dispatch;
 pub use self::inner::{rebuild_interest_cache, register};
+pub(crate) use self::inner::{register_dispatch, REGISTRY};
 
 #[cfg(feature = "std")]
 mod inner {
@@ -173,12 +173,12 @@ mod inner {
 
     type Dispatchers = Vec<dispatch::Registrar>;
 
-    struct Registry {
+    pub(crate) struct Registry {
         callsites: Callsites,
-        dispatchers: RwLock<Dispatchers>,
+        pub(crate) dispatchers: RwLock<Dispatchers>,
     }
 
-    static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry {
+    pub(crate) static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry {
         callsites: LinkedList::new(),
         dispatchers: RwLock::new(Vec::new()),
     });

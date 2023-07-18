@@ -150,7 +150,7 @@ pub trait LookupSpan<'a> {
     /// [check]: SpanData::is_enabled_for
     #[cfg(feature = "registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
-    fn register_filter(&mut self) -> FilterId {
+    fn register_filter(&self) -> FilterId {
         panic!(
             "{} does not currently support filters",
             std::any::type_name::<Self>()
@@ -288,6 +288,11 @@ feature! {
                 },
             )
         }
+
+        #[cfg(feature = "registry")]
+        fn register_filter(&self) -> FilterId {
+            self.as_ref().register_filter()
+        }
     }
 
     impl<'a, S> LookupSpan<'a> for Box<S>
@@ -317,6 +322,11 @@ feature! {
                     filter,
                 },
             )
+        }
+
+        #[cfg(feature = "registry")]
+        fn register_filter(&self) -> FilterId {
+            self.as_ref().register_filter()
         }
     }
 

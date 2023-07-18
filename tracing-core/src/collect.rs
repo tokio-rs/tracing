@@ -457,6 +457,11 @@ pub trait Collect: 'static {
     /// [`Current::none`]: super::span::Current::none
     fn current_span(&self) -> span::Current;
 
+    /// Rebuild filter cache for all spans
+    fn rebuild_span_filter_cache(&self, dispatch: &Dispatch) {
+        let _ = dispatch;
+    }
+
     // === Downcasting methods ================================================
 
     /// If `self` is the same type as the provided `TypeId`, returns an untyped
@@ -769,6 +774,11 @@ where
     fn current_span(&self) -> span::Current {
         self.as_ref().current_span()
     }
+
+    #[inline]
+    fn rebuild_span_filter_cache(&self, dispatch: &Dispatch) {
+        self.as_ref().rebuild_span_filter_cache(dispatch)
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -847,5 +857,10 @@ where
 
     fn current_span(&self) -> span::Current {
         self.as_ref().current_span()
+    }
+
+    #[inline]
+    fn rebuild_span_filter_cache(&self, dispatch: &Dispatch) {
+        self.as_ref().rebuild_span_filter_cache(dispatch)
     }
 }
