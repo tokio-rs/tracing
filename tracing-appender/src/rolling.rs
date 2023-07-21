@@ -516,6 +516,7 @@ impl Rotation {
                 let round_nanos = date_nanos - nanos_above;
 
                 // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
+                // `date_nanos - 0 >= date_nanos - nanos_above > date_nanos - duration_nanos` (by algebra)
                 // thus, `date_nanos >= round_nanos > date_nanos - duration_nanos`
                 // `date_nanos` is already a valid `OffsetDateTime`, and
                 // `date_nanos - duration_nanos` equals the `current_date` from `Rotation::next_date`.
