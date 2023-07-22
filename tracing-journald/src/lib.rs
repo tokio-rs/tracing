@@ -66,8 +66,8 @@ mod socket;
 ///
 /// - `ERROR` => Error (3)
 /// - `WARN` => Warning (4)
-/// - `INFO` => Notice (5)
-/// - `DEBUG` => Informational (6)
+/// - `INFO` => Informational (6)
+/// - `DEBUG` => Debug (7)
 /// - `TRACE` => Debug (7)
 ///
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
@@ -346,9 +346,8 @@ fn put_priority(buf: &mut Vec<u8>, meta: &Metadata) {
         match *meta.level() {
             Level::ERROR => b"3",
             Level::WARN => b"4",
-            Level::INFO => b"5",
-            Level::DEBUG => b"6",
-            Level::TRACE => b"7",
+            Level::INFO => b"6",
+            Level::DEBUG | Level::TRACE => b"7",
         },
     );
 }

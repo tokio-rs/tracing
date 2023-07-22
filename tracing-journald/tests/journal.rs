@@ -163,7 +163,7 @@ fn simple_message() {
 
         let message = retry_read_one_line_from_journal("simple_message");
         assert_eq!(message["MESSAGE"], "Hello World");
-        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["PRIORITY"], "6");
     });
 }
 
@@ -199,7 +199,7 @@ fn internal_null_byte() {
 
         let message = retry_read_one_line_from_journal("internal_null_byte");
         assert_eq!(message["MESSAGE"], b"An internal\x00byte"[..]);
-        assert_eq!(message["PRIORITY"], "6");
+        assert_eq!(message["PRIORITY"], "7");
     });
 }
 
@@ -214,7 +214,7 @@ fn large_message() {
             message["MESSAGE"],
             format!("Message: {}", large_string).as_str()
         );
-        assert_eq!(message["PRIORITY"], "6");
+        assert_eq!(message["PRIORITY"], "7");
     });
 }
 
@@ -229,7 +229,7 @@ fn simple_metadata() {
 
         let message = retry_read_one_line_from_journal("simple_metadata");
         assert_eq!(message["MESSAGE"], "Hello World");
-        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["PRIORITY"], "6");
         assert_eq!(message["TARGET"], "journal");
         assert_eq!(message["SYSLOG_IDENTIFIER"], "test_ident");
         assert!(message["CODE_FILE"].as_text().is_some());
@@ -247,7 +247,7 @@ fn span_metadata() {
 
         let message = retry_read_one_line_from_journal("span_metadata");
         assert_eq!(message["MESSAGE"], "Hello World");
-        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["PRIORITY"], "6");
         assert_eq!(message["TARGET"], "journal");
 
         assert_eq!(message["SPAN_FIELD1"].as_text(), Some("foo1"));
@@ -273,7 +273,7 @@ fn multiple_spans_metadata() {
 
         let message = retry_read_one_line_from_journal("multiple_spans_metadata");
         assert_eq!(message["MESSAGE"], "Hello World");
-        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["PRIORITY"], "6");
         assert_eq!(message["TARGET"], "journal");
 
         assert_eq!(message["SPAN_FIELD1"], vec!["foo1", "foo2"]);
