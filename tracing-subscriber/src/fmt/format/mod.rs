@@ -60,6 +60,11 @@ mod pretty;
 #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
 pub use pretty::*;
 
+#[cfg(feature = "extra-fields")]
+use crate::registry::Extensions;
+#[cfg(feature = "extra-fields")]
+use std::collections::HashMap;
+
 /// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
 /// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or
@@ -407,6 +412,43 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    #[cfg(feature = "extra-fields")]
+    pub(crate) make_extra_fields: Option<Box<dyn MakeExtraFields>>
+}
+
+/// Make extra fields.
+#[cfg(feature = "extra-fields")]
+pub trait MakeExtraFields: Fn(Extensions<'_>) -> HashMap<String, String> + Send + Sync {
+    /// Clone self into a boxed [MakeTraceId].
+    fn clone_box<'a>(&self) -> Box<dyn 'a + MakeExtraFields>
+    where
+        Self: 'a;
+}
+
+#[cfg(feature = "extra-fields")]
+impl Debug for Box<dyn MakeExtraFields> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MakeExtraFields")
+    }
+}
+
+#[cfg(feature = "extra-fields")]
+impl<F> MakeExtraFields for F
+    where
+        F: Fn(Extensions<'_>) -> HashMap<String, String> + Clone + Send + Sync {
+    fn clone_box<'a>(&self) -> Box<dyn 'a + MakeExtraFields>
+    where
+        Self: 'a,
+    {
+        Box::new(self.clone())
+    }
+}
+
+#[cfg(feature = "extra-fields")]
+impl<'a> Clone for Box<dyn 'a + MakeExtraFields> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 // === impl Writer ===
@@ -585,6 +627,8 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 }
@@ -605,6 +649,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 
@@ -644,6 +690,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 
@@ -675,6 +723,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 
@@ -704,6 +754,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 
@@ -720,6 +772,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "extra-fields")]
+            make_extra_fields: None,
         }
     }
 
@@ -799,6 +853,15 @@ impl<F, T> Format<F, T> {
     pub fn with_source_location(self, display_location: bool) -> Self {
         self.with_line_number(display_location)
             .with_file(display_location)
+    }
+
+    /// Set the function to make extra fields.
+    #[cfg(feature = "extra-fields")]
+    pub fn with_make_extra_fields(self, make_trace_id: Box<dyn MakeExtraFields>) -> Self {
+        Format {
+            make_extra_fields: Some(make_trace_id),
+            ..self
+        }
     }
 
     #[inline]

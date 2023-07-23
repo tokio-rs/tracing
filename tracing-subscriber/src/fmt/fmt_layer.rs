@@ -311,10 +311,10 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
     /// the writer. These errors are unlikely and will only occur if there is a
     /// bug in the `FormatEvent` implementation or its dependencies.
-    /// 
+    ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
-    /// 
+    ///
     /// [`FormatEvent`]: crate::fmt::FormatEvent
     pub fn log_internal_errors(self, log_internal_errors: bool) -> Self {
         Self {
@@ -620,6 +620,15 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
+
+    /// Set the function to make extra fields.
+    #[cfg(feature = "extra-fields")]
+    pub fn with_extra_fields(self, make_extra_fields: Box<dyn format::MakeExtraFields>) -> Self {
+        Layer {
+            fmt_event: self.fmt_event.with_make_extra_fields(make_extra_fields),
             ..self
         }
     }
@@ -1288,8 +1297,17 @@ mod test {
         let actual = sanitize_timings(make_writer.get_string());
 
         // Only assert the start because the line number and callsite may change.
-        let expected = concat!("Unable to format the following event. Name: event ", file!(), ":");
-        assert!(actual.as_str().starts_with(expected), "\nactual = {}\nshould start with expected = {}\n", actual, expected);
+        let expected = concat!(
+            "Unable to format the following event. Name: event ",
+            file!(),
+            ":"
+        );
+        assert!(
+            actual.as_str().starts_with(expected),
+            "\nactual = {}\nshould start with expected = {}\n",
+            actual,
+            expected
+        );
     }
 
     #[test]
