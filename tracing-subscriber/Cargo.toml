@@ -36,6 +36,7 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
 local-time = ["time/local-offset"]
+otel = ["opentelemetry"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.30", default-features = false }
@@ -63,6 +64,9 @@ parking_lot = { version = "0.12.1", optional = true }
 # registry
 sharded-slab = { version = "0.1.4", optional = true }
 thread_local = { version = "1.1.4", optional = true }
+
+# otel
+opentelemetry = { version = "0.19", optional = true, default-features = false }
 
 [target.'cfg(tracing_unstable)'.dependencies]
 valuable_crate = { package = "valuable", version = "0.1.0", optional = true, default-features = false }

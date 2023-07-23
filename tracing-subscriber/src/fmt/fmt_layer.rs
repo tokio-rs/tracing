@@ -311,10 +311,10 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
     /// the writer. These errors are unlikely and will only occur if there is a
     /// bug in the `FormatEvent` implementation or its dependencies.
-    /// 
+    ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
-    /// 
+    ///
     /// [`FormatEvent`]: crate::fmt::FormatEvent
     pub fn log_internal_errors(self, log_internal_errors: bool) -> Self {
         Self {
@@ -623,6 +623,16 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
             ..self
         }
     }
+
+    /// Set the function to optionally make an OTel `TraceId`.
+    #[cfg(feature = "otel")]
+    pub fn with_make_trace_id(self, make_trace_id: Box<dyn format::MakeTraceId>) -> Self {
+        Layer {
+            fmt_event: self.fmt_event.with_make_trace_id(make_trace_id),
+            ..self
+        }
+    }
+
 }
 
 impl<S, N, E, W> Layer<S, N, E, W> {

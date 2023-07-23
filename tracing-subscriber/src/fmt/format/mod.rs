@@ -60,6 +60,11 @@ mod pretty;
 #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
 pub use pretty::*;
 
+#[cfg(feature = "otel")]
+use crate::registry::Extensions;
+#[cfg(feature = "otel")]
+use opentelemetry::trace::TraceId;
+
 /// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
 /// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or
@@ -407,6 +412,43 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    #[cfg(feature = "otel")]
+    pub(crate) make_trace_id: Option<Box<dyn MakeTraceId>>
+}
+
+/// Optionally make an OTel `TraceId`.
+#[cfg(feature = "otel")]
+pub trait MakeTraceId: Fn(Extensions<'_>) -> Option<TraceId> + Send + Sync {
+    /// Clone self into a boxed [MakeTraceId].
+    fn clone_box<'a>(&self) -> Box<dyn 'a + MakeTraceId>
+    where
+        Self: 'a;
+}
+
+#[cfg(feature = "otel")]
+impl Debug for Box<dyn MakeTraceId> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MakeTraceId")
+    }
+}
+
+#[cfg(feature = "otel")]
+impl<F> MakeTraceId for F
+    where
+        F: Fn(Extensions<'_>) -> Option<TraceId> + Clone + Send + Sync {
+    fn clone_box<'a>(&self) -> Box<dyn 'a + MakeTraceId>
+    where
+        Self: 'a,
+    {
+        Box::new(self.clone())
+    }
+}
+
+#[cfg(feature = "otel")]
+impl<'a> Clone for Box<dyn 'a + MakeTraceId> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 // === impl Writer ===
@@ -585,6 +627,8 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 }
@@ -605,6 +649,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 
@@ -644,6 +690,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 
@@ -675,6 +723,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 
@@ -704,6 +754,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 
@@ -720,6 +772,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            #[cfg(feature = "otel")]
+            make_trace_id: None,
         }
     }
 
@@ -799,6 +853,15 @@ impl<F, T> Format<F, T> {
     pub fn with_source_location(self, display_location: bool) -> Self {
         self.with_line_number(display_location)
             .with_file(display_location)
+    }
+
+    /// Set the function to optionally make an OTel `TraceId`.
+    #[cfg(feature = "otel")]
+    pub fn with_make_trace_id(self, make_trace_id: Box<dyn MakeTraceId>) -> Self {
+        Format {
+            make_trace_id: Some(make_trace_id),
+            ..self
+        }
     }
 
     #[inline]

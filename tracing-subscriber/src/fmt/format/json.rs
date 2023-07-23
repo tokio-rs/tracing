@@ -321,6 +321,13 @@ where
                     .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
             }
 
+            #[cfg(feature = "otel")]
+            if let Some((make_trace_id, current_span)) = self.make_trace_id.as_ref().zip(current_span) {
+                if let Some(trace_id) = make_trace_id(current_span.extensions()) {
+                    serializer.serialize_entry("trace_id", &trace_id.to_string())?;
+                }
+            }
+
             serializer.end()
         };
 
