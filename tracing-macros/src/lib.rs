@@ -43,3 +43,24 @@ macro_rules! dbg {
         $crate::dbg!(level: $crate::tracing::Level::DEBUG, $ex)
     };
 }
+
+#[macro_export]
+macro_rules! fatal {
+    (target: $target:expr, level: $level:expr, $($arg:tt)*) => {{
+        let prev = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            $crate::tracing::event!(target: $target, $level, "{info}");
+            prev(info);
+        }));
+        panic!($($arg)*);
+    }};
+    (level: $level:expr, $($arg:tt)*) => {{
+        $crate::fatal!(target: module_path!(), level: $level, $($arg)*)
+    }};
+    (target: $target:expr, $($arg:tt)*) => {{
+        $crate::fatal!(target: $target, level: $crate::tracing::Level::ERROR, $($arg)*)
+    }};
+    ($($arg:tt)*) => {{
+        $crate::fatal!(level: $crate::tracing::Level::ERROR, $($arg)*)
+    }};
+}
