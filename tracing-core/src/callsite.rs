@@ -81,6 +81,7 @@
 //! [never]: crate::collect::Interest::never
 //! [`Dispatch`]: crate::dispatch::Dispatch
 use crate::{
+    atomic::{AtomicPtr, Ordering},
     collect::Interest,
     dispatch::{self, Dispatch},
     metadata::{LevelFilter, Metadata},
@@ -89,7 +90,6 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     ptr,
-    sync::atomic::{AtomicPtr, Ordering},
 };
 
 type Callsites = LinkedList;

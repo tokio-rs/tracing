@@ -987,8 +987,12 @@ pub mod span;
 pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
     use crate::{collect::Interest, Metadata};
+    use atomic::{AtomicU8, Ordering};
     use core::fmt;
-    use core::sync::atomic::{AtomicU8, Ordering};
+    #[cfg(not(feature = "portable-atomic"))]
+    use core::sync::atomic;
+    #[cfg(feature = "portable-atomic")]
+    use portable_atomic as atomic;
 
     /// Callsite implementation used by macro-generated code.
     ///

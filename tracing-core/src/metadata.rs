@@ -1,10 +1,7 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use core::{
-    cmp, fmt,
-    str::FromStr,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use crate::atomic::{AtomicUsize, Ordering};
+use core::{cmp, fmt, str::FromStr};
 
 /// Metadata describing a [span] or [event].
 ///

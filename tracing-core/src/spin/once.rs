@@ -1,7 +1,7 @@
+use crate::atomic::{AtomicUsize, Ordering};
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::hint::spin_loop;
-use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the

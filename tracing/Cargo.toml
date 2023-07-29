@@ -35,6 +35,7 @@ tracing-core = { path = "../tracing-core", version = "0.2", default-features = f
 log = { version = "0.4.17", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
 pin-project-lite = "0.2.9"
+portable-atomic = { version = "1.4", default-features = false, features = ["require-cas"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default_features = false }

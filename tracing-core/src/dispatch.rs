@@ -136,15 +136,12 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 use crate::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     collect::{self, Collect, NoCollector},
     span, Event, LevelFilter, Metadata,
 };
 
-use core::{
-    any::Any,
-    fmt,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use core::{any::Any, fmt};
 
 #[cfg(feature = "std")]
 use std::{

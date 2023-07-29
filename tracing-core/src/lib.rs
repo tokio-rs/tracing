@@ -286,6 +286,11 @@ pub use std::sync::Once;
 // Required for `Once` in `no_std` builds.
 pub(crate) mod spin;
 
+#[cfg(not(feature = "portable-atomic"))]
+pub(crate) use core::sync::atomic;
+#[cfg(feature = "portable-atomic")]
+pub(crate) use portable_atomic as atomic;
+
 pub mod callsite;
 pub mod collect;
 pub mod dispatch;
