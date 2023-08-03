@@ -52,7 +52,7 @@ pub trait FormatTime {
 /// # }
 /// ```
 pub fn time() -> SystemTime {
-    SystemTime::default()
+    SystemTime
 }
 
 /// Returns a new `Uptime` timestamp provider.
