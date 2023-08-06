@@ -2,6 +2,8 @@
 // We call all macros in this module with `no_implicit_prelude` to ensure they do not depend on the standard prelude.
 #![no_implicit_prelude]
 extern crate tracing;
+#[cfg(target_arch = "wasm32")]
+extern crate wasm_bindgen_test;
 
 use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
