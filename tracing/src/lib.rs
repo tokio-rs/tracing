@@ -747,6 +747,7 @@
 //!  - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 //!  - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 //!  - [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
+//!  - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -787,6 +788,7 @@
 //! [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
 //! [`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
 //! [`reqwest`]: https://crates.io/crates/reqwest
+//! [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
 //!
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
 //!     <strong>Note</strong>: Some of these ecosystem crates are currently
