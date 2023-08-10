@@ -423,7 +423,12 @@ impl<'writer> Writer<'writer> {
     // We may not want to do that if we choose to expose specialized
     // constructors instead (e.g. `from_string` that stores whether the string
     // is empty...?)
-    pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
+    //(@kaifastromai) I suppose having dedicated constructors may have certain benefits
+    // but I am not privy to the larger direction of tracing/subscriber.
+    ///Create a new [`Writer`] from any type that implements fmt::Write. 
+    ///This can be used to e.g. obtain the raw string after this writer has formatted via a call to `[fmt::format::Format::format_event]
+    #[must_use]
+    pub fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
             writer: writer as &mut dyn fmt::Write,
             is_ansi: false,
