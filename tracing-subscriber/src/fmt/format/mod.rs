@@ -425,8 +425,8 @@ impl<'writer> Writer<'writer> {
     // is empty...?)
     //(@kaifastromai) I suppose having dedicated constructors may have certain benefits
     // but I am not privy to the larger direction of tracing/subscriber.
-    ///Create a new [`Writer`] from any type that implements fmt::Write. 
-    ///This can be used to e.g. obtain the raw string after this writer has formatted via a call to `[fmt::format::Format::format_event]
+    ///Create a new [`Writer`] from any type that implements fmt::Write.
+    ///This can be used to e.g. obtain the raw string after this writer has formatted via a call to [`Format`]'s format_event.
     #[must_use]
     pub fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
@@ -1072,7 +1072,12 @@ where
 
         let dimmed = writer.dimmed();
         if self.display_target {
-            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
+            write!(
+                writer,
+                "{}{}",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         if self.display_filename {
