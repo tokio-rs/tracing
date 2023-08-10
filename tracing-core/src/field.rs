@@ -7,7 +7,7 @@
 //! # `Value`s and `Collect`s
 //!
 //! Collectors consume `Value`s as fields attached to [span]s or [`Event`]s.
-//! The set of field keys on a given span or is defined on its [`Metadata`].
+//! The set of field keys on a given span or event is defined on its [`Metadata`].
 //! When a span is created, it provides [`Attributes`] to the collector's
 //! [`new_span`] method, containing any fields whose values were provided when
 //! the span was created; and may call the collector's [`record`] method
@@ -697,6 +697,7 @@ impl FieldSet {
     ///
     /// [`Identifier`]: super::callsite::Identifier
     /// [`Callsite`]: super::callsite::Callsite
+    #[inline]
     pub(crate) fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
@@ -734,6 +735,7 @@ impl FieldSet {
     }
 
     /// Returns an iterator over the `Field`s in this `FieldSet`.
+    #[inline]
     pub fn iter(&self) -> Iter {
         let idxs = 0..self.len();
         Iter {
@@ -837,6 +839,7 @@ impl PartialEq for FieldSet {
 
 impl Iterator for Iter {
     type Item = Field;
+    #[inline]
     fn next(&mut self) -> Option<Field> {
         let i = self.idxs.next()?;
         Some(Field {
@@ -877,6 +880,19 @@ impl<'a> ValueSet<'a> {
         }
     }
 
+    /// Returns the number of fields in this `ValueSet` that would be visited
+    /// by a given [visitor] to the [`ValueSet::record()`] method.
+    ///
+    /// [visitor]: Visit
+    /// [`ValueSet::record()`]: ValueSet::record()
+    pub fn len(&self) -> usize {
+        let my_callsite = self.callsite();
+        self.values
+            .iter()
+            .filter(|(field, _)| field.callsite() == my_callsite)
+            .count()
+    }
+
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite()
@@ -887,7 +903,7 @@ impl<'a> ValueSet<'a> {
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         let my_callsite = self.callsite();
         self.values
             .iter()
@@ -947,7 +963,7 @@ macro_rules! impl_valid_len {
     ( $( $len:tt ),+ ) => {
         $(
             impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
+                [(&'a Field, ::core::option::Option<&'a (dyn Value + 'a)>); $len] {}
         )+
     }
 }

@@ -274,10 +274,32 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         }
     }
 
-    /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    /// Sets whether or not the formatter emits ANSI terminal escape codes
+    /// for colors and other text formatting.
+    ///
+    /// Enabling ANSI escapes (calling `with_ansi(true)`) requires the "ansi"
+    /// crate feature flag. Calling `with_ansi(true)` without the "ansi"
+    /// feature flag enabled will panic if debug assertions are enabled, or
+    /// print a warning otherwise.
+    ///
+    /// This method itself is still available without the feature flag. This
+    /// is to allow ANSI escape codes to be explicitly *disabled* without
+    /// having to opt-in to the dependencies required to emit ANSI formatting.
+    /// This way, code which constructs a formatter that should never emit
+    /// ANSI escape codes can ensure that they are not used, regardless of
+    /// whether or not other crates in the dependency graph enable the "ansi"
+    /// feature flag.
     pub fn with_ansi(self, ansi: bool) -> Self {
+        #[cfg(not(feature = "ansi"))]
+        if ansi {
+            const ERROR: &str =
+                "tracing-subscriber: the `ansi` crate feature is required to enable ANSI terminal colors";
+            #[cfg(debug_assertions)]
+            panic!("{}", ERROR);
+            #[cfg(not(debug_assertions))]
+            eprintln!("{}", ERROR);
+        }
+
         Subscriber {
             is_ansi: ansi,
             ..self
@@ -756,7 +778,7 @@ macro_rules! with_event_from_span {
         #[allow(unused)]
         let mut iter = fs.iter();
         let v = [$(
-            (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
+            (&iter.next().unwrap(), ::core::option::Option::Some(&$value as &dyn field::Value)),
         )*];
         let vs = fs.value_set(&v);
         let $event = Event::new_child_of($id, meta, &vs);

@@ -325,7 +325,7 @@ impl Targets {
     /// assert_eq!(filter.default_level(), Some(LevelFilter::OFF));
     /// ```
     pub fn default_level(&self) -> Option<LevelFilter> {
-        self.0.directives().into_iter().find_map(|d| {
+        self.0.directives().find_map(|d| {
             if d.target.is_none() {
                 Some(d.level)
             } else {

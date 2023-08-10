@@ -138,6 +138,8 @@ fn test_async() {
                 .at_level(Level::INFO),
         )
         .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
         .drop_span(span)
         .only()
         .run_with_handle();
