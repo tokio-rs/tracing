@@ -244,7 +244,7 @@ fn gen_block<B: ToTokens>(
                     tracing::event!(target: #target, #level_tokens, error = %e, "{}", e)
                 )),
                 FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = ?e, "{}", e)
+                    tracing::event!(target: #target, #level_tokens, error = ?e, "{:?}", e)
                 )),
                 FormatMode::Raw => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, error = e, "{}", e)
@@ -262,7 +262,7 @@ fn gen_block<B: ToTokens>(
                     tracing::event!(target: #target, #level_tokens, return = %x, "{}", x)
                 )),
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = ?x, "{}", x)
+                    tracing::event!(target: #target, #level_tokens, return = ?x, "{:?}", x)
                 )),
                 FormatMode::Raw => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, return = x, "{}", x)

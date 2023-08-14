@@ -177,9 +177,10 @@ impl Parse for EventArgs {
                     match ident.to_string().as_str() {
                         "Debug" => result.mode = FormatMode::Debug,
                         "Display" => result.mode = FormatMode::Display,
+                        "Raw" => result.mode = FormatMode::Raw,
                         _ => return Err(syn::Error::new(
                             ident.span(),
-                            "unknown event formatting mode, expected either `Debug` or `Display`",
+                            "unknown event formatting mode, expected either `Debug`, `Display`, or `Raw`",
                         )),
                     }
                 }
@@ -284,7 +285,7 @@ impl Parse for FormatMode {
                 "Raw" => Ok(FormatMode::Raw),
                 _ => Err(syn::Error::new(
                     ident.span(),
-                    "unknown error mode, must be Debug or Display",
+                    "unknown error mode, must be Debug, Display, or Raw",
                 )),
             }
         })
