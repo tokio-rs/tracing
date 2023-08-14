@@ -294,8 +294,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// By default, error values will be recorded using their `std::fmt::Display` implementations.
-/// If an error implements `std::fmt::Debug`, it can be recorded using its `Debug` implementation
+/// By default, error values will be recorded using their [`std::fmt::Display`] implementations.
+/// If an error implements `std::fmt::Debug`, it can be recorded using its [`std::fmt::Debug`] implementation
 /// instead by writing `err(Debug)`:
 ///
 /// ```
@@ -306,7 +306,7 @@ mod expand;
 /// }
 /// ```
 /// 
-/// If you're returning a `Result<T, E>` and `E` implements [`std::error::Error`], it can be
+/// If you're returning a [`std::result::Result<T, E>`] and `E` implements [`std::error::Error`], it can be
 /// recorded the raw error value using `err(Value)`. This can be useful when paired with a subscriber
 /// which specially handles errors, like [`tracing_opentelemetry`]:
 /// 
@@ -316,6 +316,7 @@ mod expand;
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///    Ok(())
 /// }
+/// ```
 ///
 /// If a `target` is specified, both the `ret` and `err` arguments will emit outputs to
 /// the declared target (or the default channel if `target` is not specified).
@@ -377,6 +378,8 @@ mod expand;
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
+/// [`tracing_opentelemetry`]: https://docs.rs/tracing-opentelemetry
+/// [`tracing::field::Value`]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html
 /// [`fmt::Debug`]: std::fmt::Debug
 /// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
 /// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
