@@ -177,7 +177,7 @@ impl Parse for EventArgs {
                     match ident.to_string().as_str() {
                         "Debug" => result.mode = FormatMode::Debug,
                         "Display" => result.mode = FormatMode::Display,
-                        "Raw" => result.mode = FormatMode::Raw,
+                        "Raw" => result.mode = FormatMode::Value,
                         _ => return Err(syn::Error::new(
                             ident.span(),
                             "unknown event formatting mode, expected either `Debug`, `Display`, or `Raw`",
@@ -261,7 +261,7 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
-    Raw,
+    Value,
 }
 
 impl Default for FormatMode {
@@ -282,7 +282,7 @@ impl Parse for FormatMode {
             match ident.to_string().as_str() {
                 "Debug" => Ok(FormatMode::Debug),
                 "Display" => Ok(FormatMode::Display),
-                "Raw" => Ok(FormatMode::Raw),
+                "Raw" => Ok(FormatMode::Value),
                 _ => Err(syn::Error::new(
                     ident.span(),
                     "unknown error mode, must be Debug, Display, or Raw",
