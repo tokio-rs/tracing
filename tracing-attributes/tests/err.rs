@@ -206,8 +206,8 @@ fn test_err_dbg() {
     handle.assert_finished();
 }
 
-#[instrument(err(Raw))]
-fn err_raw() -> Result<u8, Box<dyn Error + 'static>> {
+#[instrument(err(Value))]
+fn err_value() -> Result<u8, Box<dyn Error + 'static>> {
     Err("oh no".into())
 }
 

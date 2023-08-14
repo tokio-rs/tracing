@@ -260,11 +260,11 @@ mod expand;
 /// ```
 /// 
 /// If the value being returned implements [`tracing::field::Value`],  it can be recorded using its
-/// `Value` implementation directly, using  `ret(Raw)`:
+/// `Value` implementation directly, using  `ret(Value)`:
 /// 
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(ret(Raw))]
+/// #[instrument(ret(Value))]
 /// fn my_function() -> i32 {
 ///     42
 /// }
@@ -307,12 +307,12 @@ mod expand;
 /// ```
 /// 
 /// If you're returning a `Result<T, E>` and `E` implements [`std::error::Error`], it can be
-/// recorded the raw error value using `err(Raw)`. This can be useful when paired with a subscriber
+/// recorded the raw error value using `err(Value)`. This can be useful when paired with a subscriber
 /// which specially handles errors, like [`tracing_opentelemetry`]:
 /// 
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err(Raw))]
+/// #[instrument(err(Value))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///    Ok(())
 /// }
