@@ -1515,9 +1515,26 @@ mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn subscriber_no_color() {
-        // save off the existing value of NO_COLOR
+
         const NO_COLOR: &str = "NO_COLOR";
-        let saved_no_color = std::env::var(NO_COLOR);
+
+        // Restores the previous value of the `NO_COLOR` env variable when
+        // dropped.
+        //
+        // This is done in a `Drop` implementation, rather than just resetting
+        // the value at the end of the test, so that the previous value is
+        // restored even if the test panics.
+        struct RestoreEnvVar(Result<String, env::VarError>);
+        impl Drop for RestoreEnvVar {
+            fn drop(&mut self) {
+                match self.0 {
+                    Ok(ref var) => env::set_var(NO_COLOR, var),
+                    Err(_) => env::remove_var(NO_COLOR),
+                }
+            }
+        }
+
+        let _saved_no_color = RestoreEnvVar(env::var(NO_COLOR));
 
         let cases: Vec<(Option<&str>, bool)> = vec![
             (Some("0"), false),   // any non-empty value disables ansi
@@ -1559,10 +1576,7 @@ mod test {
             );
         }
 
-        if let Ok(value) = saved_no_color {
-            env::set_var(NO_COLOR, value);
-        } else {
-            env::remove_var(NO_COLOR);
-        }
+    // dropping `_saved_no_color` will restore the previous value of 
+    // `NO_COLOR`.
     }
 }
