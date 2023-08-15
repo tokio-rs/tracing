@@ -180,7 +180,7 @@ impl Parse for EventArgs {
                         "Value" => result.mode = FormatMode::Value,
                         _ => return Err(syn::Error::new(
                             ident.span(),
-                            "unknown event formatting mode, expected either `Debug`, `Display`, or `Value`",
+                            "unknown event formatting mode, expected one of `Debug`, `Display`, or `Value`",
                         )),
                     }
                 }
@@ -285,7 +285,7 @@ impl Parse for FormatMode {
                 "Value" => Ok(FormatMode::Value),
                 _ => Err(syn::Error::new(
                     ident.span(),
-                    "unknown error mode, must be `Debug`, `Display`, or `Value`",
+                    "unknown error mode, must be one of `Debug`, `Display`, or `Value`",
                 )),
             }
         })
