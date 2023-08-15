@@ -277,6 +277,13 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// Sets whether or not the formatter emits ANSI terminal escape codes
     /// for colors and other text formatting.
     ///
+    /// When the "ansi" crate feature flag is enabled, ANSI colors are enabled
+    /// by default unless the `NO_COLOR` environment variable is set to
+    /// a non-empty value.  If the `NO_COLOR` environment variable is set to
+    /// any non-empty value, then ANSI colors will be suppressed by default.
+    /// The [`with_ansi`] and [`set_ansi`] methods can be used to forcibly
+    /// enable ANSI colors, overriding any `NO_COLOR` environment variable.
+    ///
     /// Enabling ANSI escapes (calling `with_ansi(true)`) requires the "ansi"
     /// crate feature flag. Calling `with_ansi(true)` without the "ansi"
     /// feature flag enabled will panic if debug assertions are enabled, or
