@@ -403,6 +403,8 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 - [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
 - [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
+- [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
+- [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -445,6 +447,8 @@ please let us know!)
 [`tracing-chrome`]: https://crates.io/crates/tracing-chrome
 [`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
 [`reqwest`]: https://crates.io/crates/reqwest
+[`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
+[`clippy-tracing`]: https://crates.io/crates/clippy-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -460,14 +464,17 @@ Tracing.
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 * [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
 * [Custom Logging in Rust using `tracing` and `tracing-subscriber`, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
+* [Instrumenting Axum projects][detsys-blog-2023-08], August 2023
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
+[detsys-blog-2023-08]: https://determinate.systems/posts/instrumenting-axum
 
 #### Talks
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2019-03], March 2019
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
+* [Crabs with instruments!][tremorcon-2021-09], September 2021
 
 [bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
@@ -477,6 +484,7 @@ Tracing.
 [production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
+[tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
