@@ -296,6 +296,9 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// ANSI escape codes can ensure that they are not used, regardless of
     /// whether or not other crates in the dependency graph enable the "ansi"
     /// feature flag.
+    ///
+    /// [`with_ansi`]: Subscriber::with_ansi
+    /// [`set_ansi`]: Subscriber::set_ansi
     pub fn with_ansi(self, ansi: bool) -> Self {
         #[cfg(not(feature = "ansi"))]
         if ansi {
@@ -1522,7 +1525,6 @@ mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn subscriber_no_color() {
-
         const NO_COLOR: &str = "NO_COLOR";
 
         // Restores the previous value of the `NO_COLOR` env variable when
@@ -1583,7 +1585,7 @@ mod test {
             );
         }
 
-    // dropping `_saved_no_color` will restore the previous value of 
-    // `NO_COLOR`.
+        // dropping `_saved_no_color` will restore the previous value of
+        // `NO_COLOR`.
     }
 }
