@@ -5,7 +5,9 @@ use crate::{
     registry::{self, LookupSpan, SpanRef},
 };
 use format::{FmtSpan, TimingDisplay};
-use std::{any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, time::Instant};
+use std::{
+    any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, time::Instant,
+};
 use tracing_core::{
     field,
     span::{Attributes, Current, Id, Record},
@@ -276,6 +278,15 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets whether or not the formatter emits ANSI terminal escape codes
     /// for colors and other text formatting.
     ///
+    /// When the "ansi" crate feature flag is enabled, ANSI colors are enabled
+    /// by default unless the [`NO_COLOR`] environment variable is set to
+    /// a non-empty value.  If the [`NO_COLOR`] environment variable is set to
+    /// any non-empty value, then ANSI colors will be suppressed by default.
+    /// The [`with_ansi`] and [`set_ansi`] methods can be used to forcibly
+    /// enable ANSI colors, overriding any [`NO_COLOR`] environment variable.
+    ///
+    /// [`NO_COLOR`]: https://no-color.org/
+    ///
     /// Enabling ANSI escapes (calling `with_ansi(true)`) requires the "ansi"
     /// crate feature flag. Calling `with_ansi(true)` without the "ansi"
     /// feature flag enabled will panic if debug assertions are enabled, or
@@ -288,6 +299,9 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// ANSI escape codes can ensure that they are not used, regardless of
     /// whether or not other crates in the dependency graph enable the "ansi"
     /// feature flag.
+    ///
+    /// [`with_ansi`]: Subscriber::with_ansi
+    /// [`set_ansi`]: Subscriber::set_ansi
     pub fn with_ansi(self, ansi: bool) -> Self {
         #[cfg(not(feature = "ansi"))]
         if ansi {
@@ -311,10 +325,10 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
     /// the writer. These errors are unlikely and will only occur if there is a
     /// bug in the `FormatEvent` implementation or its dependencies.
-    /// 
+    ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
-    /// 
+    ///
     /// [`FormatEvent`]: crate::fmt::FormatEvent
     pub fn log_internal_errors(self, log_internal_errors: bool) -> Self {
         Self {
@@ -677,12 +691,16 @@ impl<S, N, E, W> Layer<S, N, E, W> {
 
 impl<S> Default for Layer<S> {
     fn default() -> Self {
+        // only enable ANSI when the feature is enabled, and the NO_COLOR
+        // environment variable is unset or empty.
+        let ansi = cfg!(feature = "ansi") && env::var("NO_COLOR").map_or(true, |v| v.is_empty());
+
         Layer {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
-            is_ansi: cfg!(feature = "ansi"),
+            is_ansi: ansi,
             log_internal_errors: false,
             _inner: PhantomData,
         }
@@ -1288,8 +1306,17 @@ mod test {
         let actual = sanitize_timings(make_writer.get_string());
 
         // Only assert the start because the line number and callsite may change.
-        let expected = concat!("Unable to format the following event. Name: event ", file!(), ":");
-        assert!(actual.as_str().starts_with(expected), "\nactual = {}\nshould start with expected = {}\n", actual, expected);
+        let expected = concat!(
+            "Unable to format the following event. Name: event ",
+            file!(),
+            ":"
+        );
+        assert!(
+            actual.as_str().starts_with(expected),
+            "\nactual = {}\nshould start with expected = {}\n",
+            actual,
+            expected
+        );
     }
 
     #[test]
@@ -1490,5 +1517,74 @@ mod test {
              fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
         );
+    }
+
+    // Because we need to modify an environment variable for these test cases,
+    // we do them all in a single test.
+    #[cfg(feature = "ansi")]
+    #[test]
+    fn layer_no_color() {
+        const NO_COLOR: &str = "NO_COLOR";
+
+        // Restores the previous value of the `NO_COLOR` env variable when
+        // dropped.
+        //
+        // This is done in a `Drop` implementation, rather than just resetting
+        // the value at the end of the test, so that the previous value is
+        // restored even if the test panics.
+        struct RestoreEnvVar(Result<String, env::VarError>);
+        impl Drop for RestoreEnvVar {
+            fn drop(&mut self) {
+                match self.0 {
+                    Ok(ref var) => env::set_var(NO_COLOR, var),
+                    Err(_) => env::remove_var(NO_COLOR),
+                }
+            }
+        }
+
+        let _saved_no_color = RestoreEnvVar(env::var(NO_COLOR));
+
+        let cases: Vec<(Option<&str>, bool)> = vec![
+            (Some("0"), false),   // any non-empty value disables ansi
+            (Some("off"), false), // any non-empty value disables ansi
+            (Some("1"), false),
+            (Some(""), true), // empty value does not disable ansi
+            (None, true),
+        ];
+
+        for (var, ansi) in cases {
+            if let Some(value) = var {
+                env::set_var(NO_COLOR, value);
+            } else {
+                env::remove_var(NO_COLOR);
+            }
+
+            let layer: Layer<()> = fmt::Layer::default();
+            assert_eq!(
+                layer.is_ansi, ansi,
+                "NO_COLOR={:?}; Layer::default().is_ansi should be {}",
+                var, ansi
+            );
+
+            // with_ansi should override any `NO_COLOR` value
+            let layer: Layer<()> = fmt::Layer::default().with_ansi(true);
+            assert!(
+                layer.is_ansi,
+                "NO_COLOR={:?}; Layer::default().with_ansi(true).is_ansi should be true",
+                var
+            );
+
+            // set_ansi should override any `NO_COLOR` value
+            let mut layer: Layer<()> = fmt::Layer::default();
+            layer.set_ansi(true);
+            assert!(
+                layer.is_ansi,
+                "NO_COLOR={:?}; layer.set_ansi(true); layer.is_ansi should be true",
+                var
+            );
+        }
+
+        // dropping `_saved_no_color` will restore the previous value of
+        // `NO_COLOR`.
     }
 }
