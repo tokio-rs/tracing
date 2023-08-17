@@ -278,11 +278,13 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// for colors and other text formatting.
     ///
     /// When the "ansi" crate feature flag is enabled, ANSI colors are enabled
-    /// by default unless the `NO_COLOR` environment variable is set to
-    /// a non-empty value.  If the `NO_COLOR` environment variable is set to
+    /// by default unless the [`NO_COLOR`] environment variable is set to
+    /// a non-empty value.  If the [`NO_COLOR`] environment variable is set to
     /// any non-empty value, then ANSI colors will be suppressed by default.
     /// The [`with_ansi`] and [`set_ansi`] methods can be used to forcibly
-    /// enable ANSI colors, overriding any `NO_COLOR` environment variable.
+    /// enable ANSI colors, overriding any [`NO_COLOR`] environment variable.
+    ///
+    /// [`NO_COLOR`]: https://no-color.org/
     ///
     /// Enabling ANSI escapes (calling `with_ansi(true)`) requires the "ansi"
     /// crate feature flag. Calling `with_ansi(true)` without the "ansi"
