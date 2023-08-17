@@ -2,6 +2,12 @@
 // We call all macros in this module with `no_implicit_prelude` to ensure they do not depend on the standard prelude.
 #![no_implicit_prelude]
 extern crate tracing;
+#[cfg(target_arch = "wasm32")]
+extern crate wasm_bindgen_test;
+
+// TODO: remove this once https://github.com/tokio-rs/tracing/pull/2675#issuecomment-1667628907 is resolved
+#[cfg(target_arch = "wasm32")]
+use ::core::option::Option::None;
 
 use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
