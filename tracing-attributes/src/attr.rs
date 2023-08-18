@@ -163,27 +163,31 @@ impl Parse for EventArgs {
         let content;
         let _ = syn::parenthesized!(content in input);
         let mut result = Self::default();
-        let mut parse_one_arg =
-            || {
-                let lookahead = content.lookahead1();
-                if lookahead.peek(kw::level) {
-                    if result.level.is_some() {
-                        return Err(content.error("expected only a single `level` argument"));
-                    }
-                    result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
-                    return Err(content.error("expected only a single format argument"));
-                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                    match ident.to_string().as_str().into() {
-                        FormatMode::Default => return Err(syn::Error::new(
-                            ident.span(),
-                            format!("unknown event formatting mode, must be one of: {}", FormatMode::options().join(", ")),
-                        )),
-                        mode => result.mode = mode,
-                    }
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
                 }
-                Ok(())
-            };
+                result.level = Some(content.parse()?);
+            } else if result.mode != FormatMode::default() {
+                return Err(content.error("expected only a single format argument"));
+            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                match ident.to_string().as_str().into() {
+                    FormatMode::Default => {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            format!(
+                                "unknown event formatting mode, must be one of: {}",
+                                FormatMode::options().join(", ")
+                            ),
+                        ))
+                    }
+                    mode => result.mode = mode,
+                }
+            }
+            Ok(())
+        };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -302,7 +306,10 @@ impl Parse for FormatMode {
             match ident.to_string().as_str().into() {
                 FormatMode::Default => Err(syn::Error::new(
                     ident.span(),
-                    format!("unknown error mode, must be one of: {}", FormatMode::options().join(", ")),
+                    format!(
+                        "unknown error mode, must be one of: {}",
+                        FormatMode::options().join(", ")
+                    ),
                 )),
                 mode => Ok(mode),
             }
