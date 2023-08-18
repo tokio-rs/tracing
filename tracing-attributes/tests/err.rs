@@ -214,7 +214,7 @@ fn err_value() -> Result<u8, Box<dyn Error + 'static>> {
 #[test]
 fn test_err_raw() {
     let err: Box<dyn Error + 'static> = "oh no".into();
-    let span = expect::span().named("err_raw");
+    let span = expect::span().named("err_value");
     let (collector, handle) = collector::mock()
         .new_span(span.clone())
         .enter(span.clone())
