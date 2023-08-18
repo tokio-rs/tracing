@@ -15,6 +15,9 @@ pub use time_crate::UtcTime;
 #[cfg_attr(docsrs, doc(cfg(all(unsound_local_offset, feature = "local-time"))))]
 pub use time_crate::LocalTime;
 
+/// [`Chrono`]-based implementation for time.
+pub mod chrono_crate;
+
 /// A type that can measure and format the current time.
 ///
 /// This trait is used by `Format` to include a timestamp with each `Event` when it is logged.
