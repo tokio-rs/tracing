@@ -264,7 +264,7 @@ impl fmt::Debug for RollingFileAppender {
     }
 }
 
-/// Creates a minutely, rolling file appender. This will rotate the log file once per minute.
+/// Creates a minutely-rotating file appender. This will rotate the log file once per minute.
 ///
 /// The appender returned by `rolling::minutely` can be used with `non_blocking` to create
 /// a non-blocking, minutely file appender.
@@ -299,7 +299,7 @@ pub fn minutely(
     RollingFileAppender::new(Rotation::MINUTELY, directory, file_name_prefix)
 }
 
-/// Creates an hourly, rolling file appender.
+/// Creates an hourly-rotating file appender.
 ///
 /// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
 /// a non-blocking, hourly file appender.
@@ -334,7 +334,7 @@ pub fn hourly(
     RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
-/// Creates a file appender that rotates daily.
+/// Creates a daily-rotating file appender.
 ///
 /// The appender returned by `rolling::daily` can be used with `non_blocking` to create
 /// a non-blocking, daily file appender.
@@ -370,7 +370,7 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
-/// Creates a non-rolling file appender
+/// Creates a non-rolling file appender.
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
 /// a non-blocking, non-rotating appender.
