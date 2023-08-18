@@ -280,6 +280,10 @@ impl FormatMode {
         ("Display", FormatMode::Display),
         ("Value", FormatMode::Value),
     ];
+
+    fn options() -> impl Iterator<Item = &'static str> {
+        Self::OPTIONS.iter().map(|(name, _)| *name)
+    }
 }
 
 impl<S> From<S> for FormatMode
