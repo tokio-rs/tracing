@@ -273,11 +273,13 @@ impl Default for FormatMode {
 }
 
 impl FormatMode {
-    /// Returns a list of the valid options for the format mode, this should be updated
+    /// A list of the valid options for the format mode. This should be updated
     /// when new modes are added to ensure that parser error messages are formatted correctly.
-    fn options() -> &'static [&'static str] {
-        &["Debug", "Display", "Value"]
-    }
+    const OPTIONS: &[(&str, FormatMode)] = &[
+        ("Debug", FormatMode::Debug),
+        ("Display", FormatMode::Display),
+        ("Value", FormatMode::Value),
+    ];
 }
 
 impl<S> From<S> for FormatMode
@@ -285,12 +287,13 @@ where
     S: AsRef<str>,
 {
     fn from(s: S) -> Self {
-        match s.as_ref() {
-            "Debug" => FormatMode::Debug,
-            "Display" => FormatMode::Display,
-            "Value" => FormatMode::Value,
-            _ => FormatMode::default(),
+        for (name, value) in Self::OPTIONS {
+            if s == name {
+                 return value;
+            }
         }
+        
+        FormatMode::default()
     }
 }
 
