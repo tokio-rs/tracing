@@ -174,14 +174,12 @@ impl Parse for EventArgs {
                 } else if result.mode != FormatMode::default() {
                     return Err(content.error("expected only a single format argument"));
                 } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                    match ident.to_string().as_str() {
-                        "Debug" => result.mode = FormatMode::Debug,
-                        "Display" => result.mode = FormatMode::Display,
-                        "Value" => result.mode = FormatMode::Value,
-                        _ => return Err(syn::Error::new(
+                    match ident.to_string().as_str().into() {
+                        FormatMode::Default => return Err(syn::Error::new(
                             ident.span(),
-                            "unknown event formatting mode, expected one of `Debug`, `Display`, or `Value`",
+                            format!("unknown event formatting mode, must be one of: {}", FormatMode::options().join(", ")),
                         )),
+                        mode => result.mode = mode,
                     }
                 }
                 Ok(())
@@ -270,6 +268,28 @@ impl Default for FormatMode {
     }
 }
 
+impl FormatMode {
+    /// Returns a list of the valid options for the format mode, this should be updated
+    /// when new modes are added to ensure that parser error messages are formatted correctly.
+    fn options() -> &'static [&'static str] {
+        &["Debug", "Display", "Value"]
+    }
+}
+
+impl<S> From<S> for FormatMode
+where
+    S: AsRef<str>,
+{
+    fn from(s: S) -> Self {
+        match s.as_ref() {
+            "Debug" => FormatMode::Debug,
+            "Display" => FormatMode::Display,
+            "Value" => FormatMode::Value,
+            _ => FormatMode::default(),
+        }
+    }
+}
+
 impl Parse for FormatMode {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         if !input.peek(syn::token::Paren) {
@@ -279,14 +299,12 @@ impl Parse for FormatMode {
         let _ = syn::parenthesized!(content in input);
         let maybe_mode: Option<Ident> = content.parse()?;
         maybe_mode.map_or(Ok(FormatMode::default()), |ident| {
-            match ident.to_string().as_str() {
-                "Debug" => Ok(FormatMode::Debug),
-                "Display" => Ok(FormatMode::Display),
-                "Value" => Ok(FormatMode::Value),
-                _ => Err(syn::Error::new(
+            match ident.to_string().as_str().into() {
+                FormatMode::Default => Err(syn::Error::new(
                     ident.span(),
-                    "unknown error mode, must be one of `Debug`, `Display`, or `Value`",
+                    format!("unknown error mode, must be one of: {}", FormatMode::options().join(", ")),
                 )),
+                mode => Ok(mode),
             }
         })
     }
