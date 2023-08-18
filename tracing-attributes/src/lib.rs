@@ -244,7 +244,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values if and
+/// **Note**:  if the function returns a [`std::result::Result<T, E>`], `ret` will record returned values if and
 /// only if the function returns [`Result::Ok`].
 ///
 /// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
@@ -259,7 +259,7 @@ mod expand;
 /// }
 /// ```
 /// 
-/// If the value being returned implements [`tracing::field::Value`],  it can be recorded using its
+/// If the value being returned implements [`tracing::field::Value`], it can be recorded using its
 /// `Value` implementation directly, using  `ret(Value)`:
 /// 
 /// ```
@@ -270,7 +270,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
+/// If the function returns a [`std::result::Result<T, E>`] and `E` implements [`std::fmt::Display`], adding
 /// `err` or `err(Display)` will emit error events when the function returns `Err`:
 ///
 /// ```
@@ -306,9 +306,9 @@ mod expand;
 /// }
 /// ```
 /// 
-/// If you're returning a [`std::result::Result<T, E>`] and `E` implements [`std::error::Error`], it can be
-/// recorded the raw error value using `err(Value)`. This can be useful when paired with a subscriber
-/// which specially handles errors, like [`tracing_opentelemetry`]:
+/// If a function returns a [`std::result::Result<T, E>`] and `E` implements [`std::error::Error`], the raw
+/// error value can be recorded using `err(Value)`. This is useful when paired with a subscriber
+/// which specially handles [`std::error::Error`]s, like [`tracing_opentelemetry`]:
 /// 
 /// ```
 /// # use tracing_attributes::instrument;
