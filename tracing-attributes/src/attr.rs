@@ -179,7 +179,7 @@ impl Parse for EventArgs {
                             ident.span(),
                             format!(
                                 "unknown event formatting mode, must be one of: {}",
-                                FormatMode::options().join(", ")
+                                FormatMode::options_list()
                             ),
                         ))
                     }
@@ -281,8 +281,8 @@ impl FormatMode {
         ("Value", FormatMode::Value),
     ];
 
-    fn options() -> impl Iterator<Item = &'static str> {
-        Self::OPTIONS.iter().map(|(name, _)| *name)
+    fn options_list() -> String {
+        Self::OPTIONS.iter().map(|(name, _)| *name).join(", ")
     }
 }
 
@@ -315,7 +315,7 @@ impl Parse for FormatMode {
                     ident.span(),
                     format!(
                         "unknown error mode, must be one of: {}",
-                        FormatMode::options().join(", ")
+                        FormatMode::options_list()
                     ),
                 )),
                 mode => Ok(mode),
