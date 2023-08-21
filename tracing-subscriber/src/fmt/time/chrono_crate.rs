@@ -1,31 +1,34 @@
 use crate::fmt::format::Writer;
 use crate::fmt::time::FormatTime;
 
-/// Formats [local time]s and [UTC time]s with [formatter] implementations
+/// Formats [local time]s and [UTC time]s with `FormatTime` implementations
 /// that use the [`chrono` crate].
 ///
-/// [local time]: https://docs.rs/chrono/0.4.26/chrono/offset/struct.Local.html
-/// [UTC time]: https://docs.rs/chrono/0.4.26/chrono/offset/struct.Utc.html
-/// [`chrono` crate]: https://docs.rs/chrono/0.4.26/chrono/
-/// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
+/// [local time]: [`chrono::offset::Local`]
+/// [UTC time]: [`chrono::offset::Utc`]
+/// [`chrono` crate]: [`chrono`]
 
-/// Tag-type (indicating UTC timezone) enabling static dispatch
-/// to `chrono::Local` functions.
-#[derive(Debug)]
-pub struct LocalTime;
+/// Retrieve and print the current local time.
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+pub struct ChronoLocal;
 
-impl FormatTime for LocalTime {
+#[cfg(feature = "chrono")]
+impl FormatTime for ChronoLocal {
     fn format_time(&self, w: &mut Writer<'_>) -> alloc::fmt::Result {
         w.write_str(&chrono::Local::now().to_rfc3339())
     }
 }
 
-/// Tag-type (indicating the "local" timezone) enabling static
-/// dispatch to `chrono::Utc` functions.
-#[derive(Debug)]
-pub struct Utc;
+/// Retrieve and print the current UTC time.
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+pub struct ChronoUtc;
 
-impl FormatTime for Utc {
+#[cfg(feature = "chrono")]
+impl FormatTime for ChronoUtc {
     fn format_time(&self, w: &mut Writer<'_>) -> alloc::fmt::Result {
         w.write_str(&chrono::Utc::now().to_rfc3339())
     }
@@ -36,22 +39,26 @@ mod tests {
     use crate::fmt::format::Writer;
     use crate::fmt::time::FormatTime;
 
-    use super::LocalTime;
-    use super::Utc;
+    #[cfg(feature = "chrono")]
+    use super::ChronoLocal;
+    #[cfg(feature = "chrono")]
+    use super::ChronoUtc;
 
+    #[cfg(feature = "chrono")]
     #[test]
     fn test_chrono_format_time_utc() {
         let mut buf = String::new();
         let mut dst: Writer<'_> = Writer::new(&mut buf);
-        assert!(FormatTime::format_time(&Utc, &mut dst).is_ok());
+        assert!(FormatTime::format_time(&ChronoUtc, &mut dst).is_ok());
         // e.g. `buf` contains "2023-08-18T19:05:08.662499+00:00"
     }
 
+    #[cfg(feature = "chrono")]
     #[test]
     fn test_chrono_format_time_local() {
         let mut buf = String::new();
         let mut dst: Writer<'_> = Writer::new(&mut buf);
-        assert!(FormatTime::format_time(&LocalTime, &mut dst).is_ok());
+        assert!(FormatTime::format_time(&ChronoLocal, &mut dst).is_ok());
         // e.g. `buf` contains "2023-08-18T14:59:08.662499-04:00".
     }
 }
