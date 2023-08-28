@@ -192,14 +192,13 @@ impl RollingFileAppender {
             ref prefix,
             ref suffix,
             ref max_files,
-            ref time_zone
+            ref time_zone,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
-        let offset = UtcOffset::from_hms(time_zone.unwrap_or(0)%24, 0, 0).unwrap();
+        let offset = UtcOffset::from_hms(time_zone.unwrap_or(0) % 24, 0, 0).unwrap();
 
         #[cfg(test)]
-        let now = move ||OffsetDateTime::now_utc()
-            .to_offset(offset);
+        let now = move || OffsetDateTime::now_utc().to_offset(offset);
         let (state, writer) = Inner::new(
             OffsetDateTime::now_utc().to_offset(offset),
             offset,
@@ -219,14 +218,12 @@ impl RollingFileAppender {
 
     #[inline]
     fn now(&self) -> OffsetDateTime {
-    
         #[cfg(test)]
         return (self.now)();
 
         #[cfg(not(test))]
         OffsetDateTime::now_utc().to_offset(self.state.offset)
     }
-    
 }
 
 impl io::Write for RollingFileAppender {
@@ -718,7 +715,6 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
 
 #[cfg(test)]
 mod test {
-    use time::macros::offset;
 
     use super::*;
     use std::fs;
@@ -838,7 +834,7 @@ mod test {
                     }| {
             let (inner, _) = Inner::new(
                 now,
-                offset!(+00:00:00),
+                UtcOffset::from_hms(0, 0,0).unwrap(),
                 rotation.clone(),
                 directory.path(),
                 prefix.map(ToString::to_string),
@@ -951,7 +947,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
             now,
-            offset!(+00:00:00),
+            UtcOffset::from_hms(0, 0,0).unwrap(),
             Rotation::HOURLY,
             directory.path(),
             Some("test_make_writer".to_string()),
@@ -1034,7 +1030,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
             now,
-            offset!(+00:00:00),
+            UtcOffset::from_hms(0, 0,0).unwrap(),
             Rotation::HOURLY,
             directory.path(),
             Some("test_max_log_files".to_string()),

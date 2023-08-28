@@ -11,7 +11,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
-    pub(super) time_zone: Option<i8>
+    pub(super) time_zone: Option<i8>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -57,7 +57,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
-            time_zone: None
+            time_zone: None,
         }
     }
 
@@ -254,8 +254,8 @@ impl Builder {
     /// # drop(appender)
     /// # }
     /// ```
-    pub fn time_zone(self, tz: i8) -> Self{
-        Self{
+    pub fn time_zone(self, tz: i8) -> Self {
+        Self {
             time_zone: Some(tz),
             ..self
         }
