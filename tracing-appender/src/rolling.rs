@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, Time, UtcOffset};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -105,6 +105,7 @@ struct Inner {
     log_filename_prefix: Option<String>,
     log_filename_suffix: Option<String>,
     date_format: Vec<format_description::FormatItem<'static>>,
+    offset: UtcOffset,
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
@@ -174,6 +175,7 @@ impl RollingFileAppender {
     ///     .rotation(Rotation::HOURLY) // rotate log files once every hour
     ///     .filename_prefix("myapp") // log file names will be prefixed with `myapp.`
     ///     .filename_suffix("log") // log file names will be suffixed with `.log`
+    ///     .time_zone(8) // log time will be in UTC+8
     ///     .build("/var/log") // try to build an appender that stores log files in `/var/log`
     ///     .expect("initializing rolling file appender failed");
     /// # drop(file_appender);
@@ -190,11 +192,17 @@ impl RollingFileAppender {
             ref prefix,
             ref suffix,
             ref max_files,
+            ref time_zone
         } = builder;
         let directory = directory.as_ref().to_path_buf();
-        let now = OffsetDateTime::now_utc();
+        let offset = UtcOffset::from_hms(time_zone.unwrap_or(0)%24, 0, 0).unwrap();
+
+        #[cfg(test)]
+        let now = move ||OffsetDateTime::now_utc()
+            .to_offset(offset);
         let (state, writer) = Inner::new(
-            now,
+            OffsetDateTime::now_utc().to_offset(offset),
+            offset,
             rotation.clone(),
             directory,
             prefix.clone(),
@@ -205,18 +213,20 @@ impl RollingFileAppender {
             state,
             writer,
             #[cfg(test)]
-            now: Box::new(OffsetDateTime::now_utc),
+            now: Box::new(now),
         })
     }
 
     #[inline]
     fn now(&self) -> OffsetDateTime {
+    
         #[cfg(test)]
         return (self.now)();
 
         #[cfg(not(test))]
-        OffsetDateTime::now_utc()
+        OffsetDateTime::now_utc().to_offset(self.state.offset)
     }
+    
 }
 
 impl io::Write for RollingFileAppender {
@@ -520,6 +530,7 @@ impl io::Write for RollingWriter<'_> {
 impl Inner {
     fn new(
         now: OffsetDateTime,
+        offset: UtcOffset,
         rotation: Rotation,
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
@@ -535,6 +546,7 @@ impl Inner {
             log_filename_prefix,
             log_filename_suffix,
             date_format,
+            offset,
             next_date: AtomicUsize::new(
                 next_date
                     .map(|date| date.unix_timestamp() as usize)
@@ -706,6 +718,8 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
 
 #[cfg(test)]
 mod test {
+    use time::macros::offset;
+
     use super::*;
     use std::fs;
     use std::io::Write;
@@ -824,6 +838,7 @@ mod test {
                     }| {
             let (inner, _) = Inner::new(
                 now,
+                offset!(+00:00:00),
                 rotation.clone(),
                 directory.path(),
                 prefix.map(ToString::to_string),
@@ -936,6 +951,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
             now,
+            offset!(+00:00:00),
             Rotation::HOURLY,
             directory.path(),
             Some("test_make_writer".to_string()),
@@ -1018,6 +1034,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
             now,
+            offset!(+00:00:00),
             Rotation::HOURLY,
             directory.path(),
             Some("test_max_log_files".to_string()),
