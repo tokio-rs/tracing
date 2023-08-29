@@ -902,7 +902,7 @@
 //! [event]: Event
 //! [events]: Event
 //! [`collect`]: collect::Collect
-//! [Collect::event]: collect::Collect::event
+//! [Collect::event]: fn@collect::Collect::event
 //! [`enter`]: collect::Collect::enter
 //! [`exit`]: collect::Collect::exit
 //! [`enabled`]: collect::Collect::enabled
