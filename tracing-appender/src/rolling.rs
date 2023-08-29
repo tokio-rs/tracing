@@ -1083,7 +1083,53 @@ mod test {
         });
     }
 
+    #[test]
+    fn test_offset() {
+        const NOW_2023: &str = "2023-09-01 06:00:00 +08:00:00";
+        const ADD: i64 = 18; // hours to the next day
+        let offset: UtcOffset = UtcOffset::from_hms(8, 0, 0).unwrap();
 
+        let (directory, now_time, clock, now) = mocking(NOW_2023);
+        let dir_path = directory.path();
+        let (state, writer) = Inner::new(
+            now_time,
+            Rotation::DAILY,
+            dir_path,
+            Some("test_offset".to_string()),
+            None,
+            Some(3),
+            offset,
+        )
+        .unwrap();
+
+        let appender = RollingFileAppender { state, writer, now };
+        let default = init_tracing(appender);
+
+        tracing::info!("file 1");
+
+        // advance time by one day
+        (*clock.lock().unwrap()) += Duration::hours(ADD);
+        tracing::info!("file 2");
+
+        // advance time by an hour
+        for hour in 1..=24 {
+            (*clock.lock().unwrap()) += Duration::hours(1);
+            tracing::info!("{hour}");
         }
+
+        drop(default);
+
+        check_log_files(dir_path, |postfix, file| match postfix {
+            "2023-09-01" => assert_eq!("file 1\n", file),
+            "2023-09-02" => {
+                let hours = (1..24)
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                assert_eq!(format!("file 2\n{hours}\n"), file);
+            }
+            "2023-09-03" => assert_eq!("24\n", file),
+            x => panic!("unexpected date {}", x),
+        });
     }
 }
