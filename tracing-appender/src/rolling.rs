@@ -712,8 +712,8 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fs;
-    use std::io::Write;
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::{filter::LevelFilter, prelude::*};
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -749,6 +749,51 @@ mod test {
         directory
             .close()
             .expect("Failed to explicitly close TempDir. TempDir should delete once out of scope.")
+    }
+
+    const UTC: UtcOffset = UtcOffset::UTC;
+    const NOW_2020: &str = "2020-02-01 10:01:00 +00:00:00";
+
+    fn mocking(
+        now: &str,
+    ) -> (
+        tempfile::TempDir,
+        OffsetDateTime,
+        Arc<Mutex<OffsetDateTime>>,
+        Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    ) {
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let now_time = OffsetDateTime::parse(now, &format).unwrap();
+        let clock = Arc::new(Mutex::new(now_time));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        (directory, now_time, clock, now)
+    }
+
+    fn check_log_files(dir_path: &Path, check: impl Fn(&str, &str)) {
+        let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+            let path = entry.expect("Expected dir entry").path();
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
+
+            check(
+                path.extension()
+                    .expect("found a file without a date!")
+                    .to_str()
+                    .expect("extension should be UTF8"),
+                &file,
+            );
+        }
     }
 
     #[test]
@@ -805,14 +850,7 @@ mod test {
 
     #[test]
     fn test_path_concatenation() {
-        let format = format_description::parse(
-            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
-         sign:mandatory]:[offset_minute]:[offset_second]",
-        )
-        .unwrap();
-        let directory = tempfile::tempdir().expect("failed to create tempdir");
-
-        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let (directory, now, _, _) = mocking(NOW_2020);
 
         struct TestCase {
             expected: &'static str,
@@ -834,6 +872,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                UTC,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -926,43 +965,34 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_make_writer() {
-        use std::sync::{Arc, Mutex};
-        use tracing_subscriber::prelude::*;
-
-        let format = format_description::parse(
-            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
-         sign:mandatory]:[offset_minute]:[offset_second]",
-        )
-        .unwrap();
-
-        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
-        let directory = tempfile::tempdir().expect("failed to create tempdir");
-        let (state, writer) = Inner::new(
-            now,
-            Rotation::HOURLY,
-            directory.path(),
-            Some("test_make_writer".to_string()),
-            None,
-            None,
-        )
-        .unwrap();
-
-        let clock = Arc::new(Mutex::new(now));
-        let now = {
-            let clock = clock.clone();
-            Box::new(move || *clock.lock().unwrap())
-        };
-        let appender = RollingFileAppender { state, writer, now };
-        let default = tracing_subscriber::fmt()
+    fn init_tracing(appender: RollingFileAppender) -> tracing::dispatch::DefaultGuard {
+        tracing_subscriber::fmt()
             .without_time()
             .with_level(false)
             .with_target(false)
-            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_max_level(LevelFilter::TRACE)
             .with_writer(appender)
             .finish()
-            .set_default();
+            .set_default()
+    }
+
+    #[test]
+    fn test_make_writer() {
+        let (directory, now_time, clock, now) = mocking(NOW_2020);
+        let dir_path = directory.path();
+        let (state, writer) = Inner::new(
+            now_time,
+            Rotation::HOURLY,
+            dir_path,
+            Some("test_make_writer".to_string()),
+            None,
+            None,
+            UTC,
+        )
+        .unwrap();
+
+        let appender = RollingFileAppender { state, writer, now };
+        let default = init_tracing(appender);
 
         tracing::info!("file 1");
 
@@ -983,68 +1013,30 @@ mod test {
 
         drop(default);
 
-        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
-        println!("dir={:?}", dir_contents);
-        for entry in dir_contents {
-            println!("entry={:?}", entry);
-            let path = entry.expect("Expected dir entry").path();
-            let file = fs::read_to_string(&path).expect("Failed to read file");
-            println!("path={}\nfile={:?}", path.display(), file);
-
-            match path
-                .extension()
-                .expect("found a file without a date!")
-                .to_str()
-                .expect("extension should be UTF8")
-            {
-                "2020-02-01-10" => {
-                    assert_eq!("file 1\nfile 1\n", file);
-                }
-                "2020-02-01-11" => {
-                    assert_eq!("file 2\nfile 2\n", file);
-                }
-                x => panic!("unexpected date {}", x),
-            }
-        }
+        check_log_files(dir_path, |postfix, file| match postfix {
+            "2020-02-01-10" => assert_eq!("file 1\nfile 1\n", file),
+            "2020-02-01-11" => assert_eq!("file 2\nfile 2\n", file),
+            x => panic!("unexpected date {}", x),
+        });
     }
 
     #[test]
     fn test_max_log_files() {
-        use std::sync::{Arc, Mutex};
-        use tracing_subscriber::prelude::*;
-
-        let format = format_description::parse(
-            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
-         sign:mandatory]:[offset_minute]:[offset_second]",
-        )
-        .unwrap();
-
-        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
-        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (directory, now_time, clock, now) = mocking(NOW_2020);
+        let dir_path = directory.path();
         let (state, writer) = Inner::new(
-            now,
+            now_time,
             Rotation::HOURLY,
-            directory.path(),
+            dir_path,
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            UTC,
         )
         .unwrap();
 
-        let clock = Arc::new(Mutex::new(now));
-        let now = {
-            let clock = clock.clone();
-            Box::new(move || *clock.lock().unwrap())
-        };
         let appender = RollingFileAppender { state, writer, now };
-        let default = tracing_subscriber::fmt()
-            .without_time()
-            .with_level(false)
-            .with_target(false)
-            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
-            .with_writer(appender)
-            .finish()
-            .set_default();
+        let default = init_tracing(appender);
 
         tracing::info!("file 1");
 
@@ -1083,32 +1075,15 @@ mod test {
 
         drop(default);
 
-        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
-        println!("dir={:?}", dir_contents);
+        check_log_files(dir_path, |postfix, file| match postfix {
+            "2020-02-01-10" => panic!("this file should have been pruned already!"),
+            "2020-02-01-11" => assert_eq!("file 2\nfile 2\n", file),
+            "2020-02-01-12" => assert_eq!("file 3\nfile 3\n", file),
+            x => panic!("unexpected date {}", x),
+        });
+    }
 
-        for entry in dir_contents {
-            println!("entry={:?}", entry);
-            let path = entry.expect("Expected dir entry").path();
-            let file = fs::read_to_string(&path).expect("Failed to read file");
-            println!("path={}\nfile={:?}", path.display(), file);
 
-            match path
-                .extension()
-                .expect("found a file without a date!")
-                .to_str()
-                .expect("extension should be UTF8")
-            {
-                "2020-02-01-10" => {
-                    panic!("this file should have been pruned already!");
-                }
-                "2020-02-01-11" => {
-                    assert_eq!("file 2\nfile 2\n", file);
-                }
-                "2020-02-01-12" => {
-                    assert_eq!("file 3\nfile 3\n", file);
-                }
-                x => panic!("unexpected date {}", x),
-            }
         }
     }
 }
