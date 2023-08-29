@@ -1287,6 +1287,8 @@ mod test {
             Self { buf }
         }
 
+        // this is currently only used by the JSON formatter tests. if we need it elsewhere in the future, feel free to remove the `#[cfg]` attribute!
+        #[cfg(feature = "json")]
         pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
             self.buf.lock().unwrap()
         }
