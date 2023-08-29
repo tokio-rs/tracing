@@ -55,7 +55,7 @@ pub trait VisitOutput<Out>: Visit {
 /// Extension trait implemented by types which can be recorded by a [visitor].
 ///
 /// This allows writing code that is generic over `tracing_core`'s
-/// [`span::Attributes`][attr], [`span::Record`][rec], and [`Event`][event]
+/// [`span::Attributes`][attr], [`span::Record`][rec], and [`Event`]
 /// types. These types all provide inherent `record` methods that allow a
 /// visitor to record their fields, but there is no common trait representing this.
 ///
@@ -85,7 +85,6 @@ pub trait VisitOutput<Out>: Visit {
 /// [visitor]: tracing_core::field::Visit
 /// [attr]: tracing_core::span::Attributes
 /// [rec]: tracing_core::span::Record
-/// [event]: tracing_core::event::Event
 pub trait RecordFields: crate::sealed::Sealed<RecordFieldsMarker> {
     /// Record all the fields in `self` with the provided `visitor`.
     fn record(&self, visitor: &mut dyn Visit);

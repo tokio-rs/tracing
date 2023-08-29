@@ -49,7 +49,8 @@ enum ParseErrorKind {
 // === impl DirectiveSet ===
 
 impl<T> DirectiveSet<T> {
-    #[cfg(feature = "env-filter")]
+    // this is only used by `env-filter`.
+    #[cfg(all(feature = "std", feature = "env-filter"))]
     pub(crate) fn is_empty(&self) -> bool {
         self.directives.is_empty()
     }
@@ -397,7 +398,7 @@ impl FromStr for StaticDirective {
 // === impl ParseError ===
 
 impl ParseError {
-    #[cfg(feature = "env-filter")]
+    #[cfg(all(feature = "std", feature = "env-filter"))]
     pub(crate) fn new() -> Self {
         ParseError {
             kind: ParseErrorKind::Other(None),
