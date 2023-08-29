@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, Time, UtcOffset};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -108,6 +108,7 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    offset: UtcOffset,
 }
 
 // === impl RollingFileAppender ===
@@ -186,13 +187,14 @@ impl RollingFileAppender {
 
     fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
         let Builder {
-            ref rotation,
-            ref prefix,
-            ref suffix,
-            ref max_files,
+            rotation,
+            prefix,
+            suffix,
+            max_files,
+            offset,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
-        let now = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc().replace_offset(*offset);
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
@@ -200,6 +202,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            *offset,
         )?;
         Ok(Self {
             state,
@@ -215,7 +218,7 @@ impl RollingFileAppender {
         return (self.now)();
 
         #[cfg(not(test))]
-        OffsetDateTime::now_utc()
+        OffsetDateTime::now_utc().replace_offset(self.state.offset)
     }
 }
 
@@ -525,6 +528,7 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
+        offset: UtcOffset,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
@@ -542,6 +546,7 @@ impl Inner {
             ),
             rotation,
             max_files,
+            offset,
         };
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);

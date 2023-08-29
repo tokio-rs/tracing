@@ -1,6 +1,7 @@
 use super::{RollingFileAppender, Rotation};
 use std::{io, path::Path};
 use thiserror::Error;
+use time::UtcOffset;
 
 /// A [builder] for configuring [`RollingFileAppender`]s.
 ///
@@ -11,6 +12,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) offset: UtcOffset,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -54,6 +56,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            offset: UtcOffset::UTC,
         }
     }
 
@@ -229,6 +232,38 @@ impl Builder {
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
             max_files: Some(n),
+            ..self
+        }
+    }
+
+    /// Set the timezone.
+    ///
+    /// [`daily`] appends the date in UTC, but this method can make the date
+    /// appended in a given UTC offset.
+    ///
+    /// Note: this method calls [`UtcOffset::from_hms`] internally,
+    /// and handles the out-of-range case by defaulting to UTC.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn doc() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .offset(8, 0, 0)
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender);
+    /// # }
+    /// ```
+    ///
+    /// [`daily`]: super::daily
+    /// [`UtcOffset::from_hms`]: https://docs.rs/time/latest/time/struct.UtcOffset.html#method.from_hms
+    #[must_use]
+    pub fn offset(self, hour: i8, min: i8, sec: i8) -> Self {
+        Self {
+            offset: UtcOffset::from_hms(hour, min, sec).unwrap_or(UtcOffset::UTC),
             ..self
         }
     }
