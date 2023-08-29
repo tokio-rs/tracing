@@ -373,6 +373,10 @@ macro_rules! impl_one_value {
         impl $crate::sealed::Sealed for $value_ty {}
         impl $crate::field::Value for $value_ty {
             fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+                // `op` is always a function; the closure is used because
+                // sometimes there isn't a real function corresponding to that
+                // operation. the clippy warning is not that useful here.
+                #[allow(clippy::redundant_closure_call)]
                 visitor.$record(key, $op(*self))
             }
         }
@@ -388,6 +392,10 @@ macro_rules! impl_one_value {
         impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
         impl $crate::field::Value for ty_to_nonzero!($value_ty) {
             fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+                // `op` is always a function; the closure is used because
+                // sometimes there isn't a real function corresponding to that
+                // operation. the clippy warning is not that useful here.
+                #[allow(clippy::redundant_closure_call)]
                 visitor.$record(key, $op(self.get()))
             }
         }
