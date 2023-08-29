@@ -120,8 +120,9 @@ impl Directive {
     }
 
     pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
-        static DIRECTIVE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(
-            r"(?x)
+        static DIRECTIVE_RE: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(
+                r"(?x)
             ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
                 #                 ^^^.
                 #                     `note: we match log level names case-insensitively
@@ -135,15 +136,18 @@ impl Directive {
                     #              `note: we match log level names case-insensitively
             )?
             $
-            "
-        )
-        .unwrap());
+            ",
+            )
+            .unwrap()
+        });
         static SPAN_PART_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r#"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?"#).unwrap());
+            Lazy::new(|| Regex::new(r"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?").unwrap());
         static FIELD_FILTER_RE: Lazy<Regex> =
             // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
             // characters. We should fix that.
-            Lazy::new(|| Regex::new(r#"(?x)
+            Lazy::new(|| {
+                Regex::new(
+                    r"(?x)
                 (
                     # field name
                     [[:word:]][[[:word:]]\.]*
@@ -152,7 +156,10 @@ impl Directive {
                 )
                 # trailing comma or EOS
                 (?:,\s?|$)
-            "#).unwrap());
+            ",
+                )
+                .unwrap()
+            });
 
         let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
 
