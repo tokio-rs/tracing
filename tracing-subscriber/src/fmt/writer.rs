@@ -16,7 +16,7 @@ use tracing_core::Metadata;
 /// This trait is already implemented for function pointers and
 /// immutably-borrowing closures that return an instance of [`io::Write`], such
 /// as [`io::stdout`] and [`io::stderr`]. Additionally, it is implemented for
-/// [`std::sync::Mutex`][mutex] when the type inside the mutex implements
+/// [`std::sync::Mutex`] when the type inside the mutex implements
 /// [`io::Write`].
 ///
 /// # Examples
@@ -66,7 +66,7 @@ use tracing_core::Metadata;
 /// ```
 ///
 /// A single instance of a type implementing [`io::Write`] may be used as a
-/// `MakeWriter` by wrapping it in a [`Mutex`][mutex]. For example, we could
+/// `MakeWriter` by wrapping it in a [`Mutex`]. For example, we could
 /// write to a file like so:
 ///
 /// ```
@@ -88,7 +88,6 @@ use tracing_core::Metadata;
 /// [`Event`]: tracing_core::event::Event
 /// [`io::stdout`]: std::io::stdout()
 /// [`io::stderr`]: std::io::stderr()
-/// [mutex]: std::sync::Mutex
 /// [`MakeWriter::make_writer_for`]: MakeWriter::make_writer_for
 /// [`Metadata`]: tracing_core::Metadata
 /// [levels]: tracing_core::Level
@@ -325,7 +324,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
 
     /// Wraps `self` with a predicate that takes a span or event's [`Metadata`]
     /// and returns a `bool`. The returned [`MakeWriter`]'s
-    /// [`MakeWriter::make_writer_for`][mwf] method will check the predicate to
+    /// [`MakeWriter::make_writer_for`] method will check the predicate to
     /// determine if  a writer should be produced for a given span or event.
     ///
     /// If the predicate returns `false`, the wrapped [`MakeWriter`]'s
@@ -544,7 +543,7 @@ pub struct BoxMakeWriter {
     name: &'static str,
 }
 
-/// A [writer] that is one of two types implementing [`io::Write`][writer].
+/// A [writer] that is one of two types implementing [`io::Write`].
 ///
 /// This may be used by [`MakeWriter`] implementations that may conditionally
 /// return one of two writers.

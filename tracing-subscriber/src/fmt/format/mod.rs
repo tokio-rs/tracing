@@ -326,8 +326,10 @@ pub struct FieldFnVisitor<'a, F> {
 /// Marker for [`Format`] that indicates that the compact log format should be used.
 ///
 /// The compact format includes fields from all currently entered spans, after
-/// the event's fields. Span names are listed in order before fields are
-/// displayed.
+/// the event's fields. Span fields are ordered (but not grouped) by
+/// span, and span names are  not shown. A more compact representation of the
+/// event's [`Level`] is used, and additional information—such as the event's
+/// target—is disabled by default.
 ///
 /// # Example Output
 ///
@@ -1086,7 +1088,12 @@ where
 
         let mut needs_space = false;
         if self.display_target {
-            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
+            write!(
+                writer,
+                "{}{}",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
             needs_space = true;
         }
 

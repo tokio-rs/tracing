@@ -200,11 +200,9 @@ pub trait SpanData<'a> {
 
 /// A reference to [span data] and the associated [registry].
 ///
-/// This type implements all the same methods as [`SpanData`][span data], and
-/// provides additional methods for querying the registry based on values from
-/// the span.
+/// This type implements all the same methods as [`SpanData`], and provides
+/// additional methods for querying the registry based on values from the span.
 ///
-/// [span data]: SpanData
 /// [registry]: LookupSpan
 #[derive(Debug)]
 pub struct SpanRef<'a, R: LookupSpan<'a>> {
