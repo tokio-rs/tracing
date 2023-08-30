@@ -219,10 +219,11 @@ impl RollingFileAppender {
         return (self.now)();
 
         #[cfg(not(test))]
-        dbg!(local_datetime(OffsetDateTime::now_utc(), self.state.offset))
+        local_datetime(OffsetDateTime::now_utc(), self.state.offset)
     }
 }
 
+// This turns a UTC time to a local time.
 fn local_datetime(dt: OffsetDateTime, tz: UtcOffset) -> OffsetDateTime {
     let secs = tz.whole_seconds();
     let secs_abs = secs.abs() as u64;
