@@ -226,7 +226,7 @@ impl RollingFileAppender {
 // This turns a UTC time to a local time.
 fn local_datetime(dt: OffsetDateTime, tz: UtcOffset) -> OffsetDateTime {
     let secs = tz.whole_seconds();
-    let secs_abs = secs.abs() as u64;
+    let secs_abs = secs.unsigned_abs().into();
     let local = if secs.is_negative() {
         dt - StdDuration::from_secs(secs_abs)
     } else {
