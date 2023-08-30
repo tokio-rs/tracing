@@ -43,7 +43,7 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
     /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
-    /// | [time_zone] | `0` | By default, the time zone is 0 from UTC. |
+    /// | [`time_zone`] | `0` | By default, the time zone is 0 from UTC. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
