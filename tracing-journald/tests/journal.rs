@@ -238,6 +238,25 @@ fn simple_metadata() {
 }
 
 #[test]
+fn custom_field() {
+    let sub = Subscriber::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_custom_field("AbC".to_string(), "xYz".to_string());
+    with_journald_subscriber(sub, || {
+        info!(test.name = "custom_field", "Hello World");
+
+        let message = retry_read_one_line_from_journal("custom_field");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+        assert_eq!(message["ABC"], "xYz");
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+    });
+}
+
+#[test]
 fn span_metadata() {
     with_journald(|| {
         let s1 = info_span!("span1", span_field1 = "foo1");

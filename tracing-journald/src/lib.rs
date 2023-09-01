@@ -40,7 +40,7 @@
 
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
-use std::{fmt, io, io::Write};
+use std::{collections::HashMap, fmt, io, io::Write};
 
 use tracing_core::{
     event::Event,
@@ -85,6 +85,7 @@ pub struct Subscriber {
     socket: UnixDatagram,
     field_prefix: Option<String>,
     syslog_identifier: String,
+    custom_fields: HashMap<String, String>,
 }
 
 #[cfg(unix)]
@@ -109,6 +110,7 @@ impl Subscriber {
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
                     .unwrap_or_else(String::new),
+                custom_fields: HashMap::new(),
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -147,6 +149,16 @@ impl Subscriber {
     /// Defaults to the file name of the executable of the current process, if any.
     pub fn with_syslog_identifier(mut self, identifier: String) -> Self {
         self.syslog_identifier = identifier;
+        self
+    }
+
+    /// Adds a custom field that will get be passed to journald with every log entry.
+    ///
+    /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+    /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
+    /// for more information.
+    pub fn with_custom_field(mut self, key: String, value: String) -> Self {
+        self.custom_fields.insert(key, value);
         self
     }
 
@@ -257,6 +269,10 @@ where
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
+
+        for (name, value) in &self.custom_fields {
+            put_field_length_encoded(&mut buf, name, |buf| write!(buf, "{}", value).unwrap())
+        }
 
         event.record(&mut EventVisitor::new(
             &mut buf,
