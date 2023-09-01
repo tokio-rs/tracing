@@ -238,11 +238,12 @@ fn simple_metadata() {
 }
 
 #[test]
-fn custom_field() {
+fn custom_fields() {
     let sub = Subscriber::new()
         .unwrap()
         .with_field_prefix(None)
-        .with_custom_field("AbC".to_string(), "xYz".to_string());
+        .with_custom_field("AbC".to_string(), "xYz".to_string())
+        .with_custom_field("DEF_GHI".to_string(), "42".to_string());
     with_journald_subscriber(sub, || {
         info!(test.name = "custom_field", "Hello World");
 
@@ -251,6 +252,7 @@ fn custom_field() {
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
         assert_eq!(message["ABC"], "xYz");
+        assert_eq!(message["DEF_GHI"], "42");
         assert!(message["CODE_FILE"].as_text().is_some());
         assert!(message["CODE_LINE"].as_text().is_some());
     });
