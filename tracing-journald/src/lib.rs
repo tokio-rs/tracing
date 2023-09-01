@@ -154,6 +154,8 @@ impl Subscriber {
 
     /// Adds a field that will get be passed to journald with every log entry.
     ///
+    /// This can for example be used to configure the syslog facility.
+    ///
     /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
     /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
     /// for more information.
