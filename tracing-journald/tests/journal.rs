@@ -238,21 +238,21 @@ fn simple_metadata() {
 }
 
 #[test]
-fn custom_fields() {
+fn journal_fields() {
     let sub = Subscriber::new()
         .unwrap()
         .with_field_prefix(None)
-        .with_custom_field("AbC".to_string(), "xYz".to_string())
-        .with_custom_field("DEF_GHI".to_string(), "42".to_string());
+        .with_journal_field("SYSLOG_FACILITY".to_string(), "17".to_string())
+        .with_journal_field("NONSENSE_FIELD".to_string(), "aBc".to_string());
     with_journald_subscriber(sub, || {
-        info!(test.name = "custom_field", "Hello World");
+        info!(test.name = "journal_fields", "Hello World");
 
-        let message = retry_read_one_line_from_journal("custom_field");
+        let message = retry_read_one_line_from_journal("journal_fields");
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
-        assert_eq!(message["ABC"], "xYz");
-        assert_eq!(message["DEF_GHI"], "42");
+        assert_eq!(message["SYSLOG_FACILITY"], "17");
+        assert_eq!(message["NONSENSE_FIELD"], "aBc");
         assert!(message["CODE_FILE"].as_text().is_some());
         assert!(message["CODE_LINE"].as_text().is_some());
     });
