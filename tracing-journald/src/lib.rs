@@ -168,13 +168,13 @@ impl Subscriber {
     ///     .with_custom_fields([("SYSLOG_FACILITY", "17")]);
     /// ```
     ///
-    pub fn with_custom_fields<T: AsRef<str>, U: AsRef<str>>(
+    pub fn with_custom_fields<T: AsRef<str>, U: AsRef<[u8]>>(
         mut self,
         fields: impl IntoIterator<Item = (T, U)>,
     ) -> Self {
         for (name, value) in fields {
             put_field_length_encoded(&mut self.additional_fields, name.as_ref(), |buf| {
-                write!(buf, "{}", value.as_ref()).unwrap()
+                buf.extend_from_slice(value.as_ref())
             })
         }
         self
