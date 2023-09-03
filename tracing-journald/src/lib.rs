@@ -40,7 +40,7 @@
 
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
-use std::{collections::HashMap, fmt, io, io::Write};
+use std::{fmt, io, io::Write};
 
 use tracing_core::{
     event::Event,
@@ -85,7 +85,7 @@ pub struct Subscriber {
     socket: UnixDatagram,
     field_prefix: Option<String>,
     syslog_identifier: String,
-    additional_fields: HashMap<String, String>,
+    additional_fields: Vec<u8>,
 }
 
 #[cfg(unix)]
@@ -110,7 +110,7 @@ impl Subscriber {
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
                     .unwrap_or_else(String::new),
-                additional_fields: HashMap::new(),
+                additional_fields: Vec::new(),
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -152,15 +152,33 @@ impl Subscriber {
         self
     }
 
-    /// Adds a field that will get be passed to journald with every log entry.
+    /// Adds fields that will get be passed to journald with every log entry.
     ///
     /// This can for example be used to configure the syslog facility.
+    ///
+    /// The input values of this function are interpreted as `(field, value)` pairs.
     ///
     /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
     /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
     /// for more information.
-    pub fn with_journal_field(mut self, key: String, value: String) -> Self {
-        self.additional_fields.insert(key, value);
+    ///
+    /// ```rust
+    /// use tracing_journald::Subscriber;
+    ///
+    /// let sub = Subscriber::new()
+    ///     .unwrap()
+    ///     .with_custom_fields([("SYSLOG_FACILITY", "17")]);
+    /// ```
+    ///
+    pub fn with_custom_fields<T: AsRef<str>, U: AsRef<str>>(
+        mut self,
+        fields: impl IntoIterator<Item = (T, U)>,
+    ) -> Self {
+        for (name, value) in fields {
+            put_field_length_encoded(&mut self.additional_fields, name.as_ref(), |buf| {
+                write!(buf, "{}", value.as_ref()).unwrap()
+            })
+        }
         self
     }
 
@@ -271,10 +289,7 @@ where
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
-
-        for (name, value) in &self.additional_fields {
-            put_field_length_encoded(&mut buf, name, |buf| write!(buf, "{}", value).unwrap())
-        }
+        buf.extend(self.additional_fields.iter());
 
         event.record(&mut EventVisitor::new(
             &mut buf,

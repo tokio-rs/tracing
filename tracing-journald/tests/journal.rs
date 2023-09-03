@@ -242,8 +242,8 @@ fn journal_fields() {
     let sub = Subscriber::new()
         .unwrap()
         .with_field_prefix(None)
-        .with_journal_field("SYSLOG_FACILITY".to_string(), "17".to_string())
-        .with_journal_field("DOCUMENTATION".to_string(), "aBc".to_string());
+        .with_custom_fields([("SYSLOG_FACILITY", "17")])
+        .with_custom_fields([("ABC", "dEf"), ("XYZ", "123")]);
     with_journald_subscriber(sub, || {
         info!(test.name = "journal_fields", "Hello World");
 
@@ -252,7 +252,8 @@ fn journal_fields() {
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
         assert_eq!(message["SYSLOG_FACILITY"], "17");
-        assert_eq!(message["DOCUMENTATION"], "aBc");
+        assert_eq!(message["ABC"], "dEf");
+        assert_eq!(message["XYZ"], "123");
         assert!(message["CODE_FILE"].as_text().is_some());
         assert!(message["CODE_LINE"].as_text().is_some());
     });
