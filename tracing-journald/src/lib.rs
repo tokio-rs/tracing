@@ -154,17 +154,15 @@ impl Subscriber {
 
     /// Adds fields that will get be passed to journald with every log entry.
     ///
-    /// This can for example be used to configure the syslog facility.
-    ///
     /// The input values of this function are interpreted as `(field, value)` pairs.
     ///
+    /// This can for example be used to configure the syslog facility.
     /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
     /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
     /// for more information.
     ///
     /// ```rust
-    /// use tracing_journald::Subscriber;
-    ///
+    /// # use tracing_journald::Subscriber;
     /// let sub = Subscriber::new()
     ///     .unwrap()
     ///     .with_custom_fields([("SYSLOG_FACILITY", "17")]);
