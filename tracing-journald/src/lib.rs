@@ -287,7 +287,7 @@ where
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
-        buf.extend(self.additional_fields.iter());
+        buf.extend(&self.additional_fields);
 
         event.record(&mut EventVisitor::new(
             &mut buf,
