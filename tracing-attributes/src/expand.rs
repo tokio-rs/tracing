@@ -66,11 +66,11 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     let fake_return_edge = quote_spanned! {return_span=>
         #[allow(
             unknown_lints, unreachable_code, clippy::diverging_sub_expression,
-            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore
+            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore,
+            clippy::empty_loop
         )]
         if false {
-            let __tracing_attr_fake_return: #return_type =
-                unreachable!("this is just for type inference, and is unreachable code");
+            let __tracing_attr_fake_return: #return_type = loop {};
             return __tracing_attr_fake_return;
         }
     };
