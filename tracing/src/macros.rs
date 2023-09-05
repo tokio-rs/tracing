@@ -565,6 +565,7 @@ macro_rules! error_span {
 ///     "App warning: {}",
 ///     error
 /// );
+/// event!(name: "answer", Level::INFO, the_answer = data.0);
 /// event!(Level::INFO, the_answer = data.0);
 /// # }
 /// ```
@@ -1293,6 +1294,7 @@ macro_rules! enabled {
 ///     if pos.x >= 0.0 { "positive" } else { "negative" },
 ///     if pos.y >= 0.0 { "positive" } else { "negative" }
 /// );
+/// trace!(name: "completed", position = ?pos);
 /// # }
 /// ```
 #[macro_export]
@@ -1569,6 +1571,7 @@ macro_rules! trace {
 ///
 /// debug!(?pos.x, ?pos.y);
 /// debug!(target: "app_events", position = ?pos, "New position");
+/// debug!(name: "completed", position = ?pos);
 /// # }
 /// ```
 #[macro_export]
@@ -1856,6 +1859,7 @@ macro_rules! debug {
 ///     conn.port,
 ///     ?conn.speed,
 /// );
+/// info!(name: "completed", addr);
 /// # }
 /// ```
 #[macro_export]
@@ -2136,6 +2140,7 @@ macro_rules! info {
 ///     warning = warn_description,
 ///     "Received warning for input: {:?}", input,
 /// );
+/// warn!(name: "invalid");
 /// # }
 /// ```
 #[macro_export]
@@ -2412,6 +2417,7 @@ macro_rules! warn {
 /// error!(port, error = %err_info);
 /// error!(target: "app_events", "App Error: {}", err_info);
 /// error!({ info = err_info }, "error on port: {}", port);
+/// error!(name: "invalid_input", "Invalid input: {}", input);
 /// # }
 /// ```
 #[macro_export]

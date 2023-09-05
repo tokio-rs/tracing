@@ -225,7 +225,7 @@
 //! # use tracing::{span, event, Level};
 //! # fn main() {
 //! span!(target: "app_spans", Level::TRACE, "my span");
-//! event!(target: "app_events", Level::INFO, "something has happened!");
+//! event!(name: "event", target: "app_events", Level::INFO, "something has happened!");
 //! # }
 //! ```
 //! ```
@@ -421,6 +421,7 @@
 //! // - "message", with the value "the answer to the ultimate question of life, the
 //! //    universe, and everything is 42."
 //! event!(
+//!     name: "life",
 //!     Level::DEBUG,
 //!     question.answer = answer,
 //!     question.tricky = true,
