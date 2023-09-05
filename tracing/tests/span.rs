@@ -21,7 +21,12 @@ fn handles_to_the_same_span_are_equal() {
     // expect to see any spans.
     with_default(collector::mock().run(), || {
         let foo1 = tracing::span!(Level::TRACE, "foo");
+
+        // The purpose of this test is to assert that two clones of the same
+        // span are equal, so the clone here is kind of the whole point :)
+        #[allow(clippy::redundant_clone)]
         let foo2 = foo1.clone();
+
         // Two handles that point to the same span are equal.
         assert_eq!(foo1, foo2);
     });
