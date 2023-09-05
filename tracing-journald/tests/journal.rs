@@ -239,6 +239,28 @@ fn simple_metadata() {
 }
 
 #[test]
+fn journal_fields() {
+    let sub = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_custom_fields([("SYSLOG_FACILITY", "17")])
+        .with_custom_fields([("ABC", "dEf"), ("XYZ", "123")]);
+    with_journald_layer(sub, || {
+        info!(test.name = "journal_fields", "Hello World");
+
+        let message = retry_read_one_line_from_journal("journal_fields");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+        assert_eq!(message["SYSLOG_FACILITY"], "17");
+        assert_eq!(message["ABC"], "dEf");
+        assert_eq!(message["XYZ"], "123");
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+    });
+}
+
+#[test]
 fn span_metadata() {
     with_journald(|| {
         let s1 = info_span!("span1", span_field1 = "foo1");
