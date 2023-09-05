@@ -321,7 +321,7 @@
 //!
 //! Constant expressions can also be used as field names. Constants
 //! must be enclosed in curly braces (`{}`) to indicate that the *value*
-//! of the constant is to be used as the field name, rather than the 
+//! of the constant is to be used as the field name, rather than the
 //! constant's name. For example:
 //! ```
 //! # use tracing::{span, Level};
