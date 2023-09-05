@@ -103,7 +103,7 @@ pub struct RollingFileAppender {
 #[derive(Debug)]
 pub struct RollingWriter<'a> {
     inner: RwLockReadGuard<'a, File>,
-    current_size: Arc<AtomicU64>,
+    current_size: &'a AtomicU64,
 }
 
 #[derive(Debug)]
@@ -269,7 +269,7 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
 
         RollingWriter {
             inner: self.writer.read(),
-            current_size: Arc::clone(&self.state.current_size),
+            current_size: &self.state.current_size,
         }
     }
 }
@@ -542,6 +542,22 @@ impl Rotation {
     pub const fn max_bytes(number_of_bytes: u64) -> Self {
         Self {
             timed: Timed::Never,
+            max_bytes: Some(number_of_bytes),
+        }
+    }
+
+    /// Provides a minutely and size-based rotation.
+    pub const fn minutely_with_max_bytes(number_of_bytes: u64) -> Self {
+        Self {
+            timed: Timed::Minutely,
+            max_bytes: Some(number_of_bytes),
+        }
+    }
+
+    /// Provides a hourly and size-based rotation.
+    pub const fn hourly_with_max_bytes(number_of_bytes: u64) -> Self {
+        Self {
+            timed: Timed::Hourly,
             max_bytes: Some(number_of_bytes),
         }
     }
