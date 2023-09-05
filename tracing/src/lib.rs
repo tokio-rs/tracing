@@ -319,6 +319,19 @@
 //! # }
 //!```
 //!
+//! Constant expressions can also be used as field names. Constants
+//! must be enclosed in curly braces (`{}`) to indicate that the *value*
+//! of the constant is to be used as the field name, rather than the 
+//! constant's name. For example:
+//! ```
+//! # use tracing::{span, Level};
+//! # fn main() {
+//! const RESOURCE_NAME: &str = "foo";
+//! // this span will have the field `foo = "some_id"`
+//! span!(Level::TRACE, "get", { RESOURCE_NAME } = "some_id");
+//! # }
+//!```
+//!
 //! The `?` sigil is shorthand that specifies a field should be recorded using
 //! its [`fmt::Debug`] implementation:
 //! ```
