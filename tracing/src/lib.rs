@@ -225,7 +225,7 @@
 //! # use tracing::{span, event, Level};
 //! # fn main() {
 //! span!(target: "app_spans", Level::TRACE, "my span");
-//! event!(name: "event", target: "app_events", Level::INFO, "something has happened!");
+//! event!(target: "app_events", Level::INFO, "something has happened!");
 //! # }
 //! ```
 //! ```
@@ -237,7 +237,16 @@
 //! ```
 //!
 //! The span macros also take a string literal after the level, to set the name
-//! of the span.
+//! of the span (as above).  In the case of the event macros, the name of the event can
+//! be overrided (the default is `event file:line`) using the `name:` specifier.
+//! 
+//! ```
+//! # use tracing::{span, event, Level};
+//! # fn main() {
+//! span!(Level::TRACE, "my span");
+//! event!(name: "spurious_info", Level::INFO, "something has happened!");
+//! # }
+//! ```
 //!
 //! ### Recording Fields
 //!
@@ -421,7 +430,6 @@
 //! // - "message", with the value "the answer to the ultimate question of life, the
 //! //    universe, and everything is 42."
 //! event!(
-//!     name: "life",
 //!     Level::DEBUG,
 //!     question.answer = answer,
 //!     question.tricky = true,

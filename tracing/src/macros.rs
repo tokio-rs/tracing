@@ -1859,7 +1859,7 @@ macro_rules! debug {
 ///     conn.port,
 ///     ?conn.speed,
 /// );
-/// info!(name: "completed", addr);
+/// info!(name: "completed", "completed connection to {:?}", addr);
 /// # }
 /// ```
 #[macro_export]
@@ -2140,7 +2140,7 @@ macro_rules! info {
 ///     warning = warn_description,
 ///     "Received warning for input: {:?}", input,
 /// );
-/// warn!(name: "invalid");
+/// warn!(name: "invalid", ?input);
 /// # }
 /// ```
 #[macro_export]
@@ -2417,7 +2417,7 @@ macro_rules! warn {
 /// error!(port, error = %err_info);
 /// error!(target: "app_events", "App Error: {}", err_info);
 /// error!({ info = err_info }, "error on port: {}", port);
-/// error!(name: "invalid_input", "Invalid input: {}", input);
+/// error!(name: "invalid_input", "Invalid input: {}", err_info);
 /// # }
 /// ```
 #[macro_export]
