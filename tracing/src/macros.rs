@@ -24,7 +24,7 @@ macro_rules! span {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
+            static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
                 name: $name,
                 kind: $crate::metadata::Kind::SPAN,
                 target: $target,
@@ -33,10 +33,10 @@ macro_rules! span {
             };
             let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl)
-                && { interest = CALLSITE.interest(); !interest.is_never() }
-                && $crate::__macro_support::__is_enabled(CALLSITE.metadata(), interest)
+                && { interest = __CALLSITE.interest(); !interest.is_never() }
+                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
             {
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // span with explicit parent
                 $crate::Span::child_of(
                     $parent,
@@ -44,9 +44,9 @@ macro_rules! span {
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                let span = $crate::__macro_support::__disabled_span(CALLSITE.metadata());
+                let span = $crate::__macro_support::__disabled_span(__CALLSITE.metadata());
                 $crate::if_log_enabled! { $lvl, {
-                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+                    span.record_all(&$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
             }
@@ -55,7 +55,7 @@ macro_rules! span {
     (target: $target:expr, $lvl:expr, $name:expr, $($fields:tt)*) => {
         {
             use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
+            static __CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
                 name: $name,
                 kind: $crate::metadata::Kind::SPAN,
                 target: $target,
@@ -64,19 +64,19 @@ macro_rules! span {
             };
             let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl)
-                && { interest = CALLSITE.interest(); !interest.is_never() }
-                && $crate::__macro_support::__is_enabled(CALLSITE.metadata(), interest)
+                && { interest = __CALLSITE.interest(); !interest.is_never() }
+                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
             {
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // span with contextual parent
                 $crate::Span::new(
                     meta,
                     &$crate::valueset!(meta.fields(), $($fields)*),
                 )
             } else {
-                let span = $crate::__macro_support::__disabled_span(CALLSITE.metadata());
+                let span = $crate::__macro_support::__disabled_span(__CALLSITE.metadata());
                 $crate::if_log_enabled! { $lvl, {
-                    span.record_all(&$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+                    span.record_all(&$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
             }
@@ -586,7 +586,7 @@ macro_rules! event {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
             name: $name,
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -595,29 +595,29 @@ macro_rules! event {
         };
 
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && CALLSITE.is_enabled(interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with explicit parent
                 $crate::Event::child_of(
                     $parent,
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -640,7 +640,7 @@ macro_rules! event {
     // Name / target.
     (name: $name:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
             name: $name,
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -648,12 +648,12 @@ macro_rules! event {
             fields: $($fields)*
         };
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && CALLSITE.is_enabled(interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with contextual parent
                 $crate::Event::dispatch(
                     meta,
@@ -661,15 +661,15 @@ macro_rules! event {
                 );
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -691,7 +691,7 @@ macro_rules! event {
     // Target / parent.
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
             name: $crate::__macro_support::concat!(
                 "event ",
                 file!(),
@@ -705,29 +705,29 @@ macro_rules! event {
         };
 
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(CALLSITE.metadata(), interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with explicit parent
                 $crate::Event::child_of(
                     $parent,
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -749,7 +749,7 @@ macro_rules! event {
     // Name / parent.
     (name: $name:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
             name: $name,
             kind: $crate::metadata::Kind::EVENT,
             target: module_path!(),
@@ -758,29 +758,29 @@ macro_rules! event {
         };
 
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && CALLSITE.is_enabled(interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && __CALLSITE.is_enabled(interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with explicit parent
                 $crate::Event::child_of(
                     $parent,
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -802,7 +802,7 @@ macro_rules! event {
     // Name.
     (name: $name:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
             name: $name,
             kind: $crate::metadata::Kind::EVENT,
             target: module_path!(),
@@ -810,12 +810,12 @@ macro_rules! event {
             fields: $($fields)*
         };
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && CALLSITE.is_enabled(interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with contextual parent
                 $crate::Event::dispatch(
                     meta,
@@ -823,15 +823,15 @@ macro_rules! event {
                 );
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -852,7 +852,7 @@ macro_rules! event {
     // Target.
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
-        static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
+        static __CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
             name: $crate::__macro_support::concat!(
                 "event ",
                 file!(),
@@ -865,12 +865,12 @@ macro_rules! event {
             fields: $($fields)*
         };
         let enabled = $crate::level_enabled!($lvl) && {
-            let interest = CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(CALLSITE.metadata(), interest)
+            let interest = __CALLSITE.interest();
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
-                let meta = CALLSITE.metadata();
+                let meta = __CALLSITE.metadata();
                 // event with contextual parent
                 $crate::Event::dispatch(
                     meta,
@@ -878,15 +878,15 @@ macro_rules! event {
                 );
                 $crate::__tracing_log!(
                     $lvl,
-                    CALLSITE,
+                    __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
-                CALLSITE,
-                &$crate::valueset!(CALLSITE.metadata().fields(), $($fields)*)
+                __CALLSITE,
+                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -1185,7 +1185,7 @@ macro_rules! enabled {
     (kind: $kind:expr, target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
-            static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
+            static __CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite2! {
                 name: $crate::__macro_support::concat!(
                     "enabled ",
                     file!(),
@@ -1197,9 +1197,9 @@ macro_rules! enabled {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let interest = CALLSITE.interest();
-            if !interest.is_never() && $crate::__macro_support::__is_enabled(CALLSITE.metadata(), interest) {
-                let meta = CALLSITE.metadata();
+            let interest = __CALLSITE.interest();
+            if !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest) {
+                let meta = __CALLSITE.metadata();
                 $crate::dispatcher::get_default(|current| current.enabled(meta))
             } else {
                 false
@@ -2716,13 +2716,13 @@ macro_rules! callsite {
                 target: $target,
                 level: $lvl,
                 fields: $crate::fieldset!( $($fields)* ),
-                callsite: &CALLSITE,
+                callsite: &__CALLSITE,
                 kind: $kind,
             }
         };
-        static CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite::DefaultCallsite::new(&META);
-        CALLSITE.register();
-        &CALLSITE
+        static __CALLSITE: $crate::callsite::DefaultCallsite = $crate::callsite::DefaultCallsite::new(&META);
+        __CALLSITE.register();
+        &__CALLSITE
     }};
 }
 
@@ -2766,7 +2766,7 @@ macro_rules! callsite2 {
                 target: $target,
                 level: $lvl,
                 fields: $crate::fieldset!( $($fields)* ),
-                callsite: &CALLSITE,
+                callsite: &__CALLSITE,
                 kind: $kind,
             }
         };
@@ -2920,6 +2920,47 @@ macro_rules! valueset {
         )
     };
 
+    // Handle constant names
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = ?$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = %$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = $val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
+            $next,
+            $($rest)*
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = ?$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
+            $next,
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = %$val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
+            $next,
+        )
+    };
+    (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = $val:expr) => {
+        $crate::valueset!(
+            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
+            $next,
+        )
+    };
+
     // Remainder is unparsable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
         $crate::valueset!(@ { (&$next, ::core::option::Option::Some(&format_args!($($rest)+) as &dyn Value)), $($out),* }, $next, )
@@ -2986,6 +3027,17 @@ macro_rules! fieldset {
         $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
     };
     (@ { $(,)* $($out:expr),* } $k:literal = $val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
+    };
+
+    // Handle constant names
+    (@ { $(,)* $($out:expr),* } { $k:expr } = ?$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* } { $k:expr } = %$val:expr, $($rest:tt)*) => {
+        $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
+    };
+    (@ { $(,)* $($out:expr),* } { $k:expr } = $val:expr, $($rest:tt)*) => {
         $crate::fieldset!(@ { $($out),*, $k } $($rest)*)
     };
 
