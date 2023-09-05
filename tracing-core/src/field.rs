@@ -756,9 +756,6 @@ impl FieldSet {
     }
 
     /// Returns a new `ValueSet` with entries for this `FieldSet`'s values.
-    ///
-    /// Note that a `ValueSet` may not be constructed with arrays of over 32
-    /// elements.
     #[doc(hidden)]
     pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
     where
@@ -957,28 +954,10 @@ impl<'a> fmt::Display for ValueSet<'a> {
 mod private {
     use super::*;
 
-    /// Marker trait implemented by arrays which are of valid length to
-    /// construct a `ValueSet`.
-    ///
-    /// `ValueSet`s may only be constructed from arrays containing 32 or fewer
-    /// elements, to ensure the array is small enough to always be allocated on the
-    /// stack. This trait is only implemented by arrays of an appropriate length,
-    /// ensuring that the correct size arrays are used at compile-time.
+    /// Restrictions on `ValueSet` lengths were removed in #2508 but this type remains for backwards compatibility.
     pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
-}
 
-macro_rules! impl_valid_len {
-    ( $( $len:tt ),+ ) => {
-        $(
-            impl<'a> private::ValidLen<'a> for
-                [(&'a Field, ::core::option::Option<&'a (dyn Value + 'a)>); $len] {}
-        )+
-    }
-}
-
-impl_valid_len! {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+    impl<'a, const N: usize> ValidLen<'a> for [(&'a Field, Option<&'a (dyn Value + 'a)>); N] {}
 }
 
 #[cfg(test)]

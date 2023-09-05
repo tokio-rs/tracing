@@ -310,6 +310,48 @@ fn span_with_non_rust_symbol() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn large_span() {
+    span!(
+        Level::TRACE,
+        "spans with more than 32 fields have been supported since #2508",
+        a = 1,
+        b = 2,
+        c = 3,
+        d = 4,
+        e = 5,
+        f = 6,
+        g = 7,
+        h = 8,
+        i = 9,
+        j = 10,
+        k = 11,
+        l = 12,
+        m = 13,
+        n = 14,
+        o = 15,
+        p = 16,
+        q = 17,
+        r = 18,
+        s = 19,
+        t = 20,
+        u = 21,
+        v = 22,
+        w = 23,
+        x = 24,
+        y = 25,
+        z = 26,
+        aa = 27,
+        bb = 28,
+        cc = 29,
+        dd = 30,
+        ee = 31,
+        ff = 32,
+        gg = 33
+    );
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn event() {
     event!(Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
     event!(Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
