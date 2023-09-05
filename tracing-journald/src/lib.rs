@@ -161,7 +161,7 @@ impl Subscriber {
     /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
     /// for more information.
     ///
-    /// ```rust
+    /// ```no_run
     /// # use tracing_journald::Subscriber;
     /// let sub = Subscriber::new()
     ///     .unwrap()
