@@ -733,7 +733,7 @@ where
 
     /// Sets the collector being built to use a less verbose formatter.
     ///
-    /// See [`format::Compact`].
+    /// See [`format::Compact`] for details.
     pub fn compact(self) -> CollectorBuilder<N, format::Format<format::Compact, T>, F, W>
     where
         N: for<'writer> FormatFields<'writer> + 'static,
@@ -758,7 +758,7 @@ where
 
     /// Sets the collector being built to use a JSON formatter.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`format::Json`] for details.
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W>
@@ -777,7 +777,7 @@ where
 impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
     /// Sets the json collector being built to flatten event metadata.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`format::Json`] for details.
     pub fn flatten_event(
         self,
         flatten_event: bool,
@@ -791,7 +791,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include the current span
     /// in formatted events.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`format::Json`] for details.
     pub fn with_current_span(
         self,
         display_current_span: bool,
@@ -805,7 +805,7 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
     /// Sets whether or not the JSON subscriber being built will include a list (from
     /// root to leaf) of all currently entered spans in formatted events.
     ///
-    /// See [`format::Json`](super::fmt::format::Json)
+    /// See [`format::Json`] for details.
     pub fn with_span_list(
         self,
         display_span_list: bool,
@@ -1287,6 +1287,10 @@ mod test {
             Self { buf }
         }
 
+        // this is currently only used by the JSON formatter tests. if we need
+        // it elsewhere in the future, feel free to remove the `#[cfg]`
+        // attribute!
+        #[cfg(feature = "json")]
         pub(crate) fn buf(&self) -> MutexGuard<'_, Vec<u8>> {
             self.buf.lock().unwrap()
         }
