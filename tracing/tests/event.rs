@@ -510,3 +510,45 @@ fn string_field() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn constant_field_name() {
+    let expect_event = || {
+        expect::event().with_fields(
+            expect::field("foo")
+                .with_value(&"bar")
+                .and(expect::field("constant string").with_value(&"also works"))
+                .and(expect::field("foo.bar").with_value(&"baz"))
+                .and(expect::field("message").with_value(&debug(format_args!("quux"))))
+                .only(),
+        )
+    };
+    let (subscriber, handle) = subscriber::mock()
+        .event(expect_event())
+        .event(expect_event())
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        const FOO: &str = "foo";
+        tracing::event!(
+            Level::INFO,
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "quux"
+        );
+        tracing::event!(
+            Level::INFO,
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "quux"
+        );
+    });
+
+    handle.assert_finished();
+}
