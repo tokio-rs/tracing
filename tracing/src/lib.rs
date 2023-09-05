@@ -214,7 +214,7 @@
 //! ### Configuring Attributes
 //!
 //! Both macros require a [`Level`] specifying the verbosity of the span or
-//! event. Optionally, the [target] and [parent span] may be overridden. If the
+//! event. Optionally, the name, [target] and [parent span] may be overridden. If the
 //! target and parent span are not overridden, they will default to the
 //! module path where the macro was invoked and the current span (as determined
 //! by the collector), respectively.
