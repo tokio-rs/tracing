@@ -239,7 +239,7 @@
 //! The span macros also take a string literal after the level, to set the name
 //! of the span (as above).  In the case of the event macros, the name of the event can
 //! be overridden (the default is `event file:line`) using the `name:` specifier.
-//! 
+//!
 //! ```
 //! # use tracing::{span, event, Level};
 //! # fn main() {
