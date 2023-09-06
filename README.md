@@ -369,6 +369,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
+- [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
@@ -413,6 +414,7 @@ please let us know!)
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
+[`axum-insights`]: https://crates.io/crates/axum-insights
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz

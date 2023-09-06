@@ -379,6 +379,7 @@ maintained by the `tokio` project. These include:
 - [`tracing-distributed`] Provides a generic implementation of a layer that reports traces spanning multiple machines to some backend.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
+- [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
@@ -407,6 +408,7 @@ please let us know! We'd love to add your project to the list!
 [`tracing-distributed`]: https://crates.io/crates/tracing-distributed
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
+[`axum-insights`]: https://crates.io/crates/axum-insights
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
