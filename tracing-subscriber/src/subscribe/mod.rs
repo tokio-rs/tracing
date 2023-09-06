@@ -1388,11 +1388,10 @@ pub trait Filter<S> {
     /// multiple invocations of this method. However, note that changes in the
     /// maximum level will **only** be reflected after the callsite [`Interest`]
     /// cache is rebuilt, by calling the
-    /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+    /// [`tracing_core::callsite::rebuild_interest_cache`] function.
     /// Therefore, if the `Filter will change the value returned by this
-    /// method, it is responsible for ensuring that
-    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
-    /// level changes.
+    /// method, it is responsible for ensuring that [`rebuild_interest_cache`]
+    /// is called after the value of the max level changes.
     ///
     /// ## Default Implementation
     ///
@@ -1402,7 +1401,7 @@ pub trait Filter<S> {
     /// [level]: tracing_core::metadata::Level
     /// [`LevelFilter`]: crate::filter::LevelFilter
     /// [`Interest`]: tracing_core::collect::Interest
-    /// [rebuild]: tracing_core::callsite::rebuild_interest_cache
+    /// [`rebuild_interest_cache`]: tracing_core::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
