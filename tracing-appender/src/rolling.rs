@@ -971,19 +971,18 @@ impl Inner {
             .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
             .is_ok();
 
-        if next_date_updated {
-            if let Some(index) = &self.log_filename_index {
+        match &self.log_filename_index {
+            Some(index) if next_date_updated => {
                 if current == next_date {
                     index.fetch_add(1, Ordering::SeqCst);
                 } else {
                     index.store(0, Ordering::Release);
                 }
             }
-
-            true
-        } else {
-            false
+            _ => {}
         }
+
+        next_date_updated
     }
 }
 
