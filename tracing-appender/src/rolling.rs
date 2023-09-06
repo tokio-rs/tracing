@@ -541,34 +541,17 @@ impl Rotation {
 
     /// Provides a size-based rotation.
     pub const fn max_bytes(number_of_bytes: u64) -> Self {
-        Self {
-            timed: Timed::Never,
-            max_bytes: Some(number_of_bytes),
-        }
+        Self::NEVER.with_max_bytes(number_of_bytes)
     }
 
-    /// Provides a minutely and size-based rotation.
-    pub const fn minutely_with_max_bytes(number_of_bytes: u64) -> Self {
-        Self {
-            timed: Timed::Minutely,
-            max_bytes: Some(number_of_bytes),
-        }
-    }
-
-    /// Provides a hourly and size-based rotation.
-    pub const fn hourly_with_max_bytes(number_of_bytes: u64) -> Self {
-        Self {
-            timed: Timed::Hourly,
-            max_bytes: Some(number_of_bytes),
-        }
-    }
-
-    /// Provides a daily and size-based rotation.
-    pub const fn daily_with_max_bytes(number_of_bytes: u64) -> Self {
-        Self {
-            timed: Timed::Daily,
-            max_bytes: Some(number_of_bytes),
-        }
+    /// Adds a maximum size limit to an existing `Rotation`.
+    ///
+    /// The new `Rotation` will rotate the log file when the log file reaches
+    /// the specified size limit, or when the rotation period elapses, whichever
+    /// occurs first.
+    pub const fn with_max_bytes(mut self, number_of_bytes: u64) -> Self {
+        self.max_bytes = Some(number_of_bytes);
+        self
     }
 
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
@@ -850,14 +833,9 @@ impl Inner {
 
         let latest_file = files
             .into_iter()
-            .filter(|log_file| {
-                log_file
-                    .formatted_date
-                    .as_ref()
-                    .and_then(|formatted_date| {
-                        most_recent_formatted_date.eq(formatted_date).then_some(())
-                    })
-                    .is_some()
+            .filter(|log_file| match &log_file.formatted_date {
+                Some(formatted_date) => most_recent_formatted_date.eq(formatted_date),
+                None => false,
             })
             .max_by_key(|log_file| log_file.index);
 
@@ -1153,19 +1131,19 @@ mod test {
             // prefix only
             TestCase {
                 expected: "app.log.2020-02-01-10-01.0",
-                rotation: Rotation::minutely_with_max_bytes(1024),
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
                 prefix: Some("app.log"),
                 suffix: None,
             },
             TestCase {
                 expected: "app.log.2020-02-01-10.0",
-                rotation: Rotation::hourly_with_max_bytes(1024),
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
                 prefix: Some("app.log"),
                 suffix: None,
             },
             TestCase {
                 expected: "app.log.2020-02-01.0",
-                rotation: Rotation::daily_with_max_bytes(1024),
+                rotation: Rotation::DAILY.with_max_bytes(1024),
                 prefix: Some("app.log"),
                 suffix: None,
             },
@@ -1202,19 +1180,19 @@ mod test {
             // prefix and suffix
             TestCase {
                 expected: "app.2020-02-01-10-01.0.log",
-                rotation: Rotation::minutely_with_max_bytes(1024),
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
                 prefix: Some("app"),
                 suffix: Some("log"),
             },
             TestCase {
                 expected: "app.2020-02-01-10.0.log",
-                rotation: Rotation::hourly_with_max_bytes(1024),
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
                 prefix: Some("app"),
                 suffix: Some("log"),
             },
             TestCase {
                 expected: "app.2020-02-01.0.log",
-                rotation: Rotation::daily_with_max_bytes(1024),
+                rotation: Rotation::DAILY.with_max_bytes(1024),
                 prefix: Some("app"),
                 suffix: Some("log"),
             },
@@ -1251,19 +1229,19 @@ mod test {
             // suffix only
             TestCase {
                 expected: "2020-02-01-10-01.0.log",
-                rotation: Rotation::minutely_with_max_bytes(1024),
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
                 prefix: None,
                 suffix: Some("log"),
             },
             TestCase {
                 expected: "2020-02-01-10.0.log",
-                rotation: Rotation::hourly_with_max_bytes(1024),
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
                 prefix: None,
                 suffix: Some("log"),
             },
             TestCase {
                 expected: "2020-02-01.0.log",
-                rotation: Rotation::daily_with_max_bytes(1024),
+                rotation: Rotation::DAILY.with_max_bytes(1024),
                 prefix: None,
                 suffix: Some("log"),
             },
@@ -1300,19 +1278,19 @@ mod test {
             // no suffix nor prefix
             TestCase {
                 expected: "2020-02-01-10-01.0",
-                rotation: Rotation::minutely_with_max_bytes(1024),
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
                 prefix: None,
                 suffix: None,
             },
             TestCase {
                 expected: "2020-02-01-10.0",
-                rotation: Rotation::hourly_with_max_bytes(1024),
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
                 prefix: None,
                 suffix: None,
             },
             TestCase {
                 expected: "2020-02-01.0",
-                rotation: Rotation::daily_with_max_bytes(1024),
+                rotation: Rotation::DAILY.with_max_bytes(1024),
                 prefix: None,
                 suffix: None,
             },
