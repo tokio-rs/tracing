@@ -33,10 +33,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicU64, AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
@@ -115,7 +112,7 @@ struct Inner {
     date_format: Vec<format_description::FormatItem<'static>>,
     rotation: Rotation,
     next_date: AtomicUsize,
-    current_size: Arc<AtomicU64>,
+    current_size: AtomicU64,
     max_files: Option<usize>,
 }
 
@@ -194,27 +191,53 @@ impl RollingFileAppender {
     }
 
     fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
+        Self::impl_from_builder(
+            builder,
+            directory,
+            #[cfg(test)]
+            Box::new(OffsetDateTime::now_utc),
+        )
+    }
+
+    #[cfg(test)]
+    fn from_builder_with_custom_now(
+        builder: &Builder,
+        directory: impl AsRef<Path>,
+        now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    ) -> Result<Self, InitError> {
+        Self::impl_from_builder(builder, directory, now)
+    }
+
+    fn impl_from_builder(
+        builder: &Builder,
+        directory: impl AsRef<Path>,
+        #[cfg(test)] now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    ) -> Result<Self, InitError> {
         let Builder {
-            ref rotation,
-            ref prefix,
-            ref suffix,
-            ref max_files,
-        } = builder;
+            rotation,
+            prefix,
+            suffix,
+            max_files,
+        } = &builder;
+
         let directory = directory.as_ref().to_path_buf();
-        let now = OffsetDateTime::now_utc();
         let (state, writer) = Inner::new(
-            now,
+            #[cfg(not(test))]
+            OffsetDateTime::now_utc(),
+            #[cfg(test)]
+            now(),
             rotation.clone(),
             directory,
             prefix.clone(),
             suffix.clone(),
             *max_files,
         )?;
+
         Ok(Self {
             state,
             writer,
             #[cfg(test)]
-            now: Box::new(OffsetDateTime::now_utc),
+            now,
         })
     }
 
@@ -645,7 +668,7 @@ impl Inner {
             ),
             rotation,
             max_files,
-            current_size: Arc::new(AtomicU64::new(0)),
+            current_size: AtomicU64::new(0),
         };
 
         if let Some(max_bytes) = inner.rotation.max_bytes {
@@ -660,7 +683,7 @@ impl Inner {
             .metadata()
             .map_err(builder::InitError::ctx("Failed to read file metadata"))?
             .len();
-        inner.current_size = Arc::new(AtomicU64::new(current_file_size));
+        inner.current_size = AtomicU64::new(current_file_size);
 
         let writer = RwLock::new(file);
 
@@ -996,7 +1019,6 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
-    use std::ops::Deref;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -1519,12 +1541,14 @@ mod test {
 
     #[test]
     fn size_based_rotation() {
-        let format = format_description::parse("size_based_rotation.[year]-[month]-[day]").unwrap();
-        let now = OffsetDateTime::now_utc();
-
         let directory = tempfile::tempdir().expect("failed to create tempdir");
 
-        let mut appender = max_size(&directory, "size_based_rotation", 8);
+        let mut appender = RollingFileAppender::builder()
+            .rotation(Rotation::max_bytes(8))
+            .filename_prefix("size_based_rotation")
+            .filename_suffix("log")
+            .build_with_now(&directory, Box::new(|| OffsetDateTime::UNIX_EPOCH))
+            .expect("initializing rolling file appender failed");
 
         writeln!(appender, "(file1) more than 8 bytes").unwrap();
         writeln!(appender, "(file2) more than 8 bytes again").unwrap();
@@ -1534,12 +1558,12 @@ mod test {
         println!("dir={:?}", dir_contents);
 
         let expected_files = [
-            format!("{}.0", now.format(&format).unwrap()),
-            format!("{}.1", now.format(&format).unwrap()),
-            format!("{}.2", now.format(&format).unwrap()),
+            "size_based_rotation.1970-01-01.0.log",
+            "size_based_rotation.1970-01-01.1.log",
+            "size_based_rotation.1970-01-01.2.log",
         ];
         let mut expected_files: std::collections::HashSet<&str> =
-            expected_files.iter().map(|s| s.deref()).collect();
+            expected_files.iter().copied().collect();
 
         for entry in dir_contents {
             println!("entry={:?}", entry);
