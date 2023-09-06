@@ -8,6 +8,7 @@
 [build.environment]
   RUSTDOCFLAGS="""
     -D warnings \
+    --force-warn rustdoc::redundant-explicit-links \
     --force-warn renamed-and-removed-lints \
     --cfg docsrs \
     --html-before-content /opt/build/repo/assets/warning.html \
