@@ -4,7 +4,7 @@ use tracing_mock::*;
 
 #[test]
 fn destructure_tuples() {
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn((arg1, arg2): (usize, usize)) {}
 
     let span = expect::span().named("my_fn");
@@ -33,7 +33,7 @@ fn destructure_tuples() {
 
 #[test]
 fn destructure_nested_tuples() {
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2, ?arg3, ?arg4))]
     fn my_fn(((arg1, arg2), (arg3, arg4)): ((usize, usize), (usize, usize))) {}
 
     let span = expect::span().named("my_fn");
@@ -64,15 +64,18 @@ fn destructure_nested_tuples() {
 
 #[test]
 fn destructure_refs() {
-    #[instrument]
+    #[instrument(fields(?arg1))]
     fn my_fn(&arg1: &usize) {}
 
     let span = expect::span().named("my_fn");
 
     let (collector, handle) = collector::mock()
         .new_span(
-            span.clone()
-                .with_field(expect::field("arg1").with_value(&1usize).only()),
+            span.clone().with_field(
+                expect::field("arg1")
+                    .with_value(&tracing::field::debug(1usize))
+                    .only(),
+            ),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -91,7 +94,7 @@ fn destructure_refs() {
 fn destructure_tuple_structs() {
     struct Foo(usize, usize);
 
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn(Foo(arg1, arg2): Foo) {}
 
     let span = expect::span().named("my_fn");
@@ -100,8 +103,8 @@ fn destructure_tuple_structs() {
         .new_span(
             span.clone().with_field(
                 expect::field("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(expect::field("arg2").with_value(&format_args!("2")))
+                    .with_value(&tracing::field::debug(1))
+                    .and(expect::field("arg2").with_value(&tracing::field::debug(2)))
                     .only(),
             ),
         )
@@ -125,7 +128,7 @@ fn destructure_structs() {
         baz: usize,
     }
 
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn(
         Foo {
             bar: arg1,
@@ -141,8 +144,8 @@ fn destructure_structs() {
         .new_span(
             span.clone().with_field(
                 expect::field("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(expect::field("arg2").with_value(&format_args!("2")))
+                    .with_value(&tracing::field::debug(1))
+                    .and(expect::field("arg2").with_value(&tracing::field::debug(2)))
                     .only(),
             ),
         )
@@ -169,7 +172,7 @@ fn destructure_everything() {
     struct Bar((usize, usize));
     struct NoDebug;
 
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2, ?arg3, ?arg4))]
     fn my_fn(
         &Foo {
             bar: Bar((arg1, arg2)),
@@ -186,10 +189,10 @@ fn destructure_everything() {
         .new_span(
             span.clone().with_field(
                 expect::field("arg1")
-                    .with_value(&format_args!("1"))
-                    .and(expect::field("arg2").with_value(&format_args!("2")))
-                    .and(expect::field("arg3").with_value(&format_args!("3")))
-                    .and(expect::field("arg4").with_value(&format_args!("4")))
+                    .with_value(&tracing::field::debug(1))
+                    .and(expect::field("arg2").with_value(&tracing::field::debug(2)))
+                    .and(expect::field("arg3").with_value(&tracing::field::debug(3)))
+                    .and(expect::field("arg4").with_value(&tracing::field::debug(4)))
                     .only(),
             ),
         )

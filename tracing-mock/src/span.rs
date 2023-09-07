@@ -105,6 +105,13 @@ impl ExpectedSpan {
             ..Default::default()
         }
     }
+
+    pub fn with_no_fields(self) -> NewSpan {
+        NewSpan {
+            span: self,
+            ..Default::default()
+        }
+    }
 }
 
 impl fmt::Debug for ExpectedSpan {

@@ -167,7 +167,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestA for TestImpl {
-        #[instrument]
+        #[instrument(fields(?self, ?v))]
         async fn foo(&mut self, v: usize) {
             self.baz().await;
             self.0 = v;
@@ -177,7 +177,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestB for TestImpl {
-        #[instrument]
+        #[instrument(fields(?self))]
         async fn bar(&self) {
             tracing::trace!(val = self.0);
         }
@@ -185,7 +185,7 @@ fn async_fn_with_async_trait() {
 
     #[async_trait]
     impl TestC for TestImpl {
-        #[instrument(skip(self))]
+        #[instrument]
         async fn baz(&self) {
             tracing::trace!(val = self.0);
         }
@@ -251,7 +251,7 @@ fn async_fn_with_async_trait_and_fields_expressions() {
     #[async_trait]
     impl Test for TestImpl {
         // check that self is correctly handled, even when using async_trait
-        #[instrument(fields(val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
+        #[instrument(fields(?self, ?_v, val=self.foo(), val2=Self::clone(self).foo(), test=%_v+5))]
         async fn call(&mut self, _v: usize) {}
     }
 
@@ -260,7 +260,8 @@ fn async_fn_with_async_trait_and_fields_expressions() {
         .new_span(
             span.clone().with_field(
                 expect::field("_v")
-                    .with_value(&5usize)
+                    // this used to have the value 5usize, since removing skips it is now wrapped in debug
+                    .with_value(&tracing::field::debug(5usize))
                     .and(expect::field("test").with_value(&tracing::field::debug(10)))
                     .and(expect::field("val").with_value(&42u64))
                     .and(expect::field("val2").with_value(&42u64)),
@@ -385,7 +386,7 @@ fn out_of_scope_fields() {
     }
 
     impl Thing {
-        #[instrument(skip(self, _req), fields(app_id))]
+        #[instrument(fields(app_id))]
         fn call(&mut self, _req: ()) -> Pin<Box<dyn Future<Output = Arc<()>> + Send + Sync>> {
             // ...
             let metrics = self.metrics.clone();

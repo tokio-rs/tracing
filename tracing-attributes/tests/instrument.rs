@@ -49,8 +49,42 @@ fn override_everything() {
 }
 
 #[test]
-fn fields() {
+fn fields_are_not_automatically_included_in_the_generated_trace_span() {
     #[instrument(target = "my_target", level = "debug")]
+    fn my_fn(_arg1: usize, _arg2: bool) {}
+
+    let span = expect::span()
+        .named("my_fn")
+        .at_level(Level::DEBUG)
+        .with_target("my_target");
+
+    let span2 = expect::span()
+        .named("my_fn")
+        .at_level(Level::DEBUG)
+        .with_target("my_target");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone().with_no_fields())
+        .enter(span.clone())
+        .exit(span.clone())
+        .drop_span(span)
+        .new_span(span2.clone().with_no_fields())
+        .enter(span2.clone())
+        .exit(span2.clone())
+        .drop_span(span2)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        my_fn(2, false);
+        my_fn(3, true);
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn fields() {
+    #[instrument(target = "my_target", level = "debug", fields(?arg1, ?arg2))]
     fn my_fn(arg1: usize, arg2: bool) {}
 
     let span = expect::span()
@@ -66,8 +100,8 @@ fn fields() {
         .new_span(
             span.clone().with_field(
                 expect::field("arg1")
-                    .with_value(&2usize)
-                    .and(expect::field("arg2").with_value(&false))
+                    .with_value(&tracing::field::debug(2usize))
+                    .and(expect::field("arg2").with_value(&tracing::field::debug(false)))
                     .only(),
             ),
         )
@@ -77,8 +111,8 @@ fn fields() {
         .new_span(
             span2.clone().with_field(
                 expect::field("arg1")
-                    .with_value(&3usize)
-                    .and(expect::field("arg2").with_value(&true))
+                    .with_value(&tracing::field::debug(3usize))
+                    .and(expect::field("arg2").with_value(&tracing::field::debug(true)))
                     .only(),
             ),
         )
@@ -97,10 +131,10 @@ fn fields() {
 }
 
 #[test]
-fn skip() {
+fn fields_that_do_not_implement_debug_are_ok_as_long_as_they_are_not_captured_in_the_span() {
     struct UnDebug(pub u32);
 
-    #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
+    #[instrument(target = "my_target", level = "debug", fields(%arg1))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
 
     let span = expect::span()
@@ -114,16 +148,21 @@ fn skip() {
         .with_target("my_target");
     let (collector, handle) = collector::mock()
         .new_span(
-            span.clone()
-                .with_field(expect::field("arg1").with_value(&2usize).only()),
+            span.clone().with_field(
+                expect::field("arg1")
+                    .with_value(&tracing::field::debug(2usize))
+                    .only(),
+            ),
         )
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .new_span(
-            span2
-                .clone()
-                .with_field(expect::field("arg1").with_value(&3usize).only()),
+            span2.clone().with_field(
+                expect::field("arg1")
+                    .with_value(&tracing::field::debug(3usize))
+                    .only(),
+            ),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -144,7 +183,7 @@ fn generics() {
     #[derive(Debug)]
     struct Foo;
 
-    #[instrument]
+    #[instrument(fields(?arg1, ?arg2))]
     fn my_fn<S, T: std::fmt::Debug>(arg1: S, arg2: T)
     where
         S: std::fmt::Debug,
@@ -180,7 +219,7 @@ fn methods() {
     struct Foo;
 
     impl Foo {
-        #[instrument]
+        #[instrument(fields(?self, ?arg1))]
         fn my_fn(&self, arg1: usize) {}
     }
 
@@ -191,7 +230,7 @@ fn methods() {
             span.clone().with_field(
                 expect::field("self")
                     .with_value(&format_args!("Foo"))
-                    .and(expect::field("arg1").with_value(&42usize)),
+                    .and(expect::field("arg1").with_value(&tracing::field::debug(42usize))),
             ),
         )
         .enter(span.clone())
@@ -210,7 +249,7 @@ fn methods() {
 
 #[test]
 fn impl_trait_return_type() {
-    #[instrument]
+    #[instrument(fields(%x))]
     fn returns_impl_trait(x: usize) -> impl Iterator<Item = usize> {
         0..x
     }
@@ -219,8 +258,11 @@ fn impl_trait_return_type() {
 
     let (collector, handle) = collector::mock()
         .new_span(
-            span.clone()
-                .with_field(expect::field("x").with_value(&10usize).only()),
+            span.clone().with_field(
+                expect::field("x")
+                    .with_value(&tracing::field::debug(10usize))
+                    .only(),
+            ),
         )
         .enter(span.clone())
         .exit(span.clone())

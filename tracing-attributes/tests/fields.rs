@@ -5,16 +5,16 @@ use tracing_mock::{collector, expect, span::NewSpan};
 #[instrument(fields(foo = "bar", dsa = true, num = 1))]
 fn fn_no_param() {}
 
-#[instrument(fields(foo = "bar"))]
+#[instrument(fields(?param, foo = "bar"))]
 fn fn_param(param: u32) {}
 
 #[instrument(fields(foo = "bar", empty))]
 fn fn_empty_field() {}
 
-#[instrument(fields(len = s.len()))]
+#[instrument(fields(?s, len = s.len()))]
 fn fn_expr_field(s: &str) {}
 
-#[instrument(fields(s.len = s.len(), s.is_empty = s.is_empty()))]
+#[instrument(fields(?s, s.len = s.len(), s.is_empty = s.is_empty()))]
 fn fn_two_expr_fields(s: &str) {
     let _ = s;
 }
@@ -40,7 +40,7 @@ struct HasField {
 }
 
 impl HasField {
-    #[instrument(fields(my_field = self.my_field), skip(self))]
+    #[instrument(fields(my_field = self.my_field))]
     fn self_expr_field(&self) {}
 }
 
@@ -62,7 +62,7 @@ fn fields() {
 fn expr_field() {
     let span = expect::span().with_field(
         expect::field("s")
-            .with_value(&"hello world")
+            .with_value(&tracing::field::debug("hello world"))
             .and(expect::field("len").with_value(&"hello world".len()))
             .only(),
     );
@@ -75,7 +75,7 @@ fn expr_field() {
 fn two_expr_fields() {
     let span = expect::span().with_field(
         expect::field("s")
-            .with_value(&"hello world")
+            .with_value(&tracing::field::debug("hello world"))
             .and(expect::field("s.len").with_value(&"hello world".len()))
             .and(expect::field("s.is_empty").with_value(&false))
             .only(),
@@ -122,7 +122,7 @@ fn parameters_with_fields() {
     let span = expect::span().with_field(
         expect::field("foo")
             .with_value(&"bar")
-            .and(expect::field("param").with_value(&1u32))
+            .and(expect::field("param").with_value(&tracing::field::debug(1u32)))
             .only(),
     );
     run_test(span, || {

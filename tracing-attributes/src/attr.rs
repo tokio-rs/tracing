@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
 
 use proc_macro2::TokenStream;
@@ -21,11 +20,10 @@ pub(crate) struct InstrumentArgs {
     target: Option<LitStr>,
     pub(crate) parent: Option<Expr>,
     pub(crate) follows_from: Option<Expr>,
-    pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
     pub(crate) err_args: Option<EventArgs>,
     pub(crate) ret_args: Option<EventArgs>,
-    /// Errors describing any unrecognized parse inputs that we skipped.
+    /// Errors describing any unrecognized parse inputs that we ignored.
     parse_warnings: Vec<syn::Error>,
 }
 
@@ -43,7 +41,7 @@ impl InstrumentArgs {
     }
 
     /// Generate "deprecation" warnings for any unrecognized attribute inputs
-    /// that we skipped.
+    /// that we ignored.
     ///
     /// For backwards compatibility, we need to emit compiler warnings rather
     /// than errors for unrecognized inputs. Generating a fake deprecation is
@@ -61,7 +59,7 @@ impl InstrumentArgs {
                 {
                     #[deprecated(since = "not actually deprecated", note = #msg)]
                     const TRACING_INSTRUMENT_WARNING: () = ();
-                    let _ = TRACING_INSTRUMENT_WARNING;
+                    TRACING_INSTRUMENT_WARNING
                 }
             }
         });
@@ -113,12 +111,6 @@ impl Parse for InstrumentArgs {
                     return Err(input.error("expected only a single `level` argument"));
                 }
                 args.level = Some(input.parse()?);
-            } else if lookahead.peek(kw::skip) {
-                if !args.skips.is_empty() {
-                    return Err(input.error("expected only a single `skip` argument"));
-                }
-                let Skips(skips) = input.parse()?;
-                args.skips = skips;
             } else if lookahead.peek(kw::fields) {
                 if args.fields.is_some() {
                     return Err(input.error("expected only a single `fields` argument"));
@@ -229,29 +221,6 @@ impl<T: Parse> Parse for ExprArg<T> {
             value,
             _p: std::marker::PhantomData,
         })
-    }
-}
-
-struct Skips(HashSet<Ident>);
-
-impl Parse for Skips {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let _ = input.parse::<kw::skip>();
-        let content;
-        let _ = syn::parenthesized!(content in input);
-        let names = content.parse_terminated(Ident::parse_any, Token![,])?;
-        let mut skips = HashSet::new();
-        for name in names {
-            if skips.contains(&name) {
-                return Err(syn::Error::new(
-                    name.span(),
-                    "tried to skip the same field twice",
-                ));
-            } else {
-                skips.insert(name);
-            }
-        }
-        Ok(Self(skips))
     }
 }
 
