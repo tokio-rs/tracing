@@ -5,7 +5,7 @@ use tracing_mock::*;
 #[instrument]
 fn with_default_parent() {}
 
-#[instrument(parent = parent_span, skip(parent_span))]
+#[instrument(parent = parent_span)]
 fn with_explicit_parent<P>(parent_span: P)
 where
     P: Into<Option<Id>>,

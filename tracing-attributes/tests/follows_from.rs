@@ -2,10 +2,10 @@ use tracing::{collect::with_default, Id, Level, Span};
 use tracing_attributes::instrument;
 use tracing_mock::*;
 
-#[instrument(follows_from = causes, skip(causes))]
+#[instrument(follows_from = causes)]
 fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
 
-#[instrument(follows_from = causes, skip(causes))]
+#[instrument(follows_from = causes)]
 async fn with_follows_from_async(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
 
 #[instrument(follows_from = [&Span::current()])]

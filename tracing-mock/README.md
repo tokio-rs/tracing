@@ -104,7 +104,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 use tracing::collect::with_default;
 use tracing_mock::{collector, expect, field};
 
-#[tracing::instrument]
+#[tracing::instrument(fields(%number_of_yaks))]
 fn yak_shaving(number_of_yaks: u32) {
     tracing::info!(number_of_yaks, "preparing to shave yaks");
 
@@ -121,7 +121,7 @@ let span = expect::span().named("yak_shaving");
 let (collector, handle) = collector::mock()
     .new_span(
         span.clone()
-            .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
+            .with_field(expect::field("number_of_yaks").with_value(&tracing::field::debug(yak_count)).only()),
     )
     .enter(span.clone())
     .event(
