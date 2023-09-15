@@ -333,9 +333,8 @@ pub struct FieldFnVisitor<'a, F> {
 /// The compact format includes fields from all currently entered spans, after
 /// the event's fields. Span fields are ordered (but not grouped) grouped by
 /// span, and span names are  not shown.A more compact representation of the
-/// event's [`Level`](tracing::Level) is used, and additional information, such
-/// as the event's target, is disabled by default (but can be enabled
-/// explicitly).
+/// event's [`Level`] is used, and additional information, such as the event's
+/// target, is disabled by default (but can be enabled explicitly).
 ///
 /// # Example Output
 ///
@@ -1067,7 +1066,12 @@ where
 
         let dimmed = writer.dimmed();
         if self.display_target {
-            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
+            write!(
+                writer,
+                "{}{}",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         if self.display_filename {
