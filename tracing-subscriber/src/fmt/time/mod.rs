@@ -18,7 +18,6 @@ pub use time_crate::LocalTime;
 
 /// [`chrono`]-based implementation for [`FormatTime`].
 #[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "local-time")))]
 mod chrono_crate;
 
 #[cfg(feature = "chrono")]

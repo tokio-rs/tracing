@@ -108,7 +108,6 @@ impl FormatTime for ChronoUtc {
 /// the supported syntax.
 ///
 /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum ChronoFmtType {
     /// Format according to the RFC 3339 convention.
