@@ -59,7 +59,7 @@ tracing-serde = { path = "../tracing-serde", version = "0.2", optional = true }
 
 # opt-in deps
 parking_lot = { version = "0.12.1", optional = true }
-chrono = { version = "0.4.26", optional = true }
+chrono = { version = "0.4.26", default-features = false, features = ["clock", "std"], optional = true }
 
 # registry
 sharded-slab = { version = "0.1.4", optional = true }
