@@ -4,7 +4,7 @@ use tracing_mock::subscriber;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
-fn no_collector_disables_global() {
+fn no_subscriber_disables_global() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/1999
     let (subscriber, handle) = subscriber::mock().only().run_with_handle();
     tracing::subscriber::set_global_default(subscriber)

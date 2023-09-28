@@ -8,7 +8,7 @@ use tracing_mock::{layer::MockLayer, *};
 use tracing_subscriber::{filter, prelude::*};
 
 #[test]
-fn vec_subscriber_filter_interests_are_cached() {
+fn vec_layer_filter_interests_are_cached() {
     let mk_filtered = |level: Level, subscriber: MockLayer| {
         let seen = Arc::new(Mutex::new(HashMap::new()));
         let filter = filter::filter_fn({

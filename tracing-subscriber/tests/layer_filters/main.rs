@@ -2,6 +2,7 @@
 mod boxed;
 mod downcast_raw;
 mod filter_scopes;
+mod option;
 mod per_event;
 mod targets;
 mod trees;
@@ -12,7 +13,7 @@ use tracing_mock::{event, expect, layer, subscriber};
 use tracing_subscriber::{filter, prelude::*, Layer};
 
 #[test]
-fn basic_subscriber_filters() {
+fn basic_layer_filters() {
     let (trace_layer, trace_handle) = layer::named("trace")
         .event(expect::event().at_level(Level::TRACE))
         .event(expect::event().at_level(Level::DEBUG))
@@ -47,7 +48,7 @@ fn basic_subscriber_filters() {
 }
 
 #[test]
-fn basic_subscriber_filters_spans() {
+fn basic_layer_filter_spans() {
     let (trace_layer, trace_handle) = layer::named("trace")
         .new_span(expect::span().at_level(Level::TRACE))
         .new_span(expect::span().at_level(Level::DEBUG))
