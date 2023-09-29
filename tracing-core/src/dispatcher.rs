@@ -518,8 +518,8 @@ impl Dispatch {
         }
     }
 
-    /// Registers a new callsite with this collector, returning whether or not
-    /// the collector is interested in being notified about the callsite.
+    /// Registers a new callsite with this subscriber, returning whether or not
+    /// the subscriber is interested in being notified about the callsite.
     ///
     /// This calls the [`register_callsite`] function on the [`Subscriber`]
     /// that this `Dispatch` forwards to.

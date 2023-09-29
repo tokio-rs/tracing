@@ -14,7 +14,7 @@ fn main() {
         .with_line_number(true)
         // disable targets
         .with_target(false)
-        // sets this to be the default, global collector for this application.
+        // sets this to be the default, global subscriber for this application.
         .init();
 
     let number_of_yaks = 3;

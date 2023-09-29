@@ -212,7 +212,7 @@ impl Builder {
             #[cfg(feature = "nu_ansi_term")]
             use nu_ansi_term::{Color, Style};
             // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
-            // has no knowledge of any underlying subscriber or collector, which
+            // has no knowledge of any underlying subscriber or subscriber, which
             // may or may not use a `MakeWriter`.
             let warn = |msg: &str| {
                 #[cfg(not(feature = "nu_ansi_term"))]

@@ -470,7 +470,7 @@ where
             return Interest::sometimes();
         }
 
-        // otherwise, allow the inner subscriber or collector to weigh in.
+        // otherwise, allow the inner subscriber or subscriber to weigh in.
         inner
     }
 
