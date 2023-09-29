@@ -76,9 +76,9 @@ impl LocalTime<well_known::Rfc3339> {
     /// ```
     /// use tracing_subscriber::fmt::{self, time};
     ///
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(time::LocalTime::rfc_3339());
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// [local time]: time::OffsetDateTime::now_local
@@ -130,9 +130,9 @@ impl<F: Formattable> LocalTime<F> {
     /// use time::macros::format_description;
     ///
     /// let timer = LocalTime::new(format_description!("[hour]:[minute]:[second]"));
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using [`time::format_description::parse`]:
@@ -143,9 +143,9 @@ impl<F: Formattable> LocalTime<F> {
     /// let time_format = time::format_description::parse("[hour]:[minute]:[second]")
     ///     .expect("format string should be valid!");
     /// let timer = LocalTime::new(time_format);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using the [`format_description!`] macro requires enabling the `time`
@@ -158,9 +158,9 @@ impl<F: Formattable> LocalTime<F> {
     /// use tracing_subscriber::fmt::{self, time::LocalTime};
     ///
     /// let timer = LocalTime::new(time::format_description::well_known::Rfc3339);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// [local time]: time::OffsetDateTime::now_local()
@@ -207,9 +207,9 @@ impl UtcTime<well_known::Rfc3339> {
     /// ```
     /// use tracing_subscriber::fmt::{self, time};
     ///
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(time::UtcTime::rfc_3339());
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// [local time]: time::OffsetDateTime::now_utc
@@ -247,9 +247,9 @@ impl<F: Formattable> UtcTime<F> {
     /// use time::macros::format_description;
     ///
     /// let timer = UtcTime::new(format_description!("[hour]:[minute]:[second]"));
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using the [`format_description!`] macro requires enabling the `time`
@@ -263,9 +263,9 @@ impl<F: Formattable> UtcTime<F> {
     /// let time_format = time::format_description::parse("[hour]:[minute]:[second]")
     ///     .expect("format string should be valid!");
     /// let timer = UtcTime::new(time_format);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using a [well-known format][well-known formats] (this is equivalent to
@@ -275,9 +275,9 @@ impl<F: Formattable> UtcTime<F> {
     /// use tracing_subscriber::fmt::{self, time::UtcTime};
     ///
     /// let timer = UtcTime::new(time::format_description::well_known::Rfc3339);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// [UTC time]: time::OffsetDateTime::now_utc()
@@ -326,9 +326,9 @@ impl OffsetTime<well_known::Rfc3339> {
     /// ```
     /// use tracing_subscriber::fmt::{self, time};
     ///
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(time::OffsetTime::local_rfc_3339().expect("could not get local offset!"));
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using `OffsetTime` with Tokio:
@@ -398,9 +398,9 @@ impl<F: time::formatting::Formattable> OffsetTime<F> {
     ///
     /// let offset = UtcOffset::current_local_offset().expect("should get local offset!");
     /// let timer = OffsetTime::new(offset, format_description!("[hour]:[minute]:[second]"));
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using [`time::format_description::parse`]:
@@ -413,9 +413,9 @@ impl<F: time::formatting::Formattable> OffsetTime<F> {
     /// let time_format = time::format_description::parse("[hour]:[minute]:[second]")
     ///     .expect("format string should be valid!");
     /// let timer = OffsetTime::new(offset, time_format);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// Using the [`format_description!`] macro requires enabling the `time`
@@ -430,9 +430,9 @@ impl<F: time::formatting::Formattable> OffsetTime<F> {
     ///
     /// let offset = UtcOffset::current_local_offset().expect("should get local offset!");
     /// let timer = OffsetTime::new(offset, time::format_description::well_known::Rfc3339);
-    /// let collector = tracing_subscriber::fmt()
+    /// let subscriber = tracing_subscriber::fmt()
     ///     .with_timer(timer);
-    /// # drop(collector);
+    /// # drop(subscriber);
     /// ```
     ///
     /// [`time` crate]: time

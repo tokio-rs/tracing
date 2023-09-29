@@ -750,8 +750,8 @@ where
     /// [`WeakDispatch`]: tracing_core::dispatcher::WeakDispatch
     /// [upgraded]: tracing_core::dispatcher::WeakDispatch::upgrade
     /// [`Subscriber`]: tracing_core::Subscriber
-    fn on_register_dispatch(&self, collector: &Dispatch) {
-        let _ = collector;
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        let _ = subscriber;
     }
 
     /// Performs late initialization when attaching a `Layer` to a

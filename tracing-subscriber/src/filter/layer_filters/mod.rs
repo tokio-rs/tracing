@@ -694,7 +694,7 @@ impl<L, F, S> Filtered<L, F, S> {
     /// # }
     /// ```
     ///
-    /// [subscriber]: Subscribe
+    /// [`Layer`]: crate::layer::Layer
     pub fn inner_mut(&mut self) -> &mut L {
         &mut self.layer
     }
@@ -706,8 +706,8 @@ where
     F: layer::Filter<S> + 'static,
     L: Layer<S>,
 {
-    fn on_register_dispatch(&self, collector: &Dispatch) {
-        self.layer.on_register_dispatch(collector);
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        self.layer.on_register_dispatch(subscriber);
     }
 
     fn on_layer(&mut self, subscriber: &mut S) {
@@ -1190,7 +1190,7 @@ impl FilterState {
         }
     }
 
-    /// Run a second filtering pass, e.g. for Subscribe::event_enabled.
+    /// Run a second filtering pass, e.g. for Layer::event_enabled.
     fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
         let map = self.enabled.get();
         let enabled = map.is_enabled(filter) && f();
