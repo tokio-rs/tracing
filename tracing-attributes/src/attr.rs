@@ -275,14 +275,14 @@ impl Default for FormatMode {
 impl FormatMode {
     /// A list of the valid options for the format mode. This should be updated
     /// when new modes are added to ensure that parser error messages are formatted correctly.
-    const OPTIONS: &[(&str, FormatMode)] = &[
+    const OPTIONS: [(&str, FormatMode);3] = [
         ("Debug", FormatMode::Debug),
         ("Display", FormatMode::Display),
         ("Value", FormatMode::Value),
     ];
 
     fn options_list() -> String {
-        Self::OPTIONS.iter().map(|(name, _)| *name).join(", ")
+        Self::OPTIONS.iter().map(|(name, _)| *name).collect::<Vec<_>>().join(", ")
     }
 }
 
@@ -292,7 +292,7 @@ where
 {
     fn from(s: S) -> Self {
         for (name, value) in Self::OPTIONS {
-            if s == name {
+            if s.as_ref() == name {
                  return value;
             }
         }
