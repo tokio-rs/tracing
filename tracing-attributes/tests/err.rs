@@ -232,7 +232,7 @@ fn test_err_raw() {
         .drop_span(span)
         .only()
         .run_with_handle();
-    with_default(collector, || err_dbg().ok());
+    with_default(collector, || err_value().ok());
     handle.assert_finished();
 }
 

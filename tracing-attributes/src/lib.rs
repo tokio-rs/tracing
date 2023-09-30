@@ -313,7 +313,7 @@ mod expand;
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err(Value))]
-/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+/// fn my_function(arg: usize) -> Result<(), Box<dyn std::error::Error>> {
 ///    Ok(())
 /// }
 /// ```
