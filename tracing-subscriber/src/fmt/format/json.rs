@@ -304,6 +304,13 @@ where
                     .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
             }
 
+            #[cfg(feature = "extra-fields")]
+            if let Some((make_extra_fields, current_span)) = self.make_extra_fields.as_ref().zip(current_span) {
+                for (k, v) in make_extra_fields(current_span.extensions()) {
+                    serializer.serialize_entry(&k, &v)?;
+                }
+            }
+
             serializer.end()
         };
 
