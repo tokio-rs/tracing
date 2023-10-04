@@ -26,20 +26,34 @@
 //!  - Using a combination of [`NonBlocking`] and [`RollingFileAppender`] to allow writes to a log file
 //! without blocking.
 //!
-//! ## Rolling File Appender
+//! ## File Appender
+//!
+//! The [`rolling` module][rolling] provides functions to create rolling and non-rolling file
+//! appenders.
+//!
+//! Rolling file appender rotation options are [`Rotation::MINUTELY`](rolling::Rotation::MINUTELY),
+//! [`Rotation::HOURLY`](rolling::Rotation::HOURLY), and
+//! [`Rotation::DAILY`](rolling::Rotation::DAILY).
+//!
+//! To create a non-rolling file appender, use
+//! [`tracing_appender::rolling::never(/*...*/)`](rolling::never) or
+//! [`Rotation::NEVER`](rolling::Rotation::NEVER).
+//!
+//! The following example creates an hourly rotating file appender that writes to
+//! `/some/directory/prefix.log.YYYY-MM-DD-HH`:
 //!
 //! ```rust
 //! # fn docs() {
 //! let file_appender = tracing_appender::rolling::hourly("/some/directory", "prefix.log");
 //! # }
 //! ```
-//! This creates an hourly rotating file appender that writes to `/some/directory/prefix.log.YYYY-MM-DD-HH`.
-//! [`Rotation::DAILY`](rolling::Rotation::DAILY) and [`Rotation::NEVER`](rolling::Rotation::NEVER) are the other available options.
 //!
-//! The file appender implements [`std::io::Write`][write]. To be used with [`tracing_subscriber::FmtSubscriber`][fmt_subscriber],
-//! it must be combined with a [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
+//! The file appender implements [`std::io::Write`][write]. To be used with
+//! [`tracing_subscriber::FmtSubscriber`][fmt_subscriber], it must be combined with a
+//! [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
-//! The [`rolling` module][rolling]'s documentation provides more detail on how to use this file appender.
+//! See the [`rolling` module][rolling]'s documentation for more detail on how to use this file
+//! appender.
 //!
 //! ## Non-Blocking Writer
 //!
@@ -116,8 +130,8 @@
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!

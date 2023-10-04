@@ -64,10 +64,13 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // unreachable, but does affect inference, so it needs to be written
     // exactly that way for it to do its magic.
     let fake_return_edge = quote_spanned! {return_span=>
-        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value, clippy::unreachable)]
+        #[allow(
+            unknown_lints, unreachable_code, clippy::diverging_sub_expression,
+            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore,
+            clippy::empty_loop
+        )]
         if false {
-            let __tracing_attr_fake_return: #return_type =
-                unreachable!("this is just for type inference, and is unreachable code");
+            let __tracing_attr_fake_return: #return_type = loop {};
             return __tracing_attr_fake_return;
         }
     };
@@ -340,7 +343,7 @@ fn gen_block<B: ToTokens>(
         // regression in case the level is enabled.
         let __tracing_attr_span;
         let __tracing_attr_guard;
-        if tracing::level_enabled!(#level) {
+        if tracing::level_enabled!(#level) || tracing::if_log_enabled!(#level, {true} else {false}) {
             __tracing_attr_span = #span;
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
@@ -477,10 +480,7 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
         ),
-        Pat::TupleStruct(PatTupleStruct {
-            pat: PatTuple { elems, .. },
-            ..
-        }) => Box::new(
+        Pat::TupleStruct(PatTupleStruct { elems, .. }) => Box::new(
             elems
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
@@ -564,7 +564,7 @@ impl<'block> AsyncInfo<'block> {
         // last expression of the block: it determines the return value of the
         // block, this is quite likely a `Box::pin` statement or an async block
         let (last_expr_stmt, last_expr) = block.stmts.iter().rev().find_map(|stmt| {
-            if let Stmt::Expr(expr) = stmt {
+            if let Stmt::Expr(expr, _semi) = stmt {
                 Some((stmt, expr))
             } else {
                 None
