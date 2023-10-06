@@ -1485,7 +1485,7 @@ impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
 /// Configures what points in the span lifecycle are logged as events.
 ///
 /// See also [`with_span_events`](super::CollectorBuilder::with_span_events()).
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);
 
 impl FmtSpan {
@@ -1508,7 +1508,7 @@ impl FmtSpan {
 
     /// Check whether or not a certain flag is set for this [`FmtSpan`]
     fn contains(&self, other: FmtSpan) -> bool {
-        self.clone() & other.clone() == other
+        *self & other == other
     }
 }
 
@@ -1558,7 +1558,7 @@ impl Debug for FmtSpan {
             Ok(())
         };
 
-        if FmtSpan::NONE | self.clone() == FmtSpan::NONE {
+        if FmtSpan::NONE | *self == FmtSpan::NONE {
             f.write_str("FmtSpan::NONE")?;
         } else {
             write_flags(FmtSpan::NEW, "FmtSpan::NEW")?;
