@@ -28,7 +28,7 @@ interest-cache = ["lru", "ahash"]
 tracing-core = { path = "../tracing-core", version = "0.1.28"}
 log = { version = "0.4.17" }
 once_cell = "1.13.0"
-env_logger = { version = "0.8.4", optional = true }
+env_logger = { version = "0.10", optional = true }
 lru = { version = "0.7.7", optional = true }
 ahash = { version = "0.7.6", optional = true }
 
