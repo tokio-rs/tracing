@@ -109,7 +109,7 @@ impl Subscriber {
                     .and_then(|p| p.file_name())
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
-                    .unwrap_or_else(String::new),
+                    .unwrap_or_default(),
                 additional_fields: Vec::new(),
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
