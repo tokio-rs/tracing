@@ -34,6 +34,7 @@ tracing-attributes = { path = "../tracing-attributes", version = "0.1.28", optio
 pin-project-lite = "0.2.9"
 
 [dev-dependencies]
+backtrace = "0.3.71"
 criterion = { version = "0.3.6", default-features = false }
 futures = { version = "0.3.21", default-features = false }
 log = "0.4.17"
@@ -45,17 +46,17 @@ wasm-bindgen-test = "0.3.38"
 [features]
 default = ["std", "attributes"]
 
-max_level_off   = []
+max_level_off = []
 max_level_error = []
-max_level_warn  = []
-max_level_info  = []
+max_level_warn = []
+max_level_info = []
 max_level_debug = []
 max_level_trace = []
 
-release_max_level_off   = []
+release_max_level_off = []
 release_max_level_error = []
-release_max_level_warn  = []
-release_max_level_info  = []
+release_max_level_warn = []
+release_max_level_info = []
 release_max_level_debug = []
 release_max_level_trace = []
 

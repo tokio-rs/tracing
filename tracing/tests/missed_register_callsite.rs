@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use backtrace::Backtrace;
 use tracing::Subscriber;
 use tracing_core::{span, Metadata};
 
@@ -103,6 +104,86 @@ fn event_before_register() {
     // This delay ensures that the event!() in the first thread is executed first.
     thread::sleep(Duration::from_micros(50));
     let jh2 = subscriber_thread(2, subscriber_2_register_sleep_micros);
+
+    jh1.join().expect("failed to join thread");
+    jh2.join().expect("failed to join thread");
+}
+
+#[test]
+fn event_before_register_with_backtrace() {
+    fn subscriber_thread(
+        idx: usize,
+        start_sleep_micros: u64,
+        register_sleep_micros: u64,
+    ) -> JoinHandle<()> {
+        thread::Builder::new()
+            .name(format!("subscriber-{idx}"))
+            .spawn(move || {
+                // We use a sleep to ensure the starting order of the 2 threads.
+                thread::sleep(Duration::from_micros(start_sleep_micros));
+                let subscriber = TestSubscriber::new(register_sleep_micros);
+                let _subscriber_guard = tracing::subscriber::set_default(subscriber);
+
+                // tracing::info!("event-from-{idx}", idx = idx);
+                {
+                    use tracing::__macro_support::Callsite as _;
+                    static __CALLSITE: tracing::callsite::DefaultCallsite = {
+                        static META: tracing::Metadata<'static> = {
+                            tracing::metadata::Metadata::new(
+                                "event :0u32",
+                                "module::path",
+                                tracing::Level::INFO,
+                                ::core::option::Option::Some(""),
+                                ::core::option::Option::Some(0u32),
+                                ::core::option::Option::Some("module::path"),
+                                tracing::field::FieldSet::new(
+                                    &[("message")],
+                                    tracing::callsite::Identifier(&__CALLSITE),
+                                ),
+                                tracing::metadata::Kind::EVENT,
+                            )
+                        };
+                        tracing::callsite::DefaultCallsite::new(&META)
+                    };
+                    let enabled = (tracing::Level::INFO)
+                        <= tracing::level_filters::STATIC_MAX_LEVEL
+                        && (tracing::Level::INFO) <= tracing::level_filters::LevelFilter::current()
+                        && {
+                            let interest = __CALLSITE.interest();
+                            println!("thread-{idx}: interest: {interest:?}");
+                            !interest.is_never()
+                                && tracing::__macro_support::__is_enabled(
+                                    __CALLSITE.metadata(),
+                                    interest,
+                                )
+                        };
+                    if enabled {
+                        #[allow(clippy::redundant_closure_call)]
+                        (|value_set: tracing::field::ValueSet| {
+                            let meta = __CALLSITE.metadata();
+                            tracing::Event::dispatch(meta, &value_set);
+                        })({
+                            #[allow(unused_imports)]
+                            use tracing::field::{debug, display, Value};
+                            let mut iter = (__CALLSITE.metadata().fields()).iter();
+                            (__CALLSITE.metadata().fields()).value_set(&[(
+                                &(::core::iter::Iterator::next(&mut iter)
+                                    .expect("FieldSet corrupted (this is a bug)")),
+                                ::core::option::Option::Some(
+                                    &(format_args!("event-from-{idx}", idx = idx)) as &dyn Value,
+                                ),
+                            )])
+                        });
+                    }
+                }
+                thread::sleep(Duration::from_millis(100));
+            })
+            .expect("failed to spawn thread")
+    }
+
+    let register_sleep_micros = 100000;
+    let jh1 = subscriber_thread(1, 0, register_sleep_micros);
+    let jh2 = subscriber_thread(2, 50, 0);
 
     jh1.join().expect("failed to join thread");
     jh2.join().expect("failed to join thread");
