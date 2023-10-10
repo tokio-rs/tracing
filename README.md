@@ -371,6 +371,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
+- [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
@@ -404,6 +405,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
 - [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
 - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
+- [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -414,6 +416,7 @@ please let us know!)
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
+[`axum-insights`]: https://crates.io/crates/axum-insights
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
@@ -447,6 +450,7 @@ please let us know!)
 [`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
 [`reqwest`]: https://crates.io/crates/reqwest
 [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
+[`clippy-tracing`]: https://crates.io/crates/clippy-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
