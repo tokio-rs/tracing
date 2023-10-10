@@ -307,38 +307,62 @@ impl DefaultCallsite {
     // This only happens once (or if the cached interest value was corrupted).
     #[cold]
     pub fn register(&'static self) -> Interest {
-        // Attempt to advance the registration state to `REGISTERING`...
-        match self.registration.compare_exchange(
-            Self::UNREGISTERED,
-            Self::REGISTERING,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => {
-                // Okay, we advanced the state, try to register the callsite.
-                CALLSITES.push_default(self);
-                rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
-                self.registration.store(Self::REGISTERED, Ordering::Release);
-            }
-            // Great, the callsite is already registered! Just load its
-            // previous cached interest.
-            Err(Self::REGISTERED) => {}
-            // Someone else is registering...
-            Err(_state) => {
-                debug_assert_eq!(
-                    _state,
-                    Self::REGISTERING,
-                    "weird callsite registration state"
+        let mut count = 0;
+        loop {
+            // Attempt to advance the registration state to `REGISTERING`...
+            let prev_state = self.registration.compare_exchange(
+                Self::UNREGISTERED,
+                Self::REGISTERING,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            );
+            if count == 0 {
+                println!(
+                    "{thread:?}: DefaultCallsite::register: prev_state: {prev_state:?}",
+                    thread = std::thread::current().name()
                 );
-                // Just hit `enabled` this time.
-                return Interest::sometimes();
+            }
+            count += 1;
+            match prev_state {
+                Ok(_) => {
+                    // Okay, we advanced the state, try to register the callsite.
+                    CALLSITES.push_default(self);
+                    rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
+                    self.registration.store(Self::REGISTERED, Ordering::Release);
+                    break;
+                }
+                // Great, the callsite is already registered! Just load its
+                // previous cached interest.
+                Err(Self::REGISTERED) => break,
+                // Someone else is registering...
+                Err(_state) => {
+                    debug_assert_eq!(
+                        _state,
+                        Self::REGISTERING,
+                        "weird callsite registration state: {_state}"
+                    );
+                    // The callsite is being registered. We have to wait until
+                    // registration is finished, otherwise
+                    continue;
+                }
             }
         }
 
+        println!(
+            "{thread:?}: DefaultCallsite::register: loop count: {count}",
+            thread = std::thread::current().name()
+        );
         match self.interest.load(Ordering::Relaxed) {
             Self::INTEREST_NEVER => Interest::never(),
             Self::INTEREST_ALWAYS => Interest::always(),
-            _ => Interest::sometimes(),
+            Self::INTEREST_SOMETIMES => Interest::sometimes(),
+            other_interest => {
+                println!(
+                    "{thread:?} DefaultCallsite::register: other_interest {other_interest}",
+                    thread = std::thread::current().name()
+                );
+                Interest::sometimes()
+            }
         }
     }
 
@@ -346,7 +370,12 @@ impl DefaultCallsite {
     /// first time if it has not yet been registered.
     #[inline]
     pub fn interest(&'static self) -> Interest {
-        match self.interest.load(Ordering::Relaxed) {
+        let interest = self.interest.load(Ordering::Relaxed);
+        println!(
+            "{thread:?} interest: {interest}",
+            thread = std::thread::current().name()
+        );
+        match interest {
             Self::INTEREST_NEVER => Interest::never(),
             Self::INTEREST_SOMETIMES => Interest::sometimes(),
             Self::INTEREST_ALWAYS => Interest::always(),
@@ -406,6 +435,10 @@ impl Callsites {
     ///
     /// This also re-computes the max level hint.
     fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder<'_>) {
+        println!(
+            "{thread:?}: rebuild_interest: dispatchers: {dispatchers:?}",
+            thread = std::thread::current().name()
+        );
         let mut max_level = LevelFilter::OFF;
         dispatchers.for_each(|dispatch| {
             // If the subscriber did not provide a max level hint, assume
@@ -493,7 +526,10 @@ fn rebuild_callsite_interest(
     dispatchers: &dispatchers::Rebuilder<'_>,
 ) {
     let meta = callsite.metadata();
-
+    println!(
+        "{thread:?}: rebuild_callsite_interest: dispatchers: {dispatchers:?}",
+        thread = std::thread::current().name()
+    );
     let mut interest = None;
     dispatchers.for_each(|dispatch| {
         let this_interest = dispatch.register_callsite(meta);
@@ -532,6 +568,22 @@ mod dispatchers {
         JustOne,
         Read(RwLockReadGuard<'a, Vec<dispatcher::Registrar>>),
         Write(RwLockWriteGuard<'a, Vec<dispatcher::Registrar>>),
+    }
+
+    impl<'a> std::fmt::Debug for Rebuilder<'a> {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                Self::JustOne => write!(f, "JustOne"),
+                Self::Read(arg0) => f
+                    .debug_tuple("Read")
+                    .field(&arg0.len() as &dyn std::fmt::Debug)
+                    .finish(),
+                Self::Write(arg0) => f
+                    .debug_tuple("Write")
+                    .field(&arg0.len() as &dyn std::fmt::Debug)
+                    .finish(),
+            }
+        }
     }
 
     impl Dispatchers {
