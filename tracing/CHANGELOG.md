@@ -1,3 +1,34 @@
+# 0.1.39 (October 12, 2023)
+
+### Added
+
+- Allow constant field names in macros [#2617]
+- Allow setting event names in macros [#2699]
+- Allow `ValueSet`s of any length [#2508]
+
+### Fixed
+
+- Use fully qualified names in macros for items exported from std prelude [#2621]
+
+### Documented
+
+- Add `axum-insights` to relevant crates. [#2713]
+- Fix link to RAI pattern crate documentation [#2612]
+- Fix docs typos and warnings [#2581]
+- Add `clippy-tracing` to related crates [#2628]
+- Add `tracing-cloudwatch` to related crates [#2667]
+- Fix deadlink to `tracing-etw` repo [#2602]
+
+[#2617]: https://github.com/tokio-rs/tracing/pull/2617
+[#2699]: https://github.com/tokio-rs/tracing/pull/2699
+[#2508]: https://github.com/tokio-rs/tracing/pull/2508
+[#2621]: https://github.com/tokio-rs/tracing/pull/2621
+[#2713]: https://github.com/tokio-rs/tracing/pull/2713
+[#2581]: https://github.com/tokio-rs/tracing/pull/2581
+[#2628]: https://github.com/tokio-rs/tracing/pull/2628
+[#2667]: https://github.com/tokio-rs/tracing/pull/2667
+[#2602]: https://github.com/tokio-rs/tracing/pull/2602
+
 # 0.1.38 (April 25th, 2023)
 
 This `tracing` release changes the `Drop` implementation for `Instrumented`
