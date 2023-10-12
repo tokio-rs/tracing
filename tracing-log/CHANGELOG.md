@@ -1,3 +1,16 @@
+# 0.2.0 (October 12, 2023)
+
+### Breaking Changes
+
+- Update env_logger to 0.10 from 0.7 to fix GHSA-g98v-hv3f-hcfr [#2740]
+
+### Fixed
+
+- Fix minimal-versions correctness [#2246]
+
+[#2740]: https://github.com/tokio-rs/tracing/pull/2740
+[#2246]: https://github.com/tokio-rs/tracing/pull/2246
+
 # 0.1.3 (April 21st, 2022)
 
 ### Added
