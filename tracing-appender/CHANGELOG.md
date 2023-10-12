@@ -1,3 +1,20 @@
+# 0.2.3 (October 12, 2023)
+
+This release has a large number of changes to `tracing-appender`:
+
+
+### Added
+- **non_blocking**: -Name spawned worker thread (#2219)
+- **non_blocking**: Allow worker thread name to be configured (#2365)
+- **rolling**: `RollingFileAppender::builder` for configuring `RollingFileAppender`s (#2227)
+- **rolling**: `Builder::filename_suffix` method to configure the suffix for log files (#2225)
+- **rolling**: `Builder::max_log_files` method to enable automatically deleting old log files (#2323)
+
+### Documented
+
+- **rolling**: Clarify file appender docs (#2689)
+- **rolling**: Fix typo in RollingFileAppender docs (#2375)
+
 # 0.2.2 (March 17, 2022)
 
 This release fixes a bug in `RollingFileAppender` that could result
