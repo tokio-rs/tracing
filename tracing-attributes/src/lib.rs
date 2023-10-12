@@ -91,7 +91,7 @@ mod expand;
 /// Instruments a function to create and enter a `tracing` [span] every time
 /// the function is called.
 ///
-/// Unless overriden, a span with the [`INFO`] [level] will be generated.
+/// Unless overridden, a span with the [`INFO`] [level] will be generated.
 /// The generated span's name will be the name of the function.
 /// By default, all arguments to the function are included as fields on the
 /// span. Arguments that are `tracing` [primitive types] implementing the
