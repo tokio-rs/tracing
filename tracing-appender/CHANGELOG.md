@@ -2,18 +2,25 @@
 
 This release has a large number of changes to `tracing-appender`:
 
-
 ### Added
-- **non_blocking**: -Name spawned worker thread (#2219)
-- **non_blocking**: Allow worker thread name to be configured (#2365)
-- **rolling**: `RollingFileAppender::builder` for configuring `RollingFileAppender`s (#2227)
-- **rolling**: `Builder::filename_suffix` method to configure the suffix for log files (#2225)
-- **rolling**: `Builder::max_log_files` method to enable automatically deleting old log files (#2323)
+- **non_blocking**: -Name spawned worker thread [#2219]
+- **non_blocking**: Allow worker thread name to be configured [#2365]
+- **rolling**: `RollingFileAppender::builder` for configuring `RollingFileAppender`s [#2227]
+- **rolling**: `Builder::filename_suffix` method to configure the suffix for log files [#2225]
+- **rolling**: `Builder::max_log_files` method to enable automatically deleting old log files [#2323]
 
 ### Documented
 
-- **rolling**: Clarify file appender docs (#2689)
-- **rolling**: Fix typo in RollingFileAppender docs (#2375)
+- **rolling**: Clarify file appender docs [#2689]
+- **rolling**: Fix typo in RollingFileAppender docs [#2375]
+
+[#2219]: https://github.com/tokio-rs/tracing/pull/2674
+[#2365]: https://github.com/tokio-rs/tracing/pull/2365
+[#2227]: https://github.com/tokio-rs/tracing/pull/2227
+[#2225]: https://github.com/tokio-rs/tracing/pull/2225
+[#2323]: https://github.com/tokio-rs/tracing/pull/2323
+[#2689]: https://github.com/tokio-rs/tracing/pull/2689
+[#2375]: https://github.com/tokio-rs/tracing/pull/2375
 
 # 0.2.2 (March 17, 2022)
 
