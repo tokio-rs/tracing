@@ -1,3 +1,22 @@
+# 0.3.18 (October 12, 2023)
+
+### Added
+
+- **filter**: Implement `layer::Filter` for `Option<Filter>` [#2407]
+- **fmt**: Add Chrono implementations for `FormatTime` [#2690]
+- **fmt**: Support the `NO_COLOR` environment variable for determining whether `fmt::Layer` should emit ANSI color escape codes  [#2647]
+- **fmt**: make `format::Writer::new()` public [#2680]
+
+### Documented
+
+- Document `registry` feature requirement for `fmt` feature [#2590]
+
+[#2407]: https://github.com/tokio-rs/tracing/pull/2407
+[#2690]: https://github.com/tokio-rs/tracing/pull/2690
+[#2647]: https://github.com/tokio-rs/tracing/pull/2647
+[#2590]: https://github.com/tokio-rs/tracing/pull/2590
+[#2680]: https://github.com/tokio-rs/tracing/pull/2680
+
 # 0.3.17 (April 21, 2023)
 
 This release of `tracing-subscriber` fixes a build error when using `env-filter`

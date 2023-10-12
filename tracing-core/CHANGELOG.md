@@ -1,16 +1,17 @@
 # 0.1.32 (October 12, 2023)
 
-### Fixed
+### Documented
 
-- Fix typo in `field` docs (#2611)
-- Remove duplicate wording (#2674)
-- Remove usage of 0.2 terminology (#2728)
-- Ensure callsites in tests have unique addresses (#2681)
-- Use fully qualified names in macros for items exported from std prelude (#2621)
+- Fix typo in `field` docs [#2611]
+- Remove duplicate wording [#2674]
 
 ### Changed
 
-- Allow `ValueSet`s of any length (#2508)
+- Allow `ValueSet`s of any length [#2508]
+
+[#2611]: https://github.com/tokio-rs/tracing/pull/2611
+[#2674]: https://github.com/tokio-rs/tracing/pull/2674
+[#2508]: https://github.com/tokio-rs/tracing/pull/2508
 
 # 0.1.31 (May 11, 2023)
 
