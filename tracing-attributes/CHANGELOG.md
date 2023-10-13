@@ -1,3 +1,18 @@
+# 0.1.27 (October 13, 2023)
+
+### Changed
+
+- Bump minimum version of proc-macro2 to 1.0.60 ([#2732])
+- Generate less dead code for async block return type hint ([#2709])
+
+### Fixed
+
+- Fix a compilation error in `#[instrument]` when the `"log"` feature is enabled ([#2599])
+
+[#2732]: https://github.com/tokio-rs/tracing/pull/2732
+[#2709]: https://github.com/tokio-rs/tracing/pull/2709
+[#2599]: https://github.com/tokio-rs/tracing/pull/2599
+
 # 0.1.26 (June 21th, 2023)
 
 This release of `tracing-attributes` fixes warnings due to `allow` attributes in
