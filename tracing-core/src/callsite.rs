@@ -9,9 +9,7 @@
 //! * Storing the span or event's [`Metadata`],
 //! * Uniquely [identifying](Identifier) the span or event definition,
 //! * Caching the subscriber's [`Interest`][^1] in that span or event, to avoid
-//!   re-evaluating filters,
-//! * Storing a [`Registration`] that allows the callsite to be part of a global
-//!   list of all callsites in the program.
+//!   re-evaluating filters.
 //!
 //! # Registering Callsites
 //!
