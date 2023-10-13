@@ -1,3 +1,18 @@
+# 0.1.32 (October 13, 2023)
+
+### Documented
+
+- Fix typo in `field` docs ([#2611])
+- Remove duplicate wording ([#2674])
+
+### Changed
+
+- Allow `ValueSet`s of any length ([#2508])
+
+[#2611]: https://github.com/tokio-rs/tracing/pull/2611
+[#2674]: https://github.com/tokio-rs/tracing/pull/2674
+[#2508]: https://github.com/tokio-rs/tracing/pull/2508
+
 # 0.1.31 (May 11, 2023)
 
 This release of `tracing-core` fixes a bug that caused threads which call
