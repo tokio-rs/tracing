@@ -2,12 +2,12 @@
 
 ### Documented
 
-- Fix typo in `field` docs [#2611]
-- Remove duplicate wording [#2674]
+- Fix typo in `field` docs ([#2611])
+- Remove duplicate wording ([#2674])
 
 ### Changed
 
-- Allow `ValueSet`s of any length [#2508]
+- Allow `ValueSet`s of any length ([#2508])
 
 [#2611]: https://github.com/tokio-rs/tracing/pull/2611
 [#2674]: https://github.com/tokio-rs/tracing/pull/2674
