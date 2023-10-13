@@ -2,22 +2,22 @@
 
 ### Added
 
-- Allow constant field names in macros [#2617]
-- Allow setting event names in macros [#2699]
-- Allow `ValueSet`s of any length [#2508]
+- Allow constant field names in macros ([#2617])
+- Allow setting event names in macros ([#2699])
+- Allow `ValueSet`s of any length ([#2508])
 
 ### Fixed
 
-- Use fully qualified names in macros for items exported from std prelude [#2621]
+- Use fully qualified names in macros for items exported from std prelude ([#2621])
 
 ### Documented
 
-- Add `axum-insights` to relevant crates. [#2713]
-- Fix link to RAI pattern crate documentation [#2612]
-- Fix docs typos and warnings [#2581]
-- Add `clippy-tracing` to related crates [#2628]
-- Add `tracing-cloudwatch` to related crates [#2667]
-- Fix deadlink to `tracing-etw` repo [#2602]
+- Add `axum-insights` to relevant crates. ([#2713])
+- Fix link to RAI pattern crate documentation ([#2612])
+- Fix docs typos and warnings ([#2581])
+- Add `clippy-tracing` to related crates ([#2628])
+- Add `tracing-cloudwatch` to related crates ([#2667]) 
+- Fix deadlink to `tracing-etw` repo ([#2602])
 
 [#2617]: https://github.com/tokio-rs/tracing/pull/2617
 [#2699]: https://github.com/tokio-rs/tracing/pull/2699
