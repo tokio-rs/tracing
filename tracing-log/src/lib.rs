@@ -164,6 +164,10 @@ pub use self::trace_logger::TraceLogger;
 
 #[cfg(feature = "env_logger")]
 #[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
+#[deprecated(
+    since = "0.1.4",
+    note = "use `tracing-subscriber`'s `fmt::Subscriber` instead"
+)]
 pub mod env_logger;
 
 pub use log;
