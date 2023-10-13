@@ -1,3 +1,61 @@
+# 0.1.39 (October 12, 2023)
+
+This release adds several additional features to the `tracing` macros. In
+addition, it updates the `tracing-core` dependency to [v0.1.32][core-0.1.32] and
+the `tracing-attributes` dependency to [v0.1.27][attrs-0.1.27].
+
+### Added
+
+- Allow constant field names in macros ([#2617])
+- Allow setting event names in macros ([#2699])
+- **core**: Allow `ValueSet`s of any length ([#2508])
+
+### Changed
+
+- `tracing-attributes`: updated to [0.1.27][attrs-0.1.27]
+- `tracing-core`: updated to [0.1.32][core-0.1.32]
+- **attributes**: Bump minimum version of proc-macro2 to 1.0.60 ([#2732])
+-  **attributes**: Generate less dead code for async block return type hint ([#2709])
+
+### Fixed
+
+- Use fully qualified names in macros for items exported from std prelude
+  ([#2621], [#2757])
+- **attributes**: Allow [`clippy::let_with_type_underscore`] in macro-generated
+  code ([#2609])
+- **attributes**: Allow `unknown_lints` in macro-generated code ([#2626])
+- **attributes**: Fix a compilation error in `#[instrument]` when the `"log"`
+  feature is enabled ([#2599])
+
+### Documented
+
+- Add `axum-insights` to relevant crates. ([#2713])
+- Fix link to RAI pattern crate documentation ([#2612])
+- Fix docs typos and warnings ([#2581])
+- Add `clippy-tracing` to related crates ([#2628])
+- Add `tracing-cloudwatch` to related crates ([#2667])
+- Fix deadlink to `tracing-etw` repo ([#2602])
+
+[#2617]: https://github.com/tokio-rs/tracing/pull/2617
+[#2699]: https://github.com/tokio-rs/tracing/pull/2699
+[#2508]: https://github.com/tokio-rs/tracing/pull/2508
+[#2621]: https://github.com/tokio-rs/tracing/pull/2621
+[#2713]: https://github.com/tokio-rs/tracing/pull/2713
+[#2581]: https://github.com/tokio-rs/tracing/pull/2581
+[#2628]: https://github.com/tokio-rs/tracing/pull/2628
+[#2667]: https://github.com/tokio-rs/tracing/pull/2667
+[#2602]: https://github.com/tokio-rs/tracing/pull/2602
+[#2626]: https://github.com/tokio-rs/tracing/pull/2626
+[#2757]: https://github.com/tokio-rs/tracing/pull/2757
+[#2732]: https://github.com/tokio-rs/tracing/pull/2732
+[#2709]: https://github.com/tokio-rs/tracing/pull/2709
+[#2599]: https://github.com/tokio-rs/tracing/pull/2599
+[`let_with_type_underscore`]: http://rust-lang.github.io/rust-clippy/rust-1.70.0/index.html#let_with_type_underscore
+[attrs-0.1.27]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-attributes-0.1.27
+[core-0.1.32]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.32
+
 # 0.1.38 (April 25th, 2023)
 
 This `tracing` release changes the `Drop` implementation for `Instrumented`
