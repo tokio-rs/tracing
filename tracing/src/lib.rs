@@ -1001,6 +1001,7 @@ pub mod __macro_support {
     use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicU8, Ordering};
+    pub use core::{concat, format_args, iter::Iterator, option::Option};
 
     /// Callsite implementation used by macro-generated code.
     ///
