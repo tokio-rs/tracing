@@ -22,7 +22,7 @@
 //!   override their default values.
 //! - The span's [verbosity level]
 //! - A string literal providing the span's name.
-//! - Finally, between zero and 32 arbitrary key/value fields.
+//! - Finally, zero or more arbitrary key/value fields.
 //!
 //! [`target`]: super::Metadata::target()
 //!
