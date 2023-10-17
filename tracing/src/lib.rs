@@ -1001,6 +1001,9 @@ pub mod __macro_support {
     use crate::{collect::Interest, Metadata};
     use core::fmt;
     use core::sync::atomic::{AtomicU8, Ordering};
+    // Re-export the `core` functions that are used in macros. This allows
+    // a crate to be named `core` and avoid name clashes.
+    // See here: https://github.com/tokio-rs/tracing/issues/2761
     pub use core::{concat, format_args, iter::Iterator, option::Option};
 
     /// Callsite implementation used by macro-generated code.
