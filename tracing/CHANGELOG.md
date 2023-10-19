@@ -1,3 +1,18 @@
+# 0.1.40
+
+This release fixes a potential stack use-after-free in the
+`Instrument::into_inner` method. Only uses of this method are affected by this
+bug.
+
+### Fixed
+
+- Use `mem::ManuallyDrop` instead of `mem::forget` in `Instrument::into_inner`
+  ([#2765])
+
+[#2765]: https://github.com/tokio-rs/tracing/pull/2765
+
+Thanks to @cramertj and @manishearth for finding and fixing this issue!
+
 # 0.1.39 (October 12, 2023)
 
 This release adds several additional features to the `tracing` macros. In
