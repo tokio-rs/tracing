@@ -984,7 +984,10 @@ pub mod subscriber;
 pub mod __macro_support {
     pub use crate::callsite::Callsite;
     use crate::{subscriber::Interest, Metadata};
-    pub use core::concat;
+    // Re-export the `core` functions that are used in macros. This allows
+    // a crate to be named `core` and avoid name clashes.
+    // See here: https://github.com/tokio-rs/tracing/issues/2761
+    pub use core::{concat, format_args, iter::Iterator, option::Option};
 
     /// Callsite implementation used by macro-generated code.
     ///
