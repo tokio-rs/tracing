@@ -240,7 +240,7 @@ impl Subscriber for TraceLogger {
         let id = self.next_id();
         let mut spans = self.spans.lock().unwrap();
         let mut fields = String::new();
-        let parent = self.current_id();
+        let parent = Self::current_id_with_spans(&mut spans);
         if self.settings.parent_fields {
             let mut next_parent = parent.as_ref();
             while let Some(parent) = next_parent.and_then(|p| spans.get(p)) {
@@ -280,18 +280,20 @@ impl Subscriber for TraceLogger {
             }
             current.push(id.clone());
         });
-        let spans = self.spans.lock().unwrap();
+        let mut spans = self.spans.lock().unwrap();
         if self.settings.log_enters {
             if let Some(span) = spans.get(id) {
                 let log_meta = span.log_meta();
                 let logger = log::logger();
                 if logger.enabled(&log_meta) {
-                    let current_id = self.current_id();
+                    let current_id = Self::current_id_with_spans(&mut spans);
                     let current_fields = current_id
                         .as_ref()
                         .and_then(|id| spans.get(id))
                         .map(|span| span.fields.as_ref())
                         .unwrap_or("");
+                    let span = spans.get(id).unwrap();
+                    let log_meta = span.log_meta();
                     if self.settings.log_ids {
                         logger.log(
                             &log::Record::builder()
@@ -358,8 +360,8 @@ impl Subscriber for TraceLogger {
         let log_meta = meta.as_log();
         let logger = log::logger();
         if logger.enabled(&log_meta) {
-            let spans = self.spans.lock().unwrap();
-            let current = self.current_id().and_then(|id| spans.get(&id));
+            let mut spans = self.spans.lock().unwrap();
+            let current = Self::current_id_with_spans(&mut spans).and_then(|id| spans.get(&id));
             let (current_fields, parent) = current
                 .map(|span| {
                     let fields = span.fields.as_ref();
@@ -392,10 +394,7 @@ impl Subscriber for TraceLogger {
 
     fn clone_span(&self, id: &Id) -> Id {
         let mut spans = self.spans.lock().unwrap();
-        if let Some(span) = spans.get_mut(id) {
-            span.ref_count += 1;
-        }
-        id.clone()
+        Self::clone_span_with_spans(id, &mut spans)
     }
 
     fn try_close(&self, id: Id) -> bool {
@@ -421,6 +420,25 @@ impl TraceLogger {
         CURRENT
             .try_with(|current| current.borrow().last().map(|span| self.clone_span(span)))
             .ok()?
+    }
+
+    #[inline]
+    fn current_id_with_spans(spans: &mut HashMap<Id, SpanLineBuilder>) -> Option<Id> {
+        CURRENT
+            .try_with(|current| {
+                current
+                    .borrow()
+                    .last()
+                    .map(|span| Self::clone_span_with_spans(span, spans))
+            })
+            .ok()?
+    }
+
+    fn clone_span_with_spans(id: &Id, spans: &mut HashMap<Id, SpanLineBuilder>) -> Id {
+        if let Some(span) = spans.get_mut(id) {
+            span.ref_count += 1;
+        }
+        id.clone()
     }
 }
 
