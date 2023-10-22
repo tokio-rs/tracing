@@ -14,7 +14,7 @@
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
-//!   with `tracing` (optional, enabled by the `env-logger` feature).
+//!   with `tracing` (optional, enabled by the `env_logger` feature).
 //!
 //! *Compiler support: [requires `rustc` 1.56+][msrv]*
 //!
