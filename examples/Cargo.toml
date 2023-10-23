@@ -19,7 +19,6 @@ tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", features = ["json", "env-filter"] }
 tracing-futures = { version = "0.2.1", path = "../tracing-futures", features = ["futures-01"] }
 tracing-attributes = { path = "../tracing-attributes", version = "0.1.22" }
-tracing-log = { path = "../tracing-log", version = "0.1.3", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
 tracing-appender = { path = "../tracing-appender", version = "0.2.0" }
 tracing-journald = { path = "../tracing-journald" }

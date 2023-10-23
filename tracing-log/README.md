@@ -43,8 +43,6 @@ This crate provides:
 - [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
   and outputs them as [`tracing::Event`]s.
-- An [`env_logger`] module, with helpers for using the [`env_logger` crate]
-  with `tracing` (optional, enabled by the `env_logger` feature).
 
 [`tracing`]: https://crates.io/crates/tracing
 [`log`]: https://crates.io/crates/log
