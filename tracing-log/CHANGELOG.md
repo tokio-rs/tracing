@@ -1,3 +1,11 @@
+# 0.1.4 (October 23rd, 2023)
+
+### Changes
+
+- Deprecated `env_logger` feature in favor of `tracing_subscriber::fmt::Subscriber` ([#2752])
+
+#[2752]: https://github.com/tokio-rs/tracing/pull/2752
+
 # 0.1.3 (April 21st, 2022)
 
 ### Added
