@@ -1,3 +1,20 @@
+# 0.2.0 (October 23rd, 2023)
+
+This release contains a breaking change: the removal of the `env_logger`
+feature. Users who desire a similar experience should instead use
+[`tracing_subscriber::fmt::Subscriber`] or [`tracing_subscriber::fmt::Layer`]
+with the [`Targets`] or [`EnvFilter`] filters.
+
+### Breaking Changes
+
+- Remove `env_logger` feature ([#2771])
+
+[#2771]: https://github.com/tokio-rs/tracing/pull/2771
+[`tracing_subscriber::fmt::Subscriber`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/fmt/struct.Subscriber.html
+[`tracing_subscriber::fmt::Layer`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/fmt/struct.Layer.html
+[`Targets`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/filter/targets/struct.Targets.html
+[`EnvFilter`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/filter/struct.EnvFilter.html
+
 # 0.1.4 (October 23rd, 2023)
 
 ### Changes
