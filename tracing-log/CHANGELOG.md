@@ -2,7 +2,7 @@
 
 ### Changes
 
-- Deprecated `env_logger` in favor of `tracing_subscriber::fmt::Subscriber` ([#2752])
+- Deprecated `env_logger` feature in favor of `tracing_subscriber::fmt::Subscriber` ([#2752])
 
 #[2752]: https://github.com/tokio-rs/tracing/pull/2752
 
