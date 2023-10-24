@@ -13,8 +13,6 @@
 //! - [`AsTrace`] and [`AsLog`] traits for converting between `tracing` and `log` types.
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
-//! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
-//!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
 //! *Compiler support: [requires `rustc` 1.56+][msrv]*
 //!
@@ -57,23 +55,20 @@
 //!
 //! ## Caution: Mixing both conversions
 //!
-//! Note that logger implementations that convert log records to trace events
+//! Note that `log::Logger` implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
-//! log records (such as the `TraceLogger`), as doing so will result in the
-//! event recursing between the subscriber and the logger forever (or, in real
-//! life, probably overflowing the call stack).
+//! `log` records, as doing so will result in the event recursing between the subscriber
+//! and the logger forever (or, in real life, probably overflowing the call stack).
 //!
 //! If the logging of trace events generated from log records produced by the
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
-//! # Feature Flags
-//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
-//!   version 0.1.1.
+//! ## Feature Flags
+//!
+//! * `std`: enables features that require the Rust standard library (on by default)
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
-//! * `env_logger`: enables the `env_logger` module, with helpers for working
-//!   with the [`env_logger` crate].
 //! * `interest-cache`: makes it possible to configure an interest cache for
 //!   logs emitted through the `log` crate (see [`Builder::with_interest_cache`]); requires `std`
 //!
@@ -94,7 +89,6 @@
 //! [`init`]: LogTracer::init
 //! [`init_with_filter`]: LogTracer::init_with_filter
 //! [`tracing`]: https://crates.io/crates/tracing
-//! [`env_logger` crate]: https://crates.io/crates/env-logger
 //! [`tracing::Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 //! [`tracing::Event`]: https://docs.rs/tracing/latest/tracing/struct.Event.html
@@ -143,32 +137,10 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 pub mod log_tracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-pub mod trace_logger;
-
 #[cfg(feature = "log-tracer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
-
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-#[deprecated(
-    since = "0.1.1",
-    note = "use the `tracing` crate's \"log\" feature flag instead"
-)]
-#[allow(deprecated)]
-#[doc(inline)]
-pub use self::trace_logger::TraceLogger;
-
-#[cfg(feature = "env_logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "env_logger")))]
-#[deprecated(
-    since = "0.1.4",
-    note = "use `tracing-subscriber`'s `fmt::Subscriber` instead"
-)]
-pub mod env_logger;
 
 pub use log;
 

@@ -2,6 +2,7 @@
 #![deny(rust_2018_idioms)]
 
 use tracing_macros::dbg;
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {
@@ -12,9 +13,10 @@ fn factorial(n: u32) -> u32 {
 }
 
 fn main() {
-    env_logger::Builder::new().parse_filters("trace").init();
-    #[allow(deprecated)]
-    let subscriber = tracing_log::TraceLogger::new();
+    let subscriber = tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env().add_directive(tracing::Level::TRACE.into()))
+        .with(fmt::Layer::new());
 
-    tracing::subscriber::with_default(subscriber, || dbg!(factorial(4)));
+    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global subscriber");
+    dbg!(factorial(4));
 }
