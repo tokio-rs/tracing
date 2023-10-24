@@ -1,4 +1,4 @@
-# 0.2.0 (October 23rd, 2023)
+# 0.2.0 (October 24th, 2023)
 
 This release contains two breaking changes: the removal of the `env_logger`
 and `trace_logger` features. Below are the suggested migration paths:
