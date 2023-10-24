@@ -1,3 +1,30 @@
+# 0.2.0 (October 24th, 2023)
+
+This release contains two breaking changes: the removal of the `env_logger`
+and `trace_logger` features. Below are the suggested migration paths:
+
+- `env_logger`: users should use [`tracing_subscriber::fmt::Subscriber`]
+  or [`tracing_subscriber::fmt::Layer`] with the [`Targets`] or
+  [`EnvFilter`] filters instead.
+- `trace_logger`: users should use the `tracing` crate's
+  ["log" feature flag][log-feature] instead. 
+
+### Breaking Changes
+
+- Remove deprecated `env_logger` feature. This removes the dependency
+  on the unmaintained `atty` crate, resolving the security advisory
+  [GHSA-g98v-hv3f-hcfr]/[RUSTSEC-2021-0145]. ([#2771])  
+- Remove deprecated `trace_logger` feature. ([#2771])
+
+[#2771]: https://github.com/tokio-rs/tracing/pull/2771
+[`tracing_subscriber::fmt::Subscriber`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/fmt/struct.Subscriber.html
+[`tracing_subscriber::fmt::Layer`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/fmt/struct.Layer.html
+[`Targets`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/filter/targets/struct.Targets.html
+[`EnvFilter`]: https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/filter/struct.EnvFilter.html
+[log-feature]: https://docs.rs/tracing/latest/tracing/#emitting-log-records
+[GHSA-g98v-hv3f-hcfr]: https://github.com/advisories/GHSA-g98v-hv3f-hcfr
+[RUSTSEC-2021-0145]: https://rustsec.org/advisories/RUSTSEC-2021-0145.html
+
 # 0.1.4 (October 23rd, 2023)
 
 ### Changes
