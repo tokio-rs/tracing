@@ -138,10 +138,6 @@ use tracing_core::{
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 pub mod log_tracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-pub mod trace_logger;
-
 #[cfg(feature = "log-tracer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "log-tracer")))]
 #[doc(inline)]
@@ -153,10 +149,6 @@ pub use self::log_tracer::LogTracer;
     since = "0.1.1",
     note = "use the `tracing` crate's \"log\" feature flag instead"
 )]
-#[allow(deprecated)]
-#[doc(inline)]
-pub use self::trace_logger::TraceLogger;
-
 pub use log;
 
 #[cfg(all(feature = "interest-cache", feature = "log-tracer", feature = "std"))]
