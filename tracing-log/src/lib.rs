@@ -143,12 +143,6 @@ pub mod log_tracer;
 #[doc(inline)]
 pub use self::log_tracer::LogTracer;
 
-#[cfg(feature = "trace-logger")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trace-logger")))]
-#[deprecated(
-    since = "0.1.1",
-    note = "use the `tracing` crate's \"log\" feature flag instead"
-)]
 pub use log;
 
 #[cfg(all(feature = "interest-cache", feature = "log-tracer", feature = "std"))]
