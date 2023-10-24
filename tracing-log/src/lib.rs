@@ -55,20 +55,19 @@
 //!
 //! ## Caution: Mixing both conversions
 //!
-//! Note that logger implementations that convert log records to trace events
+//! Note that `log::Logger` implementations that convert log records to trace events
 //! should not be used with `Subscriber`s that convert trace events _back_ into
-//! log records (such as the `TraceLogger`), as doing so will result in the
-//! event recursing between the subscriber and the logger forever (or, in real
-//! life, probably overflowing the call stack).
+//! `log` records, as doing so will result in the event recursing between the subscriber
+//! and the logger forever (or, in real life, probably overflowing the call stack).
 //!
 //! If the logging of trace events generated from log records produced by the
 //! `log` crate is desired, either the `log` crate should not be used to
 //! implement this logging, or an additional layer of filtering will be
 //! required to avoid infinitely converting between `Event` and `log::Record`.
 //!
-//! # Feature Flags
-//! * `trace-logger`: enables an experimental `log` subscriber, deprecated since
-//!   version 0.1.1.
+//! ## Feature Flags
+//!
+//! * `std`: enables features that require the Rust standard library (on by default)
 //! * `log-tracer`: enables the `LogTracer` type (on by default)
 //! * `interest-cache`: makes it possible to configure an interest cache for
 //!   logs emitted through the `log` crate (see [`Builder::with_interest_cache`]); requires `std`
