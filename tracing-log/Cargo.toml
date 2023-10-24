@@ -18,10 +18,9 @@ readme = "README.md"
 rust-version = "1.56.0"
 
 [features]
-default = ["log-tracer", "trace-logger", "std"]
+default = ["log-tracer", "std"]
 std = ["log/std"]
 log-tracer = []
-trace-logger = []
 interest-cache = ["lru", "ahash"]
 
 [dependencies]
