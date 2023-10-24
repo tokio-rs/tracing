@@ -15,7 +15,7 @@ impl<C> Subscribe<C> for TrackingLayer
 where
     C: Collect + Send + Sync + 'static,
 {
-    fn enabled(&self, _metadata: &Metadata<'_>, _ctx: Context<'_, C>) -> bool {
+    fn enabled(&self, _metadata: &Metadata<'_>, _ctx: &Context<'_, C>) -> bool {
         self.enabled
     }
 

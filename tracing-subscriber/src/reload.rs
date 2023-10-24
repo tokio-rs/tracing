@@ -82,7 +82,7 @@ where
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: subscribe::Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &subscribe::Context<'_, C>) -> bool {
         try_lock!(self.inner.read(), else return false).enabled(metadata, ctx)
     }
 
