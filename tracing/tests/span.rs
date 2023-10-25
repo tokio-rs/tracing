@@ -842,7 +842,7 @@ fn both_shorthands() {
 fn constant_field_name() {
     let (collector, handle) = collector::mock()
         .new_span(
-            expect::span().named("my_span").with_field(
+            expect::span().named("my_span").with_fields(
                 expect::field("foo")
                     .with_value(&"bar")
                     .and(expect::field("constant string").with_value(&"also works"))
