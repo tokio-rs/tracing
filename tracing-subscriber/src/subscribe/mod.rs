@@ -464,11 +464,29 @@
 //!
 //! This crate's [`filter`] module provides a number of types which implement
 //! the [`Filter`] trait, such as [`LevelFilter`], [`Targets`], and
-//! [`FilterFn`]. These [`Filter`]s provide ready-made implementations of
-//! common forms of filtering. For custom filtering policies, the [`FilterFn`]
-//! and [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
+//! [`FilterFn`]. These [`Filter`]s provide ready-made implementations of common
+//! forms of filtering. For custom filtering policies, the [`FilterFn`] and
+//! [`DynFilterFn`] types allow implementing a [`Filter`] with a closure or
 //! function pointer. In addition, when more control is required, the [`Filter`]
 //! trait may also be implemented for user-defined types.
+//!
+//! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
+//! filter. [`None`](Option::None) filters out _nothing_ (that is, allows
+//! everything through). For example:
+//!
+//! ```rust
+//! # use tracing_subscriber::{filter::filter_fn, Subscribe};
+//! # use tracing_core::{Metadata, collect::Collect};
+//! # struct MySubscriber<C>(std::marker::PhantomData<C>);
+//! # impl<C> MySubscriber<C> { fn new() -> Self { Self(std::marker::PhantomData)} }
+//! # impl<C: Collect> Subscribe<C> for MySubscriber<C> {}
+//! # fn my_filter(_: &str) -> impl Fn(&Metadata) -> bool { |_| true  }
+//! fn setup_tracing<C: Collect>(filter_config: Option<&str>) {
+//!     let layer = MySubscriber::<C>::new()
+//!         .with_filter(filter_config.map(|config| filter_fn(my_filter(config))));
+//! //...
+//! }
+//! ```
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="compile_fail" style="white-space:normal;font:inherit;">
@@ -1388,11 +1406,10 @@ pub trait Filter<S> {
     /// multiple invocations of this method. However, note that changes in the
     /// maximum level will **only** be reflected after the callsite [`Interest`]
     /// cache is rebuilt, by calling the
-    /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+    /// [`tracing_core::callsite::rebuild_interest_cache`] function.
     /// Therefore, if the `Filter will change the value returned by this
-    /// method, it is responsible for ensuring that
-    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
-    /// level changes.
+    /// method, it is responsible for ensuring that [`rebuild_interest_cache`]
+    /// is called after the value of the max level changes.
     ///
     /// ## Default Implementation
     ///
@@ -1402,7 +1419,7 @@ pub trait Filter<S> {
     /// [level]: tracing_core::metadata::Level
     /// [`LevelFilter`]: crate::filter::LevelFilter
     /// [`Interest`]: tracing_core::collect::Interest
-    /// [rebuild]: tracing_core::callsite::rebuild_interest_cache
+    /// [`rebuild_interest_cache`]: tracing_core::callsite::rebuild_interest_cache
     fn max_level_hint(&self) -> Option<LevelFilter> {
         None
     }
@@ -1729,7 +1746,7 @@ macro_rules! subscriber_impl_body {
 
         #[doc(hidden)]
         #[inline]
-        unsafe fn downcast_raw(&self, id: TypeId) -> Option<NonNull<()>> {
+        unsafe fn downcast_raw(&self, id: TypeId) -> ::core::option::Option<NonNull<()>> {
             self.deref().downcast_raw(id)
         }
     };
