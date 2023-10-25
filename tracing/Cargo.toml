@@ -28,17 +28,17 @@ categories = [
 ]
 keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
-rust-version = "1.49.0"
+rust-version = "1.56.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 log = { version = "0.4.17", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
-cfg-if = "1.0.0"
 pin-project-lite = "0.2.9"
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default_features = false }
+futures = { version = "0.3.21", default_features = false }
 log = "0.4.17"
 tracing-mock = { path = "../tracing-mock" }
 

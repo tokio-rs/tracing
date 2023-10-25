@@ -18,7 +18,6 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
 #[allow(dead_code)] // this is just here to test whether it compiles.
 #[instrument]
 async fn test_ret_impl_trait(n: i32) -> Result<impl Iterator<Item = i32>, ()> {
-    let n = n;
     Ok((0..10).filter(move |x| *x < n))
 }
 
@@ -91,6 +90,8 @@ fn async_fn_only_enters_for_polls() {
         .exit(expect::span().named("test_async_fn"))
         .enter(expect::span().named("test_async_fn"))
         .exit(expect::span().named("test_async_fn"))
+        .enter(expect::span().named("test_async_fn"))
+        .exit(expect::span().named("test_async_fn"))
         .drop_span(expect::span().named("test_async_fn"))
         .only()
         .run_with_handle();
@@ -121,7 +122,11 @@ fn async_fn_nested() {
         .enter(span2.clone())
         .event(expect::event().with_fields(expect::field("nested").with_value(&true)))
         .exit(span2.clone())
+        .enter(span2.clone())
+        .exit(span2.clone())
         .drop_span(span2)
+        .exit(span.clone())
+        .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -200,12 +205,18 @@ fn async_fn_with_async_trait() {
         .enter(span3.clone())
         .event(expect::event().with_fields(expect::field("val").with_value(&2u64)))
         .exit(span3.clone())
+        .enter(span3.clone())
+        .exit(span3.clone())
         .drop_span(span3)
         .new_span(span2.clone().with_field(expect::field("self")))
         .enter(span2.clone())
         .event(expect::event().with_fields(expect::field("val").with_value(&5u64)))
         .exit(span2.clone())
+        .enter(span2.clone())
+        .exit(span2.clone())
         .drop_span(span2)
+        .exit(span.clone())
+        .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .only()
@@ -255,6 +266,8 @@ fn async_fn_with_async_trait_and_fields_expressions() {
                     .and(expect::field("val2").with_value(&42u64)),
             ),
         )
+        .enter(span.clone())
+        .exit(span.clone())
         .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
@@ -332,7 +345,11 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
                 .with_field(expect::field("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
         .enter(span4.clone())
+        .exit(span4.clone())
+        .enter(span4.clone())
         .exit(span4)
+        .exit(span2.clone())
+        .enter(span2.clone())
         .exit(span2.clone())
         .drop_span(span2)
         .new_span(
@@ -340,6 +357,8 @@ fn async_fn_with_async_trait_and_fields_expressions_with_generic_parameter() {
                 .clone()
                 .with_field(expect::field("Self").with_value(&std::any::type_name::<TestImpl>())),
         )
+        .enter(span3.clone())
+        .exit(span3.clone())
         .enter(span3.clone())
         .exit(span3.clone())
         .drop_span(span3)
@@ -383,6 +402,8 @@ fn out_of_scope_fields() {
         .new_span(span.clone())
         .enter(span.clone())
         .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
         .drop_span(span)
         .only()
         .run_with_handle();
@@ -418,6 +439,8 @@ fn manual_impl_future() {
         .enter(span.clone())
         .event(poll_event())
         .exit(span.clone())
+        .enter(span.clone())
+        .exit(span.clone())
         .drop_span(span)
         .only()
         .run_with_handle();
@@ -448,6 +471,8 @@ fn manual_box_pin() {
         .new_span(span.clone())
         .enter(span.clone())
         .event(poll_event())
+        .exit(span.clone())
+        .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .only()

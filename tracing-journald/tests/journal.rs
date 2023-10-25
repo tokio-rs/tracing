@@ -121,7 +121,7 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
     let stdout = String::from_utf8(
         Command::new("journalctl")
             // We pass --all to circumvent journalctl's default limit of 4096 bytes for field values
-            .args(&["--user", "--output=json", "--all"])
+            .args(["--user", "--output=json", "--all"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
             .arg(format!("TEST_NAME={}", test_name))
@@ -232,6 +232,28 @@ fn simple_metadata() {
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
         assert_eq!(message["SYSLOG_IDENTIFIER"], "test_ident");
+        assert!(message["CODE_FILE"].as_text().is_some());
+        assert!(message["CODE_LINE"].as_text().is_some());
+    });
+}
+
+#[test]
+fn journal_fields() {
+    let sub = Subscriber::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_custom_fields([("SYSLOG_FACILITY", "17")])
+        .with_custom_fields([("ABC", "dEf"), ("XYZ", "123")]);
+    with_journald_subscriber(sub, || {
+        info!(test.name = "journal_fields", "Hello World");
+
+        let message = retry_read_one_line_from_journal("journal_fields");
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "journal");
+        assert_eq!(message["SYSLOG_FACILITY"], "17");
+        assert_eq!(message["ABC"], "dEf");
+        assert_eq!(message["XYZ"], "123");
         assert!(message["CODE_FILE"].as_text().is_some());
         assert!(message["CODE_LINE"].as_text().is_some());
     });

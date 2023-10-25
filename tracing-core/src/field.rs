@@ -1,13 +1,13 @@
 //! Span and `Event` key-value data.
 //!
-//! Spans and events may be annotated with key-value data, referred to as known
-//! as _fields_. These fields consist of a mapping from a key (corresponding to
-//! a `&str` but represented internally as an array index) to a [`Value`].
+//! Spans and events may be annotated with key-value data, known as _fields_.
+//! These fields consist of a mapping from a key (corresponding to a `&str` but
+//! represented internally as an array index) to a [`Value`].
 //!
 //! # `Value`s and `Collect`s
 //!
 //! Collectors consume `Value`s as fields attached to [span]s or [`Event`]s.
-//! The set of field keys on a given span or is defined on its [`Metadata`].
+//! The set of field keys on a given span or event is defined on its [`Metadata`].
 //! When a span is created, it provides [`Attributes`] to the collector's
 //! [`new_span`] method, containing any fields whose values were provided when
 //! the span was created; and may call the collector's [`record`] method
@@ -373,6 +373,10 @@ macro_rules! impl_one_value {
         impl $crate::sealed::Sealed for $value_ty {}
         impl $crate::field::Value for $value_ty {
             fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+                // `op` is always a function; the closure is used because
+                // sometimes there isn't a real function corresponding to that
+                // operation. the clippy warning is not that useful here.
+                #[allow(clippy::redundant_closure_call)]
                 visitor.$record(key, $op(*self))
             }
         }
@@ -388,6 +392,10 @@ macro_rules! impl_one_value {
         impl $crate::sealed::Sealed for ty_to_nonzero!($value_ty) {}
         impl $crate::field::Value for ty_to_nonzero!($value_ty) {
             fn record(&self, key: &$crate::field::Field, visitor: &mut dyn $crate::field::Visit) {
+                // `op` is always a function; the closure is used because
+                // sometimes there isn't a real function corresponding to that
+                // operation. the clippy warning is not that useful here.
+                #[allow(clippy::redundant_closure_call)]
                 visitor.$record(key, $op(self.get()))
             }
         }
@@ -697,6 +705,7 @@ impl FieldSet {
     ///
     /// [`Identifier`]: super::callsite::Identifier
     /// [`Callsite`]: super::callsite::Callsite
+    #[inline]
     pub(crate) fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
@@ -734,6 +743,7 @@ impl FieldSet {
     }
 
     /// Returns an iterator over the `Field`s in this `FieldSet`.
+    #[inline]
     pub fn iter(&self) -> Iter {
         let idxs = 0..self.len();
         Iter {
@@ -746,9 +756,6 @@ impl FieldSet {
     }
 
     /// Returns a new `ValueSet` with entries for this `FieldSet`'s values.
-    ///
-    /// Note that a `ValueSet` may not be constructed with arrays of over 32
-    /// elements.
     #[doc(hidden)]
     pub fn value_set<'v, V>(&'v self, values: &'v V) -> ValueSet<'v>
     where
@@ -837,6 +844,7 @@ impl PartialEq for FieldSet {
 
 impl Iterator for Iter {
     type Item = Field;
+    #[inline]
     fn next(&mut self) -> Option<Field> {
         let i = self.idxs.next()?;
         Some(Field {
@@ -877,6 +885,19 @@ impl<'a> ValueSet<'a> {
         }
     }
 
+    /// Returns the number of fields in this `ValueSet` that would be visited
+    /// by a given [visitor] to the [`ValueSet::record()`] method.
+    ///
+    /// [visitor]: Visit
+    /// [`ValueSet::record()`]: ValueSet::record()
+    pub fn len(&self) -> usize {
+        let my_callsite = self.callsite();
+        self.values
+            .iter()
+            .filter(|(field, _)| field.callsite() == my_callsite)
+            .count()
+    }
+
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite()
@@ -887,7 +908,7 @@ impl<'a> ValueSet<'a> {
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         let my_callsite = self.callsite();
         self.values
             .iter()
@@ -933,28 +954,10 @@ impl<'a> fmt::Display for ValueSet<'a> {
 mod private {
     use super::*;
 
-    /// Marker trait implemented by arrays which are of valid length to
-    /// construct a `ValueSet`.
-    ///
-    /// `ValueSet`s may only be constructed from arrays containing 32 or fewer
-    /// elements, to ensure the array is small enough to always be allocated on the
-    /// stack. This trait is only implemented by arrays of an appropriate length,
-    /// ensuring that the correct size arrays are used at compile-time.
+    /// Restrictions on `ValueSet` lengths were removed in #2508 but this type remains for backwards compatibility.
     pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
-}
 
-macro_rules! impl_valid_len {
-    ( $( $len:tt ),+ ) => {
-        $(
-            impl<'a> private::ValidLen<'a> for
-                [(&'a Field, Option<&'a (dyn Value + 'a)>); $len] {}
-        )+
-    }
-}
-
-impl_valid_len! {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+    impl<'a, const N: usize> ValidLen<'a> for [(&'a Field, Option<&'a (dyn Value + 'a)>); N] {}
 }
 
 #[cfg(test)]
@@ -962,8 +965,9 @@ mod test {
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
 
-    struct TestCallsite1;
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1;
+    // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
+    struct TestCallsite1(u8);
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1(0);
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -983,8 +987,8 @@ mod test {
         }
     }
 
-    struct TestCallsite2;
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2;
+    struct TestCallsite2(u8);
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2(0);
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
