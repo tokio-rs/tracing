@@ -6,8 +6,6 @@ use crate::{
     span::{ExpectedSpan, NewSpan},
 };
 
-use std::fmt;
-
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Expect {
     Event(ExpectedEvent),
