@@ -15,7 +15,7 @@
 //! * [`WithCollector`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.49+][msrv]*
+//! *Compiler support: [requires `rustc` 1.56+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -60,14 +60,14 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.49. The current Tracing version is not guaranteed to build on
+//! version is 1.56. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
@@ -103,7 +103,11 @@
 use pin_project_lite::pin_project;
 
 #[cfg(feature = "std-future")]
-use core::{pin::Pin, task::Context};
+use core::{
+    mem::{self, ManuallyDrop},
+    pin::Pin,
+    task::Context,
+};
 
 #[cfg(feature = "std")]
 use tracing::{dispatch, Dispatch};
@@ -118,13 +122,13 @@ pub mod executor;
 ///
 /// [span]: mod@tracing::span
 pub trait Instrument: Sized {
-    /// Instruments this type with the provided `Span`, returning an
-    /// `Instrumented` wrapper.
+    /// Instruments this type with the provided [`Span`], returning an
+    /// [`Instrumented`] wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// If the instrumented type is a future, stream, or sink, the attached
+    /// [`Span`] will be [entered] every time it is polled or [`Drop`]ped. If
+    /// the instrumented type is a future executor, every future spawned on that
+    /// executor will be instrumented by the attached [`Span`].
     ///
     /// # Examples
     ///
@@ -145,18 +149,22 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [entered]: tracing::span::Span::enter()
+    /// [entered]: Span::enter()
     fn instrument(self, span: Span) -> Instrumented<Self> {
-        Instrumented { inner: self, span }
+        #[cfg(feature = "std-future")]
+        let inner = ManuallyDrop::new(self);
+        #[cfg(not(feature = "std-future"))]
+        let inner = self;
+        Instrumented { inner, span }
     }
 
-    /// Instruments this type with the [current] `Span`, returning an
-    /// `Instrumented` wrapper.
+    /// Instruments this type with the [current] [`Span`], returning an
+    /// [`Instrumented`] wrapper.
     ///
-    /// If the instrumented type is a future, stream, or sink, the attached `Span`
-    /// will be [entered] every time it is polled. If the instrumented type
-    /// is a future executor, every future spawned on that executor will be
-    /// instrumented by the attached `Span`.
+    /// If the instrumented type is a future, stream, or sink, the attached
+    /// [`Span`] will be [entered] every time it is polled or [`Drop`]ped. If
+    /// the instrumented type is a future executor, every future spawned on that
+    /// executor will be instrumented by the attached [`Span`].
     ///
     /// This can be used to propagate the current span when spawning a new future.
     ///
@@ -180,8 +188,8 @@ pub trait Instrument: Sized {
     /// # }
     /// ```
     ///
-    /// [current]: tracing::span::Span::current()
-    /// [entered]: tracing::span::Span::enter()
+    /// [current]: Span::current()
+    /// [entered]: Span::enter()
     #[inline]
     fn in_current_span(self) -> Instrumented<Self> {
         self.instrument(Span::current())
@@ -240,11 +248,55 @@ pub trait WithCollector: Sized {
 #[cfg(feature = "std-future")]
 pin_project! {
     /// A future, stream, sink, or executor that has been instrumented with a `tracing` span.
+    #[project = InstrumentedProj]
+    #[project_ref = InstrumentedProjRef]
     #[derive(Debug, Clone)]
     pub struct Instrumented<T> {
+        // `ManuallyDrop` is used here to to enter instrument `Drop` by entering
+        // `Span` and executing `ManuallyDrop::drop`.
         #[pin]
-        inner: T,
+        inner: ManuallyDrop<T>,
         span: Span,
+    }
+
+    impl<T> PinnedDrop for Instrumented<T> {
+        fn drop(this: Pin<&mut Self>) {
+            let this = this.project();
+            let _enter = this.span.enter();
+            // SAFETY: 1. `Pin::get_unchecked_mut()` is safe, because this isn't
+            //             different from wrapping `T` in `Option` and calling
+            //             `Pin::set(&mut this.inner, None)`, except avoiding
+            //             additional memory overhead.
+            //         2. `ManuallyDrop::drop()` is safe, because
+            //            `PinnedDrop::drop()` is guaranteed to be called only
+            //            once.
+            unsafe { ManuallyDrop::drop(this.inner.get_unchecked_mut()) }
+        }
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<'a, T> InstrumentedProj<'a, T> {
+    /// Get a mutable reference to the [`Span`] a pinned mutable reference to
+    /// the wrapped type.
+    fn span_and_inner_pin_mut(self) -> (&'a mut Span, Pin<&'a mut T>) {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        let inner = unsafe { self.inner.map_unchecked_mut(|v| &mut **v) };
+        (self.span, inner)
+    }
+}
+
+#[cfg(feature = "std-future")]
+impl<'a, T> InstrumentedProjRef<'a, T> {
+    /// Get a reference to the [`Span`] a pinned reference to the wrapped type.
+    fn span_and_inner_pin_ref(self) -> (&'a Span, Pin<&'a T>) {
+        // SAFETY: As long as `ManuallyDrop<T>` does not move, `T` won't move
+        //         and `inner` is valid, because `ManuallyDrop::drop` is called
+        //         only inside `Drop` of the `Instrumented`.
+        let inner = unsafe { self.inner.map_unchecked(|v| &**v) };
+        (self.span, inner)
     }
 }
 
@@ -287,9 +339,9 @@ impl<T: core::future::Future> core::future::Future for Instrumented<T> {
     type Output = T::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> core::task::Poll<Self::Output> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        this.inner.poll(cx)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        inner.poll(cx)
     }
 }
 
@@ -346,9 +398,9 @@ impl<T: futures::Stream> futures::Stream for Instrumented<T> {
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Option<Self::Item>> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        T::poll_next(this.inner, cx)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        T::poll_next(inner, cx)
     }
 }
 
@@ -364,33 +416,33 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        T::poll_ready(this.inner, cx)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        T::poll_ready(inner, cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        T::start_send(this.inner, item)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        T::start_send(inner, item)
     }
 
     fn poll_flush(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        T::poll_flush(this.inner, cx)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        T::poll_flush(inner, cx)
     }
 
     fn poll_close(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> futures::task::Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        let _enter = this.span.enter();
-        T::poll_close(this.inner, cx)
+        let (span, inner) = self.project().span_and_inner_pin_mut();
+        let _enter = span.enter();
+        T::poll_close(inner, cx)
     }
 }
 
@@ -419,20 +471,36 @@ impl<T> Instrumented<T> {
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_ref(self: Pin<&Self>) -> Pin<&T> {
-        self.project_ref().inner
+        self.project_ref().span_and_inner_pin_ref().1
     }
 
     /// Get a pinned mutable reference to the wrapped type.
     #[cfg(feature = "std-future")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn inner_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        self.project().inner
+        self.project().span_and_inner_pin_mut().1
     }
 
     /// Consumes the `Instrumented`, returning the wrapped type.
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
+        #[cfg(feature = "std-future")]
+        {
+            // To manually destructure `Instrumented` without `Drop`, we save
+            // pointers to the fields and use `mem::forget` to leave those pointers
+            // valid.
+            let span: *const Span = &self.span;
+            let inner: *const ManuallyDrop<T> = &self.inner;
+            mem::forget(self);
+            // SAFETY: Those pointers are valid for reads, because `Drop` didn't
+            //         run, and properly aligned, because `Instrumented` isn't
+            //         `#[repr(packed)]`.
+            let _span = unsafe { span.read() };
+            let inner = unsafe { inner.read() };
+            ManuallyDrop::into_inner(inner)
+        }
+        #[cfg(not(feature = "std-future"))]
         self.inner
     }
 }
@@ -570,6 +638,8 @@ mod tests {
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .drop_span(expect::span().named("foo"))
                 .only()
                 .run_with_handle();
@@ -585,6 +655,8 @@ mod tests {
         #[test]
         fn future_error_ends_span() {
             let (collector, handle) = collector::mock()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
@@ -605,6 +677,8 @@ mod tests {
         #[test]
         fn stream_enter_exit_is_reasonable() {
             let (collector, handle) = collector::mock()
+                .enter(expect::span().named("foo"))
+                .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))
                 .exit(expect::span().named("foo"))
                 .enter(expect::span().named("foo"))

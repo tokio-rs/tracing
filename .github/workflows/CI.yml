@@ -85,13 +85,11 @@ jobs:
         - tracing-macros
         - tracing-serde
         - tracing-tower
-        - tracing-opentelemetry
         - tracing
         - tracing-subscriber
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
-
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
     - name: cargo hack check
@@ -123,7 +121,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.49.0). This
+    # Run `cargo check` on our minimum supported Rust version (1.56.0). This
     # checks with minimal versions; maximal versions are checked above.
     name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
@@ -143,27 +141,10 @@ jobs:
         - tracing-serde
         - tracing-subscriber
         - tracing-tower
-        - tracing-opentelemetry
         - tracing
         toolchain:
-        - 1.49.0
+        - 1.56.0
         - stable
-        # TODO(eliza): remove this when appender is on the same MSRV.
-        #              same for tracing subscriber
-        exclude:
-        - subcrate: tracing-appender
-          toolchain: 1.49.0
-        - subcrate: tracing-subscriber
-          toolchain: 1.49.0
-        - subcrate: tracing-opentelemetry
-          toolchain: 1.49.0
-        include:
-        - subcrate: tracing-appender
-          toolchain: 1.53.0
-        - subcrate: tracing-subscriber
-          toolchain: 1.50.0
-        - subcrate: tracing-opentelemetry
-          toolchain: 1.56.0
     steps:
     - uses: actions/checkout@v3
     - name: install Rust nightly
@@ -266,7 +247,6 @@ jobs:
         - tracing-journald
         - tracing-log
         - tracing-macros
-        - tracing-opentelemetry
         - tracing-serde
         - tracing-subscriber
         - tracing-tower
