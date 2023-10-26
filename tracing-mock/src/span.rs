@@ -5,9 +5,8 @@
 //! [`collector`] module.
 //!
 //! Expected spans should be created with [`expect::span`] and a
-//! chain of method calls to describe the assertions we wish to make
-//! about the span. Subsequently, the expectations about the lifetime
-//! of the span can be set on the [`MockCollector`].
+//! chain of method calls describing the assertions made about the
+//! span. Expectations about the lifecycle of the span can be set on the [`MockCollector`].
 //!
 //! # Examples
 //!
@@ -31,9 +30,7 @@
 //! handle.assert_finished();
 //! ```
 //!
-//! In the following more complex example, in addition to validating
-//! the name and level of the span, we also validate its parent and
-//! fields at the time of creation.
+//! The following example asserts the name, level, parent, and fields of the span:
 //!
 //! ```
 //! use tracing_mock::{collector, expect};
@@ -67,8 +64,8 @@
 //! handle.assert_finished();
 //! ```
 //!
-//! The expectations must all be met for the validation to pass. For
-//! example, if the span name is incorrect, the test will fail:
+//! All expectations must be met for the test to pass. For example,
+//! the following test will fail due to a mismatch in the spans' names:
 //!
 //! ```should_panic
 //! use tracing_mock::{collector, expect};
@@ -84,7 +81,7 @@
 //!
 //! tracing::collect::with_default(collector, || {
 //!    let span = tracing::info_span!("another_span");
-//!     let _guard = span.enter();
+//!    let _guard = span.enter();
 //! });
 //!
 //! handle.assert_finished();
