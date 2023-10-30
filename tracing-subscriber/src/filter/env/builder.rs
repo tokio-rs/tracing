@@ -171,7 +171,7 @@ impl Builder {
     }
 
     /// Returns a new [`EnvFilter`] from the directives in the configured
-    /// environment variable. If the environment variable is unset no directive is added.
+    /// environment variable. If the environment variable is unset, no directive is added.
     /// An error is returned if the environment contains invalid directives.
     pub fn from_env(&self) -> Result<EnvFilter, FromEnvError> {
         let var = env::var(self.env_var_name()).unwrap_or_default();
