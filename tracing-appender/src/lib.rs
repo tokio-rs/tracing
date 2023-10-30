@@ -188,7 +188,7 @@ pub(crate) mod sync;
 /// });
 /// # }
 /// ```
-pub fn non_blocking<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
+pub fn non_blocking<T: Write + Send + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
     NonBlocking::new(writer)
 }
 
