@@ -96,10 +96,10 @@ mod expand;
 /// By default, all arguments to the function are included as fields on the
 /// span. Arguments that are `tracing` [primitive types] implementing the
 /// [`Value` trait] will be recorded as fields of that type. Types which do
-/// not implement `Value` will be recorded using [`std::fmt::Debug`].
+/// not implement `Value` will be recorded using [`fmt::Debug`].
 ///
 /// [primitive types]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html#foreign-impls
-/// [`Value` trait]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html.
+/// [`Value` trait]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html
 ///
 /// # Overriding Span Attributes
 ///
