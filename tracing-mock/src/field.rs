@@ -268,27 +268,24 @@ impl ExpectedField {
     ///
     /// # Examples
     ///
-    /// The following test passes despite the recorded event having
-    /// fields that were not expected because `only` was not
-    /// used:
+    /// Check that only a single field is recorded.
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
     ///
     /// let event = expect::event()
-    ///     .with_fields(expect::field("field").with_value(&"value"));
+    ///     .with_fields(expect::field("field").with_value(&"value").only());
     ///
     /// let (collector, handle) = collector::mock().event(event).run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
-    ///     tracing::info!(field = "value", another_field = 42,);
+    ///     tracing::info!(field = "value");
     /// });
     ///
     /// handle.assert_finished();
     /// ```
     ///
-    /// If we include `only` on the `ExpectedField` then the test
-    /// will fail:
+    /// The following example fails because a second field is recorded.
     ///
     /// ```should_panic
     /// use tracing_mock::{collector, expect};
@@ -403,8 +400,7 @@ impl ExpectedFields {
     ///
     /// # Examples
     ///
-    /// The following test will pass, even though additional fields are
-    /// recorded on the event:
+    /// Check that only two fields are recorded on the event.
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
@@ -412,7 +408,8 @@ impl ExpectedFields {
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
     ///         .with_value(&"value")
-    ///         .and(expect::field("another_field").with_value(&42)),
+    ///         .and(expect::field("another_field").with_value(&42))
+    ///         .only(),
     /// );
     ///
     /// let (collector, handle) = collector::mock()
@@ -423,15 +420,13 @@ impl ExpectedFields {
     ///     tracing::info!(
     ///         field = "value",
     ///         another_field = 42,
-    ///         a_third_field = true,
     ///     );
     /// });
     ///
     /// handle.assert_finished();
     /// ```
     ///
-    /// If we include `only` on the `ExpectedFields` then the test
-    /// will fail:
+    /// The following example fails because a third field is recorded.
     ///
     /// ```should_panic
     /// use tracing_mock::{collector, expect};
