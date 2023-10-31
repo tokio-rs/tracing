@@ -153,8 +153,7 @@ impl PartialEq for ExpectedValue {
 impl ExpectedField {
     /// Sets the value to expect when matching this field.
     ///
-    /// If the recorded value for this field is different, the
-    /// expectation will fail.
+    /// If the recorded value for this field diffs, the expectation will fail.
     ///
     /// # Examples
     ///
@@ -327,9 +326,9 @@ impl From<ExpectedField> for ExpectedFields {
 impl ExpectedFields {
     /// Adds an additional [`ExpectedField`] to be matched.
     ///
-    /// All fields must match, if any of them are not present, or if
-    /// the value for any field is different, the expectation will
-    /// fail.
+    /// _All_ fields must match for the expectation to pass. If any of
+    ///  them are not present, if any of the values differs, the 
+    /// expectation will fail.
     ///
     /// This method performs the same function as
     /// [`ExpectedField::and`], but applies in the case where there are
@@ -405,7 +404,7 @@ impl ExpectedFields {
     /// # Examples
     ///
     /// The following test will pass, even though additional fields are
-    /// recorded on the event.
+    /// recorded on the event:
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
