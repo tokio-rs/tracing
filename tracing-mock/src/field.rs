@@ -394,7 +394,7 @@ impl ExpectedFields {
         self
     }
 
-    /// Indicates that no fields other than those specified should be
+    /// Asserts that no fields other than those specified should be
     /// expected.
     ///
     /// This method performs the same function as
