@@ -324,7 +324,7 @@ impl ExpectedFields {
     /// Adds an additional [`ExpectedField`] to be matched.
     ///
     /// _All_ fields must match for the expectation to pass. If any of
-    ///  them are not present, if any of the values differs, the 
+    /// them are not present, if any of the values differs, the
     /// expectation will fail.
     ///
     /// This method performs the same function as
