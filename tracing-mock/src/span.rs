@@ -107,10 +107,10 @@ pub struct ExpectedSpan {
     pub(crate) metadata: ExpectedMetadata,
 }
 
-/// A mock new span
+/// A mock new span.
 ///
-/// **Note**: This struct holds expectatoins that can only be validated
-/// when expecting a new span via [`MockCollector::new_span`]. They
+/// **Note**: This struct contains expectations that can only be asserted
+/// on when expecting a new span via [`MockCollector::new_span`]. They
 /// cannot be validated on [`MockCollector::enter`],
 /// [`MockCollector::exit`], or any other method on [`MockCollector`]
 /// that takes an `ExpectedSpan`.
@@ -140,8 +140,7 @@ where
 impl ExpectedSpan {
     /// Sets a name to expect when matching a span.
     ///
-    /// If an event is recorded with a name that doesn't match the
-    /// provided name, this expectation will fail.
+    /// If an event is recorded with a name that differs from the one provided to this method, the expectation will fail.
     ///
     /// # Examples
     ///
@@ -162,7 +161,7 @@ impl ExpectedSpan {
     /// handle.assert_finished();
     /// ```
     ///
-    /// When the span name is different, the test will fail:
+    /// When the span name is different, the assertion will fail:
     ///
     /// ```should_panic
     /// use tracing_mock::{collector, expect};
@@ -194,8 +193,7 @@ impl ExpectedSpan {
 
     /// Sets the [`Level`](tracing::Level) to expect when matching a span.
     ///
-    /// If a span is recorded at a different level, this expectation
-    /// will fail.
+    /// If an span is record with a level that differs from the one provided to this method, the expectation will fail.
     ///
     /// # Examples
     ///
@@ -314,10 +312,10 @@ impl ExpectedSpan {
     /// An _explicit_ parent span is one passed to the `span!` macro in the
     /// `parent:` field.
     ///
-    /// If `Some("parent_name")` is passed to `with_explicit_parent` then
+    /// If `Some("parent_name")` is passed to `with_explicit_parent` then,
     /// the provided string is the name of the parent span to expect.
     ///
-    /// To expect that a span is recorded with `parent: None`, `None`
+    /// To expect that a span is recorded with no parent, `None`
     /// can be passed to `with_explicit_parent` instead.
     ///
     /// If a span is recorded without an explicit parent, or if the
@@ -347,8 +345,7 @@ impl ExpectedSpan {
     /// handle.assert_finished();
     /// ```
     ///
-    /// In the following example, we expect that the matched span is
-    /// an explicit root:
+    /// In the following example, the expected span is an explicit root:
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
@@ -368,7 +365,7 @@ impl ExpectedSpan {
     /// ```
     ///
     /// In the example below, the expectation fails because the
-    /// span is contextually (rather than explicitly) within the span
+    /// span is *contextually*—as opposed to explicitly—within the span
     /// `parent_span`:
     ///
     /// ```should_panic
@@ -410,7 +407,7 @@ impl ExpectedSpan {
     }
 
     /// Configures this `ExpectedSpan` to expect a
-    /// contextually-determined parent span, or to be a contextual
+    /// contextually-determined parent span, or be a contextual
     /// root.
     ///
     /// **Note**: This method returns a [`NewSpan`] and as such, this
@@ -427,7 +424,7 @@ impl ExpectedSpan {
     /// [`ExpectedSpan::with_explicit_parent`].
     ///
     /// If a span is recorded which is not inside a span, has an explicitly
-    /// overridden parent span, or with a differently-named span as its
+    /// overridden parent span, or has a differently-named span as its
     /// parent, this expectation will fail.
     ///
     /// # Examples
@@ -525,8 +522,8 @@ impl ExpectedSpan {
     /// If a span is recorded with fields that do not match the provided
     /// [`ExpectedFields`], this expectation will fail.
     ///
-    /// If the provided field is not present on the recorded span, or
-    /// if the value for that field is different, then the expectation
+    /// If the provided field is not present on the recorded span or
+    /// if the value for that field diffs, then the expectation
     /// will fail.
     ///
     /// More information on the available validations is available in
