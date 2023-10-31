@@ -241,10 +241,13 @@ fn gen_block<B: ToTokens>(
             let level_tokens = event_args.level(Level::Error);
             match event_args.mode {
                 FormatMode::Default | FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = %e)
+                    tracing::event!(target: #target, #level_tokens, error = %e, "{}", e)
                 )),
                 FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = ?e)
+                    tracing::event!(target: #target, #level_tokens, error = ?e, "{:?}", e)
+                )),
+                FormatMode::Value => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = e, "{}", e)
                 )),
             }
         }
@@ -256,10 +259,13 @@ fn gen_block<B: ToTokens>(
             let level_tokens = event_args.level(args_level);
             match event_args.mode {
                 FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = %x)
+                    tracing::event!(target: #target, #level_tokens, return = %x, "{}", x)
                 )),
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = ?x)
+                    tracing::event!(target: #target, #level_tokens, return = ?x, "{:?}", x)
+                )),
+                FormatMode::Value => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, return = x, "{}", x)
                 )),
             }
         }

@@ -214,6 +214,8 @@ fn test_ret_and_err() {
                 .with_fields(
                     expect::field("error")
                         .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err()))
+                        .and(expect::field("message")
+                            .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())))
                         .only(),
                 )
                 .at_level(Level::ERROR),
@@ -243,6 +245,8 @@ fn test_ret_and_ok() {
                 .with_fields(
                     expect::field("return")
                         .with_value(&tracing::field::debug(u8::try_from(123).unwrap()))
+                        .and(expect::field("message")
+                            .with_value(&tracing::field::debug(123)))
                         .only(),
                 )
                 .at_level(Level::INFO),

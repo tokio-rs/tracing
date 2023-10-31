@@ -244,7 +244,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values if and
+/// **Note**:  if the function returns a [`std::result::Result<T, E>`], `ret` will record returned values if and
 /// only if the function returns [`Result::Ok`].
 ///
 /// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
@@ -259,7 +259,18 @@ mod expand;
 /// }
 /// ```
 ///
-/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
+/// If the value being returned implements [`tracing::field::Value`], it can be recorded using its
+/// `Value` implementation directly, using  `ret(Value)`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(Value))]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
+///
+/// If the function returns a [`std::result::Result<T, E>`] and `E` implements [`std::fmt::Display`], adding
 /// `err` or `err(Display)` will emit error events when the function returns `Err`:
 ///
 /// ```
@@ -283,8 +294,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// By default, error values will be recorded using their `std::fmt::Display` implementations.
-/// If an error implements `std::fmt::Debug`, it can be recorded using its `Debug` implementation
+/// By default, error values will be recorded using their [`std::fmt::Display`] implementations.
+/// If an error implements `std::fmt::Debug`, it can be recorded using its [`std::fmt::Debug`] implementation
 /// instead by writing `err(Debug)`:
 ///
 /// ```
@@ -292,6 +303,18 @@ mod expand;
 /// #[instrument(err(Debug))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
+/// }
+/// ```
+///
+/// If a function returns a [`std::result::Result<T, E>`] and `E` implements [`std::error::Error`], the raw
+/// error value can be recorded using `err(Value)`. This is useful when paired with a subscriber
+/// which specially handles [`std::error::Error`]s, like [`tracing_opentelemetry`]:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(Value))]
+/// fn my_function(arg: usize) -> Result<(), Box<dyn std::error::Error>> {
+///    Ok(())
 /// }
 /// ```
 ///
@@ -355,6 +378,8 @@ mod expand;
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
+/// [`tracing_opentelemetry`]: https://docs.rs/tracing-opentelemetry
+/// [`tracing::field::Value`]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html
 /// [`fmt::Debug`]: std::fmt::Debug
 /// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
 /// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE

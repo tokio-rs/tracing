@@ -6,6 +6,7 @@ use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::subscribe::CollectExt;
 
 use std::convert::TryFrom;
+use std::error::Error;
 use std::num::TryFromIntError;
 
 #[instrument(err)]
@@ -202,6 +203,36 @@ fn test_err_dbg() {
         .only()
         .run_with_handle();
     with_default(collector, || err_dbg().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err(Value))]
+fn err_value() -> Result<u8, Box<dyn Error + 'static>> {
+    Err("oh no".into())
+}
+
+#[test]
+fn test_err_raw() {
+    let err: Box<dyn Error + 'static> = "oh no".into();
+    let span = expect::span().named("err_value");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            expect::event().at_level(Level::ERROR).with_fields(
+                expect::field("error")
+                    // use the actual error value that will be emitted, so
+                    // that this test doesn't break if the standard library
+                    // changes the `fmt::Debug` output from the error type
+                    // in the future.
+                    .with_value(&err),
+            ),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(collector, || err_value().ok());
     handle.assert_finished();
 }
 

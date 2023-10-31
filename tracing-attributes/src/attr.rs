@@ -163,28 +163,31 @@ impl Parse for EventArgs {
         let content;
         let _ = syn::parenthesized!(content in input);
         let mut result = Self::default();
-        let mut parse_one_arg =
-            || {
-                let lookahead = content.lookahead1();
-                if lookahead.peek(kw::level) {
-                    if result.level.is_some() {
-                        return Err(content.error("expected only a single `level` argument"));
-                    }
-                    result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
-                    return Err(content.error("expected only a single format argument"));
-                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                    match ident.to_string().as_str() {
-                        "Debug" => result.mode = FormatMode::Debug,
-                        "Display" => result.mode = FormatMode::Display,
-                        _ => return Err(syn::Error::new(
-                            ident.span(),
-                            "unknown event formatting mode, expected either `Debug` or `Display`",
-                        )),
-                    }
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
                 }
-                Ok(())
-            };
+                result.level = Some(content.parse()?);
+            } else if result.mode != FormatMode::default() {
+                return Err(content.error("expected only a single format argument"));
+            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                match ident.to_string().as_str().into() {
+                    FormatMode::Default => {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            format!(
+                                "unknown event formatting mode, must be one of: {}",
+                                FormatMode::options_list()
+                            ),
+                        ))
+                    }
+                    mode => result.mode = mode,
+                }
+            }
+            Ok(())
+        };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -260,11 +263,64 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
+    Value,
 }
 
 impl Default for FormatMode {
     fn default() -> Self {
         FormatMode::Default
+    }
+}
+
+impl FormatMode {
+    /// A list of the valid options for the format mode. This should be updated
+    /// when new modes are added to ensure that parser error messages are formatted correctly.
+    const OPTIONS: [(&str, FormatMode);3] = [
+        ("Debug", FormatMode::Debug),
+        ("Display", FormatMode::Display),
+        ("Value", FormatMode::Value),
+    ];
+
+    fn options_list() -> String {
+        Self::OPTIONS.iter().map(|(name, _)| *name).collect::<Vec<_>>().join(", ")
+    }
+}
+
+impl<S> From<S> for FormatMode
+where
+    S: AsRef<str>,
+{
+    fn from(s: S) -> Self {
+        for (name, value) in Self::OPTIONS {
+            if s.as_ref() == name {
+                 return value;
+            }
+        }
+        
+        FormatMode::default()
+    }
+}
+
+impl Parse for FormatMode {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        if !input.peek(syn::token::Paren) {
+            return Ok(FormatMode::default());
+        }
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let maybe_mode: Option<Ident> = content.parse()?;
+        maybe_mode.map_or(Ok(FormatMode::default()), |ident| {
+            match ident.to_string().as_str().into() {
+                FormatMode::Default => Err(syn::Error::new(
+                    ident.span(),
+                    format!(
+                        "unknown error mode, must be one of: {}",
+                        FormatMode::options_list()
+                    ),
+                )),
+                mode => Ok(mode),
+            }
+        })
     }
 }
 
