@@ -806,7 +806,7 @@
 //!  - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
 //!    applications.
 //!  - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
-//!  - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+//!  - [`win_etw_tracing`] provides a layer for emitting Windows [ETW] events.
 //!  - [`tracing-fluent-assertions`] provides a fluent assertions-style testing
 //!    framework for validating the behavior of `tracing` spans.
 //!  - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
@@ -847,7 +847,7 @@
 //! [Tracy]: https://github.com/wolfpld/tracy
 //! [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 //! [Elastic APM]: https://www.elastic.co/apm
-//! [`tracing-etw`]: https://github.com/microsoft/rust_win_etw/tree/main/win_etw_tracing
+//! [`win_etw_tracing`]: https://crates.io/crates/win_etw_tracing
 //! [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 //! [`tracing-fluent-assertions`]: https://crates.io/crates/tracing-fluent-assertions
 //! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing

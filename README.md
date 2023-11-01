@@ -396,7 +396,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-tracy`] provides a way to collect [Tracy] profiles in instrumented
   applications.
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
-- [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
+- [`win_etw_tracing`] provides a layer for emitting Windows [ETW] events.
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 - [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
   grouping together logs from the same spans during writing.
@@ -438,7 +438,7 @@ please let us know!)
 [Tracy]: https://github.com/wolfpld/tracy
 [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 [Elastic APM]: https://www.elastic.co/apm
-[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[`win_etw_tracing`]: https://github.com/microsoft/win_etw_tracing
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 [Sentry]: https://sentry.io/welcome/
