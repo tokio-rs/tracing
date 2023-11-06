@@ -8,7 +8,8 @@ It also introduces several minor API improvements.
 ### Added
 
 - **chrono**: Add `chrono` implementations of `FormatTime` ([#2690])
-- **subscriber**: support `NO_COLOR` in `fmt::Layer` ([#2647])
+- **subscriber**: Add support for the `NO_COLOR` environment 
+   variable in `fmt::Layer` ([#2647])
 
 ### Changed
 
