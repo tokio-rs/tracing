@@ -1,3 +1,30 @@
+# 0.2.3 (November 6, 2023)
+
+This release contains several new features.
+
+### Added
+
+- **rolling**: add option to automatically delete old log files ([#2323])
+- **non_blocking**: allow worker thread name to be configured ([#2365])
+- **rolling**: add a builder for constructing `RollingFileAppender`s ([#2227])
+- **rolling**: add `Builder::filename_suffix` parameter ([#2225])
+
+### Changed
+
+- **non_blocking**: name spawned threads ([#2219])
+
+### Fixed
+
+- Fixed several documentation typos and issues ([#2689], [#2375])
+
+[#2323]: https://github.com/tokio-rs/tracing/pull/2323
+[#2365]: https://github.com/tokio-rs/tracing/pull/2365
+[#2227]: https://github.com/tokio-rs/tracing/pull/2227
+[#2225]: https://github.com/tokio-rs/tracing/pull/2225
+[#2219]: https://github.com/tokio-rs/tracing/pull/2219
+[#2689]: https://github.com/tokio-rs/tracing/pull/2689
+[#2375]: https://github.com/tokio-rs/tracing/pull/2375
+
 # 0.2.2 (March 17, 2022)
 
 This release fixes a bug in `RollingFileAppender` that could result
