@@ -14,7 +14,7 @@ It also introduces several minor API improvements.
 ### Changed
 
 - **fmt**: make `format::Writer::new()` public ([#2680])
-- **subscriber**: bump version of `tracing-log` to 0.2 ([#2772])
+- **log**: bump version of `tracing-log` to 0.2 ([#2772])
 - **filter**: Implement `layer::Filter` for `Option<Filter>` ([#2407])
 
 [#2690]: https://github.com/tokio-rs/tracing/pull/2690
