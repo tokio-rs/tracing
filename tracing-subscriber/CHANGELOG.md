@@ -1,3 +1,29 @@
+# 0.3.18 (November 6, 2023)
+
+This release of `tracing-subscriber` adds support for `NO_COLOR` in
+`fmt::Layer` and reintroduces support for the `chrono` crate.
+It also introduces several minor API improvements.
+
+
+### Added
+
+- **chrono**: Add `chrono` implementations of `FormatTime` ([#2690])
+- **subscriber**: support `NO_COLOR` in `fmt::Layer` ([#2647])
+
+### Changed
+
+- **fmt**: make `format::Writer::new()` public ([#2680])
+- **subscriber**: bump version of `tracing-log` to 0.2 ([#2772])
+- **filter**: Implement `layer::Filter` for `Option<Filter>` ([#2407])
+
+[#2690]: https://github.com/tokio-rs/tracing/pull/2690
+[#2647]: https://github.com/tokio-rs/tracing/pull/2647
+[#2680]: https://github.com/tokio-rs/tracing/pull/2680
+[#2407]: https://github.com/tokio-rs/tracing/pull/2407
+[#2772]: https://github.com/tokio-rs/tracing/pull/2772
+
+Thanks to @shayne-fletcher, @dmlary, @kaifastromai, and @jsgf for contributing!
+
 # 0.3.17 (April 21, 2023)
 
 This release of `tracing-subscriber` fixes a build error when using `env-filter`
