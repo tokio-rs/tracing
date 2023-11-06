@@ -1,22 +1,25 @@
 # 0.3.18 (November 6, 2023)
 
-This release of `tracing-subscriber` adds support for `NO_COLOR` in
-`fmt::Layer` and reintroduces support for the `chrono` crate.
-It also introduces several minor API improvements.
+This release of `tracing-subscriber` adds support for the [`NO_COLOR`] environment
+variable (an informal standard to disable emitting ANSI color escape codes) in
+`fmt::Layer` and reintroduces support for the [`chrono`] crate.
 
+It also introduces several minor API improvements.
 
 ### Added
 
-- **chrono**: Add `chrono` implementations of `FormatTime` ([#2690])
-- **subscriber**: Add support for the `NO_COLOR` environment 
-   variable in `fmt::Layer` ([#2647])
+- **chrono**: Add [`chrono`] implementations of `FormatTime` ([#2690])
+- **subscriber**: Add support for the [`NO_COLOR`] environment variable in
+`fmt::Layer` ([#2647])
+- **fmt**: make `format::Writer::new()` public ([#2680])
+- **filter**: Implement `layer::Filter` for `Option<Filter>` ([#2407])
 
 ### Changed
 
-- **fmt**: make `format::Writer::new()` public ([#2680])
 - **log**: bump version of `tracing-log` to 0.2 ([#2772])
-- **filter**: Implement `layer::Filter` for `Option<Filter>` ([#2407])
 
+[`chrono`]: https://github.com/chronotope/chrono
+[`NO_COLOR`]: https://no-color.org/
 [#2690]: https://github.com/tokio-rs/tracing/pull/2690
 [#2647]: https://github.com/tokio-rs/tracing/pull/2647
 [#2680]: https://github.com/tokio-rs/tracing/pull/2680
