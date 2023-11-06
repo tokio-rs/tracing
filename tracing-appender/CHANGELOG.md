@@ -8,9 +8,6 @@ This release contains several new features.
 - **non_blocking**: allow worker thread name to be configured ([#2365])
 - **rolling**: add a builder for constructing `RollingFileAppender`s ([#2227])
 - **rolling**: add `Builder::filename_suffix` parameter ([#2225])
-
-### Changed
-
 - **non_blocking**: name spawned threads ([#2219])
 
 ### Fixed
