@@ -1,3 +1,24 @@
+# 0.4.0 (November 6, 2023)
+
+While tracing-journald-0.4.0 does not contain any breaking _code_ changes, this
+release disables the default features of `tracing-subscriber`.
+
+### Changed
+
+- Disable default features of tracing-subscriber ([#1476])
+
+### Added
+
+- Allow custom journal fields ([#2708])
+
+### Fixed
+
+- Fix minimal-versions correctness ([#2246])
+
+[#1476]: https://github.com/tokio-rs/tracing/pull/1476
+[#2708]: https://github.com/tokio-rs/tracing/pull/2708
+[#2246]: https://github.com/tokio-rs/tracing/pull/2246
+
 # 0.3.0 (April 21, 2022)
 
 This is a breaking release which changes the format in which span fields
