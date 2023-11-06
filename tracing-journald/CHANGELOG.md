@@ -5,15 +5,15 @@ release disables the default features of `tracing-subscriber`.
 
 ### Changed
 
-- Disable default features of tracing-subscriber (#1476)
+- Disable default features of tracing-subscriber ([#1476])
 
 ### Added
 
-- Allow custom journal fields (#2708)
+- Allow custom journal fields ([#2708])
 
 ### Fixed
 
-- Fix minimal-versions correctness [#2246]
+- Fix minimal-versions correctness ([#2246])
 
 [#1476]: https://github.com/tokio-rs/tracing/pull/1476
 [#2708]: https://github.com/tokio-rs/tracing/pull/2708
