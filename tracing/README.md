@@ -47,7 +47,7 @@ data as well as textual messages.
 The `tracing` crate provides the APIs necessary for instrumenting libraries
 and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.56+][msrv]*
+*Compiler support: [requires `rustc` 1.63+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -427,7 +427,7 @@ undergoing active development. They may be less stable than `tracing` and
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.56. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
