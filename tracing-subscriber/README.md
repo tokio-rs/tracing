@@ -21,7 +21,7 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [crates-badge]: https://img.shields.io/crates/v/tracing-subscriber.svg
 [crates-url]: https://crates.io/crates/tracing-subscriber
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
-[docs-url]: https://docs.rs/tracing-subscriber/0.3.15
+[docs-url]: https://docs.rs/tracing-subscriber/latest
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -32,14 +32,14 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [discord-url]: https://discord.gg/EeF3cQw
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
 
-*Compiler support: [requires `rustc` 1.56+][msrv]*
+*Compiler support: [requires `rustc` 1.63+][msrv]*
 
 [msrv]: #supported-rust-versions
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.56. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

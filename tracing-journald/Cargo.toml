@@ -13,7 +13,7 @@ categories = [
     "development-tools::profiling",
 ]
 keywords = ["tracing", "journald"]
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [dependencies]
 libc = "0.2.126"
