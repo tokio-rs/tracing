@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
-use tracing_mock::*;
 
 use tracing::{collect::with_default, Level};
 use tracing_attributes::instrument;
+use tracing_mock::{collector, expect};
 use tracing_subscriber::subscribe::CollectExt;
 use tracing_subscriber::EnvFilter;
+use tracing_test::block_on_future;
 
 #[instrument(ret)]
 fn ret() -> i32 {
