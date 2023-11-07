@@ -16,7 +16,7 @@ categories = [
 ]
 keywords = ["logging", "profiling", "tracing", "futures", "async"]
 license = "MIT"
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["std-future", "std"]
@@ -43,7 +43,8 @@ mio = "0.6.23"
 futures = "0.3.21"
 tokio-test = "0.4.2"
 tracing-core = { path = "../tracing-core", version = "0.2" }
-tracing-mock = { path = "../tracing-mock", features = ["tokio-test"] }
+tracing-mock = { path = "../tracing-mock" }
+tracing-test = { path = "../tracing-test" }
 
 [badges]
 maintenance = { status = "actively-developed" }
