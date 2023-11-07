@@ -1,6 +1,7 @@
 use tracing::{collect::with_default, Id, Level, Span};
 use tracing_attributes::instrument;
-use tracing_mock::*;
+use tracing_mock::{collector, expect};
+use tracing_test::block_on_future;
 
 #[instrument(follows_from = causes, skip(causes))]
 fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
