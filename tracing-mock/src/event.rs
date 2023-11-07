@@ -29,7 +29,7 @@
 //! [`collector`]: mod@crate::collector
 //! [`expect::event`]: fn@crate::expect::event
 #![allow(missing_docs)]
-use super::{expect, field, metadata::ExpectedMetadata, span, Parent};
+use super::{expect, field, metadata::ExpectedMetadata, parent::Parent, span};
 
 use std::fmt;
 
@@ -303,10 +303,12 @@ impl ExpectedEvent {
     ///     .with_explicit_parent(None);
     ///
     /// let (collector, handle) = collector::mock()
+    ///     .enter(expect::span())
     ///     .event(event)
     ///     .run_with_handle();
     ///
     /// with_default(collector, || {
+    ///     let _guard = tracing::info_span!("contextual parent").entered();
     ///     tracing::info!(parent: None, field = &"value");
     /// });
     ///
@@ -557,7 +559,7 @@ impl ExpectedEvent {
     pub(crate) fn check(
         &mut self,
         event: &tracing::Event<'_>,
-        get_parent_name: impl FnOnce() -> Option<String>,
+        get_parent: impl FnOnce() -> Parent,
         collector_name: &str,
     ) {
         let meta = event.metadata();
@@ -578,13 +580,8 @@ impl ExpectedEvent {
         }
 
         if let Some(ref expected_parent) = self.parent {
-            let actual_parent = get_parent_name();
-            expected_parent.check_parent_name(
-                actual_parent.as_deref(),
-                event.parent().cloned(),
-                event.metadata().name(),
-                collector_name,
-            )
+            let actual_parent = get_parent();
+            expected_parent.check(&actual_parent, event.metadata().name(), collector_name);
         }
     }
 }

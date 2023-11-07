@@ -119,6 +119,7 @@ use crate::{
     collector::MockHandle,
     event::ExpectedEvent,
     expect::Expect,
+    parent::Parent,
     span::{ExpectedSpan, NewSpan},
 };
 use tracing_core::{
@@ -905,8 +906,32 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
-                let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
-                expected.check(event, get_parent_name, &self.name);
+                let get_parent = || {
+                    if event.is_contextual() {
+                        if let Some(parent) = cx.lookup_current() {
+                            let contextual_parent = cx.span(&parent.id()).expect(
+                                "tracing-mock: contextual parent cannot \
+                                be looked up by ID. Was it recorded correctly?",
+                            );
+                            Parent::Contextual(contextual_parent.name().to_string())
+                        } else {
+                            Parent::ContextualRoot
+                        }
+                    } else if event.is_root() {
+                        Parent::ExplicitRoot
+                    } else {
+                        let parent_id = event.parent().expect(
+                            "tracing-mock: is_contextual=false is_root=false \
+                            but no explicit parent found. This is a bug!",
+                        );
+                        let explicit_parent = cx.span(parent_id).expect(
+                            "tracing-mock: explicit parent cannot be looked \
+                            up by ID. Is the provided Span ID valid: {parent_id}?",
+                        );
+                        Parent::Explicit(explicit_parent.name().to_string())
+                    }
+                };
+                expected.check(event, get_parent, &self.name);
 
                 if let Some(expected_scope) = expected.scope_mut() {
                     self.check_event_scope(cx.event_scope(event), expected_scope);
@@ -937,13 +962,32 @@ where
         let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let get_parent_name = || {
-                    span.parent()
-                        .and_then(|id| cx.span(id))
-                        .or_else(|| cx.lookup_current())
-                        .map(|span| span.name().to_string())
+                let get_parent = || {
+                    if span.is_contextual() {
+                        if let Some(parent) = cx.lookup_current() {
+                            let contextual_parent = cx.span(&parent.id()).expect(
+                                "tracing-mock: contextual parent cannot \
+                                be looked up by ID. Was it recorded correctly?",
+                            );
+                            Parent::Contextual(contextual_parent.name().to_string())
+                        } else {
+                            Parent::ContextualRoot
+                        }
+                    } else if span.is_root() {
+                        Parent::ExplicitRoot
+                    } else {
+                        let parent_id = span.parent().expect(
+                            "tracing-mock: is_contextual=false is_root=false \
+                            but no explicit parent found. This is a bug!",
+                        );
+                        let explicit_parent = cx.span(parent_id).expect(
+                            "tracing-mock: explicit parent cannot be looked \
+                            up by ID. Is the provided Span ID valid: {parent_id}?",
+                        );
+                        Parent::Explicit(explicit_parent.name().to_string())
+                    }
                 };
-                expected.check(span, get_parent_name, &self.name);
+                expected.check(span, get_parent, &self.name);
             }
         }
     }
