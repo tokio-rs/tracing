@@ -32,7 +32,7 @@ keywords = [
     "backtrace"
 ]
 edition = "2018"
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["traced-error"]
