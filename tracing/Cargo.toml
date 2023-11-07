@@ -25,7 +25,7 @@ categories = [
 ]
 keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.32", default-features = false }
@@ -40,7 +40,7 @@ log = "0.4.17"
 tracing-mock = { path = "../tracing-mock" }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = "^0.3"
+wasm-bindgen-test = "0.3.38"
 
 [features]
 default = ["std", "attributes"]
