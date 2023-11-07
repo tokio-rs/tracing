@@ -3,7 +3,8 @@ use std::{future::Future, pin::Pin, task};
 use futures::FutureExt as _;
 use tracing::Instrument;
 use tracing::{subscriber::with_default, Level};
-use tracing_mock::*;
+use tracing_mock::{expect, subscriber};
+use tracing_test::{block_on_future, PollN};
 
 #[test]
 fn enter_exit_is_reasonable() {

@@ -1,9 +1,10 @@
-use tracing_mock::*;
-
 use std::convert::Infallible;
 use std::{future::Future, pin::Pin, sync::Arc};
+
 use tracing::subscriber::with_default;
 use tracing_attributes::instrument;
+use tracing_mock::{expect, subscriber};
+use tracing_test::{block_on_future, PollN};
 
 #[instrument]
 async fn test_async_fn(polls: usize) -> Result<(), ()> {
