@@ -5,10 +5,6 @@ extern crate tracing;
 #[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen_test;
 
-// TODO: remove this once https://github.com/tokio-rs/tracing/pull/2675#issuecomment-1667628907 is resolved
-#[cfg(target_arch = "wasm32")]
-use ::core::option::Option::None;
-
 use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
     span, span_enabled, trace, trace_span, warn, warn_span, Level,

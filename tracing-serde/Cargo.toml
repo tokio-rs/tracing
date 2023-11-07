@@ -16,7 +16,7 @@ categories = [
     "encoding",
 ]
 keywords = ["logging", "tracing", "serialization"]
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["std"]

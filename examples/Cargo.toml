@@ -3,7 +3,7 @@ name = "tracing-examples"
 version = "0.0.0"
 publish = false
 edition = "2018"
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [features]
 default = []
