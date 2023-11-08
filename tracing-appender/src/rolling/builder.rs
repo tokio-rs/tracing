@@ -11,6 +11,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) time_zone: Option<i8>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -42,11 +43,13 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
     /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
+    /// | [`time_zone`] | `0` | By default, the time zone is 0 from UTC. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
+    /// [`time_zone`]: i8
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -54,6 +57,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            time_zone: None,
         }
     }
 
@@ -229,6 +233,30 @@ impl Builder {
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
             max_files: Some(n),
+            ..self
+        }
+    }
+
+    /// Sets the timezone of output logs
+    /// etc: 8 for UTC+8, -3 for UTC-3. If the number is set larger than 24 or lesser than -24,
+    /// if will count as 24's remainder, ex: +30 => +6
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .time_zone(-3) // the time of logs will now be in UTC-3
+    ///     //..
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    pub fn time_zone(self, tz: i8) -> Self {
+        Self {
+            time_zone: Some(tz),
             ..self
         }
     }
