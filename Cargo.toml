@@ -1,5 +1,5 @@
 [workspace]
-
+resolver = "2"
 members = [
     "tracing",
     "tracing-core",
@@ -13,6 +13,7 @@ members = [
     "tracing-mock",
     "tracing-subscriber",
     "tracing-serde",
+    "tracing-test",
     "tracing-appender",
     "tracing-journald",
     "examples"

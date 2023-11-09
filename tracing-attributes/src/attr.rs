@@ -255,17 +255,12 @@ impl Parse for Skips {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
 pub(crate) enum FormatMode {
+    #[default]
     Default,
     Display,
     Debug,
-}
-
-impl Default for FormatMode {
-    fn default() -> Self {
-        FormatMode::Default
-    }
 }
 
 #[derive(Clone, Debug)]
