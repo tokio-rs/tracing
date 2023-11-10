@@ -5,10 +5,6 @@ extern crate tracing;
 #[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen_test;
 
-// TODO: remove this once https://github.com/tokio-rs/tracing/pull/2675#issuecomment-1667628907 is resolved
-#[cfg(target_arch = "wasm32")]
-use ::core::option::Option::None;
-
 use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
     span, span_enabled, trace, trace_span, warn, warn_span, Level,
@@ -126,8 +122,20 @@ fn span_root() {
     span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
     span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo");
     span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "bar",);
-    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    span!(
+        parent: ::core::option::Option::None,
+        Level::DEBUG,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    span!(
+        parent: ::core::option::Option::None,
+        Level::DEBUG,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     span!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
     span!(parent: ::core::option::Option::None, Level::DEBUG, "bar",);
 }
@@ -139,8 +147,18 @@ fn trace_span_root() {
     trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
     trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
     trace_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    trace_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    trace_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    trace_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    trace_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     trace_span!(parent: ::core::option::Option::None, "foo");
     trace_span!(parent: ::core::option::Option::None, "bar",);
 }
@@ -152,8 +170,18 @@ fn debug_span_root() {
     debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
     debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
     debug_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    debug_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    debug_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    debug_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    debug_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     debug_span!(parent: ::core::option::Option::None, "foo");
     debug_span!(parent: ::core::option::Option::None, "bar",);
 }
@@ -165,8 +193,18 @@ fn info_span_root() {
     info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
     info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
     info_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    info_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    info_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    info_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    info_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     info_span!(parent: ::core::option::Option::None, "foo");
     info_span!(parent: ::core::option::Option::None, "bar",);
 }
@@ -178,8 +216,18 @@ fn warn_span_root() {
     warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
     warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
     warn_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    warn_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    warn_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    warn_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    warn_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     warn_span!(parent: ::core::option::Option::None, "foo");
     warn_span!(parent: ::core::option::Option::None, "bar",);
 }
@@ -191,8 +239,18 @@ fn error_span_root() {
     error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
     error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
     error_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    error_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    error_span!(parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    error_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 3
+    );
+    error_span!(
+        parent: ::core::option::Option::None,
+        "foo",
+        bar.baz = 2,
+        quux = 4,
+    );
     error_span!(parent: ::core::option::Option::None, "foo");
     error_span!(parent: ::core::option::Option::None, "bar",);
 }
@@ -712,9 +770,19 @@ fn event_root() {
         bar.baz = 2,
         quux = false
     );
-    event!(parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 3,);
+    event!(
+        parent: ::core::option::Option::None,
+        Level::DEBUG,
+        foo = 3,
+        bar.baz = 3,
+    );
     event!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
-    event!(parent: ::core::option::Option::None, Level::DEBUG, "foo: {}", 3);
+    event!(
+        parent: ::core::option::Option::None,
+        Level::DEBUG,
+        "foo: {}",
+        3
+    );
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
@@ -741,7 +809,12 @@ fn event_root() {
 #[test]
 fn trace_root() {
     trace!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
-    trace!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    trace!(
+        parent: ::core::option::Option::None,
+        foo = 3,
+        bar.baz = 2,
+        quux = false
+    );
     trace!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     trace!(parent: ::core::option::Option::None, "foo");
     trace!(parent: ::core::option::Option::None, "foo: {}", 3);
@@ -772,7 +845,12 @@ fn trace_root() {
 #[test]
 fn debug_root() {
     debug!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
-    debug!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    debug!(
+        parent: ::core::option::Option::None,
+        foo = 3,
+        bar.baz = 2,
+        quux = false
+    );
     debug!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     debug!(parent: ::core::option::Option::None, "foo");
     debug!(parent: ::core::option::Option::None, "foo: {}", 3);
@@ -803,7 +881,12 @@ fn debug_root() {
 #[test]
 fn info_root() {
     info!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
-    info!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    info!(
+        parent: ::core::option::Option::None,
+        foo = 3,
+        bar.baz = 2,
+        quux = false
+    );
     info!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     info!(parent: ::core::option::Option::None, "foo");
     info!(parent: ::core::option::Option::None, "foo: {}", 3);
@@ -834,7 +917,12 @@ fn info_root() {
 #[test]
 fn warn_root() {
     warn!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
-    warn!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    warn!(
+        parent: ::core::option::Option::None,
+        foo = 3,
+        bar.baz = 2,
+        quux = false
+    );
     warn!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     warn!(parent: ::core::option::Option::None, "foo");
     warn!(parent: ::core::option::Option::None, "foo: {}", 3);
@@ -865,7 +953,12 @@ fn warn_root() {
 #[test]
 fn error_root() {
     error!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
-    error!(parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    error!(
+        parent: ::core::option::Option::None,
+        foo = 3,
+        bar.baz = 2,
+        quux = false
+    );
     error!(parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     error!(parent: ::core::option::Option::None, "foo");
     error!(parent: ::core::option::Option::None, "foo: {}", 3);
@@ -1155,4 +1248,20 @@ fn callsite_macro_api() {
         kind: tracing::metadata::Kind::SPAN,
         fields: foo,
     };
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn format_args_already_defined() {
+    // Reproduces: https://github.com/tokio-rs/tracing/issues/2721
+    #[allow(unused)]
+    macro_rules! format_args {
+        ($i:expr) => {};
+    }
+    event!(Level::DEBUG, "foo: {}", 3);
+    trace!("foo: {}", 3);
+    debug!("foo: {}", 3);
+    info!("foo: {}", 3);
+    warn!("foo: {}", 3);
+    error!("foo: {}", 3);
 }

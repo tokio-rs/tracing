@@ -2,7 +2,7 @@ use crate::span::Span;
 use core::{
     future::Future,
     marker::Sized,
-    mem::{self, ManuallyDrop},
+    mem::ManuallyDrop,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -392,12 +392,11 @@ impl<T> Instrumented<T> {
     ///
     /// Note that this drops the span.
     pub fn into_inner(self) -> T {
-        // To manually destructure `Instrumented` without `Drop`, we save
-        // pointers to the fields and use `mem::forget` to leave those pointers
-        // valid.
-        let span: *const Span = &self.span;
-        let inner: *const ManuallyDrop<T> = &self.inner;
-        mem::forget(self);
+        // To manually destructure `Instrumented` without `Drop`, we
+        // move it into a ManuallyDrop and use pointers to its fields
+        let this = ManuallyDrop::new(self);
+        let span: *const Span = &this.span;
+        let inner: *const ManuallyDrop<T> = &this.inner;
         // SAFETY: Those pointers are valid for reads, because `Drop` didn't
         //         run, and properly aligned, because `Instrumented` isn't
         //         `#[repr(packed)]`.

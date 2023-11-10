@@ -20,7 +20,7 @@ categories = [
     "asynchronous",
 ]
 keywords = ["logging", "tracing", "metrics", "subscriber"]
-rust-version = "1.56.0"
+rust-version = "1.63.0"
 
 [features]
 

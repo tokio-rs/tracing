@@ -51,7 +51,7 @@ fn override_everything() {
 #[test]
 fn fields() {
     #[instrument(target = "my_target", level = "debug")]
-    fn my_fn(arg1: usize, arg2: bool) {}
+    fn my_fn(arg1: usize, arg2: bool, arg3: String) {}
 
     let span = expect::span()
         .named("my_fn")
@@ -68,6 +68,7 @@ fn fields() {
                 expect::field("arg1")
                     .with_value(&2usize)
                     .and(expect::field("arg2").with_value(&false))
+                    .and(expect::field("arg3").with_value(&"Cool".to_string()))
                     .only(),
             ),
         )
@@ -79,6 +80,7 @@ fn fields() {
                 expect::field("arg1")
                     .with_value(&3usize)
                     .and(expect::field("arg2").with_value(&true))
+                    .and(expect::field("arg3").with_value(&"Still Cool".to_string()))
                     .only(),
             ),
         )
@@ -89,8 +91,8 @@ fn fields() {
         .run_with_handle();
 
     with_default(collector, || {
-        my_fn(2, false);
-        my_fn(3, true);
+        my_fn(2, false, "Cool".to_string());
+        my_fn(3, true, "Still Cool".to_string());
     });
 
     handle.assert_finished();

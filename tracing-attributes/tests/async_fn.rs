@@ -1,9 +1,10 @@
-use tracing_mock::*;
-
 use std::convert::Infallible;
 use std::{future::Future, pin::Pin, sync::Arc};
+
 use tracing::collect::with_default;
 use tracing_attributes::instrument;
+use tracing_mock::{collector, expect};
+use tracing_test::{block_on_future, PollN};
 
 #[instrument]
 async fn test_async_fn(polls: usize) -> Result<(), ()> {
@@ -17,7 +18,6 @@ async fn test_async_fn(polls: usize) -> Result<(), ()> {
 #[allow(dead_code)] // this is just here to test whether it compiles.
 #[instrument]
 async fn test_ret_impl_trait(n: i32) -> Result<impl Iterator<Item = i32>, ()> {
-    let n = n;
     Ok((0..10).filter(move |x| *x < n))
 }
 

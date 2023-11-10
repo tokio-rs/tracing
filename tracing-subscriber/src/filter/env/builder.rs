@@ -170,15 +170,16 @@ impl Builder {
         self.parse_lossy(var)
     }
 
-    /// Returns a new [`EnvFilter`] from the directives in the in the configured
-    /// environment variable, or an error if the environment variable is not set
-    /// or contains invalid directives.
+    /// Returns a new [`EnvFilter`] from the directives in the configured
+    /// environment variable. If the environment variable is unset, no directive is added.
+    ///
+    /// An error is returned if the environment contains invalid directives.
     pub fn from_env(&self) -> Result<EnvFilter, FromEnvError> {
         let var = env::var(self.env_var_name()).unwrap_or_default();
         self.parse(var).map_err(Into::into)
     }
 
-    /// Returns a new [`EnvFilter`] from the directives in the in the configured
+    /// Returns a new [`EnvFilter`] from the directives in the configured
     /// environment variable, or an error if the environment variable is not set
     /// or contains invalid directives.
     pub fn try_from_env(&self) -> Result<EnvFilter, FromEnvError> {
