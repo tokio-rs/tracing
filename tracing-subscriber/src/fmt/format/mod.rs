@@ -965,6 +965,13 @@ where
 
             for span in scope.from_root() {
                 write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                write!(
+                    writer,
+                    "[{}/{:#?}]",
+                    span.id().into_u64(),
+                    span.metadata() as *const _,
+                )?;
+
                 seen = true;
 
                 let ext = span.extensions();
@@ -1018,6 +1025,7 @@ where
             )?;
         }
 
+        write!(writer, "[/{:#?}]", event.metadata() as *const _,)?;
         ctx.format_fields(writer.by_ref(), event)?;
         writeln!(writer)
     }
