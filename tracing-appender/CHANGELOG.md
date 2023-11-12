@@ -1,6 +1,7 @@
 # 0.2.3 (November 6, 2023)
 
-This release contains several new features.
+This release contains several new features. It also increases the
+minimum supported Rust version (MSRV) to Rust 1.63.0.
 
 ### Added
 
@@ -8,19 +9,26 @@ This release contains several new features.
 - **non_blocking**: allow worker thread name to be configured ([#2365])
 - **rolling**: add a builder for constructing `RollingFileAppender`s ([#2227])
 - **rolling**: add `Builder::filename_suffix` parameter ([#2225])
+- **non_blocking**: remove Sync bound from writer for NonBlocking ([#2607]) 
 - **non_blocking**: name spawned threads ([#2219])
 
 ### Fixed
 
 - Fixed several documentation typos and issues ([#2689], [#2375])
 
+### Changed
+
+- Increased minimum supported Rust version (MSRV) to 1.63.0+ ([#2793])
+
 [#2323]: https://github.com/tokio-rs/tracing/pull/2323
 [#2365]: https://github.com/tokio-rs/tracing/pull/2365
 [#2227]: https://github.com/tokio-rs/tracing/pull/2227
 [#2225]: https://github.com/tokio-rs/tracing/pull/2225
+[#2607]: https://github.com/tokio-rs/tracing/pull/2607
 [#2219]: https://github.com/tokio-rs/tracing/pull/2219
 [#2689]: https://github.com/tokio-rs/tracing/pull/2689
 [#2375]: https://github.com/tokio-rs/tracing/pull/2375
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
 
 # 0.2.2 (March 17, 2022)
 
