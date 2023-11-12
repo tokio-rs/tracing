@@ -47,7 +47,15 @@ impl<S: Collect> tracing_subscriber::Subscribe<S> for NopSubscriber {
     }
 }
 
+/// Running these two tests in parallel will cause flaky failures, since they are both modifying the MAX_LEVEL value.
+/// "cargo test -- --test-threads=1 fixes it, but it runs all tests in serial.
+/// The only way to run tests in serial in a single file is this way.
 #[test]
+fn run_all_reload_test() {
+    reload_handle();
+    reload_filter();
+}
+
 fn reload_handle() {
     static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
     static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
@@ -104,7 +112,6 @@ fn reload_handle() {
     })
 }
 
-#[test]
 fn reload_filter() {
     static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
     static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
