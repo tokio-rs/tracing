@@ -2,7 +2,8 @@
 
 This release of `tracing-subscriber` adds support for the [`NO_COLOR`] environment
 variable (an informal standard to disable emitting ANSI color escape codes) in
-`fmt::Layer` and reintroduces support for the [`chrono`] crate.
+`fmt::Layer`, reintroduces support for the [`chrono`] crate, and increases the
+minimum supported Rust version (MSRV) to Rust 1.63.0.
 
 It also introduces several minor API improvements.
 
@@ -17,6 +18,7 @@ It also introduces several minor API improvements.
 ### Changed
 
 - **log**: bump version of `tracing-log` to 0.2 ([#2772])
+- Increased minimum supported Rust version (MSRV) to 1.63.0+.
 
 [`chrono`]: https://github.com/chronotope/chrono
 [`NO_COLOR`]: https://no-color.org/
