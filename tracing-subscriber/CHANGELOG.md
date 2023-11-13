@@ -1,4 +1,4 @@
-# 0.3.18 (November 6, 2023)
+# 0.3.18 (November 13, 2023)
 
 This release of `tracing-subscriber` adds support for the [`NO_COLOR`] environment
 variable (an informal standard to disable emitting ANSI color escape codes) in
