@@ -1,3 +1,35 @@
+# 0.3.18 (November 13, 2023)
+
+This release of `tracing-subscriber` adds support for the [`NO_COLOR`] environment
+variable (an informal standard to disable emitting ANSI color escape codes) in
+`fmt::Layer`, reintroduces support for the [`chrono`] crate, and increases the
+minimum supported Rust version (MSRV) to Rust 1.63.0.
+
+It also introduces several minor API improvements.
+
+### Added
+
+- **chrono**: Add [`chrono`] implementations of `FormatTime` ([#2690])
+- **subscriber**: Add support for the [`NO_COLOR`] environment variable in
+`fmt::Layer` ([#2647])
+- **fmt**: make `format::Writer::new()` public ([#2680])
+- **filter**: Implement `layer::Filter` for `Option<Filter>` ([#2407])
+
+### Changed
+
+- **log**: bump version of `tracing-log` to 0.2 ([#2772])
+- Increased minimum supported Rust version (MSRV) to 1.63.0+.
+
+[`chrono`]: https://github.com/chronotope/chrono
+[`NO_COLOR`]: https://no-color.org/
+[#2690]: https://github.com/tokio-rs/tracing/pull/2690
+[#2647]: https://github.com/tokio-rs/tracing/pull/2647
+[#2680]: https://github.com/tokio-rs/tracing/pull/2680
+[#2407]: https://github.com/tokio-rs/tracing/pull/2407
+[#2772]: https://github.com/tokio-rs/tracing/pull/2772
+
+Thanks to @shayne-fletcher, @dmlary, @kaifastromai, and @jsgf for contributing!
+
 # 0.3.17 (April 21, 2023)
 
 This release of `tracing-subscriber` fixes a build error when using `env-filter`
