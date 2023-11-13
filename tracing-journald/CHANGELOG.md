@@ -1,4 +1,4 @@
-# 0.4.0 (November 6, 2023)
+# 0.4.0 (November 13, 2023)
 
 While tracing-journald-0.4.0 does not contain any breaking _code_ changes, this
 release disables the default features of `tracing-subscriber`.
