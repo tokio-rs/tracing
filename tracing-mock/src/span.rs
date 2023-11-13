@@ -246,8 +246,8 @@ impl ExpectedSpan {
 
     /// Sets the target to expect when matching a span.
     ///
-    /// If a span is recorded with a different target, this expectation
-    /// will fail.
+    /// If an event is recorded with a target that doesn't match the
+    /// provided target, this expectation will fail.
     ///
     /// # Examples
     ///
