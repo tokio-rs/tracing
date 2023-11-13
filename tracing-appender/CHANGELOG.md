@@ -19,8 +19,9 @@ minimum supported Rust version (MSRV) to Rust 1.63.0.
 ### Changed
 
 - Increased minimum supported Rust version (MSRV) to 1.63.0+ ([#2793])
-- Increased minimum `tracing-subscriber` version to 0.3.18 ([#2790])
+- Updated minimum `tracing-subscriber` version to [0.3.18][subscriber-v0.3.18] ([#2790])
 
+[subscriber-v0.3.18]: https://github.com/tokio-rs/tracing/releases/tag/tracing-subscriber-0.3.18
 [#2323]: https://github.com/tokio-rs/tracing/pull/2323
 [#2365]: https://github.com/tokio-rs/tracing/pull/2365
 [#2227]: https://github.com/tokio-rs/tracing/pull/2227
