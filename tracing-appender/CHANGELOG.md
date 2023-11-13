@@ -1,4 +1,4 @@
-# 0.2.3 (November 6, 2023)
+# 0.2.3 (November 13, 2023)
 
 This release contains several new features. It also increases the
 minimum supported Rust version (MSRV) to Rust 1.63.0.
