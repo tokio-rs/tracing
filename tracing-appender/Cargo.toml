@@ -1,6 +1,6 @@
 [package]
 name = "tracing-appender"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
     "Zeki Sherif <zekshi@amazon.com>",
     "Tokio Contributors <team@tokio.rs>"
@@ -28,7 +28,7 @@ thiserror = "1"
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
-version = "0.3.0"
+version = "0.3.18"
 default-features = false
 features = ["fmt", "std"]
 
