@@ -9,7 +9,7 @@ minimum supported Rust version (MSRV) to Rust 1.63.0.
 - **non_blocking**: allow worker thread name to be configured ([#2365])
 - **rolling**: add a builder for constructing `RollingFileAppender`s ([#2227])
 - **rolling**: add `Builder::filename_suffix` parameter ([#2225])
-- **non_blocking**: remove Sync bound from writer for NonBlocking ([#2607]) 
+- **non_blocking**: remove `Sync` bound from writer for `NonBlocking` ([#2607]) 
 - **non_blocking**: name spawned threads ([#2219])
 
 ### Fixed
