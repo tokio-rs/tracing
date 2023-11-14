@@ -86,7 +86,7 @@ fn message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(field::msg(format_args!(
+                    .and(expect::message(format_args!(
                         "hello from my event! tricky? {:?}!",
                         true
                     )))
@@ -115,7 +115,7 @@ fn string_message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(field::msg(format_args!("hello from my event")))
+                    .and(expect::message(format_args!("hello from my event")))
                     .only(),
             ),
         )

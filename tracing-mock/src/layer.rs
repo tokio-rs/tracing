@@ -12,7 +12,7 @@
 //!
 //! let (layer, handle) = layer::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .event(expect::event().with_fields(expect::message("droids")))
 //!     .run_with_handle();
 //!
 //! // Use `set_default` to apply the `MockSubscriber` until the end
@@ -42,7 +42,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -84,7 +84,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -154,7 +154,7 @@ use std::{
 ///     // Enter a matching span
 ///     .enter(span.clone())
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(field::msg("say hello")))
+///     .event(expect::event().with_fields(expect::message("say hello")))
 ///     // Exit a matching span
 ///     .exit(span)
 ///     // Expect no further messages to be recorded
