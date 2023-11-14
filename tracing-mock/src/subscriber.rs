@@ -432,7 +432,7 @@ impl MockSubscriberBuilder {
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (subscriber, handle) = subscriber::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
@@ -456,7 +456,7 @@ impl MockSubscriberBuilder {
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (subscriber, handle) = subscriber::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
