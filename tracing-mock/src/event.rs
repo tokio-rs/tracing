@@ -364,7 +364,7 @@ impl ExpectedEvent {
     ///
     /// # Examples
     ///
-    /// The explicit parent is matched by name:
+    /// The contextual parent is matched by name:
     ///
     /// ```
     /// use tracing::subscriber::with_default;
