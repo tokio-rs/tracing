@@ -37,13 +37,13 @@ fn same_name_spans() {
             expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("bar")),
+                .with_fields(expect::field("bar")),
         )
         .new_span(
             expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("baz")),
+                .with_fields(expect::field("baz")),
         )
         .only()
         .run_with_handle();
