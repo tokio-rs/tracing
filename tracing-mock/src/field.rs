@@ -201,9 +201,9 @@ impl ExpectedField {
 
     /// Adds an additional [`ExpectedField`] to be matched.
     ///
-    /// Both fields must match, if either of them are not present, or
-    /// if the value for either field is different, the expectation
-    /// will fail.
+    /// Any fields introduced by `.and` must also match. If any fields
+    /// are not present, or if the value for any field is different,
+    /// then the expectation will fail.
     ///
     /// # Examples
     ///
