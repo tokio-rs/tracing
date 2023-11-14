@@ -78,7 +78,7 @@ fn yak_shaving() {
 }
 
 let (subscriber, handle) = subscriber::mock()
-    .event(expect::event().with_fields(field::msg("preparing to shave yaks")))
+    .event(expect::event().with_fields(expect::message("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
@@ -102,7 +102,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 
 ```rust
 use tracing::subscriber::with_default;
-use tracing_mock::{subscriber, expect, field};
+use tracing_mock::{subscriber, expect};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
@@ -128,7 +128,7 @@ let (subscriber, handle) = subscriber::mock()
         expect::event().with_fields(
             expect::field("number_of_yaks")
                 .with_value(&yak_count)
-                .and(field::msg("preparing to shave yaks"))
+                .and(expect::message("preparing to shave yaks"))
                 .only(),
         ),
     )
@@ -136,7 +136,7 @@ let (subscriber, handle) = subscriber::mock()
         expect::event().with_fields(
             expect::field("all_yaks_shaved")
                 .with_value(&true)
-                .and(field::msg("yak shaving completed."))
+                .and(expect::message("yak shaving completed."))
                 .only(),
         ),
     )
