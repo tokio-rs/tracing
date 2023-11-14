@@ -121,7 +121,7 @@ let span = expect::span().named("yak_shaving");
 let (collector, handle) = collector::mock()
     .new_span(
         span.clone()
-            .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
+            .with_fields(expect::field("number_of_yaks").with_value(&yak_count).only()),
     )
     .enter(span.clone())
     .event(
