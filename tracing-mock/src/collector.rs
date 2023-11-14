@@ -12,7 +12,7 @@
 //!
 //! let (collector, handle) = collector::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .event(expect::event().with_fields(expect::message("droids")))
 //!     .only()
 //!     .run_with_handle();
 //!
@@ -40,7 +40,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     // Record a value for the field `parting` on a matching span
 //!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
@@ -81,7 +81,7 @@
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
 //!     .enter(span.clone())
-//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
@@ -221,7 +221,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     // Enter a matching span
 ///     .enter(span.clone())
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(field::msg("collect parting message")))
+///     .event(expect::event().with_fields(expect::message("collect parting message")))
 ///     // Record a value for the field `parting` on a matching span
 ///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
