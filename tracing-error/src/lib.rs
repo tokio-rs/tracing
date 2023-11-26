@@ -183,6 +183,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![allow(clippy::needless_doctest_main)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -196,7 +197,8 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
+    private_interfaces,
+    private_bounds,
     unconditional_recursion,
     unused,
     unused_allocation,
