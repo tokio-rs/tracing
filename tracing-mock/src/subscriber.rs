@@ -7,12 +7,12 @@
 //! validated as the code under test is run.
 //!
 //! ```
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .event(expect::event().with_fields(expect::message("droids")))
 //!     .run_with_handle();
 //!
 //! // Use `set_default` to apply the `MockSubscriber` until the end
@@ -33,7 +33,7 @@
 //! their respective fields:
 //!
 //! ```
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let span = expect::span()
@@ -42,7 +42,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -75,7 +75,7 @@
 //! span before recording an event, the test will fail:
 //!
 //! ```should_panic
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let span = expect::span()
@@ -84,7 +84,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -146,7 +146,7 @@ use std::{
 /// # Examples
 ///
 /// ```
-/// use tracing_mock::{expect, field, subscriber};
+/// use tracing_mock::{expect, subscriber};
 /// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 ///
 /// let span = expect::span()
@@ -155,7 +155,7 @@ use std::{
 ///     // Enter a matching span
 ///     .enter(span.clone())
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(field::msg("say hello")))
+///     .event(expect::event().with_fields(expect::message("say hello")))
 ///     // Exit a matching span
 ///     .exit(span)
 ///     // Expect no further messages to be recorded

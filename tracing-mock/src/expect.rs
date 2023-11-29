@@ -38,6 +38,13 @@ where
     }
 }
 
+pub fn message(message: impl fmt::Display) -> ExpectedField {
+    ExpectedField {
+        name: "message".to_string(),
+        value: ExpectedValue::Debug(message.to_string()),
+    }
+}
+
 pub fn span() -> ExpectedSpan {
     ExpectedSpan {
         ..Default::default()
