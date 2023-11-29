@@ -681,6 +681,11 @@ impl Field {
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
     }
+
+    /// Returns the index of this field in its [`FieldSet`].
+    pub fn index(&self) -> usize {
+        self.i
+    }
 }
 
 impl fmt::Display for Field {
