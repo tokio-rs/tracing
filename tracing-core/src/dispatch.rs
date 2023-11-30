@@ -406,7 +406,7 @@ impl SetGlobalDefaultError {
 ///
 /// Note that calls to `get_default` should not be nested; if this function is
 /// called while inside of another `get_default`, that closure will be provided
-/// with `Dispatch::none` rather than the previously set dispatcher.
+/// with `Dispatch::NONE` rather than the previously set dispatcher.
 ///
 /// [dispatcher]: super::dispatch::Dispatch
 #[cfg(feature = "std")]
