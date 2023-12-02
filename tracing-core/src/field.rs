@@ -1061,6 +1061,17 @@ mod test {
     }
 
     #[test]
+    fn index_of_field_in_fieldset_is_correct() {
+        let fields = TEST_META_1.fields();
+        let foo = fields.field("foo").unwrap();
+        assert_eq!(foo.index(), 0);
+        let bar = fields.field("bar").unwrap();
+        assert_eq!(bar.index(), 1);
+        let baz = fields.field("baz").unwrap();
+        assert_eq!(baz.index(), 2);
+    }
+
+    #[test]
     fn empty_value_set_is_empty() {
         let fields = TEST_META_1.fields();
         let valueset = fields.value_set(&[]);
