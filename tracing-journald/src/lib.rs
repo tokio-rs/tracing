@@ -135,7 +135,7 @@ impl Subscriber {
         self
     }
 
-    /// Sets how [`tracing::Level`]s are mapped to [journald priorities](Priority).
+    /// Sets how [`tracing_core::Level`]s are mapped to [journald priorities](Priority).
     ///
     /// # Examples
     ///
