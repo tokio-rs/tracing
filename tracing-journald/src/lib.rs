@@ -144,8 +144,8 @@ impl Subscriber {
     /// use tracing_subscriber::prelude::*;
     /// use tracing::error;
     ///
-    ///let registry = tracing_subscriber::registry();
-    ///match tracing_journald::subscriber() {
+    /// let registry = tracing_subscriber::registry();
+    /// match tracing_journald::subscriber() {
     ///     Ok(subscriber) => {
     ///         registry.with(
     ///             subscriber
@@ -163,7 +163,7 @@ impl Subscriber {
     ///         registry.init();
     ///         error!("couldn't connect to journald: {}", e);
     ///     }
-    ///}
+    /// }
     /// ```
     pub fn with_priority_mappings(mut self, mappings: PriorityMappings) -> Self {
         self.priority_mappings = mappings;
