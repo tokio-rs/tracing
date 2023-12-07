@@ -208,6 +208,8 @@ impl Builder {
     /// Files matching these criteria may be deleted if the maximum number of
     /// log files in the directory has been reached.
     ///
+    /// Panics if and only if `n` is 0.
+    ///
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     ///
@@ -227,6 +229,9 @@ impl Builder {
     /// ```
     #[must_use]
     pub fn max_log_files(self, n: usize) -> Self {
+        if n == 0 {
+            panic!("Must keep at least one log file.");
+        }
         Self {
             max_files: Some(n),
             ..self
@@ -269,5 +274,17 @@ impl Builder {
 impl Default for Builder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Builder;
+
+    /// Test that [`Builder::max_log_files`] panics if `n` is 0.
+    #[test]
+    #[should_panic(expected = "Must keep at least one log file.")]
+    fn test_zero_max_log_files() {
+        let _ = Builder::new().max_log_files(0);
     }
 }
