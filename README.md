@@ -461,6 +461,10 @@ undergoing active development. They may be less stable than `tracing` and
 This is a list of links to blog posts, conference talks, and tutorials about
 Tracing.
 
+#### Tutorials and Workshops
+
+* [Rust telemetry workshop][rust-telemetry-workshop], October 2023
+
 #### Blog Posts
 
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
@@ -487,6 +491,7 @@ Tracing.
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 [tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
+[rust-telemetry-workshop]: https://github.com/mainmatter/rust-telemetry-workshop
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.
