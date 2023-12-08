@@ -229,9 +229,7 @@ impl Builder {
     /// ```
     #[must_use]
     pub fn max_log_files(self, n: usize) -> Self {
-        if n == 0 {
-            panic!("Must keep at least one log file.");
-        }
+        assert!(n != 0, "must keep at least one log file");
         Self {
             max_files: Some(n),
             ..self
@@ -283,7 +281,7 @@ mod test {
 
     /// Test that [`Builder::max_log_files`] panics if `n` is 0.
     #[test]
-    #[should_panic(expected = "Must keep at least one log file.")]
+    #[should_panic(expected = "must keep at least one log file")]
     fn test_zero_max_log_files() {
         let _ = Builder::new().max_log_files(0);
     }
