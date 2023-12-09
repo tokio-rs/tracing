@@ -278,7 +278,7 @@ impl Default for Builder {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::Builder;
 
     /// Test that [`Builder::max_log_files`] panics if `n` is 0.
