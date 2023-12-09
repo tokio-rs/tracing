@@ -208,7 +208,9 @@ impl Builder {
     /// Files matching these criteria may be deleted if the maximum number of
     /// log files in the directory has been reached.
     ///
-    /// Panics if and only if `n` is 0.
+    /// # Panics
+    ///
+    /// This method panics if and only if `n` is 0.
     ///
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
