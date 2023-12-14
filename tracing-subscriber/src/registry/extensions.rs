@@ -120,7 +120,6 @@ pub(crate) struct ExtensionsInner {
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
-    #[cfg(any(test, feature = "registry"))]
     #[inline]
     #[cfg(any(test, feature = "registry"))]
     pub(crate) fn new() -> ExtensionsInner {
