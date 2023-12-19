@@ -331,13 +331,6 @@ use crate::{
     field, Metadata,
 };
 
-/// Trait implemented by types which have a span `Id`.
-pub trait AsId: crate::sealed::Sealed {
-    /// Returns the `Id` of the span that `self` corresponds to, or `None` if
-    /// this corresponds to a disabled span.
-    fn as_id(&self) -> Option<&Id>;
-}
-
 /// A handle representing a span, with the capability to enter the span if it
 /// exists.
 ///
