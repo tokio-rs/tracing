@@ -44,7 +44,7 @@ fn do_something() -> Result<(), TracedError<OuterError>> {
 
 #[tracing::instrument]
 fn do_the_real_stuff() -> Result<(), TracedError<InnerError>> {
-    Err(InnerError).map_err(TracedError::from)
+    Err(TracedError::from(InnerError))
 }
 
 #[derive(Debug)]

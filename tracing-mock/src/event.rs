@@ -48,7 +48,7 @@ pub struct ExpectedEvent {
 }
 
 pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect::event().with_fields(field::msg(message))
+    expect::event().with_fields(expect::message(message))
 }
 
 impl ExpectedEvent {
@@ -364,7 +364,7 @@ impl ExpectedEvent {
     ///
     /// # Examples
     ///
-    /// The explicit parent is matched by name:
+    /// The contextual parent is matched by name:
     ///
     /// ```
     /// use tracing::collect::with_default;
