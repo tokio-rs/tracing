@@ -171,6 +171,7 @@
 // "needless".
 #![allow(clippy::needless_update)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(nightly, feature(ptr_mask, strict_provenance))]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
