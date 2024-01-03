@@ -230,8 +230,7 @@ impl Collect for SloggishCollector {
             self.print_indent(&mut stderr, indent).unwrap();
             stack.push(span_id.clone());
             if let Some(data) = data {
-                self.print_kvs(&mut stderr, data.kvs.iter().map(|(k, v)| (k, v)), "")
-                    .unwrap();
+                self.print_kvs(&mut stderr, data.kvs.iter(), "").unwrap();
             }
             writeln!(&mut stderr).unwrap();
         }
