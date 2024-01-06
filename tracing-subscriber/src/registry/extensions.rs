@@ -5,27 +5,26 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     fmt,
     hash::{BuildHasherDefault, Hasher},
-    mem, ptr,
 };
 
-use crate::registry::extensions::boxed_entry::{Aligned, BoxedEntry, BoxedEntryOp};
+use crate::registry::extensions::boxed_entry::BoxedEntry;
 use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
 
 #[allow(unreachable_pub)]
 mod boxed_entry {
     use std::mem::MaybeUninit;
-    use std::ptr;
     use std::ptr::NonNull;
+    use std::{mem, ptr};
 
     /// Used to give ourselves one free bit for liveness checks.
     #[repr(align(2))]
-    pub struct Aligned<T>(pub T);
+    struct Aligned<T>(pub T);
 
     /// Wrapper around an untyped pointer to avoid casting bugs.
     ///
     /// This type holds the pointer to a `Box<Aligned<T>>`.
     #[derive(Copy, Clone)]
-    pub struct ExtPtr(NonNull<()>);
+    struct ExtPtr(NonNull<()>);
 
     impl ExtPtr {
         fn new<T>(val: T) -> Self {
@@ -37,7 +36,7 @@ mod boxed_entry {
             this
         }
 
-        pub fn typed<T>(self) -> NonNull<Aligned<T>> {
+        fn typed<T>(self) -> NonNull<Aligned<T>> {
             #[cfg(not(nightly))]
             let ptr = {
                 let addr = self.0.as_ptr() as usize;
@@ -49,7 +48,7 @@ mod boxed_entry {
             unsafe { NonNull::new_unchecked(ptr) }
         }
 
-        pub fn live(&self) -> bool {
+        fn live(&self) -> bool {
             #[cfg(not(nightly))]
             let addr = self.0.as_ptr() as usize;
             #[cfg(nightly)]
@@ -57,7 +56,7 @@ mod boxed_entry {
             (addr & 1) == 1
         }
 
-        pub fn set_live(&mut self, live: bool) {
+        fn set_live(&mut self, live: bool) {
             let update = |addr: usize| if live { addr | 1 } else { addr & !1 };
             #[cfg(not(nightly))]
             let ptr = update(self.0.as_ptr() as usize) as *mut _;
@@ -68,18 +67,16 @@ mod boxed_entry {
     }
 
     /// Extension storage
-    #[allow(clippy::manual_non_exhaustive)]
     pub struct BoxedEntry {
-        pub ptr: ExtPtr,
-        pub op_fn: unsafe fn(ExtPtr, BoxedEntryOp),
-        _private: (),
+        ptr: ExtPtr,
+        op_fn: unsafe fn(ExtPtr, BoxedEntryOp),
     }
 
     unsafe impl Send for BoxedEntry {}
 
     unsafe impl Sync for BoxedEntry {}
 
-    pub enum BoxedEntryOp {
+    enum BoxedEntryOp {
         DropLiveValue,
         Drop,
     }
@@ -109,7 +106,47 @@ mod boxed_entry {
             Self {
                 ptr: ExtPtr::new(val),
                 op_fn: run_boxed_entry_op::<T>,
-                _private: (),
+            }
+        }
+
+        pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+            let mut ptr = self.ptr.typed::<T>();
+            if self.ptr.live() {
+                Some(mem::replace(unsafe { ptr.as_mut() }, Aligned(val)).0)
+            } else {
+                unsafe {
+                    ptr::write(ptr.as_ptr(), Aligned(val));
+                }
+                self.ptr.set_live(true);
+                None
+            }
+        }
+
+        pub fn as_ref<T>(&self) -> Option<&T> {
+            self.ptr
+                .live()
+                .then(|| &unsafe { self.ptr.typed::<T>().as_ref() }.0)
+        }
+
+        pub fn as_mut<T>(&mut self) -> Option<&mut T> {
+            self.ptr
+                .live()
+                .then(|| &mut unsafe { self.ptr.typed::<T>().as_mut() }.0)
+        }
+
+        pub fn remove<T>(&mut self) -> Option<T> {
+            self.ptr.live().then(|| {
+                self.ptr.set_live(false);
+                unsafe { ptr::read(self.ptr.typed::<T>().as_ptr()) }.0
+            })
+        }
+
+        pub fn clear(&mut self) {
+            if self.ptr.live() {
+                self.ptr.set_live(false);
+                unsafe {
+                    (self.op_fn)(self.ptr, BoxedEntryOp::DropLiveValue);
+                }
             }
         }
     }
@@ -251,19 +288,7 @@ impl ExtensionsInner {
     /// be returned.
     pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
         match self.map.entry(TypeId::of::<T>()) {
-            Entry::Occupied(mut entry) => {
-                let entry = entry.get_mut();
-                let mut ptr = entry.ptr.typed::<T>();
-                if entry.ptr.live() {
-                    Some(mem::replace(unsafe { ptr.as_mut() }, Aligned(val)).0)
-                } else {
-                    unsafe {
-                        ptr::write(ptr.as_ptr(), Aligned(val));
-                    }
-                    entry.ptr.set_live(true);
-                    None
-                }
-            }
+            Entry::Occupied(mut entry) => entry.get_mut().insert::<T>(val),
             Entry::Vacant(entry) => {
                 entry.insert(BoxedEntry::new(val));
                 None
@@ -275,16 +300,14 @@ impl ExtensionsInner {
     pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
             .get(&TypeId::of::<T>())
-            .filter(|boxed| boxed.ptr.live())
-            .map(|boxed| &unsafe { boxed.ptr.typed::<T>().as_ref() }.0)
+            .and_then(BoxedEntry::as_ref::<T>)
     }
 
     /// Get a mutable reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
             .get_mut(&TypeId::of::<T>())
-            .filter(|boxed| boxed.ptr.live())
-            .map(|boxed| &mut unsafe { boxed.ptr.typed::<T>().as_mut() }.0)
+            .and_then(BoxedEntry::as_mut::<T>)
     }
 
     /// Remove a type from this `Extensions`.
@@ -293,11 +316,7 @@ impl ExtensionsInner {
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
         self.map
             .get_mut(&TypeId::of::<T>())
-            .filter(|boxed| boxed.ptr.live())
-            .map(|boxed| {
-                boxed.ptr.set_live(false);
-                unsafe { ptr::read(boxed.ptr.typed::<T>().as_ptr()) }.0
-            })
+            .and_then(BoxedEntry::remove::<T>)
     }
 
     /// Clear the `ExtensionsInner` in-place, dropping any elements in the map but
@@ -307,12 +326,7 @@ impl ExtensionsInner {
     /// that future spans will not need to allocate new hashmaps.
     #[cfg(any(test, feature = "registry"))]
     pub(crate) fn clear(&mut self) {
-        for boxed in self.map.values_mut().filter(|boxed| boxed.ptr.live()) {
-            boxed.ptr.set_live(false);
-            unsafe {
-                (boxed.op_fn)(boxed.ptr, BoxedEntryOp::DropLiveValue);
-            }
-        }
+        self.map.values_mut().for_each(BoxedEntry::clear);
     }
 }
 
