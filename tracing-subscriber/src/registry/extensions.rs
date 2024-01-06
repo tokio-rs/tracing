@@ -12,7 +12,7 @@ use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
 
 #[allow(unreachable_pub)]
 mod boxed_entry {
-    use std::mem::MaybeUninit;
+    use std::mem::{ManuallyDrop, MaybeUninit};
     use std::ptr::NonNull;
     use std::{mem, ptr};
 
@@ -134,11 +134,17 @@ mod boxed_entry {
                 .then(|| &mut unsafe { self.ptr.typed::<T>().as_mut() }.0)
         }
 
-        pub fn remove<T>(&mut self) -> Option<T> {
-            self.ptr.live().then(|| {
-                self.ptr.set_live(false);
-                unsafe { ptr::read(self.ptr.typed::<T>().as_ptr()) }.0
-            })
+        pub fn remove<T>(self) -> Option<T> {
+            let this = ManuallyDrop::new(self);
+            let ptr = this.ptr.typed::<T>().as_ptr();
+            if this.ptr.live() {
+                Some(unsafe { Box::from_raw(ptr) }.0)
+            } else {
+                unsafe {
+                    drop(Box::from_raw(ptr.cast::<MaybeUninit<Aligned<T>>>()));
+                }
+                None
+            }
         }
 
         pub fn clear(&mut self) {
@@ -315,7 +321,7 @@ impl ExtensionsInner {
     /// If a extension of this type existed, it will be returned.
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
         self.map
-            .get_mut(&TypeId::of::<T>())
+            .remove(&TypeId::of::<T>())
             .and_then(BoxedEntry::remove::<T>)
     }
 
