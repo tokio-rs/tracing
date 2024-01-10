@@ -350,11 +350,27 @@ fn gen_block<B: ToTokens>(
         }
     );
 
+    // Bind a non-Copy value to make the closure FnOnce
+    // (https://github.com/tokio-rs/tracing/issues/2796).
+    let fn_once_init = quote!(
+        let __tracing_attr_fn_once = {
+            struct TracingAttrFnOnce;
+            TracingAttrFnOnce
+        };
+    );
+    let fn_once_bind = quote!(
+        let __tracing_attr_fn_once = __tracing_attr_fn_once;
+    );
+
     match (err_event, ret_event) {
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
             #span
+            #fn_once_init
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            match (move || {
+                #fn_once_bind
+                #block
+            })() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => {
                     #ret_event;
@@ -368,8 +384,12 @@ fn gen_block<B: ToTokens>(
         },
         (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
+            #fn_once_init
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            match (move || {
+                #fn_once_bind
+                #block
+            })() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
@@ -380,8 +400,12 @@ fn gen_block<B: ToTokens>(
         ),
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
+            #fn_once_init
             #[allow(clippy::redundant_closure_call)]
-            let x = (move || #block)();
+            let x = (move || {
+                #fn_once_bind
+                #block
+            })();
             #ret_event;
             x
         ),
