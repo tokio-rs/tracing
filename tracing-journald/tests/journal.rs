@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use tracing::{debug, error, info, info_span, warn};
-use tracing_journald::Layer;
+use tracing::{debug, error, info, info_span, trace, warn};
+use tracing_journald::{Layer, Priority, PriorityMappings};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
 
@@ -17,7 +17,16 @@ fn journalctl_version() -> std::io::Result<String> {
 }
 
 fn with_journald(f: impl FnOnce()) {
-    with_journald_layer(Layer::new().unwrap().with_field_prefix(None), f)
+    with_journald_layer(
+        Layer::new()
+            .unwrap()
+            .with_field_prefix(None)
+            .with_priority_mappings(PriorityMappings {
+                trace: Priority::Informational,
+                ..PriorityMappings::new()
+            }),
+        f,
+    )
 }
 
 fn with_journald_layer(layer: Layer, f: impl FnOnce()) {
@@ -166,6 +175,41 @@ fn simple_message() {
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
     });
+}
+
+#[test]
+fn custom_priorities() {
+    fn check_message(level: &str, priority: &str) {
+        let entry = retry_read_one_line_from_journal(&format!("custom_priority.{}", level));
+        assert_eq!(entry["MESSAGE"], format!("hello {}", level).as_str());
+        assert_eq!(entry["PRIORITY"], priority);
+    }
+
+    let priorities = PriorityMappings {
+        error: Priority::Critical,
+        warn: Priority::Error,
+        info: Priority::Warning,
+        debug: Priority::Notice,
+        trace: Priority::Informational,
+    };
+    let layer = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_priority_mappings(priorities);
+    let test = || {
+        trace!(test.name = "custom_priority.trace", "hello trace");
+        check_message("trace", "6");
+        debug!(test.name = "custom_priority.debug", "hello debug");
+        check_message("debug", "5");
+        info!(test.name = "custom_priority.info", "hello info");
+        check_message("info", "4");
+        warn!(test.name = "custom_priority.warn", "hello warn");
+        check_message("warn", "3");
+        error!(test.name = "custom_priority.error", "hello error");
+        check_message("error", "2");
+    };
+
+    with_journald_layer(layer, test);
 }
 
 #[test]
