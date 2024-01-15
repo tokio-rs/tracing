@@ -173,7 +173,7 @@
 //! For functions which don't have built-in tracing support and can't have
 //! the `#[instrument]` attribute applied (such as from an external crate),
 //! the [`Span` struct][`Span`] has a [`in_scope()` method][`in_scope`]
-//! which can be used to easily wrap synchonous code in a span.
+//! which can be used to easily wrap synchronous code in a span.
 //!
 //! For example:
 //! ```rust
