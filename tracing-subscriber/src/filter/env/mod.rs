@@ -479,7 +479,7 @@ impl EnvFilter {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
-        // if not, we can avoid the thread loca'l access + iterating over the
+        // if not, we can avoid the thread local access + iterating over the
         // spans in the current scope.
         if self.has_dynamics && self.dynamics.max_level >= *level {
             if metadata.is_span() {

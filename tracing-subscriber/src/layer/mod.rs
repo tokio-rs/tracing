@@ -428,7 +428,7 @@
 //!   callsite). See [`Subscriber::register_callsite`] and
 //!   [`tracing_core::callsite`] for a summary of how this behaves.
 //! - [`enabled`], once per emitted event (roughly: once per time that `event!`
-//!   or `span!` is *executed*), and only if `register_callsite` regesters an
+//!   or `span!` is *executed*), and only if `register_callsite` registers an
 //!   [`Interest::sometimes`]. This is the main customization point to globally
 //!   filter events based on their [`Metadata`]. If an event can be disabled
 //!   based only on [`Metadata`], it should be, as this allows the construction
@@ -764,7 +764,7 @@ where
     /// [`Subscriber`] has been set as the default, both the `Layer` and
     /// [`Subscriber`] are passed to this method _mutably_. This gives the
     /// `Layer` the opportunity to set any of its own fields with values
-    /// recieved by method calls on the [`Subscriber`].
+    /// received by method calls on the [`Subscriber`].
     ///
     /// For example, [`Filtered`] layers implement `on_layer` to call the
     /// [`Subscriber`]'s [`register_filter`] method, and store the returned
@@ -1292,7 +1292,7 @@ feature! {
         /// <pre class="ignore" style="white-space:normal;font:inherit;">
         /// <strong>Note</strong>: If a <code>Filter</code> will perform
         /// <em>dynamic filtering</em> that depends on the current context in which
-        /// a span or event was observered (e.g. only enabling an event when it
+        /// a span or event was observed (e.g. only enabling an event when it
         /// occurs within a particular span), it <strong>must</strong> return
         /// <code>Interest::sometimes()</code> from this method. If it returns
         /// <code>Interest::always()</code> or <code>Interest::never()</code>, the
@@ -1310,7 +1310,7 @@ feature! {
         /// other hand, when a `Filter` returns [`Interest::always()`][always] or
         /// [`Interest::never()`][never] for a callsite, _other_ [`Layer`]s may have
         /// differing interests in that callsite. If this is the case, the callsite
-        /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
+        /// will receive [`Interest::sometimes()`][sometimes], and the [`enabled`]
         /// method will still be called for that callsite when it records a span or
         /// event.
         ///

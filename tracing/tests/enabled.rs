@@ -43,7 +43,7 @@ fn span_and_event() {
 
     let _guard = tracing::subscriber::set_default(subscriber);
 
-    // Ensure that the `_event` and `_span` alternatives work corretly
+    // Ensure that the `_event` and `_span` alternatives work correctly
     assert!(!tracing::event_enabled!(Level::TRACE));
     assert!(tracing::event_enabled!(Level::DEBUG));
     assert!(tracing::span_enabled!(Level::TRACE));
