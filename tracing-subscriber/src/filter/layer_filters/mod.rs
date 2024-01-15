@@ -721,7 +721,7 @@ where
     //
     // it would be cool if there was some wild rust reflection way of checking
     // if a trait impl has the default impl of a trait method or not, but that's
-    // almsot certainly impossible...right?
+    // almost certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
