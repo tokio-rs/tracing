@@ -45,20 +45,20 @@ tracing = { optional = true, path = "../tracing", version = "0.2", default-featu
 matchers = { optional = true, version = "0.1.0" }
 regex = { optional = true, version = "1.6.0", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
 smallvec = { optional = true, version = "1.9.0" }
-once_cell = { optional = true, version = "1.13.0" }
+once_cell = { workspace = true, optional = true }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
-nu-ansi-term = { version = "0.46.0", optional = true }
-time = { version = "0.3.2", features = ["formatting"], optional = true }
+nu-ansi-term = { workspace = true, optional = true }
+time = { workspace = true, features = ["formatting"], optional = true }
 
 # only required by the json feature
-serde_json = { version = "1.0.82", optional = true }
-serde = { version = "1.0.139", optional = true }
+serde_json = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 tracing-serde = { path = "../tracing-serde", version = "0.2", optional = true }
 
 # opt-in deps
-parking_lot = { version = "0.12.1", optional = true }
+parking_lot = { workspace = true, optional = true }
 chrono = { version = "0.4.26", default-features = false, features = ["clock", "std"], optional = true }
 
 # registry
@@ -68,12 +68,12 @@ thread_local = { version = "1.1.4", optional = true }
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }
 tracing-mock = { path = "../tracing-mock", features = ["tracing-subscriber"] }
-log = "0.4.17"
+log = { workspace = true }
 tracing-log = { path = "../tracing-log", version = "0.2" }
-criterion = { version = "0.3.6", default_features = false }
+criterion = { workspace = true, default_features = false }
 regex = { version = "1.6.0", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.3", default-features = false, features = ["std-future", "std"] }
-tokio = { version = "1.20.0", features = ["rt", "macros"] }
+tokio = { workspace = true, features = ["rt", "macros"] }
 # Enable the `time` crate's `macros` feature, for examples.
 time = { version = "0.3.2", features = ["formatting", "macros"] }
 

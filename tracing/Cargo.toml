@@ -32,14 +32,14 @@ rust-version = "1.63.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
-log = { version = "0.4.17", optional = true }
+log = { workspace = true, optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
-pin-project-lite = "0.2.9"
+pin-project-lite = { workspace = true }
 
 [dev-dependencies]
-criterion = { version = "0.3.6", default_features = false }
-futures = { version = "0.3.21", default_features = false }
-log = "0.4.17"
+criterion = { workspace = true, default_features = false }
+futures = { workspace = true, default_features = false }
+log = { workspace = true }
 tracing-mock = { path = "../tracing-mock" }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
