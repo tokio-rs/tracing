@@ -1,6 +1,7 @@
 //! Spans represent periods of time in the execution of a program.
 use core::num::NonZeroU64;
 
+use crate::callsite::REGISTRY;
 use crate::field::FieldSet;
 use crate::parent::Parent;
 use crate::{field, Metadata};
@@ -54,6 +55,15 @@ enum CurrentInner {
     },
     None,
     Unknown,
+}
+
+/// Rebuild filter cache for all spans stored in the dispatchers.
+pub fn rebuild_filter_cache() {
+    for registrar in &*REGISTRY.dispatchers.read().unwrap() {
+        if let Some(dispatch) = registrar.upgrade() {
+            dispatch.collector().rebuild_span_filter_cache(&dispatch);
+        }
+    }
 }
 
 // ===== impl Span =====

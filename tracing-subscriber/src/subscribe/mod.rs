@@ -787,7 +787,7 @@ where
     /// [per-subscribe filtering]: #per-subscriber-filtering
     /// [`FilterId`]: crate::filter::FilterId
     /// [collector]: tracing_core::Collect
-    fn on_subscribe(&mut self, collector: &mut C) {
+    fn on_subscribe(&mut self, collector: &C) {
         let _ = collector;
     }
 
@@ -1088,12 +1088,12 @@ where
     ///```
     ///
     /// [`Collect`]: tracing_core::Collect
-    fn with_collector(mut self, mut inner: C) -> Layered<Self, C>
+    fn with_collector(mut self, inner: C) -> Layered<Self, C>
     where
         Self: Sized,
     {
         let inner_has_subscriber_filter = filter::collector_has_psf(&inner);
-        self.on_subscribe(&mut inner);
+        self.on_subscribe(&inner);
         Layered::new(self, inner, inner_has_subscriber_filter)
     }
 
@@ -1561,7 +1561,7 @@ where
         }
     }
 
-    fn on_subscribe(&mut self, collector: &mut C) {
+    fn on_subscribe(&mut self, collector: &C) {
         if let Some(ref mut subscriber) = self {
             subscriber.on_subscribe(collector)
         }
@@ -1680,7 +1680,7 @@ macro_rules! subscriber_impl_body {
         }
 
         #[inline]
-        fn on_subscribe(&mut self, collect: &mut C) {
+        fn on_subscribe(&mut self, collect: &C) {
             self.deref_mut().on_subscribe(collect);
         }
 
@@ -1782,7 +1782,7 @@ feature! {
             }
         }
 
-        fn on_subscribe(&mut self, collector: &mut C) {
+        fn on_subscribe(&mut self, collector: &C) {
             for s in self {
                 s.on_subscribe(collector);
             }

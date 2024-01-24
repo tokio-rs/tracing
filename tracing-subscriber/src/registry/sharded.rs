@@ -3,7 +3,7 @@ use thread_local::ThreadLocal;
 
 use super::stack::SpanStack;
 use crate::{
-    filter::{FilterId, FilterMap, FilterState},
+    filter::{FilterId, FilterMap, FilterState, FILTERING},
     registry::{
         extensions::{Extensions, ExtensionsInner, ExtensionsMut},
         LookupSpan, SpanData,
@@ -12,7 +12,11 @@ use crate::{
 };
 use std::{
     cell::{self, Cell, RefCell},
-    sync::atomic::{fence, AtomicUsize, Ordering},
+    collections::HashSet,
+    sync::{
+        atomic::{fence, AtomicU64, AtomicUsize, Ordering},
+        Mutex,
+    },
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
@@ -91,8 +95,9 @@ use tracing_core::{
 #[derive(Debug)]
 pub struct Registry {
     spans: Pool<DataInner>,
+    span_ids: Mutex<HashSet<Id>>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
-    next_filter_id: u8,
+    next_filter_id: AtomicU64,
 }
 
 /// Span data stored in a [`Registry`].
@@ -113,6 +118,25 @@ pub struct Data<'a> {
     inner: Ref<'a, DataInner>,
 }
 
+#[derive(Debug, Default)]
+struct AtomicFilterMap(AtomicU64);
+
+impl AtomicFilterMap {
+    fn from(filter_map: FilterMap) -> Self {
+        Self(filter_map.to_bits().into())
+    }
+
+    fn load(&self) -> FilterMap {
+        let bits = self.0.load(Ordering::Acquire);
+        FilterMap::from_bits(bits)
+    }
+
+    fn store(&self, filter_map: FilterMap) {
+        let bits = filter_map.to_bits();
+        self.0.store(bits, Ordering::Release);
+    }
+}
+
 /// Stored data associated with a span.
 ///
 /// This type is pooled using `sharded_slab::Pool`; when a span is dropped, the
@@ -121,7 +145,7 @@ pub struct Data<'a> {
 /// implementations for this type are load-bearing.
 #[derive(Debug)]
 struct DataInner {
-    filter_map: FilterMap,
+    filter_map: AtomicFilterMap,
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
     ref_count: AtomicUsize,
@@ -136,8 +160,9 @@ impl Default for Registry {
     fn default() -> Self {
         Self {
             spans: Pool::new(),
+            span_ids: Default::default(),
             current_spans: ThreadLocal::new(),
-            next_filter_id: 0,
+            next_filter_id: AtomicU64::new(0),
         }
     }
 }
@@ -201,7 +226,7 @@ impl Registry {
     }
 
     pub(crate) fn has_per_subscriber_filters(&self) -> bool {
-        self.next_filter_id > 0
+        self.next_filter_id.load(Ordering::Acquire) > 0
     }
 
     pub(crate) fn span_stack(&self) -> cell::Ref<'_, SpanStack> {
@@ -252,10 +277,12 @@ impl Collect for Registry {
             .create_with(|data| {
                 data.metadata = attrs.metadata();
                 data.parent = parent;
-                data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
+                let filter_map = FILTERING.with(|filtering| filtering.filter_map());
+                data.filter_map = AtomicFilterMap::from(filter_map);
+
                 #[cfg(debug_assertions)]
                 {
-                    if data.filter_map != FilterMap::default() {
+                    if filter_map != FilterMap::default() {
                         debug_assert!(self.has_per_subscriber_filters());
                     }
                 }
@@ -265,7 +292,10 @@ impl Collect for Registry {
                 *refs = 1;
             })
             .expect("Unable to allocate another span");
-        idx_to_id(id)
+
+        let span_id = idx_to_id(id);
+        self.span_ids.lock().unwrap().insert(span_id.clone());
+        span_id
     }
 
     /// This is intentionally not implemented, as recording fields
@@ -360,6 +390,26 @@ impl Collect for Registry {
         fence(Ordering::Acquire);
         true
     }
+
+    fn rebuild_span_filter_cache(&self, dispatch: &Dispatch) {
+        for id in &*self.span_ids.lock().unwrap() {
+            if let Some(span) = self.get(id) {
+                let old = FILTERING.with(|state| state.replace_filter_map(Default::default()));
+
+                #[cfg(debug_assertions)]
+                let old_counters = FILTERING.with(|state| state.take_counters());
+
+                // Compute filter state for the span
+                dispatch.enabled(span.metadata);
+
+                #[cfg(debug_assertions)]
+                FILTERING.with(|state| state.set_counters(old_counters));
+
+                let filter_map = FILTERING.with(|state| state.replace_filter_map(old));
+                span.filter_map.store(filter_map);
+            }
+        }
+    }
 }
 
 impl<'a> LookupSpan<'a> for Registry {
@@ -370,10 +420,9 @@ impl<'a> LookupSpan<'a> for Registry {
         Some(Data { inner })
     }
 
-    fn register_filter(&mut self) -> FilterId {
-        let id = FilterId::new(self.next_filter_id);
-        self.next_filter_id += 1;
-        id
+    fn register_filter(&self) -> FilterId {
+        let next_filter_id = self.next_filter_id.fetch_add(1, Ordering::SeqCst);
+        FilterId::new((next_filter_id % FilterId::MAX_ID as u64) as u8)
     }
 }
 
@@ -405,6 +454,7 @@ impl<'a> Drop for CloseGuard<'a> {
             // span.
             if c == 1 && self.is_closing {
                 self.registry.spans.clear(id_to_idx(&self.id));
+                self.registry.span_ids.lock().unwrap().remove(&self.id);
             }
         });
     }
@@ -435,7 +485,7 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     #[inline]
     fn is_enabled_for(&self, filter: FilterId) -> bool {
-        self.inner.filter_map.is_enabled(filter)
+        self.inner.filter_map.load().is_enabled(filter)
     }
 }
 
@@ -477,7 +527,7 @@ impl Default for DataInner {
         };
 
         Self {
-            filter_map: FilterMap::default(),
+            filter_map: AtomicFilterMap::default(),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -522,7 +572,7 @@ impl Clear for DataInner {
             })
             .clear();
 
-        self.filter_map = FilterMap::default();
+        self.filter_map = AtomicFilterMap::default();
     }
 }
 
