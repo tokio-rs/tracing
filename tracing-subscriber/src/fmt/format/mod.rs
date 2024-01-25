@@ -1748,7 +1748,7 @@ pub(super) mod test {
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
             current_path()
                 // if we're on Windows, the path might contain backslashes, which
-                // have to be escpaed before compiling the regex.
+                // have to be escaped before compiling the regex.
                 .replace('\\', "\\\\")
         ))
         .unwrap();

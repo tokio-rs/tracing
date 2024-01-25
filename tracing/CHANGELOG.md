@@ -78,7 +78,7 @@ this release!
   filtering, improving performance when a span or event is disabled by a
   `static_max_level_XXX` feature flag (#868) 
 - `LevelFilter` is now a re-export of the `tracing_core::LevelFilter` type, it
-  can now be used interchangably with the versions in `tracing-core` and
+  can now be used interchangeably with the versions in `tracing-core` and
   `tracing-subscriber` (#853)
 - Significant performance improvements when comparing `LevelFilter`s and
   `Level`s (#853)
