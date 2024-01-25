@@ -255,7 +255,7 @@ impl Subscriber for Registry {
                 data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
                 #[cfg(debug_assertions)]
                 {
-                    if data.filter_map != FilterMap::default() {
+                    if data.filter_map != FilterMap::new() {
                         debug_assert!(self.has_per_layer_filters());
                     }
                 }
@@ -481,7 +481,7 @@ impl Default for DataInner {
         };
 
         Self {
-            filter_map: FilterMap::default(),
+            filter_map: FilterMap::new(),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -526,7 +526,7 @@ impl Clear for DataInner {
             })
             .clear();
 
-        self.filter_map = FilterMap::default();
+        self.filter_map = FilterMap::new();
     }
 }
 
