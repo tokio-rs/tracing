@@ -92,7 +92,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     quote!(
         #(#outer_attrs) *
-        #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #output
+        #vis #constness #asyncness #unsafety #abi fn #ident<#gen_params>(#params) #output
         #where_clause
         {
             #(#inner_attrs) *
