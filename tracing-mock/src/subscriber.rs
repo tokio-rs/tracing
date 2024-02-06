@@ -1,5 +1,5 @@
 //! An implementation of the [`Subscribe`] trait which validates that
-//! the `tracing` data it recieves matches  the expected output for a test.
+//! the `tracing` data it receives matches the expected output for a test.
 //!
 //!
 //! The [`MockSubscriber`] is the central component in these tools. The

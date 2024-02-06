@@ -5,7 +5,7 @@
 - **TracedError**: `TracedError`, an error type wrapper that annotates an error
   with the current span.
 - **SpanTrace**:`SpanTrace::status` method and `SpanTraceStatus` type for
-  determing whether a `SpanTrace` was successfully captured (#614)
+  determining whether a `SpanTrace` was successfully captured (#614)
 
 ### Changed
 

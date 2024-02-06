@@ -57,7 +57,7 @@ Thanks to @bdonlan and @jeromegn for contributing to this release!
 ### Changed
 
 - **filter**: `LevelFilter` is now a re-export of the
-  `tracing_core::LevelFilter` type, it can now be used interchangably with the
+  `tracing_core::LevelFilter` type, it can now be used interchangeably with the
   versions in `tracing` and `tracing-core` (#853)
 - **filter**: Significant performance improvements when comparing `LevelFilter`s
   and `Level`s (#853)
@@ -260,7 +260,7 @@ tuning in this release!
 
 - **fmt**: Fixed empty `{}` printed after spans with no fields (f079f2d)
 - **fmt**: Fixed inconsistent formatting when ANSI colors are disabled (506a482)
-- **fmt**: Fixed mis-aligned levels when ANSI colors are disabled (eba1adb)
+- **fmt**: Fixed misaligned levels when ANSI colors are disabled (eba1adb)
 - Fixed warnings on nightly Rust compilers (#558)
 
 # 0.2.0-alpha.5 (January 31, 2020)
@@ -347,9 +347,9 @@ tuning in this release!
   changes in subsequent alpha. (#420, #425)
 - **BREAKING**: Removed `Filter`. Use `EnvFilter` instead (#434)
 
-### Contributers
+### Contributors
 
-Thanks to all the contributers to this release!
+Thanks to all the contributors to this release!
 
 - @pimeys for #377 and #415
 
@@ -375,9 +375,9 @@ Thanks to all the contributers to this release!
   order to initialize the global logger. Only `tracing-log` needs to be
   specified now (#400).
 
-### Contributers
+### Contributors
 
-Thanks to all the contributers to this release!
+Thanks to all the contributors to this release!
 
 - @emschwartz for #385, #387, #400 and #401
 - @bIgBV for #388
