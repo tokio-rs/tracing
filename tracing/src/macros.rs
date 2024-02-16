@@ -1303,14 +1303,14 @@ macro_rules! trace {
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::TRACE, {}, $($arg)+)
@@ -1320,14 +1320,14 @@ macro_rules! trace {
     (name: $name:expr, target: $target:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::TRACE, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::TRACE, {}, $($arg)+)
@@ -1337,14 +1337,14 @@ macro_rules! trace {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($field)* }, $($arg)*)
     );
-    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { ?$($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, { %$($k).+ $($field)* })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::TRACE, {}, $($arg)+)
@@ -1354,14 +1354,14 @@ macro_rules! trace {
     (name: $name:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, { %$($k).+ $($field)* })
     );
     (name: $name:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::TRACE, {}, $($arg)+)
@@ -1580,14 +1580,14 @@ macro_rules! debug {
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::DEBUG, {}, $($arg)+)
@@ -1597,14 +1597,14 @@ macro_rules! debug {
     (name: $name:expr, target: $target:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::DEBUG, {}, $($arg)+)
@@ -1614,14 +1614,14 @@ macro_rules! debug {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($field)* }, $($arg)*)
     );
-    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { ?$($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, { %$($k).+ $($field)* })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::DEBUG, {}, $($arg)+)
@@ -1631,14 +1631,14 @@ macro_rules! debug {
     (name: $name:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, { %$($k).+ $($field)* })
     );
     (name: $name:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::DEBUG, {}, $($arg)+)
@@ -1868,14 +1868,14 @@ macro_rules! info {
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::INFO, {}, $($arg)+)
@@ -1885,14 +1885,14 @@ macro_rules! info {
     (name: $name:expr, target: $target:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::INFO, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::INFO, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::INFO, {}, $($arg)+)
@@ -1902,14 +1902,14 @@ macro_rules! info {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { $($field)* }, $($arg)*)
     );
-    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { ?$($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, { %$($k).+ $($field)* })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::INFO, {}, $($arg)+)
@@ -1919,14 +1919,14 @@ macro_rules! info {
     (name: $name:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, { %$($k).+ $($field)* })
     );
     (name: $name:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::INFO, {}, $($arg)+)
@@ -2149,14 +2149,14 @@ macro_rules! warn {
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::WARN, {}, $($arg)+)
@@ -2166,14 +2166,14 @@ macro_rules! warn {
     (name: $name:expr, target: $target:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::WARN, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::WARN, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::WARN, {}, $($arg)+)
@@ -2183,14 +2183,14 @@ macro_rules! warn {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { $($field)* }, $($arg)*)
     );
-    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { ?$($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, { %$($k).+ $($field)* })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::WARN, {}, $($arg)+)
@@ -2200,14 +2200,14 @@ macro_rules! warn {
     (name: $name:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, { %$($k).+ $($field)* })
     );
     (name: $name:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::WARN, {}, $($arg)+)
@@ -2426,14 +2426,14 @@ macro_rules! error {
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, parent: $parent, $crate::Level::ERROR, {}, $($arg)+)
@@ -2443,14 +2443,14 @@ macro_rules! error {
     (name: $name:expr, target: $target:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { $($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, target: $target:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, target: $target, $crate::Level::ERROR, { %$($k).+ $($field)* })
     );
     (name: $name:expr, target: $target:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, target: $target, $crate::Level::ERROR, {}, $($arg)+)
@@ -2460,14 +2460,14 @@ macro_rules! error {
     (target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($field)* }, $($arg)*)
     );
-    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { ?$($k).+ $($field)* })
     );
-    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (target: $target:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, { %$($k).+ $($field)* })
     );
     (target: $target:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(target: $target, parent: $parent, $crate::Level::ERROR, {}, $($arg)+)
@@ -2477,14 +2477,14 @@ macro_rules! error {
     (name: $name:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { $($field)* }, $($arg)*)
     );
-    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, $($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, ?$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { ?$($k).+ $($field)* })
     );
-    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)+ ) => (
-        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { $($k).+ $($field)+ })
+    (name: $name:expr, parent: $parent:expr, %$($k:ident).+ $($field:tt)* ) => (
+        $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, { %$($k).+ $($field)* })
     );
     (name: $name:expr, parent: $parent:expr, $($arg:tt)+ ) => (
         $crate::event!(name: $name, parent: $parent, $crate::Level::ERROR, {}, $($arg)+)
