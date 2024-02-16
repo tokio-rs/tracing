@@ -591,6 +591,9 @@ fn trace() {
     trace!(target: "foo_events", ?foo, true, "message");
     trace!(target: "foo_events", %foo, true, "message");
     trace!(target: "foo_events", foo, true, "message");
+    trace!(name: "foo", target: "foo_events", ?foo);
+    trace!(name: "foo", target: "foo_events", %foo);
+    trace!(name: "foo", target: "foo_events", foo);
     let foo = DisplayDebug;
     trace!(?foo);
     trace!(%foo);
@@ -648,6 +651,9 @@ fn debug() {
     debug!(target: "foo_events", ?foo, true, "message");
     debug!(target: "foo_events", %foo, true, "message");
     debug!(target: "foo_events", foo, true, "message");
+    debug!(name: "foo", target: "foo_events", ?foo);
+    debug!(name: "foo", target: "foo_events", %foo);
+    debug!(name: "foo", target: "foo_events", foo);
     let foo = DisplayDebug;
     debug!(?foo);
     debug!(%foo);
@@ -705,6 +711,9 @@ fn info() {
     info!(target: "foo_events", ?foo, true, "message");
     info!(target: "foo_events", %foo, true, "message");
     info!(target: "foo_events", foo, true, "message");
+    info!(name: "foo", target: "foo_events", ?foo);
+    info!(name: "foo", target: "foo_events", %foo);
+    info!(name: "foo", target: "foo_events", foo);
     let foo = DisplayDebug;
     info!(?foo);
     info!(%foo);
@@ -762,6 +771,9 @@ fn warn() {
     warn!(target: "foo_events", ?foo, true, "message");
     warn!(target: "foo_events", %foo, true, "message");
     warn!(target: "foo_events", foo, true, "message");
+    warn!(name: "foo", target: "foo_events", ?foo);
+    warn!(name: "foo", target: "foo_events", %foo);
+    warn!(name: "foo", target: "foo_events", foo);
     let foo = DisplayDebug;
     warn!(?foo);
     warn!(%foo);
@@ -819,6 +831,9 @@ fn error() {
     error!(target: "foo_events", ?foo, true, "message");
     error!(target: "foo_events", %foo, true, "message");
     error!(target: "foo_events", foo, true, "message");
+    error!(name: "foo", target: "foo_events", ?foo);
+    error!(name: "foo", target: "foo_events", %foo);
+    error!(name: "foo", target: "foo_events", foo);
     let foo = DisplayDebug;
     error!(?foo);
     error!(%foo);
