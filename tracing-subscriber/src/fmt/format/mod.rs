@@ -897,9 +897,9 @@ impl<F, T> Format<F, T> {
 
     /// Set the function to make extra fields.
     #[cfg(feature = "extra-fields")]
-    pub fn with_make_extra_fields(self, make_trace_id: Box<dyn MakeExtraFields>) -> Self {
+    pub fn with_make_extra_fields(self, make_extra_fields: Box<dyn MakeExtraFields>) -> Self {
         Format {
-            make_extra_fields: Some(make_trace_id),
+            make_extra_fields: Some(make_extra_fields),
             ..self
         }
     }
