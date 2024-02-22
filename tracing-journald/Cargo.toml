@@ -17,11 +17,10 @@ rust-version = "1.63.0"
 
 [dependencies]
 libc = "0.2.126"
-tracing-core = { path = "../tracing-core", version = "0.2" }
+tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"] }
 
 [dev-dependencies]
 serde_json = "1.0.82"
 serde = { version = "1.0.139", features = ["derive"] }
 tracing = { path = "../tracing", version = "0.2" }
-
