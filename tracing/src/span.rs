@@ -661,7 +661,7 @@ impl Span {
     ///   the future yields.
     ///
     ///   `Instrument` can be used with an async block inside an async function:
-    ///   ```ignore
+    ///   ```rust
     ///   # use tracing::info_span;
     ///   use tracing::Instrument;
     ///
@@ -685,7 +685,7 @@ impl Span {
     ///
     ///   It can also be used to instrument calls to async functions at the
     ///   callsite:
-    ///   ```ignore
+    ///   ```rust
     ///   # use tracing::debug_span;
     ///   use tracing::Instrument;
     ///
@@ -702,7 +702,7 @@ impl Span {
     /// * The [`#[instrument]` attribute macro][attr] can automatically generate
     ///   correct code when used on an async function:
     ///
-    ///   ```ignore
+    ///   ```rust
     ///   # async fn some_other_async_function() {}
     ///   #[tracing::instrument(level = "info")]
     ///   async fn my_async_function() {
