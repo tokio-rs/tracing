@@ -83,6 +83,34 @@ fn repro_1831_2() -> impl Future<Output = Result<(), Infallible>> {
     async { Ok(()) }
 }
 
+// This checks that a Fn or FnMut can be instrumented
+#[allow(dead_code)] // this is just here to test whether it compiles.
+#[tracing::instrument(ret(Debug))]
+fn repro_2857(x: &mut ()) -> &mut () {
+    x
+}
+
+// This checks that a Fn or FnMut can be instrumented
+#[allow(dead_code)] // this is just here to test whether it compiles.
+#[tracing::instrument(ret(Debug))]
+async fn repro_2857_2(x: &mut ()) -> &mut () {
+    x
+}
+
+// This checks that a Fn or FnMut can be instrumented
+#[allow(dead_code)] // this is just here to test whether it compiles.
+#[tracing::instrument(err(Debug))]
+fn repro_2857_3(x: &()) -> Result<(), &()> {
+    Ok(())
+}
+
+// This checks that a Fn or FnMut can be instrumented
+#[allow(dead_code)] // this is just here to test whether it compiles.
+#[tracing::instrument(err(Debug))]
+async fn repro_2857_4(x: &()) -> Result<(), &()> {
+    Ok(())
+}
+
 #[test]
 fn async_fn_only_enters_for_polls() {
     let (subscriber, handle) = subscriber::mock()

@@ -63,6 +63,10 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // The `#[allow(..)]` is given because the return statement is
     // unreachable, but does affect inference, so it needs to be written
     // exactly that way for it to do its magic.
+    //
+    // Additionally drop a non-copy variable that we have moved inside the block
+    // so that the instrumented function is `FnOnce`. Otherwise, there may be
+    // issues with lifetimes of returned refereces.
     let fake_return_edge = quote_spanned! {return_span=>
         #[allow(
             unknown_lints, unreachable_code, clippy::diverging_sub_expression,
@@ -70,6 +74,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
             clippy::empty_loop
         )]
         if false {
+            drop(__tracing_attr_fn_once_move);
             let __tracing_attr_fake_return: #return_type = loop {};
             return __tracing_attr_fake_return;
         }
@@ -274,9 +279,10 @@ fn gen_block<B: ToTokens>(
     // If `ret` is in args, instrument any resulting `Ok`s when the function
     // returns `Result`s, otherwise instrument any resulting values.
     if async_context {
-        let mk_fut = match (err_event, ret_event) {
+        let mk_fut = match (err_event, ret_event.clone()) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
+                    let __tracing_attr_fn_once_move = [&mut(); 0];
                     match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
@@ -292,6 +298,7 @@ fn gen_block<B: ToTokens>(
             ),
             (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
+                    let __tracing_attr_fn_once_move = [&mut(); 0];
                     match async move #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
@@ -304,13 +311,17 @@ fn gen_block<B: ToTokens>(
             ),
             (None, Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
+                    let __tracing_attr_fn_once_move = [&mut(); 0];
                     let x = async move #block.await;
                     #ret_event;
                     x
                 }
             ),
             (None, None) => quote_spanned!(block.span()=>
-                async move #block
+                {
+                    let __tracing_attr_fn_once_move = [&mut(); 0];
+                    async move #block
+                }
             ),
         };
 
@@ -354,7 +365,11 @@ fn gen_block<B: ToTokens>(
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            let result = {
+                let __tracing_attr_fn_once_move = [&mut(); 0];
+                move || #block
+            }();
+            match (result) {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => {
                     #ret_event;
@@ -369,7 +384,11 @@ fn gen_block<B: ToTokens>(
         (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            let result = {
+                let __tracing_attr_fn_once_move = [&mut(); 0];
+                move || #block
+            }();
+            match (result) {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
@@ -381,7 +400,10 @@ fn gen_block<B: ToTokens>(
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
-            let x = (move || #block)();
+            let x = {
+                let __tracing_attr_fn_once_move = [&mut(); 0];
+                move || #block
+            }();
             #ret_event;
             x
         ),
@@ -393,6 +415,7 @@ fn gen_block<B: ToTokens>(
             #[allow(clippy::suspicious_else_formatting)]
             {
                 #span
+                let __tracing_attr_fn_once_move = [&mut(); 0];
                 // ...but turn the lint back on inside the function body.
                 #[warn(clippy::suspicious_else_formatting)]
                 #block
