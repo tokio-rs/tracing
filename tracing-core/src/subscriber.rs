@@ -279,9 +279,9 @@ pub trait Subscriber: 'static {
     /// but values for them won't be recorded at this time.
     ///
     /// ```rust,ignore
-    /// # use tracing::span;
+    /// use tracing::{field::Empty, span};
     ///
-    /// let mut span = span!("my_span", foo = 3, bar, baz);
+    /// let mut span = span!("my_span", foo = 3, bar = Empty, baz = Empty);
     ///
     /// // `Subscriber::record` will be called with a `Record`
     /// // containing "bar = false"
