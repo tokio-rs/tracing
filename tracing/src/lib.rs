@@ -155,9 +155,9 @@
 //! fields using `fmt::Debug`.
 //!
 //! For example:
-//! ```ignore
-//! # // this doctest is ignored because we don't have a way to say
-//! # // that it should only be run with cfg(feature = "attributes")
+//! ```
+//! # #[cfg(feature = "attributes")]
+//! # {
 //! use tracing::{Level, event, instrument};
 //!
 //! #[instrument]
@@ -168,6 +168,7 @@
 //!     // ...
 //! }
 //! # fn main() {}
+//! # }
 //! ```
 //!
 //! For functions which don't have built-in tracing support and can't have

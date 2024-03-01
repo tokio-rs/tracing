@@ -336,7 +336,10 @@ impl OffsetTime<well_known::Rfc3339> {
     /// ```
     /// use tracing_subscriber::fmt::time::OffsetTime;
     ///
+    /// # /*
     /// #[tokio::main]
+    /// # */
+    /// # #[tokio::main(flavor = "current_thread")]
     /// async fn run() {
     ///     tracing::info!("runtime initialized");
     ///
