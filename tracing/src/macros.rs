@@ -1547,7 +1547,6 @@ macro_rules! trace {
         $crate::event!(
             target: module_path!(),
             $crate::Level::TRACE,
-            {},
             $($arg)+
         )
     );
@@ -1824,7 +1823,6 @@ macro_rules! debug {
         $crate::event!(
             target: module_path!(),
             $crate::Level::DEBUG,
-            {},
             $($arg)+
         )
     );
@@ -2112,7 +2110,6 @@ macro_rules! info {
         $crate::event!(
             target: module_path!(),
             $crate::Level::INFO,
-            {},
             $($arg)+
         )
     );
@@ -2393,7 +2390,6 @@ macro_rules! warn {
         $crate::event!(
             target: module_path!(),
             $crate::Level::WARN,
-            {},
             $($arg)+
         )
     );
@@ -2670,7 +2666,6 @@ macro_rules! error {
         $crate::event!(
             target: module_path!(),
             $crate::Level::ERROR,
-            {},
             $($arg)+
         )
     );

@@ -527,6 +527,12 @@ fn constant_field_name() {
     let (subscriber, handle) = subscriber::mock()
         .event(expect_event())
         .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
         .only()
         .run_with_handle();
 
@@ -546,6 +552,54 @@ fn constant_field_name() {
                 { "constant string" } = "also works",
                 foo.bar = "baz",
             },
+            "quux"
+        );
+        tracing::info!(
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "quux"
+        );
+        tracing::info!(
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "quux"
+        );
+        tracing::event!(
+            Level::INFO,
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "{}",
+            "quux"
+        );
+        tracing::event!(
+            Level::INFO,
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "{}",
+            "quux"
+        );
+        tracing::info!(
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "{}",
+            "quux"
+        );
+        tracing::info!(
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "{}",
             "quux"
         );
     });
