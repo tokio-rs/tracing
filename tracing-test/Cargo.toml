@@ -19,7 +19,7 @@ rust-version = "1.49.0"
 publish = false
 
 [dependencies]
-tokio-test = "0.4.2"
+tokio-test = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true

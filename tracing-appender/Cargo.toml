@@ -22,9 +22,9 @@ rust-version = "1.53.0"
 
 [dependencies]
 crossbeam-channel = "0.5.5"
-time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
-parking_lot = { optional = true, version = "0.12.1" }
-thiserror = "1.0.31"
+time = { workspace = true, default-features = false, features = ["formatting", "parsing"] }
+parking_lot = { workspace = true, optional = true }
+thiserror = { workspace = true }
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"
@@ -35,8 +35,8 @@ features = ["fmt", "std"]
 [dev-dependencies]
 criterion = { version = "0.3.6", default_features = false }
 tracing = { path = "../tracing", version = "0.2" }
-time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
-tempfile = "3.3.0"
+time = { workspace = true, default-features = false, features = ["formatting", "parsing"] }
+tempfile = { workspace = true }
 
 [[bench]]
 name = "bench"

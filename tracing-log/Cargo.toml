@@ -24,8 +24,8 @@ log-tracer = []
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2"}
-log = "0.4.17"
-once_cell = "1.13.0"
+log = { workspace = true }
+once_cell = { workspace = true }
 env_logger = { version = "0.8.4", optional = true }
 
 [dev-dependencies]
