@@ -338,7 +338,13 @@ where
     where
         S: for<'lookup> LookupSpan<'lookup>,
     {
-        Some(self.span(id)?.scope())
+        // Here we don't use the `span` function because we 
+        // don't want to handle filtering at this point.
+        // Instead, we let the scope iterator filter spans
+        // including the current span.
+        let span = self.subscriber.as_ref()?.span(id)?;
+
+        Some(span.scope())
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
