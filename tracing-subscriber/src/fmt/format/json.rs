@@ -354,10 +354,6 @@ impl<'a> FormatFields<'a> for JsonFields {
     }
 
     /// Record additional field(s) on an existing span.
-    ///
-    /// By default, this appends a space to the current set of fields if it is
-    /// non-empty, and then calls `self.format_fields`. If different behavior is
-    /// required, the default implementation of this method can be overridden.
     fn add_fields(
         &self,
         current: &'a mut FormattedFields<Self>,
@@ -395,6 +391,23 @@ impl<'a> FormatFields<'a> for JsonFields {
         fields.record(&mut v);
         v.finish()?;
         current.fields = new;
+
+        Ok(())
+    }
+
+    fn merge_fields(
+            &self,
+            current: &'a mut FormattedFields<Self>,
+            other: FormattedFields<Self>,
+        ) -> fmt::Result {
+        let mut current_map: BTreeMap<&'_ str, serde_json::Value> =
+            serde_json::from_str(current).map_err(|_| fmt::Error)?;
+        let other_map: BTreeMap<&'_ str, serde_json::Value> =
+            serde_json::from_str(other.as_str()).map_err(|_| fmt::Error)?;
+
+        current_map.extend(other_map);
+
+        current.fields = serde_json::to_string(&current_map).map_err(|_| fmt::Error)?;
 
         Ok(())
     }
