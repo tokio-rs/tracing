@@ -264,6 +264,15 @@ impl Builder {
     pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender, InitError> {
         RollingFileAppender::from_builder(self, directory)
     }
+
+    #[cfg(test)]
+    pub(super) fn build_with_now(
+        &self,
+        directory: impl AsRef<Path>,
+        now: Box<dyn Fn() -> time::OffsetDateTime + Send + Sync>,
+    ) -> Result<RollingFileAppender, InitError> {
+        RollingFileAppender::from_builder_with_custom_now(self, directory, now)
+    }
 }
 
 impl Default for Builder {
