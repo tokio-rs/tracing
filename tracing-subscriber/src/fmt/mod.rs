@@ -815,6 +815,33 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
             inner: self.inner.with_span_list(display_span_list),
         }
     }
+
+    /// Formats all fields of the current span at root level.
+    ///
+    /// See [`format::Json`] for details.
+    pub fn flatten_current_span(
+        self,
+        flatten_current_span: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.flatten_current_span(flatten_current_span),
+        }
+    }
+
+    /// Formats all fields of the span list at root level, overwritting
+    /// colliding fields from root to leaf.
+    ///
+    /// See [`format::Json`] for details.
+    pub fn flatten_span_list(
+        self,
+        flatten_span_list: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.flatten_span_list(flatten_span_list),
+        }
+    }
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
