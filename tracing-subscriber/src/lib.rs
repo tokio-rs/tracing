@@ -74,6 +74,8 @@
 //!   than `Vec`) as a performance optimization. Enabled by default.
 //! - [`parking_lot`]: Use the `parking_lot` crate's `RwLock` implementation
 //!   rather than the Rust standard library's implementation.
+//! - `wasm-bindgen`: Uses the [`web-time`] crate to allow `Uptime` and `SystemTime` to
+//!   be used in browsers.
 //!
 //! ### `no_std` Support
 //!
@@ -129,6 +131,7 @@
 //! [`time` crate]: https://crates.io/crates/time
 //! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
+//! [`web-time`]: https://crates.io/crates/web-time
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",

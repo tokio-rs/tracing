@@ -1,7 +1,18 @@
 //! Formatters for event timestamps.
 use crate::fmt::format::Writer;
 use std::fmt;
-use std::time::Instant;
+#[cfg(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+))]
+use web_time as time;
+#[cfg(not(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+)))]
+use std::time as time;
 
 mod datetime;
 
@@ -112,19 +123,19 @@ pub struct SystemTime;
 /// The `Default` implementation for `Uptime` makes the epoch the current time.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Uptime {
-    epoch: Instant,
+    epoch: time::Instant,
 }
 
 impl Default for Uptime {
     fn default() -> Self {
         Uptime {
-            epoch: Instant::now(),
+            epoch: time::Instant::now(),
         }
     }
 }
 
-impl From<Instant> for Uptime {
-    fn from(epoch: Instant) -> Self {
+impl From<time::Instant> for Uptime {
+    fn from(epoch: time::Instant) -> Self {
         Uptime { epoch }
     }
 }
@@ -134,7 +145,7 @@ impl FormatTime for SystemTime {
         write!(
             w,
             "{}",
-            datetime::DateTime::from(std::time::SystemTime::now())
+            datetime::DateTime::from(time::SystemTime::now())
         )
     }
 }
