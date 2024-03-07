@@ -108,6 +108,7 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    max_file_size: Option<u64>,
 }
 
 // === impl RollingFileAppender ===
@@ -190,6 +191,7 @@ impl RollingFileAppender {
             ref prefix,
             ref suffix,
             ref max_files,
+            ref max_file_size,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -200,6 +202,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            *max_file_size,
         )?;
         Ok(Self {
             state,
@@ -227,6 +230,8 @@ impl io::Write for RollingFileAppender {
             let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
             self.state.refresh_writer(now, writer);
+        } else if self.state.should_rollover_due_to_size(writer) {
+            self.state.refresh_writer(now, writer);
         }
         writer.write(buf)
     }
@@ -248,6 +253,8 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
             if self.state.advance_date(now, current_time) {
                 self.state.refresh_writer(now, &mut self.writer.write());
             }
+        } else if self.state.should_rollover_due_to_size(&self.writer.write()) {
+            self.state.refresh_writer(now, &mut self.writer.write());
         }
         RollingWriter(self.writer.read())
     }
@@ -370,6 +377,38 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
+/// Creates a size based rolling file appender.
+///
+/// The appender returned by `rolling::size` can be used with `non_blocking` to create
+/// a non-blocking, size based rotating appender.
+///
+/// The location of the log file will be specified by the `directory` passed in.
+/// `file_name` specifies the complete name of the log file.
+/// `RollingFileAppender` automatically appends the current date in UTC.
+///
+/// # Examples
+///
+/// ``` rust
+/// # #[clippy::allow(needless_doctest_main)]
+/// fn main () {
+/// # fn doc() {
+///     let appender = tracing_appender::rolling::size("/some/path", "rolling.log");
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///
+///     tracing::collect::with_default(collector.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// # }
+/// }
+/// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log`.
+pub fn size(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::SIZE, directory, file_name)
+}
+
 /// Creates a non-rolling file appender.
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
@@ -444,6 +483,7 @@ enum RotationKind {
     Minutely,
     Hourly,
     Daily,
+    Size,
     Never,
 }
 
@@ -454,6 +494,8 @@ impl Rotation {
     pub const HOURLY: Self = Self(RotationKind::Hourly);
     /// Provides a daily rotation
     pub const DAILY: Self = Self(RotationKind::Daily);
+    /// Provides a size based rotation
+    pub const SIZE: Self = Self(RotationKind::Size);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
@@ -462,6 +504,7 @@ impl Rotation {
             Rotation::MINUTELY => *current_date + Duration::minutes(1),
             Rotation::HOURLY => *current_date + Duration::hours(1),
             Rotation::DAILY => *current_date + Duration::days(1),
+            Rotation::SIZE => return None,
             Rotation::NEVER => return None,
         };
         Some(self.round_date(&unrounded_next_date))
@@ -485,6 +528,10 @@ impl Rotation {
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
+            // Rotation::SIZE is impossible to round.
+            Rotation::SIZE => {
+                unreachable!("Rotation::SIZE is impossible to round.")
+            }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
                 unreachable!("Rotation::NEVER is impossible to round.")
@@ -497,6 +544,9 @@ impl Rotation {
             Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::SIZE => format_description::parse(
+                "[year]-[month]-[day]-[hour]-[minute]-[second]-[subsecond]",
+            ),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
@@ -525,6 +575,7 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
+        max_file_size: Option<u64>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
@@ -542,6 +593,7 @@ impl Inner {
             ),
             rotation,
             max_files,
+            max_file_size,
         };
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
@@ -674,6 +726,23 @@ impl Inner {
         None
     }
 
+    /// Checks whether or not the file needs to rollover because it reached the size limit.
+    ///
+    /// If this method returns `true`, we should roll to a new log file.
+    /// Otherwise, if this returns `false` we should not rotate the log file.
+    fn should_rollover_due_to_size(&self, current_file: &File) -> bool {
+        current_file.sync_all().ok();
+        if let (Ok(file_metadata), Some(max_file_size), &Rotation::SIZE) =
+            (current_file.metadata(), self.max_file_size, &self.rotation)
+        {
+            if file_metadata.len() >= max_file_size {
+                return true;
+            }
+        }
+
+        false
+    }
+
     fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
         let next_date = self
             .rotation
@@ -762,6 +831,11 @@ mod test {
     }
 
     #[test]
+    fn write_size_log() {
+        test_appender(Rotation::SIZE, "size.log");
+    }
+
+    #[test]
     fn write_never_log() {
         test_appender(Rotation::NEVER, "never.log");
     }
@@ -782,6 +856,11 @@ mod test {
         let now = OffsetDateTime::now_utc();
         let next = Rotation::DAILY.next_date(&now).unwrap();
         assert_eq!((now + Duration::DAY).day(), next.day());
+
+        // size
+        let now = OffsetDateTime::now_utc();
+        let next = Rotation::SIZE.next_date(&now);
+        assert!(next.is_none());
 
         // never
         let now = OffsetDateTime::now_utc();
@@ -829,6 +908,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                None,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -860,6 +940,12 @@ mod test {
                 suffix: None,
             },
             TestCase {
+                expected: "app.log.2020-02-01-10-01-00-0",
+                rotation: Rotation::SIZE,
+                prefix: Some("app.log"),
+                suffix: None,
+            },
+            TestCase {
                 expected: "app.log",
                 rotation: Rotation::NEVER,
                 prefix: Some("app.log"),
@@ -885,6 +971,12 @@ mod test {
                 suffix: Some("log"),
             },
             TestCase {
+                expected: "app.2020-02-01-10-01-00-0.log",
+                rotation: Rotation::SIZE,
+                prefix: Some("app"),
+                suffix: Some("log"),
+            },
+            TestCase {
                 expected: "app.log",
                 rotation: Rotation::NEVER,
                 prefix: Some("app"),
@@ -906,6 +998,12 @@ mod test {
             TestCase {
                 expected: "2020-02-01.log",
                 rotation: Rotation::DAILY,
+                prefix: None,
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "2020-02-01-10-01-00-0.log",
+                rotation: Rotation::SIZE,
                 prefix: None,
                 suffix: Some("log"),
             },
@@ -939,6 +1037,7 @@ mod test {
             Rotation::HOURLY,
             directory.path(),
             Some("test_make_writer".to_string()),
+            None,
             None,
             None,
         )
@@ -1023,6 +1122,7 @@ mod test {
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            None,
         )
         .unwrap();
 
@@ -1104,6 +1204,81 @@ mod test {
                 }
                 x => panic!("unexpected date {}", x),
             }
+        }
+    }
+
+    #[test]
+    fn test_size_based_rolling() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        const MAX_FILE_SIZE: u64 = 1024;
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::SIZE,
+            directory.path(),
+            Some("test_max_file_size".to_string()),
+            None,
+            Some(5),
+            Some(MAX_FILE_SIZE),
+        )
+        .unwrap();
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        for file_num in 0..5 {
+            for i in 0..58 {
+                tracing::info!("file {} content {}", file_num, i);
+                (*clock.lock().unwrap()) += Duration::milliseconds(1);
+            }
+        }
+
+        drop(default);
+
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+            let path = entry.expect("Expected dir entry").path();
+            let file_fd = fs::File::open(&path).expect("Failed to open file");
+            let file_metadata = file_fd.metadata().expect("Failed to get file metadata");
+            println!(
+                "path={}\nfile_len={:?}",
+                path.display(),
+                file_metadata.len()
+            );
+            let file = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), file);
+
+            assert_eq!(
+                MAX_FILE_SIZE + 10,
+                file_metadata.len(),
+                "expected size = {:?}, file size = {:?}",
+                MAX_FILE_SIZE,
+                file_metadata.len(),
+            );
         }
     }
 }
