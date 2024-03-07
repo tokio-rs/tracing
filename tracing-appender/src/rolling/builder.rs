@@ -11,6 +11,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) max_file_size: Option<u64>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -42,11 +43,13 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
     /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
+    /// | [`max_file_size`] | `None` | By default, there is no limit for maximum log file size. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
+    /// ['max_file_size`]: Self::max_file_size
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -54,6 +57,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            max_file_size: None,
         }
     }
 
@@ -229,6 +233,32 @@ impl Builder {
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
             max_files: Some(n),
+            ..self
+        }
+    }
+
+    /// Limits the file size to `n` bytes on disk, when using SIZE rotation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    /// use tracing_appender::rolling::Rotation;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .rotation(Rotation::SIZE) // rotate log files when they reach a certain size
+    ///     .max_file_size(1024) // only the most recent 5 log files will be kept
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn max_file_size(self, n: u64) -> Self {
+        Self {
+            max_file_size: Some(n),
             ..self
         }
     }
