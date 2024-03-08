@@ -49,7 +49,7 @@ impl Builder {
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
-    /// ['max_file_size`]: Self::max_file_size
+    /// [`max_file_size`]: Self::max_file_size
     #[must_use]
     pub const fn new() -> Self {
         Self {
