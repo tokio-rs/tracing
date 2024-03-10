@@ -109,12 +109,18 @@ mod expand;
 ///
 /// Additional fields (key-value pairs with arbitrary data) can be passed to
 /// to the generated span through the `fields` argument on the
-/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
-/// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported.
+/// `#[instrument]` macro. Strings, integers or boolean literals are accepted
+/// values for each field. The name of the field may be a nested (dotted) field
+/// name.
+///
+/// When an additional field does not include a value and does not shadow a
+/// function argument name, [`Empty`](tracing-core::field::Empty) will be
+/// inserted and this field can be recorded later with
+/// [`Span::record`](tracing::Span::record).
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
-/// will result in a compile error.
+/// will result in recording the value provided in the attribute and ignoring
+/// the value passed as a function argument.
 ///
 /// # Examples
 /// Instrumenting a function:
@@ -216,6 +222,20 @@ mod expand;
 /// # use tracing_attributes::instrument;
 /// #[instrument(fields(foo="bar", id=1, show=true))]
 /// fn my_function(arg: usize) {
+///     // ...
+/// }
+/// ```
+///
+/// To add additional context not known at the time of the function call, add a
+/// field without a value.
+///
+/// ```
+/// # use tracing::Span;
+/// # use tracing_attributes::instrument;
+/// #[instrument(fields(foo="bar", id))]
+/// fn my_function(arg: usize) {
+///     // ...
+///     Span::current().record("id", 1);
 ///     // ...
 /// }
 /// ```
