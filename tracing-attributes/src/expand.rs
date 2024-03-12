@@ -277,7 +277,8 @@ fn gen_block<B: ToTokens>(
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    match async move #block.await {
+                    let __match_scrutinee = async move #block.await;
+                    match  __match_scrutinee {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
                             #ret_event;
