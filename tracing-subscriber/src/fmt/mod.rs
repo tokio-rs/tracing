@@ -133,9 +133,12 @@
 //! variables, you can use the [`EnvFilter`] as follows:
 //!
 //! ```rust
+//! # #[cfg(feature = "env-filter")]
+//! # {
 //! use tracing_subscriber::EnvFilter;
 //!
 //! let filter = EnvFilter::from_default_env();
+//! # }
 //! ```
 //!
 //! As mentioned above, the [`EnvFilter`] allows `Span`s and `Event`s to
@@ -166,6 +169,8 @@
 //! Composing an [`EnvFilter`] `Layer` and a [format `Layer`][super::fmt::Layer]:
 //!
 //! ```rust
+//! # #[cfg(feature = "env-filter")]
+//! # {
 //! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::prelude::*;
 //!
@@ -179,6 +184,7 @@
 //!     .with(filter_layer)
 //!     .with(fmt_layer)
 //!     .init();
+//! # }
 //! ```
 //!
 //! [`EnvFilter`]: super::filter::EnvFilter
@@ -1231,10 +1237,13 @@ pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 /// If the `env-filter` feature is enabled, this is shorthand for
 ///
 /// ```rust
+/// # #[cfg(feature = "env-filter")]
+/// # {
 /// # use tracing_subscriber::EnvFilter;
 /// tracing_subscriber::fmt()
 ///     .with_env_filter(EnvFilter::from_default_env())
 ///     .init();
+/// # }
 /// ```
 ///
 /// # Panics
