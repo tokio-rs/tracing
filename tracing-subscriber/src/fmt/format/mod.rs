@@ -1732,7 +1732,7 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[39m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
         assert_info_hello_ansi(true, expected);
     }
 
