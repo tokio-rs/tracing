@@ -46,7 +46,7 @@ use tracing_core::{
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
-use nu_ansi_term::{Color, Style};
+use owo_colors::{OwoColorize, Style};
 
 #[cfg(feature = "json")]
 mod json;
@@ -977,16 +977,16 @@ where
             let mut seen = false;
 
             for span in scope.from_root() {
-                write!(writer, "{}", bold.paint(span.metadata().name()))?;
+                write!(writer, "{}", span.metadata().name().style(bold))?;
                 seen = true;
 
                 let ext = span.extensions();
                 if let Some(fields) = &ext.get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
-                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                        write!(writer, "{}{}{}", "{".style(bold), fields, "}".style(bold))?;
                     }
                 }
-                write!(writer, "{}", dimmed.paint(":"))?;
+                write!(writer, "{}", ":".style(dimmed))?;
             }
 
             if seen {
@@ -998,8 +998,8 @@ where
             write!(
                 writer,
                 "{}{} ",
-                dimmed.paint(meta.target()),
-                dimmed.paint(":")
+                meta.target().style(dimmed),
+                ":".style(dimmed)
             )?;
         }
 
@@ -1014,8 +1014,8 @@ where
                 write!(
                     writer,
                     "{}{}{}",
-                    dimmed.paint(filename),
-                    dimmed.paint(":"),
+                    filename.style(dimmed),
+                    ":".style(dimmed),
                     if line_number.is_some() { "" } else { " " }
                 )?;
             }
@@ -1024,10 +1024,9 @@ where
         if let Some(line_number) = line_number {
             write!(
                 writer,
-                "{}{}:{} ",
-                dimmed.prefix(),
-                line_number,
-                dimmed.suffix()
+                "{}{} ",
+                line_number.style(dimmed),
+                ":".style(dimmed)
             )?;
         }
 
@@ -1081,27 +1080,20 @@ where
             write!(
                 writer,
                 "{}{}",
-                dimmed.paint(meta.target()),
-                dimmed.paint(":")
+                meta.target().style(dimmed),
+                ":".style(dimmed)
             )?;
         }
 
         if self.display_filename {
             if let Some(filename) = meta.file() {
-                write!(writer, "{}{}", dimmed.paint(filename), dimmed.paint(":"))?;
+                write!(writer, "{}{}", filename.style(dimmed), ":".style(dimmed))?;
             }
         }
 
         if self.display_line_number {
             if let Some(line_number) = meta.line() {
-                write!(
-                    writer,
-                    "{}{}{}{}",
-                    dimmed.prefix(),
-                    line_number,
-                    dimmed.suffix(),
-                    dimmed.paint(":")
-                )?;
+                write!(writer, "{}{}", line_number.style(dimmed), ":".style(dimmed))?;
             }
         }
 
@@ -1111,7 +1103,7 @@ where
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
-                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
+                    write!(writer, " {}", fields.fields.style(dimmed))?;
                 }
             }
         }
@@ -1223,9 +1215,9 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
                 &format_args!(
                     "{} {}{}{}{}",
                     value,
-                    italic.paint(field.name()),
-                    italic.paint(".sources"),
-                    self.writer.dimmed().paint("="),
+                    field.name().style(italic),
+                    ".sources".style(italic),
+                    "=".style(self.writer.dimmed()),
                     ErrorSourceList(source)
                 ),
             )
@@ -1248,15 +1240,15 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
-                self.writer.italic().paint(&name[2..]),
-                self.writer.dimmed().paint("="),
+                (&name[2..]).style(self.writer.italic()),
+                "=".style(self.writer.dimmed()),
                 value
             ),
             name => write!(
                 self.writer,
                 "{}{}{:?}",
-                self.writer.italic().paint(name),
-                self.writer.dimmed().paint("="),
+                name.style(self.writer.italic()),
+                "=".style(self.writer.dimmed()),
                 value
             ),
         };
@@ -1417,11 +1409,11 @@ impl<F: LevelNames> fmt::Display for FmtLevel<F> {
         {
             if self.ansi {
                 return match self.level {
-                    Level::TRACE => write!(f, "{}", Color::Purple.paint(F::TRACE_STR)),
-                    Level::DEBUG => write!(f, "{}", Color::Blue.paint(F::DEBUG_STR)),
-                    Level::INFO => write!(f, "{}", Color::Green.paint(F::INFO_STR)),
-                    Level::WARN => write!(f, "{}", Color::Yellow.paint(F::WARN_STR)),
-                    Level::ERROR => write!(f, "{}", Color::Red.paint(F::ERROR_STR)),
+                    Level::TRACE => write!(f, "{}", F::TRACE_STR.purple()),
+                    Level::DEBUG => write!(f, "{}", F::DEBUG_STR.blue()),
+                    Level::INFO => write!(f, "{}", F::INFO_STR.green()),
+                    Level::WARN => write!(f, "{}", F::WARN_STR.yellow()),
+                    Level::ERROR => write!(f, "{}", F::ERROR_STR.red()),
                 };
             }
         }
@@ -1646,6 +1638,58 @@ impl Display for TimingDisplay {
         }
         write!(f, "{:.0}s", t * 1000.0)
     }
+}
+
+// Workaround for https://github.com/jam1garner/owo-colors/issues/123
+macro_rules! impl_style_fmt {
+    ($($trait:path),* $(,)?) => {
+        $(
+            impl $trait for StylePrefix<'_> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.style.fmt_prefix(f)
+                }
+            }
+            impl $trait for StyleSuffix<'_> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.style.fmt_suffix(f)
+                }
+            }
+        )*
+    };
+}
+
+pub(crate) trait StyleExt {
+    fn prefix(&self) -> StylePrefix<'_>;
+    fn suffix(&self) -> StyleSuffix<'_>;
+}
+
+impl StyleExt for Style {
+    fn prefix(&self) -> StylePrefix<'_> {
+        StylePrefix { style: self }
+    }
+    fn suffix(&self) -> StyleSuffix<'_> {
+        StyleSuffix { style: self }
+    }
+}
+
+pub(crate) struct StylePrefix<'a> {
+    style: &'a Style,
+}
+
+pub(crate) struct StyleSuffix<'a> {
+    style: &'a Style,
+}
+
+impl_style_fmt! {
+    fmt::Display,
+    fmt::Debug,
+    fmt::UpperHex,
+    fmt::LowerHex,
+    fmt::Binary,
+    fmt::UpperExp,
+    fmt::LowerExp,
+    fmt::Octal,
+    fmt::Pointer,
 }
 
 #[cfg(test)]

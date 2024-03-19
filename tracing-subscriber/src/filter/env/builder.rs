@@ -223,7 +223,7 @@ impl Builder {
                     let bold = Style::new().bold();
                     let mut warning = Color::Yellow.paint("warning");
                     warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
+                    format!("{}{} {}", warning, ":".style(bold), msg.style(bold))
                 };
                 eprintln!("{}", msg);
             };

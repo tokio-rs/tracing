@@ -14,8 +14,6 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-use nu_ansi_term::{Color, Style};
-
 /// An excessively pretty, human-readable event formatter.
 ///
 /// Unlike the [`Full`], [`Compact`], and [`Json`] formatters, this is a
@@ -143,11 +141,11 @@ impl Default for Pretty {
 impl Pretty {
     fn style_for(level: &Level) -> Style {
         match *level {
-            Level::TRACE => Style::new().fg(Color::Purple),
-            Level::DEBUG => Style::new().fg(Color::Blue),
-            Level::INFO => Style::new().fg(Color::Green),
-            Level::WARN => Style::new().fg(Color::Yellow),
-            Level::ERROR => Style::new().fg(Color::Red),
+            Level::TRACE => Style::new().purple(),
+            Level::DEBUG => Style::new().blue(),
+            Level::INFO => Style::new().green(),
+            Level::WARN => Style::new().yellow(),
+            Level::ERROR => Style::new().red(),
         }
     }
 
@@ -204,13 +202,7 @@ where
             } else {
                 style
             };
-            write!(
-                writer,
-                "{}{}{}:",
-                target_style.prefix(),
-                meta.target(),
-                target_style.infix(style)
-            )?;
+            write!(writer, "{}:", meta.target().style(target_style),)?;
         }
         let line_number = if self.display_line_number {
             meta.line()
@@ -226,13 +218,7 @@ where
             self.display_filename,
             self.format.display_location,
         ) {
-            write!(
-                writer,
-                "{}{}{}:",
-                style.prefix(),
-                line_number,
-                style.infix(style)
-            )?;
+            write!(writer, "{}:", line_number.style(style),)?;
         }
 
         writer.write_char(' ')?;
@@ -254,7 +240,7 @@ where
             self.format.display_location,
             self.display_filename,
         ) {
-            write!(writer, "    {} {}", dimmed.paint("at"), file,)?;
+            write!(writer, "    {} {}", "at".style(dimmed), file,)?;
 
             if let Some(line) = line_number {
                 write!(writer, ":{}", line)?;
@@ -265,7 +251,7 @@ where
         };
 
         if thread {
-            write!(writer, "{} ", dimmed.paint("on"))?;
+            write!(writer, "{} ", "on".style(dimmed))?;
             let thread = std::thread::current();
             if self.display_thread_name {
                 if let Some(name) = thread.name() {
@@ -295,16 +281,16 @@ where
                 write!(
                     writer,
                     "    {} {}::{}",
-                    dimmed.paint("in"),
+                    "in".style(dimmed),
                     meta.target(),
-                    bold.paint(meta.name()),
+                    meta.name().style(bold),
                 )?;
             } else {
                 write!(
                     writer,
                     "    {} {}",
-                    dimmed.paint("in"),
-                    bold.paint(meta.name()),
+                    "in".style(dimmed),
+                    meta.name().style(bold),
                 )?;
             }
 
@@ -313,7 +299,7 @@ where
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
             if !fields.is_empty() {
-                write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                write!(writer, " {} {}", "with".style(dimmed), fields)?;
             }
             writer.write_char('\n')?;
         }
@@ -406,14 +392,14 @@ impl<'a> PrettyVisitor<'a> {
         Self { style, ..self }
     }
 
-    fn write_padded(&mut self, value: &impl fmt::Debug) {
-        let padding = if self.is_empty {
+    #[must_use]
+    fn write_padding(&mut self) -> fmt::Result {
+        if self.is_empty {
             self.is_empty = false;
-            ""
+            Ok(())
         } else {
-            ", "
-        };
-        self.result = write!(self.writer, "{}{:?}", padding, value);
+            self.writer.write_str(", ")
+        }
     }
 
     fn bold(&self) -> Style {
@@ -440,16 +426,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let bold = self.bold();
+            let bold = PrettyVisitor::bold(&self);
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}{}.sources{}: {}",
+                    "{}, {}.sources: {}",
                     value,
-                    bold.prefix(),
-                    field,
-                    bold.infix(self.style),
-                    ErrorSourceList(source),
+                    field.style(bold),
+                    ErrorSourceList(source).style(self.style),
                 ),
             )
         } else {
@@ -461,27 +445,38 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        let bold = self.bold();
-        match field.name() {
-            "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => self.result = Ok(()),
-            name if name.starts_with("r#") => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                &name[2..],
-                bold.infix(self.style),
-                value
-            )),
-            name => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                name,
-                bold.infix(self.style),
-                value
-            )),
+        // Would be cleaner with a try { } block, but that's not stable yet.
+        let mut record_debug_impl = || -> fmt::Result {
+            let bold = PrettyVisitor::bold(&self);
+            match field.name() {
+                "message" => {
+                    self.write_padding()?;
+                    write!(self.writer, "{}{:?}", self.style.prefix(), value)
+                }
+                // Skip fields that are actually log metadata that have already been handled
+                #[cfg(feature = "tracing-log")]
+                name if name.starts_with("log.") => Ok(()),
+                name if name.starts_with("r#") => {
+                    self.write_padding()?;
+                    write!(
+                        self.writer,
+                        "{}: {:?}",
+                        (&name[2..]).style(bold),
+                        value.style(self.style)
+                    )
+                }
+                name => {
+                    self.write_padding()?;
+                    write!(
+                        self.writer,
+                        "{}: {:?}",
+                        name.style(bold),
+                        value.style(self.style)
+                    )
+                }
+            }
         };
+        self.result = record_debug_impl();
     }
 }
 
