@@ -46,7 +46,7 @@ use tracing_core::{
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
-use owo_colors::{OwoColorize, Style};
+use owo_colors::{Style, Styled};
 
 #[cfg(feature = "json")]
 mod json;
@@ -528,7 +528,7 @@ impl<'writer> Writer<'writer> {
         self.is_ansi
     }
 
-    pub(in crate::fmt::format) fn bold(&self) -> Style {
+    pub(in crate::fmt::format) fn bold_style(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -539,7 +539,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
+    pub(in crate::fmt::format) fn dimmed_style(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -550,7 +550,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn italic(&self) -> Style {
+    pub(in crate::fmt::format) fn italic_style(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -851,32 +851,8 @@ impl<F, T> Format<F, T> {
             return Ok(());
         }
 
-        // If ANSI color codes are enabled, format the timestamp with ANSI
-        // colors.
-        #[cfg(feature = "ansi")]
-        {
-            if writer.has_ansi_escapes() {
-                let style = Style::new().dimmed();
-                write!(writer, "{}", style.prefix())?;
-
-                // If getting the timestamp failed, don't bail --- only bail on
-                // formatting errors.
-                if self.timer.format_time(writer).is_err() {
-                    writer.write_str("<unknown time>")?;
-                }
-
-                write!(writer, "{} ", style.suffix())?;
-                return Ok(());
-            }
-        }
-
-        // Otherwise, just format the timestamp without ANSI formatting.
-        // If getting the timestamp failed, don't bail --- only bail on
-        // formatting errors.
-        if self.timer.format_time(writer).is_err() {
-            writer.write_str("<unknown time>")?;
-        }
-        writer.write_char(' ')
+        let dimmed = writer.dimmed_style();
+        write!(writer, "{} ", dimmed.paint(FormatTimeDisplay(&self.timer)))
     }
 }
 
@@ -969,24 +945,24 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let dimmed = writer.dimmed();
+        let dimmed = writer.dimmed_style();
 
         if let Some(scope) = ctx.event_scope() {
-            let bold = writer.bold();
+            let bold = writer.bold_style();
 
             let mut seen = false;
 
             for span in scope.from_root() {
-                write!(writer, "{}", span.metadata().name().style(bold))?;
+                write!(writer, "{}", bold.paint(span.metadata().name()))?;
                 seen = true;
 
                 let ext = span.extensions();
                 if let Some(fields) = &ext.get::<FormattedFields<N>>() {
                     if !fields.is_empty() {
-                        write!(writer, "{}{}{}", "{".style(bold), fields, "}".style(bold))?;
+                        write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
                 }
-                write!(writer, "{}", ":".style(dimmed))?;
+                write!(writer, "{}", dimmed.paint(":"))?;
             }
 
             if seen {
@@ -998,8 +974,8 @@ where
             write!(
                 writer,
                 "{}{} ",
-                meta.target().style(dimmed),
-                ":".style(dimmed)
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
             )?;
         }
 
@@ -1014,8 +990,8 @@ where
                 write!(
                     writer,
                     "{}{}{}",
-                    filename.style(dimmed),
-                    ":".style(dimmed),
+                    dimmed.paint(filename),
+                    dimmed.paint(":"),
                     if line_number.is_some() { "" } else { " " }
                 )?;
             }
@@ -1025,8 +1001,8 @@ where
             write!(
                 writer,
                 "{}{} ",
-                line_number.style(dimmed),
-                ":".style(dimmed)
+                dimmed.paint(line_number),
+                dimmed.paint(":")
             )?;
         }
 
@@ -1075,25 +1051,25 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let dimmed = writer.dimmed();
+        let dimmed = writer.dimmed_style();
         if self.display_target {
             write!(
                 writer,
                 "{}{}",
-                meta.target().style(dimmed),
-                ":".style(dimmed)
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
             )?;
         }
 
         if self.display_filename {
             if let Some(filename) = meta.file() {
-                write!(writer, "{}{}", filename.style(dimmed), ":".style(dimmed))?;
+                write!(writer, "{}{}", dimmed.paint(filename), dimmed.paint(":"))?;
             }
         }
 
         if self.display_line_number {
             if let Some(line_number) = meta.line() {
-                write!(writer, "{}{}", line_number.style(dimmed), ":".style(dimmed))?;
+                write!(writer, "{}{}", dimmed.paint(line_number), dimmed.paint(":"))?;
             }
         }
 
@@ -1103,7 +1079,7 @@ where
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
                 if !fields.is_empty() {
-                    write!(writer, " {}", fields.fields.style(dimmed))?;
+                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
             }
         }
@@ -1209,15 +1185,15 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let italic = self.writer.italic();
+            let italic = self.writer.italic_style();
             self.record_debug(
                 field,
                 &format_args!(
                     "{} {}{}{}{}",
                     value,
-                    field.name().style(italic),
-                    ".sources".style(italic),
-                    "=".style(self.writer.dimmed()),
+                    italic.paint(field.name()),
+                    italic.paint(".sources"),
+                    self.writer.dimmed_style().paint("="),
                     ErrorSourceList(source)
                 ),
             )
@@ -1240,15 +1216,15 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
-                (&name[2..]).style(self.writer.italic()),
-                "=".style(self.writer.dimmed()),
+                self.writer.italic_style().paint(&name[2..]),
+                self.writer.dimmed_style().paint("="),
                 value
             ),
             name => write!(
                 self.writer,
                 "{}{}{:?}",
-                name.style(self.writer.italic()),
-                "=".style(self.writer.dimmed()),
+                self.writer.italic_style().paint(name),
+                self.writer.dimmed_style().paint("="),
                 value
             ),
         };
@@ -1282,7 +1258,12 @@ impl<'a> Display for ErrorSourceList<'a> {
     }
 }
 
+trait StylePainter {
+    fn paint<T>(&self, d: T) -> Styled<T>;
+}
+
 #[cfg(not(feature = "ansi"))]
+#[derive(Copy, Clone)]
 struct Style;
 
 #[cfg(not(feature = "ansi"))]
@@ -1291,16 +1272,59 @@ impl Style {
         Style
     }
 
-    fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
-        d
+    fn bold(self) -> Self {
+        self
     }
 
-    fn prefix(&self) -> impl fmt::Display {
-        ""
+    fn dimmed(self) -> Self {
+        self
     }
 
-    fn suffix(&self) -> impl fmt::Display {
-        ""
+    fn italic(self) -> Self {
+        self
+    }
+}
+#[cfg(not(feature = "ansi"))]
+impl StylePainter for Style {
+    fn paint<T>(&self, d: T) -> Styled<T> {
+        Styled { target: d }
+    }
+}
+
+#[cfg(not(feature = "ansi"))]
+struct Styled<T> {
+    target: T,
+}
+
+#[cfg(not(feature = "ansi"))]
+macro_rules! impl_fmt {
+    ($($trait:path),* $(,)?) => {
+        $(
+            impl<T: $trait> $trait for Styled<T> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    <T as $trait>::fmt(&self.target, f)
+                }
+            }
+        )*
+    };
+}
+#[cfg(not(feature = "ansi"))]
+impl_fmt! {
+    fmt::Display,
+    fmt::Debug,
+    fmt::UpperHex,
+    fmt::LowerHex,
+    fmt::Binary,
+    fmt::UpperExp,
+    fmt::LowerExp,
+    fmt::Octal,
+    fmt::Pointer,
+}
+
+#[cfg(feature = "ansi")]
+impl StylePainter for Style {
+    fn paint<T>(&self, d: T) -> Styled<T> {
+        self.style(d)
     }
 }
 
@@ -1407,6 +1431,7 @@ impl<F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
+            use owo_colors::OwoColorize;
             if self.ansi {
                 return match self.level {
                     Level::TRACE => write!(f, "{}", F::TRACE_STR.purple()),
@@ -1640,56 +1665,17 @@ impl Display for TimingDisplay {
     }
 }
 
-// Workaround for https://github.com/jam1garner/owo-colors/issues/123
-macro_rules! impl_style_fmt {
-    ($($trait:path),* $(,)?) => {
-        $(
-            impl $trait for StylePrefix<'_> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    self.style.fmt_prefix(f)
-                }
-            }
-            impl $trait for StyleSuffix<'_> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    self.style.fmt_suffix(f)
-                }
-            }
-        )*
-    };
-}
-
-pub(crate) trait StyleExt {
-    fn prefix(&self) -> StylePrefix<'_>;
-    fn suffix(&self) -> StyleSuffix<'_>;
-}
-
-impl StyleExt for Style {
-    fn prefix(&self) -> StylePrefix<'_> {
-        StylePrefix { style: self }
+struct FormatTimeDisplay<T>(T);
+impl<T: FormatTime> fmt::Display for FormatTimeDisplay<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // If getting the timestamp failed, don't bail --- only bail on
+        // formatting errors.
+        if self.0.format_time(&mut Writer::new(f)).is_err() {
+            f.write_str("<unknown time>")
+        } else {
+            Ok(())
+        }
     }
-    fn suffix(&self) -> StyleSuffix<'_> {
-        StyleSuffix { style: self }
-    }
-}
-
-pub(crate) struct StylePrefix<'a> {
-    style: &'a Style,
-}
-
-pub(crate) struct StyleSuffix<'a> {
-    style: &'a Style,
-}
-
-impl_style_fmt! {
-    fmt::Display,
-    fmt::Debug,
-    fmt::UpperHex,
-    fmt::LowerHex,
-    fmt::Binary,
-    fmt::UpperExp,
-    fmt::LowerExp,
-    fmt::Octal,
-    fmt::Pointer,
 }
 
 #[cfg(test)]
