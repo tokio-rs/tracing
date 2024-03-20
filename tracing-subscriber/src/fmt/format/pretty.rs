@@ -202,7 +202,12 @@ where
             } else {
                 style
             };
-            write!(writer, "{}:", meta.target().style(target_style),)?;
+            write!(
+                writer,
+                "{}{}",
+                meta.target().style(target_style),
+                ":".style(style)
+            )?;
         }
         let line_number = if self.display_line_number {
             meta.line()
@@ -218,7 +223,7 @@ where
             self.display_filename,
             self.format.display_location,
         ) {
-            write!(writer, "{}:", line_number.style(style),)?;
+            write!(writer, "{}{}", line_number.style(style), ":".style(style))?;
         }
 
         writer.write_char(' ')?;
@@ -228,11 +233,7 @@ where
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = if writer.has_ansi_escapes() {
-            Style::new().dimmed().italic()
-        } else {
-            Style::new()
-        };
+        let dimmed = writer.dimmed();
         let thread = self.display_thread_name || self.display_thread_id;
 
         if let (Some(file), true, true) = (
@@ -389,7 +390,11 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     pub(crate) fn with_style(self, style: Style) -> Self {
-        Self { style, ..self }
+        if self.writer.has_ansi_escapes() {
+            Self { style, ..self }
+        } else {
+            self
+        }
     }
 
     #[must_use]
@@ -402,11 +407,11 @@ impl<'a> PrettyVisitor<'a> {
         }
     }
 
-    fn bold(&self) -> Style {
+    fn with_bold(&self) -> Style {
         if self.writer.has_ansi_escapes() {
             self.style.bold()
         } else {
-            Style::new()
+            self.style
         }
     }
 }
@@ -426,13 +431,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let bold = PrettyVisitor::bold(&self);
+            let bold = self.with_bold();
             self.record_debug(
                 field,
                 &format_args!(
-                    "{}, {}.sources: {}",
+                    "{}, {}{}: {}",
                     value,
                     field.style(bold),
+                    ".sources".style(bold),
                     ErrorSourceList(source).style(self.style),
                 ),
             )
@@ -447,7 +453,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         }
         // Would be cleaner with a try { } block, but that's not stable yet.
         let mut record_debug_impl = || -> fmt::Result {
-            let bold = PrettyVisitor::bold(&self);
+            let bold = self.with_bold();
             match field.name() {
                 "message" => {
                     self.write_padding()?;
