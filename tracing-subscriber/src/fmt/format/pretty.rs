@@ -233,7 +233,11 @@ where
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = writer.dimmed_style();
+        let dimmed_italic = if writer.has_ansi_escapes() {
+            Style::new().dimmed().italic()
+        } else {
+            Style::new()
+        };
         let thread = self.display_thread_name || self.display_thread_id;
 
         if let (Some(file), true, true) = (
@@ -241,7 +245,7 @@ where
             self.format.display_location,
             self.display_filename,
         ) {
-            write!(writer, "    {} {}", dimmed.paint("at"), file,)?;
+            write!(writer, "    {} {}", dimmed_italic.paint("at"), file,)?;
 
             if let Some(line) = line_number {
                 write!(writer, ":{}", line)?;
@@ -252,7 +256,7 @@ where
         };
 
         if thread {
-            write!(writer, "{} ", dimmed.paint("on"))?;
+            write!(writer, "{} ", dimmed_italic.paint("on"))?;
             let thread = std::thread::current();
             if self.display_thread_name {
                 if let Some(name) = thread.name() {
@@ -282,7 +286,7 @@ where
                 write!(
                     writer,
                     "    {} {}::{}",
-                    dimmed.paint("in"),
+                    dimmed_italic.paint("in"),
                     meta.target(),
                     bold.paint(meta.name()),
                 )?;
@@ -290,7 +294,7 @@ where
                 write!(
                     writer,
                     "    {} {}",
-                    dimmed.paint("in"),
+                    dimmed_italic.paint("in"),
                     bold.paint(meta.name()),
                 )?;
             }
@@ -300,7 +304,7 @@ where
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
             if !fields.is_empty() {
-                write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                write!(writer, " {} {}", dimmed_italic.paint("with"), fields)?;
             }
             writer.write_char('\n')?;
         }
