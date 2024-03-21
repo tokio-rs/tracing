@@ -501,17 +501,13 @@ impl Rotation {
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
-            // Rotation::NEVER is impossible to round.
-            Rotation::NEVER => {
-                unreachable!("Rotation::NEVER is impossible to round.")
-            }
             Self(RotationKind::Custom(duration)) => {
                 let date_nanos = date.unix_timestamp_nanos();
                 let duration_nanos = duration.whole_nanoseconds();
                 debug_assert!(duration_nanos > 0);
 
                 // find how many nanoseconds after the next rotation time we are.
-                // Use euclidean division to properly handle negative date values.
+                // Use Euclidean division to properly handle negative date values.
                 // This is safe because `Duration` is always positive.
                 let nanos_above = date_nanos.rem_euclid(duration_nanos);
                 let round_nanos = date_nanos - nanos_above;
@@ -525,6 +521,10 @@ impl Rotation {
                 // input to `OffsetDateTime::from_unix_timestamp_nanos`.
                 OffsetDateTime::from_unix_timestamp_nanos(round_nanos)
                     .expect("Invalid time; this is a bug in tracing-appender")
+            }
+            // Rotation::NEVER is impossible to round.
+            Rotation::NEVER => {
+                unreachable!("Rotation::NEVER is impossible to round.")
             }
         }
     }
