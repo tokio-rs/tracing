@@ -308,31 +308,35 @@ impl DefaultCallsite {
     // This only happens once (or if the cached interest value was corrupted).
     #[cold]
     pub fn register(&'static self) -> Interest {
-        // Attempt to advance the registration state to `REGISTERING`...
-        match self.registration.compare_exchange(
-            Self::UNREGISTERED,
-            Self::REGISTERING,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => {
-                // Okay, we advanced the state, try to register the callsite.
-                rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
-                CALLSITES.push_default(self);
-                self.registration.store(Self::REGISTERED, Ordering::Release);
-            }
-            // Great, the callsite is already registered! Just load its
-            // previous cached interest.
-            Err(Self::REGISTERED) => {}
-            // Someone else is registering...
-            Err(_state) => {
-                debug_assert_eq!(
-                    _state,
-                    Self::REGISTERING,
-                    "weird callsite registration state"
-                );
-                // Just hit `enabled` this time.
-                return Interest::sometimes();
+        loop {
+            // Attempt to advance the registration state to `REGISTERING`...
+            match self.registration.compare_exchange(
+                Self::UNREGISTERED,
+                Self::REGISTERING,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => {
+                    // Okay, we advanced the state, try to register the callsite.
+                    rebuild_callsite_interest(self, &DISPATCHERS.rebuilder());
+                    CALLSITES.push_default(self);
+                    self.registration.store(Self::REGISTERED, Ordering::Release);
+                    break;
+                }
+                // Great, the callsite is already registered! Just load its
+                // previous cached interest.
+                Err(Self::REGISTERED) => break,
+                // Someone else is registering...
+                Err(_state) => {
+                    debug_assert_eq!(
+                        _state,
+                        Self::REGISTERING,
+                        "weird callsite registration state: {_state}"
+                    );
+                    // The callsite is being registered. We have to wait until
+                    // registration is finished, otherwise
+                    continue;
+                }
             }
         }
 
