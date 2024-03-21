@@ -229,7 +229,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// use tracing_subscriber::fmt::writer::MakeWriterExt;
     ///
     /// // Construct a writer that outputs events to `stderr` only if the span or
-    /// // event's level is >= WARN (WARN and ERROR).
+    /// // event's level is <= WARN (WARN and ERROR).
     /// let mk_writer = std::io::stderr.with_max_level(Level::WARN);
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
@@ -293,7 +293,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// use tracing_subscriber::fmt::writer::MakeWriterExt;
     ///
     /// // Construct a writer that outputs events to `stdout` only if the span or
-    /// // event's level is <= DEBUG (DEBUG and TRACE).
+    /// // event's level is >= DEBUG (DEBUG and TRACE).
     /// let mk_writer = std::io::stdout.with_min_level(Level::DEBUG);
     ///
     /// tracing_subscriber::fmt().with_writer(mk_writer).init();
@@ -467,7 +467,7 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
     /// use tracing::Level;
     /// use tracing_subscriber::fmt::writer::MakeWriterExt;
     ///
-    /// // Produces a writer that writes to `stderr` if the level is >= WARN,
+    /// // Produces a writer that writes to `stderr` if the level is <= WARN,
     /// // or returns `OptionalWriter::none()` otherwise.
     /// let stderr = std::io::stderr.with_max_level(Level::WARN);
     ///
