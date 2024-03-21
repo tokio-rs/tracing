@@ -306,3 +306,29 @@ fn test_dbg_warn() {
     with_default(collector, ret_dbg_warn);
     handle.assert_finished();
 }
+
+#[test]
+fn test_ret_custome_name() {
+    #[instrument(ret(rename = "message"))]
+    fn ret_custom_name() -> i32 {
+        42
+    }
+    let span = expect::span()
+        .named("ret_custom_name")
+        .at_level(Level::INFO);
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            expect::event()
+                .with_fields(expect::field("message").with_value(&tracing::field::display(42)))
+                .at_level(Level::INFO),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, ret_custom_name);
+    handle.assert_finished();
+}

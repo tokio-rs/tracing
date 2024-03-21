@@ -220,12 +220,20 @@ mod expand;
 /// }
 /// ```
 ///
-/// Adding the `ret` argument to `#[instrument]` will emit an event with the function's
-/// return value when the function returns:
+/// Adding the `ret` argument to `#[instrument]` will emit an event with default field naming `return` and value
+/// from the function's return when the function returns:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(ret)]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
+/// The field name can be renamed custom by `rename` attribute:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(rename = "custom_field"))]
 /// fn my_function() -> i32 {
 ///     42
 /// }
@@ -261,11 +269,21 @@ mod expand;
 /// ```
 ///
 /// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
-/// `err` or `err(Display)` will emit error events when the function returns `Err`:
+/// `err` or `err(Display)` will emit error events with default field `error` when the
+/// function returns `Err`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
 /// #[instrument(err)]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
+/// The field name can be renamed custom by `rename` attribute:
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(rename = "custom_field"))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
