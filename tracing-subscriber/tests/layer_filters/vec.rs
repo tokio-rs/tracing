@@ -77,6 +77,62 @@ fn with_filters_boxed() {
 }
 
 #[test]
+fn check_enabled() {
+    let (debug_layer, debug_handle) = layer::named("debug")
+        .enabled(false)
+        .only()
+        .run_with_handle();
+    let debug_layer = debug_layer.with_filter(LevelFilter::DEBUG);
+
+    let (info_layer, info_handle) = layer::named("info")
+        .event(expect::event().at_level(Level::INFO))
+        .only()
+        .run_with_handle();
+    let info_layer = info_layer.with_filter(LevelFilter::INFO);
+
+    let (error_layer, error_handle) = layer::named("error").only().run_with_handle();
+    let error_layer = error_layer.with_filter(LevelFilter::ERROR);
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(vec![debug_layer, info_layer, error_layer])
+        .set_default();
+
+    tracing::info!("hello info");
+
+    debug_handle.assert_finished();
+    info_handle.assert_finished();
+    error_handle.assert_finished();
+}
+
+#[test]
+fn check_event_enabled() {
+    let (debug_layer, debug_handle) = layer::named("debug")
+        .event_enabled(false)
+        .only()
+        .run_with_handle();
+    let debug_layer = debug_layer.with_filter(LevelFilter::DEBUG);
+
+    let (info_layer, info_handle) = layer::named("info")
+        .event(expect::event().at_level(Level::INFO))
+        .only()
+        .run_with_handle();
+    let info_layer = info_layer.with_filter(LevelFilter::INFO);
+
+    let (error_layer, error_handle) = layer::named("error").only().run_with_handle();
+    let error_layer = error_layer.with_filter(LevelFilter::ERROR);
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(vec![debug_layer, info_layer, error_layer])
+        .set_default();
+
+    tracing::info!("hello info");
+
+    debug_handle.assert_finished();
+    info_handle.assert_finished();
+    error_handle.assert_finished();
+}
+
+#[test]
 fn mixed_max_level_hint() {
     let unfiltered = layer::named("unfiltered").run().boxed();
     let info = layer::named("info")
