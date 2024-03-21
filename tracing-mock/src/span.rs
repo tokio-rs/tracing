@@ -92,7 +92,7 @@
 //! [`expect::span`]: fn@crate::expect::span
 #![allow(missing_docs)]
 use crate::{
-    collector::SpanState, expect, field::ExpectedFields, metadata::ExpectedMetadata, Parent,
+    collector::SpanState, expect, field::ExpectedFields, metadata::ExpectedMetadata, parent::Parent,
 };
 use std::fmt;
 
@@ -699,7 +699,7 @@ impl NewSpan {
     pub(crate) fn check(
         &mut self,
         span: &tracing_core::span::Attributes<'_>,
-        get_parent_name: impl FnOnce() -> Option<String>,
+        get_parent: impl FnOnce() -> Parent,
         collector_name: &str,
     ) {
         let meta = span.metadata();
@@ -711,14 +711,13 @@ impl NewSpan {
         span.record(&mut checker);
         checker.finish();
 
-        if let Some(expected_parent) = self.parent.as_ref() {
-            let actual_parent = get_parent_name();
-            expected_parent.check_parent_name(
-                actual_parent.as_deref(),
-                span.parent().cloned(),
+        if let Some(ref expected_parent) = self.parent {
+            let actual_parent = get_parent();
+            expected_parent.check(
+                &actual_parent,
                 format_args!("span `{}`", name),
                 collector_name,
-            )
+            );
         }
     }
 }
