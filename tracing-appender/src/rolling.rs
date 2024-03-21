@@ -457,6 +457,7 @@ impl Rotation {
     pub const DAILY: Self = Self(RotationKind::Daily);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
+    
     /// Provides a custom rotation
     pub fn custom(duration: Duration) -> Result<Self, String> {
         if !duration.is_positive() {
