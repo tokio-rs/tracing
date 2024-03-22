@@ -103,7 +103,7 @@ use fmt::{Debug, Display};
 ///   does not support ANSI escape codes (such as a log file), and they should
 ///   not be emitted.
 ///
-///   Crates like [`nu_ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   Crates like [`owo-colors`] and [`nu_ansi_term`] can be used to add ANSI
 ///   escape codes to formatted output.
 ///
 /// * The actual [`Event`] to be formatted.
@@ -528,7 +528,7 @@ impl<'writer> Writer<'writer> {
         self.is_ansi
     }
 
-    pub(in crate::fmt::format) fn bold_style(&self) -> Style {
+    pub(in crate::fmt::format) fn bold(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -539,7 +539,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn dimmed_style(&self) -> Style {
+    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -550,7 +550,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn italic_style(&self) -> Style {
+    pub(in crate::fmt::format) fn italic(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -851,7 +851,7 @@ impl<F, T> Format<F, T> {
             return Ok(());
         }
 
-        let dimmed = writer.dimmed_style();
+        let dimmed = writer.dimmed();
         write!(writer, "{} ", dimmed.paint(FormatTimeDisplay(&self.timer)))
     }
 }
@@ -945,10 +945,10 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let dimmed = writer.dimmed_style();
+        let dimmed = writer.dimmed();
 
         if let Some(scope) = ctx.event_scope() {
-            let bold = writer.bold_style();
+            let bold = writer.bold();
 
             let mut seen = false;
 
@@ -1051,7 +1051,7 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let dimmed = writer.dimmed_style();
+        let dimmed = writer.dimmed();
         if self.display_target {
             write!(
                 writer,
@@ -1185,7 +1185,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if let Some(source) = value.source() {
-            let italic = self.writer.italic_style();
+            let italic = self.writer.italic();
             self.record_debug(
                 field,
                 &format_args!(
@@ -1193,7 +1193,7 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
                     value,
                     italic.paint(field.name()),
                     italic.paint(".sources"),
-                    self.writer.dimmed_style().paint("="),
+                    self.writer.dimmed().paint("="),
                     ErrorSourceList(source)
                 ),
             )
@@ -1216,15 +1216,15 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
-                self.writer.italic_style().paint(&name[2..]),
-                self.writer.dimmed_style().paint("="),
+                self.writer.italic().paint(&name[2..]),
+                self.writer.dimmed().paint("="),
                 value
             ),
             name => write!(
                 self.writer,
                 "{}{}{:?}",
-                self.writer.italic_style().paint(name),
-                self.writer.dimmed_style().paint("="),
+                self.writer.italic().paint(name),
+                self.writer.dimmed().paint("="),
                 value
             ),
         };
@@ -1431,6 +1431,7 @@ impl<F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
+            // Be careful about importing owo_colors::OwoColorize in a too large scope, since it adds methods to every type.
             use owo_colors::OwoColorize;
             if self.ansi {
                 return match self.level {

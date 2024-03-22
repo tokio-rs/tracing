@@ -272,7 +272,7 @@ where
             writer.write_char('\n')?;
         }
 
-        let bold = writer.bold_style();
+        let bold = writer.bold();
         let span = event
             .parent()
             .and_then(|id| ctx.span(id))
