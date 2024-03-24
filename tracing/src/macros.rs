@@ -3129,7 +3129,7 @@ macro_rules! if_log_enabled {
         $crate::if_log_enabled! { $lvl, $if_log else {} }
     };
     ($lvl:expr, $if_log:block else $else_block:block) => {
-        if $crate::level_to_log!($lvl) <= $crate::log::STATIC_MAX_LEVEL {
+        if $crate::level_to_log!($lvl) > $crate::log::STATIC_MAX_LEVEL {
             if !$crate::dispatch::has_been_set() {
                 $if_log
             } else {
@@ -3152,7 +3152,7 @@ macro_rules! if_log_enabled {
         $crate::if_log_enabled! { $lvl, $if_log else {} }
     };
     ($lvl:expr, $if_log:block else $else_block:block) => {
-        if $crate::level_to_log!($lvl) <= $crate::log::STATIC_MAX_LEVEL {
+        if $crate::level_to_log!($lvl) > $crate::log::STATIC_MAX_LEVEL {
             #[allow(unused_braces)]
             $if_log
         } else {
