@@ -394,11 +394,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     pub(crate) fn with_style(self, style: Style) -> Self {
-        if self.writer.has_ansi_escapes() {
-            Self { style, ..self }
-        } else {
-            self
-        }
+        Self { style, ..self }
     }
 
     #[must_use]
@@ -408,6 +404,14 @@ impl<'a> PrettyVisitor<'a> {
             Ok(())
         } else {
             write!(self.writer, "{}", self.style.paint(", "))
+        }
+    }
+
+    fn style(&self) -> Style {
+        if self.writer.has_ansi_escapes() {
+            self.style
+        } else {
+            Style::new()
         }
     }
 
@@ -461,9 +465,9 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         }
 
         self.result = if field.name() == "message" {
-            self.record_debug_impl(field, &format_args!("{}", self.style.paint(value)))
+            self.record_debug_impl(field, &format_args!("{}", self.style().paint(value)))
         } else {
-            self.record_debug_impl(field, &self.style.paint(value))
+            self.record_debug_impl(field, &self.style().paint(value))
         }
     }
 
@@ -472,22 +476,23 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             return;
         }
 
+        let style = self.style();
         self.result = if let Some(source) = value.source() {
-            let bold: Style = self.bold_style();
+            let bold = self.bold_style();
             self.record_debug_impl(
                 field,
                 &format_args!(
                     "{}{} {}{}{} {}",
-                    self.style.paint(value),
-                    self.style.paint(","),
+                    style.paint(value),
+                    style.paint(","),
                     bold.paint(field),
                     bold.paint(".sources"),
-                    self.style.paint(":"),
-                    self.style.paint(ErrorSourceList(source))
+                    style.paint(":"),
+                    style.paint(ErrorSourceList(source))
                 ),
             )
         } else {
-            self.record_debug_impl(field, &format_args!("{}", self.style.paint(value)))
+            self.record_debug_impl(field, &format_args!("{}", style.paint(value)))
         }
     }
 
@@ -495,7 +500,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        self.result = self.record_debug_impl(field, &self.style.paint(value));
+        self.result = self.record_debug_impl(field, &self.style().paint(value));
     }
 }
 
