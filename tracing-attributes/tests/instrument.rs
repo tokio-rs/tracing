@@ -238,3 +238,38 @@ fn impl_trait_return_type() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn target_name_ident() {
+    const MY_NAME: &str = "my_name";
+    const MY_NAME2: &str = "my_name2";
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(name = MY_NAME)]
+    fn name() {}
+
+    #[instrument(target = MY_TARGET, name = MY_NAME2)]
+    fn target() {}
+
+    let span_name = expect::span().named(MY_NAME);
+    let span_target = expect::span().named(MY_NAME2).with_target(MY_TARGET);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_name.clone())
+        .enter(span_name.clone())
+        .exit(span_name.clone())
+        .drop_span(span_name)
+        .new_span(span_target.clone())
+        .enter(span_target.clone())
+        .exit(span_target.clone())
+        .drop_span(span_target)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        name();
+        target();
+    });
+
+    handle.assert_finished();
+}
