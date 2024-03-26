@@ -210,46 +210,35 @@ impl Builder {
         }
 
         if !disabled.is_empty() {
-            #[cfg(feature = "nu_ansi_term")]
-            use nu_ansi_term::{Color, Style};
+            #[cfg(feature = "ansi")]
+            use owo_colors::{OwoColorize, XtermColors};
             // NOTE: We can't use a configured `MakeWriter` because the EnvFilter
             // has no knowledge of any underlying subscriber or collector, which
             // may or may not use a `MakeWriter`.
             let warn = |msg: &str| {
-                #[cfg(not(feature = "nu_ansi_term"))]
-                let msg = format!("warning: {}", msg);
-                #[cfg(feature = "nu_ansi_term")]
-                let msg = {
-                    let bold = Style::new().bold();
-                    let mut warning = Color::Yellow.paint("warning");
-                    warning.style_ref_mut().is_bold = true;
-                    format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
-                };
-                eprintln!("{}", msg);
+                #[cfg(not(feature = "ansi"))]
+                eprintln!("warning: {}", msg);
+                #[cfg(feature = "ansi")]
+                eprintln!("{}{} {}", "warning".yellow().bold(), ":".bold(), msg.bold());
             };
             let ctx_prefixed = |prefix: &str, msg: &str| {
-                #[cfg(not(feature = "nu_ansi_term"))]
-                let msg = format!("{} {}", prefix, msg);
-                #[cfg(feature = "nu_ansi_term")]
-                let msg = {
-                    let mut equal = Color::Fixed(21).paint("="); // dark blue
-                    equal.style_ref_mut().is_bold = true;
-                    format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
-                };
-                eprintln!("{}", msg);
+                #[cfg(not(feature = "ansi"))]
+                eprintln!("{} {}", prefix, msg);
+                #[cfg(feature = "ansi")]
+                eprintln!(
+                    " {} {} {}",
+                    "=".color(XtermColors::Blue).bold(),
+                    prefix.bold(),
+                    msg
+                );
             };
             let ctx_help = |msg| ctx_prefixed("help:", msg);
             let ctx_note = |msg| ctx_prefixed("note:", msg);
             let ctx = |msg: &str| {
-                #[cfg(not(feature = "nu_ansi_term"))]
-                let msg = format!("note: {}", msg);
-                #[cfg(feature = "nu_ansi_term")]
-                let msg = {
-                    let mut pipe = Color::Fixed(21).paint("|");
-                    pipe.style_ref_mut().is_bold = true;
-                    format!(" {} {}", pipe, msg)
-                };
-                eprintln!("{}", msg);
+                #[cfg(not(feature = "ansi"))]
+                eprintln!("note: {}", msg);
+                #[cfg(feature = "ansi")]
+                eprintln!(" {} {}", "|".color(XtermColors::Blue).bold(), msg);
             };
             warn("some trace filter directives would enable traces that are disabled statically");
             for directive in disabled {

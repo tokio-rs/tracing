@@ -1,4 +1,4 @@
-use nu_ansi_term::{Color, Style};
+use owo_colors::OwoColorize;
 use tracing::{
     field::{Field, Visit},
     Collect, Id, Level, Metadata,
@@ -79,13 +79,13 @@ struct ColorLevel<'a>(&'a Level);
 impl<'a> fmt::Display for ColorLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
-            Level::TRACE => Color::Purple.paint("TRACE"),
-            Level::DEBUG => Color::Blue.paint("DEBUG"),
-            Level::INFO => Color::Green.paint("INFO "),
-            Level::WARN => Color::Yellow.paint("WARN "),
-            Level::ERROR => Color::Red.paint("ERROR"),
+            /* Extra space to keep the width consistent */
+            Level::TRACE => "TRACE".purple().fmt(f),
+            Level::DEBUG => "DEBUG".blue().fmt(f),
+            Level::INFO => "INFO ".green().fmt(f),
+            Level::WARN => "WARN ".yellow().fmt(f),
+            Level::ERROR => "ERROR".red().fmt(f),
         }
-        .fmt(f)
     }
 }
 
@@ -117,21 +117,9 @@ impl<'a> Visit for Event<'a> {
         .unwrap();
         let name = field.name();
         if name == "message" {
-            write!(
-                &mut self.stderr,
-                "{}",
-                // Have to alloc here due to `nu_ansi_term`'s API...
-                Style::new().bold().paint(format!("{:?}", value))
-            )
-            .unwrap();
+            write!(&mut self.stderr, "{:?}", value.bold()).unwrap();
         } else {
-            write!(
-                &mut self.stderr,
-                "{}: {:?}",
-                Style::new().bold().paint(name),
-                value
-            )
-            .unwrap();
+            write!(&mut self.stderr, "{}: {:?}", name.bold(), value).unwrap();
         }
         self.comma = true;
     }
@@ -162,16 +150,10 @@ impl SloggishCollector {
     {
         let mut kvs = kvs.into_iter();
         if let Some((k, v)) = kvs.next() {
-            write!(
-                writer,
-                "{}{}: {}",
-                leading,
-                Style::new().bold().paint(k.as_ref()),
-                v
-            )?;
+            write!(writer, "{}{}: {}", leading, k.as_ref().bold(), v)?;
         }
         for (k, v) in kvs {
-            write!(writer, ", {}: {}", Style::new().bold().paint(k.as_ref()), v)?;
+            write!(writer, ", {}: {}", k.as_ref().bold(), v)?;
         }
         Ok(())
     }
