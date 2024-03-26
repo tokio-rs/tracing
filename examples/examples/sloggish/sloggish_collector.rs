@@ -79,10 +79,11 @@ struct ColorLevel<'a>(&'a Level);
 impl<'a> fmt::Display for ColorLevel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
+            /* Extra space to keep the width consistent */
             Level::TRACE => "TRACE".purple().fmt(f),
             Level::DEBUG => "DEBUG".blue().fmt(f),
-            Level::INFO => "INFO".green().fmt(f),
-            Level::WARN => "WARN".yellow().fmt(f),
+            Level::INFO => "INFO ".green().fmt(f),
+            Level::WARN => "WARN ".yellow().fmt(f),
             Level::ERROR => "ERROR".red().fmt(f),
         }
     }
