@@ -501,7 +501,7 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
 
 impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
     fn finish(self) -> fmt::Result {
-        Ok(())
+        self.result
     }
 }
 
