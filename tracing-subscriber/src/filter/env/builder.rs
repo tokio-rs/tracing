@@ -217,33 +217,28 @@ impl Builder {
             // may or may not use a `MakeWriter`.
             let warn = |msg: &str| {
                 #[cfg(not(feature = "ansi"))]
-                let msg = format!("warning: {}", msg);
+                eprintln!("warning: {}", msg);
                 #[cfg(feature = "ansi")]
-                let msg = { format!("{}{} {}", "warning".yellow().bold(), ":".bold(), msg.bold()) };
-                eprintln!("{}", msg);
+                eprintln!("{}{} {}", "warning".yellow().bold(), ":".bold(), msg.bold());
             };
             let ctx_prefixed = |prefix: &str, msg: &str| {
                 #[cfg(not(feature = "ansi"))]
-                let msg = format!("{} {}", prefix, msg);
+                eprintln!("{} {}", prefix, msg);
                 #[cfg(feature = "ansi")]
-                let msg = {
-                    format!(
-                        " {} {} {}",
-                        "=".color(XtermColors::Blue).bold(),
-                        prefix.bold(),
-                        msg
-                    )
-                };
-                eprintln!("{}", msg);
+                eprintln!(
+                    " {} {} {}",
+                    "=".color(XtermColors::Blue).bold(),
+                    prefix.bold(),
+                    msg
+                );
             };
             let ctx_help = |msg| ctx_prefixed("help:", msg);
             let ctx_note = |msg| ctx_prefixed("note:", msg);
             let ctx = |msg: &str| {
                 #[cfg(not(feature = "ansi"))]
-                let msg = format!("note: {}", msg);
+                eprintln!("note: {}", msg);
                 #[cfg(feature = "ansi")]
-                let msg = { format!(" {} {}", "|".color(XtermColors::Blue).bold(), msg) };
-                eprintln!("{}", msg);
+                eprintln!(" {} {}", "|".color(XtermColors::Blue).bold(), msg);
             };
             warn("some trace filter directives would enable traces that are disabled statically");
             for directive in disabled {
