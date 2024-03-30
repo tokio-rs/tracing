@@ -644,7 +644,6 @@ impl<F, T> Format<F, T> {
     /// tracing_subscriber::fmt()
     ///    .pretty()
     ///    .with_ansi(false)
-    ///    .fmt_fields(format::PrettyFields::new().with_ansi(false))
     ///    // ... other settings ...
     ///    .init();
     /// ```
