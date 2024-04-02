@@ -9,6 +9,7 @@ use syn::{
     Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
+use crate::attr::FieldName;
 use crate::{
     attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
@@ -189,9 +190,12 @@ fn gen_block<B: ToTokens>(
                 // If any parameters have the same name as a custom field, skip
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
+                    fields.0.iter().all(|Field { ref name, .. }| match name {
+                        FieldName::Idents(name) => {
+                            let first = name.first();
+                            first != name.last() || !first.iter().any(|name| name == &param)
+                        }
+                        FieldName::Str(lit) => *param == lit.value(),
                     })
                 } else {
                     true
