@@ -596,6 +596,9 @@ impl Inner {
             max_file_size,
         };
         let filename = inner.join_date(&now);
+        if let Some(max_files) = inner.max_files {
+            inner.prune_old_logs(max_files);
+        }
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
         Ok((inner, writer))
     }
