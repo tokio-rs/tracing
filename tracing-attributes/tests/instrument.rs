@@ -100,7 +100,7 @@ fn fields() {
 
 #[test]
 fn skip() {
-    struct UnDebug(pub u32);
+    struct UnDebug;
 
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
@@ -134,8 +134,8 @@ fn skip() {
         .run_with_handle();
 
     with_default(collector, || {
-        my_fn(2, UnDebug(0), UnDebug(1));
-        my_fn(3, UnDebug(0), UnDebug(1));
+        my_fn(2, UnDebug, UnDebug);
+        my_fn(3, UnDebug, UnDebug);
     });
 
     handle.assert_finished();

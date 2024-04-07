@@ -592,6 +592,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)] // Used in test.
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber
