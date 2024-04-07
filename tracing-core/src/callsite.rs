@@ -169,7 +169,6 @@ mod inner {
     use super::*;
     use once_cell::sync::Lazy;
     use std::sync::RwLock;
-    use std::vec::Vec;
 
     type Dispatchers = Vec<dispatch::Registrar>;
 

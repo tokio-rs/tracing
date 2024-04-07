@@ -1,7 +1,6 @@
 use crate::span::Span;
 use core::{
     future::Future,
-    marker::Sized,
     mem::ManuallyDrop,
     pin::Pin,
     task::{Context, Poll},
