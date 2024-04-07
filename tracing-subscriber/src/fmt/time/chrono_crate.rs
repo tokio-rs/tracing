@@ -108,18 +108,13 @@ impl FormatTime for ChronoUtc {
 /// the supported syntax.
 ///
 /// [`chrono::format::strftime`]: https://docs.rs/chrono/0.4.9/chrono/format/strftime/index.html
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 enum ChronoFmtType {
+    #[default]
     /// Format according to the RFC 3339 convention.
     Rfc3339,
     /// Format according to a custom format string.
     Custom(String),
-}
-
-impl Default for ChronoFmtType {
-    fn default() -> Self {
-        ChronoFmtType::Rfc3339
-    }
 }
 
 #[cfg(test)]
