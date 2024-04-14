@@ -192,8 +192,8 @@ impl Directive {
                     .name("fields")
                     .map(|c| {
                         FIELD_FILTER_RE
-                            .find_iter(c.as_str())
-                            .map(|c| field::Match::parse(c.as_str(), regex))
+                            .captures_iter(c.as_str())
+                            .map(|c| field::Match::parse(c.get(1).unwrap().as_str(), regex))
                             .collect::<Result<Vec<_>, _>>()
                     })
                     .unwrap_or_else(|| Ok(Vec::new()));
