@@ -455,6 +455,7 @@ fn get_global() -> &'static Dispatch {
     unsafe {
         // This is safe given the invariant that setting the global dispatcher
         // also sets `GLOBAL_INIT` to `INITIALIZED`.
+        #[allow(static_mut_refs)]
         &GLOBAL_DISPATCH
     }
 }
