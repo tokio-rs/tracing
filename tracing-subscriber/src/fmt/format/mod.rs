@@ -36,7 +36,8 @@ use crate::{
     registry::Scope,
 };
 
-use std::{fmt, marker::PhantomData};
+use core::ops::{Deref, DerefMut};
+use std::{collections::HashMap, fmt, marker::PhantomData};
 use tracing_core::{
     field::{self, Field, Visit},
     span, Collect, Event, Level,
@@ -909,6 +910,21 @@ impl<T> Format<Json, T> {
         self
     }
 
+    /// Sets whether or not the formatter will include the current span in
+    /// formatted events.
+    ///
+    /// See [`Json`]
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn with_additional_span_fields(
+        mut self,
+        display_additional_field_spans: bool,
+    ) -> Format<Json, T> {
+        self.format
+            .with_additional_span_fields(display_additional_field_spans);
+        self
+    }
+
     /// Sets whether or not the formatter will include a list (from root to
     /// leaf) of all currently entered spans in formatted events.
     ///
@@ -1645,6 +1661,25 @@ impl Display for TimingDisplay {
             t /= 1000.0;
         }
         write!(f, "{:.0}s", t * 1000.0)
+    }
+}
+
+/// Container to be added as an extension to a span so that other subscribers
+/// can provide dynamic fields that can be added to span fields of log messages.
+#[derive(Debug, Default)]
+pub struct AdditionalFmtSpanFields(HashMap<String, String>);
+
+impl Deref for AdditionalFmtSpanFields {
+    type Target = HashMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AdditionalFmtSpanFields {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

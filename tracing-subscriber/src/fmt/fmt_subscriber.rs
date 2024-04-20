@@ -638,6 +638,24 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
             ..self
         }
     }
+
+    /// Sets whether or not the JSON subscriber being built will include
+    /// additional span fields dynamically added by
+    /// [`Subscribe`](crate::Subscribe) implementations in formatted events.
+    ///
+    /// See [`format::Json`] for details.
+    pub fn with_additional_span_fields(
+        self,
+        display_additional_span_fields: bool,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self
+                .fmt_event
+                .with_additional_span_fields(display_additional_span_fields),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
 }
 
 impl<C, N, E, W> Subscriber<C, N, E, W> {

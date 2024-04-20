@@ -1,4 +1,4 @@
-use super::{Format, FormatEvent, FormatFields, FormatTime, Writer};
+use super::{AdditionalFmtSpanFields, Format, FormatEvent, FormatFields, FormatTime, Writer};
 use crate::{
     field::{RecordFields, VisitOutput},
     fmt::{
@@ -74,6 +74,7 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) display_additional_span_fields: bool,
 }
 
 impl Json {
@@ -87,6 +88,14 @@ impl Json {
         self.display_current_span = display_current_span;
     }
 
+    /// If set to `false`, formatted events won't additional dynamic fields for the current span.
+    ///
+    /// These fields can be added by layered [`Subscribe`](crate::Subscribe) implementations that
+    /// may enrich the span by fields not defined by the callsite.
+    pub fn with_additional_span_fields(&mut self, display_additional_field_spans: bool) {
+        self.display_additional_span_fields = display_additional_field_spans;
+    }
+
     /// If set to `false`, formatted events won't contain a list of all currently
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
@@ -94,13 +103,15 @@ impl Json {
     }
 }
 
-struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::subscribe::Context<'a, Span>,
-    std::marker::PhantomData<N>,
-)
+struct SerializableContext<'a, 'b, Span, N>
 where
     Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static;
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    context: &'b crate::subscribe::Context<'a, Span>,
+    display_additional_fields: bool,
+    format_field_marker: std::marker::PhantomData<N>,
+}
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
 where
@@ -114,9 +125,13 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        if let Some(leaf_span) = self.0.lookup_current() {
+        if let Some(leaf_span) = self.context.lookup_current() {
             for span in leaf_span.scope().from_root() {
-                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
+                serializer.serialize_element(&SerializableSpan {
+                    span: &span,
+                    display_additional_fields: self.display_additional_fields,
+                    format_field_marker: self.format_field_marker,
+                })?;
             }
         }
 
@@ -124,13 +139,15 @@ where
     }
 }
 
-struct SerializableSpan<'a, 'b, Span, N>(
-    &'b crate::registry::SpanRef<'a, Span>,
-    std::marker::PhantomData<N>,
-)
+struct SerializableSpan<'a, 'b, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static;
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    span: &'b crate::registry::SpanRef<'a, Span>,
+    display_additional_fields: bool,
+    format_field_marker: std::marker::PhantomData<N>,
+}
 
 impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
 where
@@ -143,7 +160,7 @@ where
     {
         let mut serializer = serializer.serialize_map(None)?;
 
-        let ext = self.0.extensions();
+        let ext = self.span.extensions();
         let data = ext
             .get::<FormattedFields<N>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
@@ -158,20 +175,27 @@ where
                 for field in fields {
                     serializer.serialize_entry(&field.0, &field.1)?;
                 }
+                if self.display_additional_fields {
+                    if let Some(additional) = ext.get::<AdditionalFmtSpanFields>() {
+                        for field in &additional.0 {
+                            serializer.serialize_entry(&field.0, &field.1)?;
+                        }
+                    }
+                }
             }
             // We have fields for this span which are valid JSON but not an object.
             // This is probably a bug, so panic if we're in debug mode
             Ok(_) if cfg!(debug_assertions) => panic!(
                 "span '{}' had malformed fields! this is a bug.\n  error: invalid JSON object\n  fields: {:?}",
-                self.0.metadata().name(),
+                self.span.metadata().name(),
                 data
             ),
             // If we *aren't* in debug mode, it's probably best not to
-            // crash the program, let's log the field found but also an
-            // message saying it's type  is invalid
+            // crash the program, let's log the field found but also a
+            // message saying its type is invalid
             Ok(value) => {
                 serializer.serialize_entry("field", &value)?;
-                serializer.serialize_entry("field_error", "field was no a valid object")?
+                serializer.serialize_entry("field_error", "field was not a valid object")?
             }
             // We have previously recorded fields for this span
             // should be valid JSON. However, they appear to *not*
@@ -179,16 +203,16 @@ where
             // panic if we're in debug mode
             Err(e) if cfg!(debug_assertions) => panic!(
                 "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
-                self.0.metadata().name(),
+                self.span.metadata().name(),
                 e,
                 data
             ),
             // If we *aren't* in debug mode, it's probably best not
             // crash the program, but let's at least make sure it's clear
             // that the fields are not supposed to be missing.
-            Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
+            Err(e) => serializer.serialize_entry("field_error", &format_args!("{}", e))?,
         };
-        serializer.serialize_entry("name", self.0.metadata().name())?;
+        serializer.serialize_entry("name", self.span.metadata().name())?;
         serializer.end()
     }
 }
@@ -272,7 +296,16 @@ where
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
                     serializer
-                        .serialize_entry("span", &SerializableSpan(span, format_field_marker))
+                        .serialize_entry(
+                            "span",
+                            &SerializableSpan {
+                                span,
+                                display_additional_fields: self
+                                    .format
+                                    .display_additional_span_fields,
+                                format_field_marker,
+                            },
+                        )
                         .unwrap_or(());
                 }
             }
@@ -280,7 +313,11 @@ where
             if self.format.display_span_list && current_span.is_some() {
                 serializer.serialize_entry(
                     "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
+                    &SerializableContext {
+                        context: &ctx.ctx,
+                        display_additional_fields: self.format.display_additional_span_fields,
+                        format_field_marker,
+                    },
                 )?;
             }
 
@@ -318,6 +355,7 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            display_additional_span_fields: true,
         }
     }
 }
@@ -508,7 +546,10 @@ impl<'a> field::Visit for JsonVisitor<'a> {
 mod test {
     use super::*;
     use crate::fmt::{format::FmtSpan, test::MockMakeWriter, time::FormatTime, CollectorBuilder};
+    use crate::subscribe::{self, CollectExt};
+    use crate::Subscribe;
 
+    use tracing::span;
     use tracing::{self, collect::with_default};
 
     use std::fmt;
@@ -523,6 +564,21 @@ mod test {
 
     fn collector() -> CollectorBuilder<JsonFields, Format<Json>> {
         crate::fmt::CollectorBuilder::default().json()
+    }
+    struct InjectingSubscriber;
+    impl<C: Collect + for<'lookup> LookupSpan<'lookup>> Subscribe<C> for InjectingSubscriber {
+        fn on_new_span(
+            &self,
+            _attrs: &span::Attributes<'_>,
+            id: &span::Id,
+            ctx: subscribe::Context<'_, C>,
+        ) {
+            let mut additional = AdditionalFmtSpanFields::default();
+            additional.insert("additional".to_owned(), "value".to_owned());
+            let span_ref = ctx.span(id).unwrap();
+            let mut extensions = span_ref.extensions_mut();
+            extensions.insert(additional);
+        }
     }
 
     #[test]
@@ -843,5 +899,65 @@ mod test {
             assert!(line_number.is_none());
         }
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn additional_fields() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3,\"additional\":\"value\"},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3,\"additional\":\"value\"}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let make_writer = MockMakeWriter::default();
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true)
+            .with_additional_span_fields(true)
+            .with_writer(make_writer.clone())
+            .with_timer(MockTime)
+            .finish()
+            .with(InjectingSubscriber);
+
+        with_default(collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+
+        let buf = make_writer.buf();
+        let actual = std::str::from_utf8(&buf[..]).unwrap();
+        assert_eq!(
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap(),
+            serde_json::from_str(actual).unwrap()
+        );
+    }
+
+    #[test]
+    fn additional_fields_turned_off() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let make_writer = MockMakeWriter::default();
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true)
+            .with_additional_span_fields(false)
+            .with_writer(make_writer.clone())
+            .with_timer(MockTime)
+            .finish()
+            .with(InjectingSubscriber);
+
+        with_default(collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+
+        let buf = make_writer.buf();
+        let actual = std::str::from_utf8(&buf[..]).unwrap();
+        assert_eq!(
+            serde_json::from_str::<std::collections::HashMap<&str, serde_json::Value>>(expected)
+                .unwrap(),
+            serde_json::from_str(actual).unwrap()
+        );
     }
 }
