@@ -54,6 +54,7 @@ fn span_on_drop() {
         }
     }
 
+    #[allow(dead_code)]
     struct Fut(Option<AssertSpanOnDrop>);
 
     impl Future for Fut {

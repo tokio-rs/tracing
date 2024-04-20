@@ -214,7 +214,7 @@ thread_local! {
     /// track how many layers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
+    static CLOSE_COUNT: Cell<usize> = const { Cell::new(0) };
 }
 
 impl Subscriber for Registry {
@@ -596,6 +596,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)]
     struct SetRemoved(Arc<()>);
 
     impl<S> Layer<S> for CloseLayer

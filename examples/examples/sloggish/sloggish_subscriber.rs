@@ -38,7 +38,7 @@ pub struct CurrentSpanPerThread {
 impl CurrentSpanPerThread {
     pub fn new() -> Self {
         thread_local! {
-            static CURRENT: RefCell<Vec<Id>> = RefCell::new(vec![]);
+            static CURRENT: RefCell<Vec<Id>> = const { RefCell::new(vec![]) };
         };
         Self { current: &CURRENT }
     }
