@@ -870,9 +870,12 @@ where
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.idle += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
+                if timings.entered_count == 0 {
+                    let now = Instant::now();
+                    timings.idle += (now - timings.last).as_nanos() as u64;
+                    timings.last = now;
+                }
+                timings.entered_count += 1;
             }
 
             if self.fmt_span.trace_enter() {
@@ -890,9 +893,12 @@ where
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.busy += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
+                timings.entered_count -= 1;
+                if timings.entered_count == 0 {
+                    let now = Instant::now();
+                    timings.busy += (now - timings.last).as_nanos() as u64;
+                    timings.last = now;
+                }
             }
 
             if self.fmt_span.trace_exit() {
@@ -914,7 +920,9 @@ where
                     busy,
                     mut idle,
                     last,
+                    entered_count,
                 } = *timing;
+                debug_assert_eq!(entered_count, 0);
                 idle += (Instant::now() - last).as_nanos() as u64;
 
                 let t_idle = field::display(TimingDisplay(idle));
@@ -1204,6 +1212,7 @@ struct Timings {
     idle: u64,
     busy: u64,
     last: Instant,
+    entered_count: u64,
 }
 
 impl Timings {
@@ -1212,6 +1221,7 @@ impl Timings {
             idle: 0,
             busy: 0,
             last: Instant::now(),
+            entered_count: 0,
         }
     }
 }
