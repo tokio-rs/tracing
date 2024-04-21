@@ -1,4 +1,3 @@
-use matchers::Pattern;
 use std::{
     cmp::Ordering,
     error::Error,
@@ -10,7 +9,8 @@ use std::{
     },
 };
 
-use super::{FieldMap, LevelFilter};
+use super::{matchers::Pattern, FieldMap, LevelFilter};
+use regex_automata::dfa::dense::BuildError;
 use tracing_core::field::{Field, Visit};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -234,7 +234,7 @@ impl ValueMatch {
     /// This returns an error if the string didn't contain a valid `bool`,
     /// `u64`, `i64`, or `f64` literal, and couldn't be parsed as a regular
     /// expression.
-    fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
+    fn parse_regex(s: &str) -> Result<Self, BuildError> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
@@ -279,9 +279,9 @@ impl fmt::Display for ValueMatch {
 // === impl MatchPattern ===
 
 impl FromStr for MatchPattern {
-    type Err = matchers::Error;
+    type Err = regex_automata::dfa::dense::BuildError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let matcher = Pattern::new_anchored(s)?;
+        let matcher = Pattern::new(s)?;
         Ok(Self {
             matcher,
             pattern: s.to_owned().into(),

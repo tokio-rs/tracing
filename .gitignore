@@ -1,4 +1,3 @@
-
 # Created by https://www.gitignore.io/api/rust,macos,visualstudiocode
 
 ### macOS ###
@@ -43,10 +42,9 @@ Cargo.lock
 
 ### VisualStudioCode ###
 .vscode/*
-!.vscode/settings.json
+.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
 
 # End of https://www.gitignore.io/api/rust,macos,visualstudiocode
