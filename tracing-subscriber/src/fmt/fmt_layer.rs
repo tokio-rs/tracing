@@ -1041,9 +1041,8 @@ where
 {
     /// Visits every span in the current context with a closure.
     ///
-    /// The provided closure will be called first with the current span,
-    /// and then with that span's parent, and then that span's parent,
-    /// and so on until a root span is reached.
+    /// Calls the provided closure for all the parents of the span,
+    /// starting with the root span, ordered from root to current one.
     pub fn visit_spans<E, F>(&self, mut f: F) -> Result<(), E>
     where
         F: FnMut(&SpanRef<'_, S>) -> Result<(), E>,
