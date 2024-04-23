@@ -410,7 +410,10 @@ where
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_entry(field.name(), &value)
+            match serde_json::from_str::<serde_json::Value>(value) {
+                Ok(value) => self.state = self.serializer.serialize_entry(field.name(), &value),
+                Err(_) => self.state = self.serializer.serialize_entry(field.name(), &value),
+            }
         }
     }
 }
@@ -462,7 +465,10 @@ where
 
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.state.is_ok() {
-            self.state = self.serializer.serialize_field(field.name(), &value)
+            match serde_json::from_str::<serde_json::Value>(value) {
+                Ok(value) => self.state = self.serializer.serialize_field(field.name(), &value),
+                Err(_) => self.state = self.serializer.serialize_field(field.name(), &value),
+            }
         }
     }
 }
