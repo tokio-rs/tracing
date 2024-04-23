@@ -29,13 +29,12 @@ rust-version = "1.63.0"
 [features]
 default = ["std"]
 alloc = []
-std = ["once_cell", "alloc"]
+std = ["alloc"]
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-once_cell = { version = "1.13.0", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

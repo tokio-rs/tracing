@@ -4,9 +4,8 @@ use crate::filter::{
     env::{field, FieldMap},
     level::LevelFilter,
 };
-use once_cell::sync::Lazy;
-use regex::Regex;
-use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
+use regex::{Regex, bytes::Regex};
+use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr, sync::OnceLock};
 use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
@@ -120,7 +119,11 @@ impl Directive {
     }
 
     pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
-        static DIRECTIVE_RE: Lazy<Regex> = Lazy::new(|| {
+        static DIRECTIVE_RE: OnceLock<Regex> = OnceLock::new();
+        static SPAN_PART_RE: OnceLock<Regex> = OnceLock::new();
+        static FIELD_FILTER_RE: OnceLock<Regex> = OnceLock::new();
+
+        fn directive_re() -> Regex {
             Regex::new(
                 r"(?x)
             ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
@@ -139,13 +142,15 @@ impl Directive {
             ",
             )
             .unwrap()
-        });
-        static SPAN_PART_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?").unwrap());
-        static FIELD_FILTER_RE: Lazy<Regex> =
+        }
+
+        fn span_part_re() -> Regex {
+            Regex::new(r"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?").unwrap()
+        }
+
+        fn field_filter_re() -> Regex {
             // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
             // characters. We should fix that.
-            Lazy::new(|| {
                 Regex::new(
                     r"(?x)
                 (
@@ -159,9 +164,11 @@ impl Directive {
             ",
                 )
                 .unwrap()
-            });
+        }
 
-        let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
+        let caps = DIRECTIVE_RE
+            .get_or_init(directive_re)
+            .captures(from).ok_or_else(ParseError::new)?;
 
         if let Some(level) = caps
             .name("global_level")
@@ -186,12 +193,13 @@ impl Directive {
             .name("span")
             .and_then(|cap| {
                 let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
-                let caps = SPAN_PART_RE.captures(cap)?;
+                let caps = SPAN_PART_RE.get_or_init(span_part_re).captures(cap)?;
                 let span = caps.name("name").map(|c| c.as_str().to_owned());
                 let fields = caps
                     .name("fields")
                     .map(|c| {
                         FIELD_FILTER_RE
+                            .get_or_init(field_filter_re)
                             .find_iter(c.as_str())
                             .map(|c| field::Match::parse(c.as_str(), regex))
                             .collect::<Result<Vec<_>, _>>()
