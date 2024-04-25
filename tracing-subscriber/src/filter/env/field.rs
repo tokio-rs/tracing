@@ -279,7 +279,7 @@ impl fmt::Display for ValueMatch {
 // === impl MatchPattern ===
 
 impl FromStr for MatchPattern {
-    type Err = regex_automata::dfa::dense::BuildError;
+    type Err = BuildError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let matcher = Pattern::new(s)?;
         Ok(Self {
