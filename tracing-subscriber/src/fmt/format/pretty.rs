@@ -284,6 +284,7 @@ where
         let bold = writer.bold();
         let span = event
             .parent()
+            .local()
             .and_then(|id| ctx.span(id))
             .or_else(|| ctx.lookup_current());
 

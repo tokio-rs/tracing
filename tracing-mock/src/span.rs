@@ -715,7 +715,7 @@ impl NewSpan {
             let actual_parent = get_parent_name();
             expected_parent.check_parent_name(
                 actual_parent.as_deref(),
-                span.parent().cloned(),
+                span.parent().local().cloned(),
                 format_args!("span `{}`", name),
                 collector_name,
             )

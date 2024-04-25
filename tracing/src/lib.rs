@@ -969,7 +969,7 @@ pub use self::instrument::Instrument;
 pub use self::{collect::Collect, dispatch::Dispatch, event::Event, field::Value};
 
 #[doc(hidden)]
-pub use self::span::Id;
+pub use self::span::{Id, ParentId};
 
 #[doc(hidden)]
 pub use tracing_core::{

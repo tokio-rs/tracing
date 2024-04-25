@@ -16,7 +16,7 @@ use std::{
 };
 use tracing_core::{
     dispatch::{self, Dispatch},
-    span::{self, Current, Id},
+    span::{self, Current, Id, ParentId},
     Collect, Event, Interest, Metadata,
 };
 
@@ -123,7 +123,7 @@ pub struct Data<'a> {
 struct DataInner {
     filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
-    parent: Option<Id>,
+    parent: ParentId,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
@@ -236,11 +236,18 @@ impl Collect for Registry {
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
         let parent = if attrs.is_root() {
-            None
+            ParentId::None
         } else if attrs.is_contextual() {
-            self.current_span().id().map(|id| self.clone_span(id))
+            self.current_span()
+                .id()
+                .map_or(ParentId::None, |id| ParentId::Local(self.clone_span(id)))
         } else {
-            attrs.parent().map(|id| self.clone_span(id))
+            match attrs.parent() {
+                ParentId::Local(id) => ParentId::Local(self.clone_span(id)),
+                parent_id @ (ParentId::None | ParentId::Remote(_)) => {
+                    parent_id.to_owned()
+                }
+            }
         };
 
         let id = self
@@ -421,8 +428,8 @@ impl<'a> SpanData<'a> for Data<'a> {
         self.inner.metadata
     }
 
-    fn parent(&self) -> Option<&Id> {
-        self.inner.parent.as_ref()
+    fn parent(&self) -> &ParentId {
+        &self.inner.parent
     }
 
     fn extensions(&self) -> Extensions<'_> {
@@ -479,7 +486,7 @@ impl Default for DataInner {
         Self {
             filter_map: FilterMap::new(),
             metadata: &NULL_METADATA,
-            parent: None,
+            parent: ParentId::None,
             ref_count: AtomicUsize::new(0),
             extensions: RwLock::new(ExtensionsInner::new()),
         }
@@ -499,7 +506,7 @@ impl Clear for DataInner {
         // closure, since it is a `FnMut`, but testing that there _is_ a value
         // here lets us avoid the thread-local access if we don't need the
         // dispatcher at all.
-        if self.parent.is_some() {
+        if let ParentId::Local(parent) = &self.parent {
             // Note that --- because `Layered::try_close` works by calling
             // `try_close` on the inner subscriber and using the return value to
             // determine whether to call the subscriber's `on_close` callback ---
@@ -507,9 +514,7 @@ impl Clear for DataInner {
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the subscribers wouldn't see the close notification.
             let subscriber = dispatch::get_default(Dispatch::clone);
-            if let Some(parent) = self.parent.take() {
-                let _ = subscriber.try_close(parent);
-            }
+            let _ = subscriber.try_close(parent.clone());
         }
 
         // Clear (but do not deallocate!) the pooled `HashMap` for the span's extensions.

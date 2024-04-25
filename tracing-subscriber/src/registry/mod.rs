@@ -60,7 +60,11 @@
 //! [lookup]: crate::subscribe::Context::span()
 use core::fmt::Debug;
 
-use tracing_core::{field::FieldSet, span::Id, Metadata};
+use tracing_core::{
+    field::FieldSet,
+    span::{Id, ParentId},
+    Metadata,
+};
 
 feature! {
     #![feature = "std"]
@@ -167,7 +171,7 @@ pub trait SpanData<'a> {
     fn metadata(&self) -> &'static Metadata<'static>;
 
     /// Returns a reference to the ID
-    fn parent(&self) -> Option<&Id>;
+    fn parent(&self) -> &ParentId;
 
     /// Returns a reference to this span's `Extensions`.
     ///
@@ -383,7 +387,7 @@ where
 
             #[cfg(all(feature = "registry", feature = "std"))]
             let curr = curr.with_filter(self.filter);
-            self.next = curr.data.parent().cloned();
+            self.next = curr.data.parent().local().cloned();
 
             // If the `Scope` is filtered, check if the current span is enabled
             // by the selected filter ID.
@@ -436,7 +440,7 @@ where
             use. use `.parent().map(SpanRef::id)` instead.",
         since = "0.2.21"
     )]
-    pub fn parent_id(&self) -> Option<&Id> {
+    pub fn parent_id(&self) -> &ParentId {
         // XXX(eliza): this doesn't work with PSF because the ID is potentially
         // borrowed from a parent we got from the registry, rather than from
         // `self`, so we can't return a borrowed parent. so, right now, we just
@@ -468,7 +472,7 @@ where
     /// span is the root of its trace tree.
 
     pub fn parent(&self) -> Option<Self> {
-        let id = self.data.parent()?;
+        let id = self.data.parent().local()?;
         let data = self.registry.span_data(id)?;
 
         #[cfg(all(feature = "registry", feature = "std"))]
@@ -487,7 +491,7 @@ where
                 }
 
                 // It's not enabled. If the disabled span has a parent, try that!
-                let id = data.parent()?;
+                let id = data.parent().local()?;
                 data = self.registry.span_data(id)?;
             }
         }

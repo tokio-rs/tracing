@@ -154,7 +154,7 @@ use std::{
 use tracing::{
     collect::Interest,
     level_filters::LevelFilter,
-    span::{self, Attributes, Id},
+    span::{self, Attributes, Id, ParentId},
     Collect, Event, Metadata,
 };
 
@@ -1037,11 +1037,12 @@ where
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     let spans = self.spans.lock().unwrap();
-                    event
-                        .parent()
-                        .and_then(|id| spans.get(id))
-                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
-                        .map(|s| s.name.to_string())
+                    let id = match event.parent() {
+                        ParentId::None => stack.last(),
+                        ParentId::Local(id) => Some(id),
+                        ParentId::Remote(_) => None,
+                    };
+                    id.and_then(|id| spans.get(id)).map(|s| s.name.to_string())
                 };
                 expected.check(event, get_parent_name, &self.name);
             }
@@ -1103,6 +1104,7 @@ where
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     span.parent()
+                        .local()
                         .and_then(|id| spans.get(id))
                         .or_else(|| stack.last().and_then(|id| spans.get(id)))
                         .map(|s| s.name.to_string())

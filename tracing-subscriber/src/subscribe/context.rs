@@ -110,7 +110,7 @@ where
     }
 
     /// Returns a [`SpanRef`] for the parent span of the given [`Event`], if
-    /// it has a parent.
+    /// it has a local parent.
     ///
     /// If the event has an explicitly overridden parent, this method returns
     /// a reference to that span. If the event's parent is the current span,
@@ -176,7 +176,7 @@ where
             self.lookup_current()
         } else {
             // TODO(eliza): this should handle parent IDs
-            event.parent().and_then(|id| self.span(id))
+            event.parent().local().and_then(|id| self.span(id))
         }
     }
 

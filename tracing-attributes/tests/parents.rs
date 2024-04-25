@@ -1,4 +1,4 @@
-use tracing::{collect::with_default, Id, Level};
+use tracing::{collect::with_default, Level, ParentId};
 use tracing_attributes::instrument;
 use tracing_mock::*;
 
@@ -8,7 +8,7 @@ fn with_default_parent() {}
 #[instrument(parent = parent_span, skip(parent_span))]
 fn with_explicit_parent<P>(parent_span: P)
 where
-    P: Into<Option<Id>>,
+    P: Into<ParentId>,
 {
 }
 

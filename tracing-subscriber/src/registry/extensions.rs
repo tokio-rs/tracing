@@ -112,8 +112,8 @@ impl<'a> ExtensionsMut<'a> {
 
 /// A type map of span extensions.
 ///
-/// [ExtensionsInner] is used by [Data] to store and
-/// span-specific data. A given [Subscriber] can read and write
+/// [ExtensionsInner] is used by [Data](crate::registry::Data) to store and
+/// span-specific data. A given [Subscribe](crate::Subscribe) can read and write
 /// data that it is interested in recording and emitting.
 #[derive(Default)]
 pub(crate) struct ExtensionsInner {

@@ -16,6 +16,94 @@ use crate::{field, Metadata};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(NonZeroU64);
 
+/// Identifies a span outside the cotext of a collector.
+///
+/// This ID may have come from outside of the process and should identify a
+/// single span created in some other context.
+///
+/// A concrete implementation may be `traceId` and `spanId` of an OpenTelemetry
+/// span which was generated in another application which called an API
+/// instrumented with `tracing`.
+///
+/// Subscribers can handle the remote parent by providing the information or its
+/// `Debug` representation to the user, but the `Registry` will not be able to
+/// look this span up even if it implements `LookupSpan`. There can also be
+/// specialized subscribers which downcast the ID to the correct type and then
+/// can handle it in a special way.
+///
+/// Note that `tracing` does not provide globally unique IDs to spans and
+/// therefore these should not be used as a `RemoteId` to be sent to other
+/// applications.
+pub trait RemoteId: std::fmt::Debug + Send + Sync + 'static {
+    /// Clones the `RemoteId` into a new allocation. If the type itself is
+    /// `Clone`, this should be as simple as `Box::new(self.clone())`.
+    ///
+    /// This clone has to go through a `Box` instead of simply requiring the
+    /// `RemoteId` to also implement `Clone` because this trait needs to be
+    /// object-safe.
+    fn clone_boxed(&self) -> Box<dyn RemoteId>;
+}
+
+/// Identifies a span that is parent of the given span or event, if such span exists.
+///
+/// The parent span may be tracked in the same [`Collect`](crate::Collect) or it
+/// may come from a remote context, possibly even from an application not using
+/// `tracing` at all.
+#[derive(Debug)]
+pub enum ParentId {
+    /// There is no parent. A span without a parent is a root span.
+    None,
+    /// The parent is tracked in the same [`Collect`](crate::Collect) and
+    /// originates in the same context as the child span.
+    Local(Id),
+    /// The parent is tracked outside the [`Collect`](crate::Collect) that
+    /// tracks the child span. The parent may be from different
+    /// [`Collect`](crate::Collect), different application and possibly even
+    /// different language.
+    Remote(Box<dyn RemoteId>),
+}
+
+impl ParentId {
+    /// Returns a reference to a [`span::Id`](crate::span::Id) of the parent
+    /// span if it is tracked locally. Returns `None` for both root spans and
+    /// spans that have remote parents.
+    pub fn local(&self) -> Option<&Id> {
+        if let ParentId::Local(id) = self {
+            Some(id)
+        } else {
+            None
+        }
+    }
+}
+
+impl Clone for ParentId {
+    fn clone(&self) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::Local(id) => Self::Local(id.clone()),
+            Self::Remote(remote) => Self::Remote(remote.clone_boxed()),
+        }
+    }
+}
+
+impl From<Id> for ParentId {
+    fn from(value: Id) -> Self {
+        ParentId::Local(value)
+    }
+}
+
+impl From<&Id> for ParentId {
+    fn from(value: &Id) -> Self {
+        ParentId::Local(value.clone())
+    }
+}
+
+impl From<Option<Id>> for ParentId {
+    fn from(value: Option<Id>) -> Self {
+        value.map_or(ParentId::None, ParentId::Local)
+    }
+}
+
 /// Attributes provided to a collector describing a new span when it is
 /// created.
 #[derive(Debug)]
@@ -127,7 +215,7 @@ impl<'a> Attributes<'a> {
     /// Returns `Attributes` describing a new child span of the specified
     /// parent span, with the provided metadata and values.
     pub fn child_of(
-        parent: Id,
+        parent: ParentId,
         metadata: &'static Metadata<'static>,
         values: &'a field::ValueSet<'a>,
     ) -> Self {
@@ -169,10 +257,10 @@ impl<'a> Attributes<'a> {
     ///
     /// Otherwise (if the new span is a root or is a child of the current span),
     /// returns `None`.
-    pub fn parent(&self) -> Option<&Id> {
+    pub fn parent(&self) -> &ParentId {
         match self.parent {
-            Parent::Explicit(ref p) => Some(p),
-            _ => None,
+            Parent::Explicit(ref p) => p,
+            Parent::Current | Parent::Root => &ParentId::None,
         }
     }
 
@@ -293,7 +381,7 @@ impl Current {
     pub fn into_inner(self) -> Option<(Id, &'static Metadata<'static>)> {
         match self.inner {
             CurrentInner::Current { id, metadata } => Some((id, metadata)),
-            _ => None,
+            CurrentInner::None | CurrentInner::Unknown => None,
         }
     }
 
@@ -301,7 +389,7 @@ impl Current {
     pub fn id(&self) -> Option<&Id> {
         match self.inner {
             CurrentInner::Current { ref id, .. } => Some(id),
-            _ => None,
+            CurrentInner::None | CurrentInner::Unknown => None,
         }
     }
 
@@ -309,7 +397,7 @@ impl Current {
     pub fn metadata(&self) -> Option<&'static Metadata<'static>> {
         match self.inner {
             CurrentInner::Current { metadata, .. } => Some(metadata),
-            _ => None,
+            CurrentInner::None | CurrentInner::Unknown => None,
         }
     }
 }
@@ -330,7 +418,7 @@ impl From<Current> for Option<Id> {
     fn from(cur: Current) -> Self {
         match cur.inner {
             CurrentInner::Current { id, .. } => Some(id),
-            _ => None,
+            CurrentInner::None | CurrentInner::Unknown => None,
         }
     }
 }
@@ -338,5 +426,29 @@ impl From<Current> for Option<Id> {
 impl<'a> From<&'a Current> for Option<&'static Metadata<'static>> {
     fn from(cur: &'a Current) -> Self {
         cur.metadata()
+    }
+}
+
+// impl<'a> From<&'a Current> for &'a ParentId {
+//     fn from(cur: &'a Current) -> Self {
+//         cur.id()
+//     }
+// }
+
+impl<'a> From<&'a Current> for ParentId {
+    fn from(cur: &'a Current) -> Self {
+        match cur.id().cloned() {
+            Some(id) => ParentId::Local(id),
+            None => ParentId::None,
+        }
+    }
+}
+
+impl From<Current> for ParentId {
+    fn from(cur: Current) -> Self {
+        match cur.inner {
+            CurrentInner::Current { id, .. } => ParentId::Local(id),
+            CurrentInner::None | CurrentInner::Unknown => ParentId::None,
+        }
     }
 }

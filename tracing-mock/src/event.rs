@@ -581,7 +581,7 @@ impl ExpectedEvent {
             let actual_parent = get_parent_name();
             expected_parent.check_parent_name(
                 actual_parent.as_deref(),
-                event.parent().cloned(),
+                event.parent().local().cloned(),
                 event.metadata().name(),
                 collector_name,
             )

@@ -174,7 +174,10 @@
 use core::fmt;
 
 use serde::{
-    ser::{SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, Serializer},
+    ser::{
+        SerializeMap, SerializeSeq, SerializeStruct, SerializeTupleStruct, SerializeTupleVariant,
+        Serializer,
+    },
     Serialize,
 };
 
@@ -182,7 +185,7 @@ use tracing_core::{
     event::Event,
     field::{Field, FieldSet, Visit},
     metadata::{Level, Metadata},
-    span::{Attributes, Id, Record},
+    span::{Attributes, Id, ParentId, Record},
 };
 
 pub mod fields;
@@ -254,6 +257,30 @@ impl<'a> Serialize for SerializeId<'a> {
 }
 
 #[derive(Debug)]
+pub struct SerializeParentId<'a>(&'a ParentId);
+
+impl<'a> Serialize for SerializeParentId<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            ParentId::None => serializer.serialize_unit_variant("ParentId", 0, "None"),
+            ParentId::Local(id) => {
+                let mut state = serializer.serialize_tuple_variant("ParentId", 1, "Local", 1)?;
+                state.serialize_field(&SerializeId(id))?;
+                state.end()
+            }
+            ParentId::Remote(remote_id) => {
+                let mut state = serializer.serialize_tuple_variant("ParentId", 2, "Remote", 1)?;
+                state.serialize_field(&format_args!("{:?}", remote_id))?;
+                state.end()
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct SerializeMetadata<'a>(&'a Metadata<'a>);
 
 impl<'a> Serialize for SerializeMetadata<'a> {
@@ -306,7 +333,7 @@ impl<'a> Serialize for SerializeAttributes<'a> {
     {
         let mut serializer = serializer.serialize_struct("Attributes", 3)?;
         serializer.serialize_field("metadata", &SerializeMetadata(self.0.metadata()))?;
-        serializer.serialize_field("parent", &self.0.parent().map(SerializeId))?;
+        serializer.serialize_field("parent", &SerializeParentId(self.0.parent()))?;
         serializer.serialize_field("is_root", &self.0.is_root())?;
 
         let mut visitor = SerdeStructVisitor {

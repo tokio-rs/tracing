@@ -1,6 +1,6 @@
 //! Events represent single points in time during the execution of a program.
 use crate::parent::Parent;
-use crate::span::Id;
+use crate::span::ParentId;
 use crate::{field, Metadata};
 
 /// `Event`s represent single points in time where something occurred during the
@@ -51,13 +51,13 @@ impl<'a> Event<'a> {
     /// provided metadata and set of values.
     #[inline]
     pub fn new_child_of(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<ParentId>,
         metadata: &'static Metadata<'static>,
         fields: &'a field::ValueSet<'a>,
     ) -> Self {
         let parent = match parent.into() {
-            Some(p) => Parent::Explicit(p),
-            None => Parent::Root,
+            ParentId::None => Parent::Root,
+            parent => Parent::Explicit(parent),
         };
         Event {
             fields,
@@ -69,7 +69,7 @@ impl<'a> Event<'a> {
     /// Constructs a new `Event` with the specified metadata and set of values,
     /// and observes it with the current collector and an explicit parent.
     pub fn child_of(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<ParentId>,
         metadata: &'static Metadata<'static>,
         fields: &'a field::ValueSet<'_>,
     ) {
@@ -119,10 +119,10 @@ impl<'a> Event<'a> {
     ///
     /// Otherwise (if the new event is a root or is a child of the current span),
     /// returns `None`.
-    pub fn parent(&self) -> Option<&Id> {
+    pub fn parent(&self) -> &ParentId {
         match self.parent {
-            Parent::Explicit(ref p) => Some(p),
-            _ => None,
+            Parent::Explicit(ref p) => p,
+            _ => &ParentId::None,
         }
     }
 }

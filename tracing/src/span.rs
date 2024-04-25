@@ -300,7 +300,7 @@
 //! [`follows_from`]: Span::follows_from()
 //! [guard]: Entered
 //! [parent]: #span-relationships
-pub use tracing_core::span::{Attributes, Id, Record};
+pub use tracing_core::span::{Attributes, Id, ParentId, Record};
 
 use crate::{
     dispatch::{self, Dispatch},
@@ -473,27 +473,29 @@ impl Span {
     /// [field values]: super::field::ValueSet
     /// [`follows_from`]: super::Span::follows_from()
     pub fn child_of(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<ParentId>,
         meta: &'static Metadata<'static>,
         values: &field::ValueSet<'_>,
     ) -> Span {
-        let mut parent = parent.into();
+        let mut parent = Some(parent);
         dispatch::get_default(move |dispatch| {
-            Self::child_of_with(Option::take(&mut parent), meta, values, dispatch)
+            Self::child_of_with(parent.take().unwrap(), meta, values, dispatch)
         })
     }
 
     #[inline]
     #[doc(hidden)]
     pub fn child_of_with(
-        parent: impl Into<Option<Id>>,
+        parent: impl Into<ParentId>,
         meta: &'static Metadata<'static>,
         values: &field::ValueSet<'_>,
         dispatch: &Dispatch,
     ) -> Span {
         let new_span = match parent.into() {
-            Some(parent) => Attributes::child_of(parent, meta, values),
-            None => Attributes::new_root(meta, values),
+            ParentId::None => Attributes::new_root(meta, values),
+            parent_id @ (ParentId::Local(_) | ParentId::Remote(_)) => {
+                Attributes::child_of(parent_id, meta, values)
+            }
         };
         Self::make_with(meta, new_span, dispatch)
     }
@@ -1427,6 +1429,12 @@ impl<'a> From<&'a Span> for Option<Id> {
     }
 }
 
+impl From<&Span> for ParentId {
+    fn from(span: &Span) -> Self {
+        Option::<Id>::from(span).into()
+    }
+}
+
 impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
     fn from(span: &'a EnteredSpan) -> Self {
         span.inner.as_ref().map(|inner| &inner.id)
@@ -1436,6 +1444,12 @@ impl<'a> From<&'a EnteredSpan> for Option<&'a Id> {
 impl<'a> From<&'a EnteredSpan> for Option<Id> {
     fn from(span: &'a EnteredSpan) -> Self {
         span.inner.as_ref().map(Inner::id)
+    }
+}
+
+impl From<&EnteredSpan> for ParentId {
+    fn from(span: &EnteredSpan) -> Self {
+        Option::<Id>::from(span).into()
     }
 }
 

@@ -939,6 +939,7 @@ where
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
                 let get_parent_name = || {
                     span.parent()
+                        .local()
                         .and_then(|id| cx.span(id))
                         .or_else(|| cx.lookup_current())
                         .map(|span| span.name().to_string())
