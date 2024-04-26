@@ -426,17 +426,6 @@ impl<'a> PrettyVisitor<'a> {
 }
 
 impl<'a> field::Visit for PrettyVisitor<'a> {
-    fn record_byte_slice(&mut self, field: &Field, value: &[u8]) {
-        let hex =
-            value
-                .iter()
-                .fold(String::with_capacity(value.len() * 2), |mut acc, byte| {
-                    acc.push_str(&format!("{byte:02x}"));
-                    acc
-                });
-        self.record_debug(field, &format_args!("{}", hex));
-    }
-
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;

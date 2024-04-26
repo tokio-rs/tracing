@@ -225,8 +225,8 @@ pub trait Visit {
     }
 
     /// Visit a byte slice.
-    fn record_byte_slice(&mut self, field: &Field, value: &[u8]) {
-        self.record_debug(field, &value)
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.record_debug(field, &HexBytes(value))
     }
 
     /// Records a type implementing `Error`.
@@ -286,6 +286,18 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+struct HexBytes<'a>(&'a [u8]);
+
+impl<'a> fmt::Debug for HexBytes<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0 {
+            f.write_fmt(format_args!("{byte:02x}"))?;
+        }
+
+        Ok(())
+    }
 }
 
 // ===== impl Visit =====
@@ -452,7 +464,7 @@ impl crate::sealed::Sealed for [u8] {}
 
 impl Value for [u8] {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-        visitor.record_byte_slice(key, self)
+        visitor.record_bytes(key, self)
     }
 }
 
@@ -1143,5 +1155,24 @@ mod test {
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, format!("{}", err));
+    }
+
+    #[test]
+    fn record_bytes() {
+        let fields = TEST_META_1.fields();
+        let first = &b"abc"[..];
+        let second: &[u8] = &[192, 255, 238];
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&" " as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use core::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, format!("{}", r#"616263" "c0ffee"#));
     }
 }
