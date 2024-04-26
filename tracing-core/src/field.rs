@@ -38,7 +38,7 @@
 use crate::callsite;
 use core::{
     borrow::Borrow,
-    fmt,
+    fmt::{self, Write},
     hash::{Hash, Hasher},
     num,
     ops::Range,
@@ -292,11 +292,19 @@ struct HexBytes<'a>(&'a [u8]);
 
 impl<'a> fmt::Debug for HexBytes<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for byte in self.0 {
+        f.write_char('[')?;
+
+        let mut bytes = self.0.iter();
+
+        if let Some(byte) = bytes.next() {
             f.write_fmt(format_args!("{byte:02x}"))?;
         }
 
-        Ok(())
+        for byte in bytes {
+            f.write_fmt(format_args!(" {byte:02x}"))?;
+        }
+
+        f.write_char(']')
     }
 }
 
@@ -1173,6 +1181,6 @@ mod test {
             use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
-        assert_eq!(result, format!("{}", r#"616263" "c0ffee"#));
+        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
     }
 }
