@@ -37,6 +37,8 @@ This directory contains a collection of examples that demonstrate the use of the
     both the terminal and the system journal.
   + `toggle-subscribers` : Demonstrates how subscribers can be wrapped with an `Option` allowing
     them to be dynamically toggled.
+  + `fmt-additional-fields`: Demonstrates how to create a subscriber that enriches
+    the `fmt` collector with additional information.
 - **tracing-futures**:
   + `spawny-thing`: Demonstrates the use of the `#[instrument]` attribute macro
     asynchronous functions.
