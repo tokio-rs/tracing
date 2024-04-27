@@ -924,7 +924,7 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
-        let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
+        let filter = EnvFilter::try_new("app[mySpan{field=\"value\",field2=2}]=debug").unwrap()
             .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
@@ -939,6 +939,20 @@ mod tests {
 
         let interest = filter.register_callsite(META);
         assert!(interest.is_never());
+        
+        static META2: &Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&["field", "field2"], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(META);
+        assert!(interest.is_always());
     }
 
     #[test]
