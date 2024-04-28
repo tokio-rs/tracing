@@ -158,6 +158,8 @@ use alloc::sync::{Arc, Weak};
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
 
+use once_cell::sync::OnceCell;
+
 /// `Dispatch` trace data to a [`Collect`].
 #[derive(Clone)]
 pub struct Dispatch {
@@ -214,21 +216,12 @@ thread_local! {
 }
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
-static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
 #[cfg(feature = "std")]
 static SCOPED_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-const UNINITIALIZED: usize = 0;
-const INITIALIZING: usize = 1;
-const INITIALIZED: usize = 2;
+static GLOBAL_DISPATCH: OnceCell<Dispatch> = OnceCell::new();
 
-static mut GLOBAL_DISPATCH: Dispatch = Dispatch {
-    #[cfg(feature = "alloc")]
-    collector: Kind::Global(&NO_COLLECTOR),
-    #[cfg(not(feature = "alloc"))]
-    collector: &NO_COLLECTOR,
-};
 static NONE: Dispatch = Dispatch {
     #[cfg(feature = "alloc")]
     collector: Kind::Global(&NO_COLLECTOR),
@@ -329,42 +322,28 @@ pub fn set_default(dispatcher: &Dispatch) -> DefaultGuard {
 /// [span]: super::span
 /// [`Event`]: super::event::Event
 pub fn set_global_default(dispatcher: Dispatch) -> Result<(), SetGlobalDefaultError> {
-    // if `compare_exchange` returns Result::Ok(_), then `new` has been set and
-    // `current`—now the prior value—has been returned in the `Ok()` branch.
-    if GLOBAL_INIT
-        .compare_exchange(
-            UNINITIALIZED,
-            INITIALIZING,
-            Ordering::SeqCst,
-            Ordering::SeqCst,
-        )
-        .is_ok()
-    {
-        #[cfg(feature = "alloc")]
-        let collector = {
-            let collector = match dispatcher.collector {
-                Kind::Global(s) => s,
-                Kind::Scoped(s) => unsafe {
-                    // safety: this leaks the collector onto the heap. the
-                    // reference count will always be at least 1.
-                    &*Arc::into_raw(s)
-                },
-            };
-            Kind::Global(collector)
+    #[cfg(feature = "alloc")]
+    let collector = {
+        let collector = match dispatcher.collector {
+            Kind::Global(s) => s,
+            Kind::Scoped(s) => unsafe {
+                // safety: this leaks the collector onto the heap. the
+                // reference count will always be at least 1.
+                &*Arc::into_raw(s)
+            },
         };
+        Kind::Global(collector)
+    };
 
-        #[cfg(not(feature = "alloc"))]
-        let collector = dispatcher.collector;
+    #[cfg(not(feature = "alloc"))]
+    let collector = dispatcher.collector;
 
-        unsafe {
-            GLOBAL_DISPATCH = Dispatch { collector };
-        }
-        GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
-        EXISTS.store(true, Ordering::Release);
-        Ok(())
-    } else {
-        Err(SetGlobalDefaultError { _no_construct: () })
-    }
+    let result = GLOBAL_DISPATCH
+        .set(Dispatch { collector })
+        .map_err(|_| SetGlobalDefaultError { _no_construct: () });
+    EXISTS.store(true, Ordering::Release);
+
+    result
 }
 
 /// Returns true if a `tracing` dispatcher has ever been set.
@@ -504,14 +483,7 @@ where
 
 #[inline(always)]
 pub(crate) fn get_global() -> &'static Dispatch {
-    if GLOBAL_INIT.load(Ordering::Acquire) != INITIALIZED {
-        return &NONE;
-    }
-    unsafe {
-        // This is safe given the invariant that setting the global dispatcher
-        // also sets `GLOBAL_INIT` to `INITIALIZED`.
-        &GLOBAL_DISPATCH
-    }
+    GLOBAL_DISPATCH.get().unwrap_or(&NONE)
 }
 
 #[cfg(feature = "std")]
