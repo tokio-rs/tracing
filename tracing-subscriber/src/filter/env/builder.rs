@@ -1,9 +1,8 @@
 use super::{
-    directive::{self, Directive},
+    directive::{self, split_directives, Directive},
     EnvFilter, FromEnvError,
 };
 use crate::sync::RwLock;
-use alloc::borrow::Cow;
 use std::env;
 use thread_local::ThreadLocal;
 use tracing::level_filters::STATIC_MAX_LEVEL;
@@ -135,11 +134,10 @@ impl Builder {
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// *ignoring* any that are invalid.
     pub fn parse_lossy<S: AsRef<str>>(&self, dirs: S) -> EnvFilter {
-        let directives = dirs
-            .as_ref()
-            .split(',')
+        let directives = split_directives(dirs.as_ref())
+            .into_iter()
             .filter(|s| !s.is_empty())
-            .filter_map(|s| match Directive::parse(s, self.regex) {
+            .filter_map(|s| match Directive::parse(&s, self.regex) {
                 Ok(d) => Some(d),
                 Err(err) => {
                     eprintln!("ignoring `{}`: {}", s, err);
@@ -156,18 +154,7 @@ impl Builder {
         if dirs.is_empty() {
             return Ok(self.from_directives(std::iter::empty()));
         }
-        let directives = dirs
-            .split(',')
-            .fold(Vec::<Cow<'_, str>>::new(), |mut directives, split| {
-                if let Some(last) = directives.last_mut() {
-                    if last.contains('{') && !last.contains('}') {
-                        last.to_mut().push_str(split);
-                        return directives;
-                    }
-                }
-                directives.push(Cow::Borrowed(split));
-                directives
-            })
+        let directives = split_directives(dirs)
             .into_iter()
             .filter(|s| !s.is_empty())
             .map(|s| Directive::parse(&s, self.regex))

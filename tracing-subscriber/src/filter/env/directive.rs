@@ -4,6 +4,7 @@ use crate::filter::{
     env::{field, FieldMap},
     level::LevelFilter,
 };
+use alloc::borrow::Cow;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
@@ -457,20 +458,36 @@ impl SpanMatcher {
     }
 }
 
+pub(super) fn split_directives(input: &str) -> Vec<Cow<'_, str>> {
+    input
+        .split(',')
+        .fold(Vec::<Cow<'_, str>>::new(), |mut directives, split| {
+            if let Some(last) = directives.last_mut() {
+                if last.contains('{') && !last.contains('}') {
+                    last.to_mut().push(',');
+                    last.to_mut().push_str(split);
+                    return directives;
+                }
+            }
+            directives.push(Cow::Borrowed(split));
+            directives
+        })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
+        split_directives(dirs.as_ref())
+            .into_iter()
             .filter_map(|s| s.parse().ok())
             .collect()
     }
 
     fn expect_parse(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
+        split_directives(dirs.as_ref())
+            .into_iter()
             .map(|s| {
                 s.parse()
                     .unwrap_or_else(|err| panic!("directive '{:?}' should parse: {}", s, err))
