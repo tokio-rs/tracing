@@ -946,7 +946,38 @@ mod tests {
         );
 
         let interest = filter.register_callsite(META);
-        assert!(interest.is_never());
+        // The span does not match but as long as we have a dynamic filter, we always say at least `sometimes`.
+        assert!(interest.is_sometimes());
+
+        static META_MATCH: &Metadata<'static> = &Metadata::new(
+            "mySpan",
+            "app",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&["field", "field2"], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(META_MATCH);
+        // This span matches the filter.
+        assert!(interest.is_always());
+
+        static META_BAD: &Metadata<'static> = &Metadata::new(
+            "differentSpan",
+            "definitelyNotApp",
+            Level::TRACE,
+            None,
+            None,
+            None,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
+            Kind::SPAN,
+        );
+
+        let interest = filter.register_callsite(META_BAD);
+        // The collector is not interested in unrelated spans.
+        assert!(interest.is_sometimes());
     }
 
     #[test]
