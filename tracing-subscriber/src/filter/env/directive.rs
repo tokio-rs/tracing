@@ -560,11 +560,7 @@ mod test {
         assert_eq!(expected, sorted);
     }
 
-    // TODO: this test requires the parser to support directives with multiple
-    // fields, which it currently can't handle. We should enable this test when
-    // that's implemented.
     #[test]
-    #[ignore]
     fn directive_ordering_by_field_num() {
         // TODO(eliza): it would be nice to have a property-based test for this
         // instead.
@@ -861,6 +857,82 @@ mod test {
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
+    }
+
+    #[test]
+    fn parse_directive_multiple_fields() {
+        let dirs = parse_directives("[span-name{first,second}]");
+        println!("parsed: {dirs:#?}");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, None);
+        assert_eq!(dirs[0].level, LevelFilter::TRACE);
+        assert_eq!(dirs[0].in_span, Some("span-name".to_owned()));
+        assert_eq!(dirs[0].fields.len(), 2);
+        assert_eq!(
+            dirs[0].fields[0],
+            field::Match {
+                name: "first".to_owned(),
+                value: None
+            }
+        );
+        assert_eq!(
+            dirs[0].fields[1],
+            field::Match {
+                name: "second".to_owned(),
+                value: None
+            }
+        );
+    }
+
+    #[test]
+    fn parse_directives_with_target_multiple_fields() {
+        let dirs = parse_directives("target[span-name{first,second}]=info");
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("target".to_owned()));
+        assert_eq!(dirs[0].level, LevelFilter::INFO);
+        assert_eq!(dirs[0].in_span, Some("span-name".to_owned()));
+        assert_eq!(dirs[0].fields.len(), 2);
+        assert_eq!(
+            dirs[0].fields[0],
+            field::Match {
+                name: "first".to_owned(),
+                value: None
+            }
+        );
+        assert_eq!(
+            dirs[0].fields[1],
+            field::Match {
+                name: "second".to_owned(),
+                value: None
+            }
+        );
+    }
+
+    #[test]
+    fn parse_span_directive_multiple_fields_with_values() {
+        let dirs = parse_directives(r#"app[mySpan{field="value",field2=2}]=debug"#);
+        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs[0].target, Some("app".to_owned()));
+        assert_eq!(dirs[0].level, LevelFilter::DEBUG);
+        assert_eq!(dirs[0].in_span, Some("mySpan".to_owned()));
+        assert_eq!(dirs[0].fields.len(), 2);
+        assert_eq!(
+            dirs[0].fields[0],
+            field::Match {
+                name: "field".to_owned(),
+                value: Some(field::ValueMatch::Pat(Box::new(
+                    // TODO THISMR check that the quotes here are correct
+                    field::MatchPattern::from_str("\"value\"").unwrap()
+                )))
+            }
+        );
+        assert_eq!(
+            dirs[0].fields[1],
+            field::Match {
+                name: "field2".to_owned(),
+                value: Some(field::ValueMatch::U64(2)),
+            }
+        );
     }
 
     #[test]
