@@ -3,6 +3,7 @@ use super::{
     EnvFilter, FromEnvError,
 };
 use crate::sync::RwLock;
+use alloc::borrow::Cow;
 use std::env;
 use thread_local::ThreadLocal;
 use tracing::level_filters::STATIC_MAX_LEVEL;
@@ -157,8 +158,19 @@ impl Builder {
         }
         let directives = dirs
             .split(',')
+            .fold(Vec::<Cow<'_, str>>::new(), |mut directives, split| {
+                if let Some(last) = directives.last_mut() {
+                    if last.contains('{') && !last.contains('}') {
+                        last.to_mut().push_str(split);
+                        return directives;
+                    }
+                }
+                directives.push(Cow::Borrowed(split));
+                directives
+            })
+            .into_iter()
             .filter(|s| !s.is_empty())
-            .map(|s| Directive::parse(s, self.regex))
+            .map(|s| Directive::parse(&s, self.regex))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self.from_directives(directives))
     }
