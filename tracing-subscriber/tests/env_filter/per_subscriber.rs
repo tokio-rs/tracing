@@ -158,7 +158,7 @@ fn add_directive_enables_event() {
     // this test reproduces tokio-rs/tracing#591
 
     // by default, use info level
-    let mut filter = EnvFilter::new(LevelFilter::INFO.to_string());
+    let mut filter = EnvFilter::try_new(LevelFilter::INFO.to_string()).unwrap();
 
     // overwrite with a more specific directive
     filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));

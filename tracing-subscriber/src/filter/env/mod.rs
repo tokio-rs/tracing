@@ -851,7 +851,9 @@ mod tests {
 
     #[test]
     fn callsite_enabled_no_span_directive() {
-        let filter = EnvFilter::new("app=debug").with_collector(NoCollector);
+        let filter = EnvFilter::try_new("app=debug")
+            .unwrap()
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -869,7 +871,9 @@ mod tests {
 
     #[test]
     fn callsite_off() {
-        let filter = EnvFilter::new("app=off").with_collector(NoCollector);
+        let filter = EnvFilter::try_new("app=off")
+            .unwrap()
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -887,7 +891,9 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive() {
-        let filter = EnvFilter::new("app[mySpan]=debug").with_collector(NoCollector);
+        let filter = EnvFilter::try_new("app[mySpan]=debug")
+            .unwrap()
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -905,8 +911,9 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive_field() {
-        let filter =
-            EnvFilter::new("app[mySpan{field=\"value\"}]=debug").with_collector(NoCollector);
+        let filter = EnvFilter::try_new("app[mySpan{field=\"value\"}]=debug")
+            .unwrap()
+            .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
             "app",
@@ -924,7 +931,8 @@ mod tests {
 
     #[test]
     fn callsite_enabled_includes_span_directive_multiple_fields() {
-        let filter = EnvFilter::new("app[mySpan{field=\"value\",field2=2}]=debug")
+        let filter = EnvFilter::try_new("app[mySpan{field=\"value\",field2=2}]=debug")
+            .unwrap()
             .with_collector(NoCollector);
         static META: &Metadata<'static> = &Metadata::new(
             "mySpan",
