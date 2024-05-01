@@ -5,14 +5,6 @@
 //! `valuable` provides a lightweight but flexible way to record structured data, allowing
 //! visitors to extract individual fields or elements of structs, maps, arrays, and other
 //! nested structures.
-//!
-//! `tracing`'s support for `valuable` is currently feature flagged. Additionally, `valuable`
-//! support is considered an *unstable feature*: in order to use `valuable` with `tracing`,
-//! the project must be built with `RUSTFLAGS="--cfg tracing_unstable`.
-//!
-//! Therefore, when `valuable` support is not enabled, this example falls back to using
-//! `fmt::Debug` to record fields that implement `valuable::Valuable`.
-#[cfg(tracing_unstable)]
 use tracing::field::valuable;
 use valuable::Valuable;
 
@@ -50,14 +42,7 @@ fn main() {
     // implementation:
     tracing::info!(valuable = false, user = ?user);
 
-    // If the `valuable` feature is enabled, record `user` using its'
+    // If the `valuable` feature is enabled, record `user` using its
     // `valuable::Valuable` implementation:
-    #[cfg(tracing_unstable)]
     tracing::info!(valuable = true, user = valuable(&user));
-
-    #[cfg(not(tracing_unstable))]
-    tracing::warn!(
-        "note: this example was run without `valuable` support enabled!\n\
-        rerun with `RUSTFLAGS=\"--cfg tracing_unstable\" to enable `valuable`",
-    );
 }
