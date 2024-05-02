@@ -193,7 +193,19 @@
 // obstacle to adoption, that text has been removed.
 
 
+#[cfg(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+))]
+use web_time as time;
 use std::fmt;
+#[cfg(not(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+)))]
+use std::time;
 
 /// A date/time type which exists primarily to convert `SystemTime` timestamps into an ISO 8601
 /// formatted string.
@@ -243,9 +255,9 @@ impl fmt::Display for DateTime {
     }
 }
 
-impl From<std::time::SystemTime> for DateTime {
-    fn from(timestamp: std::time::SystemTime) -> DateTime {
-        let (t, nanos) = match timestamp.duration_since(std::time::UNIX_EPOCH) {
+impl From<time::SystemTime> for DateTime {
+    fn from(timestamp: time::SystemTime) -> DateTime {
+        let (t, nanos) = match timestamp.duration_since(time::UNIX_EPOCH) {
             Ok(duration) => {
                 debug_assert!(duration.as_secs() <= std::i64::MAX as u64);
                 (duration.as_secs() as i64, duration.subsec_nanos())
@@ -333,7 +345,7 @@ impl From<std::time::SystemTime> for DateTime {
 #[cfg(test)]
 mod tests {
     use std::i32;
-    use std::time::{Duration, UNIX_EPOCH};
+    use super::time::{Duration, UNIX_EPOCH};
 
     use super::*;
 

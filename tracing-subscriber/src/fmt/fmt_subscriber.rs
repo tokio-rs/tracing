@@ -5,9 +5,20 @@ use crate::{
     subscribe::{self, Context},
 };
 use format::{FmtSpan, TimingDisplay};
+#[cfg(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+))]
+use web_time::Instant;
+#[cfg(not(all(
+    target_family = "wasm",
+    not(any(target_os = "emscripten", target_os = "wasi")),
+    feature = "wasm-bindgen"
+)))]
+use std::time::Instant;
 use std::{
     any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
-    time::Instant,
 };
 use tracing_core::{
     field,
