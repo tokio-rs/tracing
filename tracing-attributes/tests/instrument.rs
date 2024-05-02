@@ -100,6 +100,7 @@ fn fields() {
 
 #[test]
 fn skip() {
+    #[allow(dead_code)]
     struct UnDebug(pub u32);
 
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
