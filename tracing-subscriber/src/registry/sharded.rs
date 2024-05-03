@@ -348,7 +348,7 @@ impl Collect for Registry {
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
+            assert!(refs < usize::MAX, "reference count overflow!");
         }
         if refs > 1 {
             return false;
