@@ -112,7 +112,7 @@
 use crate::callsite;
 use crate::stdlib::{
     borrow::Borrow,
-    fmt,
+    fmt::{self, Write},
     hash::{Hash, Hasher},
     num,
     ops::Range,
@@ -308,6 +308,11 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
+    /// Visit a byte slice.
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.record_debug(field, &HexBytes(value))
+    }
+
     /// Records a type implementing `Error`.
     ///
     /// <div class="example-wrap" style="display:inline-block">
@@ -378,6 +383,26 @@ where
     T: valuable::Valuable,
 {
     t.as_value()
+}
+
+struct HexBytes<'a>(&'a [u8]);
+
+impl<'a> fmt::Debug for HexBytes<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_char('[')?;
+
+        let mut bytes = self.0.iter();
+
+        if let Some(byte) = bytes.next() {
+            f.write_fmt(format_args!("{byte:02x}"))?;
+        }
+
+        for byte in bytes {
+            f.write_fmt(format_args!(" {byte:02x}"))?;
+        }
+
+        f.write_char(']')
+    }
 }
 
 // ===== impl Visit =====
@@ -537,6 +562,14 @@ impl crate::sealed::Sealed for str {}
 impl Value for str {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_str(key, self)
+    }
+}
+
+impl crate::sealed::Sealed for [u8] {}
+
+impl Value for [u8] {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_bytes(key, self)
     }
 }
 
@@ -1248,5 +1281,24 @@ mod test {
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, format!("{}", err));
+    }
+
+    #[test]
+    fn record_bytes() {
+        let fields = TEST_META_1.fields();
+        let first = &b"abc"[..];
+        let second: &[u8] = &[192, 255, 238];
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&" " as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use core::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
     }
 }
