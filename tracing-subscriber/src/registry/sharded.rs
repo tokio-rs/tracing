@@ -348,7 +348,7 @@ impl Collect for Registry {
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
+            assert!(refs < usize::MAX, "reference count overflow!");
         }
         if refs > 1 {
             return false;
@@ -541,10 +541,6 @@ mod tests {
         Collect,
     };
 
-    #[derive(Debug)]
-    struct DoesNothing;
-    impl<C: Collect> Subscribe<C> for DoesNothing {}
-
     struct AssertionSubscriber;
     impl<C> Subscribe<C> for AssertionSubscriber
     where
@@ -592,6 +588,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)]
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber
