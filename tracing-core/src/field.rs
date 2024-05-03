@@ -713,9 +713,9 @@ impl FieldSet {
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
     ///
     /// [`Field`]: super::Field
-    pub fn field<Q: ?Sized>(&self, name: &Q) -> Option<Field>
+    pub fn field<Q>(&self, name: &Q) -> Option<Field>
     where
-        Q: Borrow<str>,
+        Q: Borrow<str> + ?Sized,
     {
         let name = &name.borrow();
         self.names.iter().position(|f| f == name).map(|i| Field {
