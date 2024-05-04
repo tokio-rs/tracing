@@ -46,7 +46,7 @@ use tracing_core::{
 use tracing_log::NormalizeEvent;
 
 #[cfg(feature = "ansi")]
-use nu_ansi_term::{Color, Style};
+use owo_colors::{Style, Styled};
 
 #[cfg(feature = "json")]
 mod json;
@@ -103,7 +103,7 @@ use fmt::{Debug, Display};
 ///   does not support ANSI escape codes (such as a log file), and they should
 ///   not be emitted.
 ///
-///   Crates like [`nu_ansi_term`] and [`owo-colors`] can be used to add ANSI
+///   Crates like [`owo-colors`] and [`nu_ansi_term`] can be used to add ANSI
 ///   escape codes to formatted output.
 ///
 /// * The actual [`Event`] to be formatted.
@@ -644,7 +644,6 @@ impl<F, T> Format<F, T> {
     /// tracing_subscriber::fmt()
     ///    .pretty()
     ///    .with_ansi(false)
-    ///    .fmt_fields(format::PrettyFields::new().with_ansi(false))
     ///    // ... other settings ...
     ///    .init();
     /// ```
@@ -851,32 +850,8 @@ impl<F, T> Format<F, T> {
             return Ok(());
         }
 
-        // If ANSI color codes are enabled, format the timestamp with ANSI
-        // colors.
-        #[cfg(feature = "ansi")]
-        {
-            if writer.has_ansi_escapes() {
-                let style = Style::new().dimmed();
-                write!(writer, "{}", style.prefix())?;
-
-                // If getting the timestamp failed, don't bail --- only bail on
-                // formatting errors.
-                if self.timer.format_time(writer).is_err() {
-                    writer.write_str("<unknown time>")?;
-                }
-
-                write!(writer, "{} ", style.suffix())?;
-                return Ok(());
-            }
-        }
-
-        // Otherwise, just format the timestamp without ANSI formatting.
-        // If getting the timestamp failed, don't bail --- only bail on
-        // formatting errors.
-        if self.timer.format_time(writer).is_err() {
-            writer.write_str("<unknown time>")?;
-        }
-        writer.write_char(' ')
+        let dimmed = writer.dimmed();
+        write!(writer, "{} ", dimmed.paint(FormatTimeDisplay(&self.timer)))
     }
 }
 
@@ -1024,10 +999,9 @@ where
         if let Some(line_number) = line_number {
             write!(
                 writer,
-                "{}{}:{} ",
-                dimmed.prefix(),
-                line_number,
-                dimmed.suffix()
+                "{}{} ",
+                dimmed.paint(line_number),
+                dimmed.paint(":")
             )?;
         }
 
@@ -1094,14 +1068,7 @@ where
 
         if self.display_line_number {
             if let Some(line_number) = meta.line() {
-                write!(
-                    writer,
-                    "{}{}{}{}",
-                    dimmed.prefix(),
-                    line_number,
-                    dimmed.suffix(),
-                    dimmed.paint(":")
-                )?;
+                write!(writer, "{}{}", dimmed.paint(line_number), dimmed.paint(":"))?;
             }
         }
 
@@ -1290,7 +1257,12 @@ impl<'a> Display for ErrorSourceList<'a> {
     }
 }
 
+trait StylePainter {
+    fn paint<T>(&self, d: T) -> Styled<T>;
+}
+
 #[cfg(not(feature = "ansi"))]
+#[derive(Copy, Clone)]
 struct Style;
 
 #[cfg(not(feature = "ansi"))]
@@ -1299,16 +1271,59 @@ impl Style {
         Style
     }
 
-    fn paint(&self, d: impl fmt::Display) -> impl fmt::Display {
-        d
+    fn bold(self) -> Self {
+        self
     }
 
-    fn prefix(&self) -> impl fmt::Display {
-        ""
+    fn dimmed(self) -> Self {
+        self
     }
 
-    fn suffix(&self) -> impl fmt::Display {
-        ""
+    fn italic(self) -> Self {
+        self
+    }
+}
+#[cfg(not(feature = "ansi"))]
+impl StylePainter for Style {
+    fn paint<T>(&self, d: T) -> Styled<T> {
+        Styled { target: d }
+    }
+}
+
+#[cfg(not(feature = "ansi"))]
+struct Styled<T> {
+    target: T,
+}
+
+#[cfg(not(feature = "ansi"))]
+macro_rules! impl_fmt {
+    ($($trait:path),* $(,)?) => {
+        $(
+            impl<T: $trait> $trait for Styled<T> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    <T as $trait>::fmt(&self.target, f)
+                }
+            }
+        )*
+    };
+}
+#[cfg(not(feature = "ansi"))]
+impl_fmt! {
+    fmt::Display,
+    fmt::Debug,
+    fmt::UpperHex,
+    fmt::LowerHex,
+    fmt::Binary,
+    fmt::UpperExp,
+    fmt::LowerExp,
+    fmt::Octal,
+    fmt::Pointer,
+}
+
+#[cfg(feature = "ansi")]
+impl StylePainter for Style {
+    fn paint<T>(&self, d: T) -> Styled<T> {
+        self.style(d)
     }
 }
 
@@ -1415,13 +1430,15 @@ impl<F: LevelNames> fmt::Display for FmtLevel<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(feature = "ansi")]
         {
+            // Be careful about importing owo_colors::OwoColorize in a too large scope, since it adds methods to every type.
+            use owo_colors::OwoColorize;
             if self.ansi {
                 return match self.level {
-                    Level::TRACE => write!(f, "{}", Color::Purple.paint(F::TRACE_STR)),
-                    Level::DEBUG => write!(f, "{}", Color::Blue.paint(F::DEBUG_STR)),
-                    Level::INFO => write!(f, "{}", Color::Green.paint(F::INFO_STR)),
-                    Level::WARN => write!(f, "{}", Color::Yellow.paint(F::WARN_STR)),
-                    Level::ERROR => write!(f, "{}", Color::Red.paint(F::ERROR_STR)),
+                    Level::TRACE => write!(f, "{}", F::TRACE_STR.purple()),
+                    Level::DEBUG => write!(f, "{}", F::DEBUG_STR.blue()),
+                    Level::INFO => write!(f, "{}", F::INFO_STR.green()),
+                    Level::WARN => write!(f, "{}", F::WARN_STR.yellow()),
+                    Level::ERROR => write!(f, "{}", F::ERROR_STR.red()),
                 };
             }
         }
@@ -1648,6 +1665,19 @@ impl Display for TimingDisplay {
     }
 }
 
+struct FormatTimeDisplay<T>(T);
+impl<T: FormatTime> fmt::Display for FormatTimeDisplay<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // If getting the timestamp failed, don't bail --- only bail on
+        // formatting errors.
+        if self.0.format_time(&mut Writer::new(f)).is_err() {
+            f.write_str("<unknown time>")
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 pub(super) mod test {
     use crate::fmt::{test::MockMakeWriter, time::FormatTime};
@@ -1688,7 +1718,7 @@ pub(super) mod test {
     #[cfg(feature = "ansi")]
     #[test]
     fn with_ansi_true() {
-        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
+        let expected = "\u{1b}[2mfake time\u{1b}[0m \u{1b}[32m INFO\u{1b}[39m \u{1b}[2mtracing_subscriber::fmt::format::test\u{1b}[0m\u{1b}[2m:\u{1b}[0m hello\n";
         assert_info_hello_ansi(true, expected);
     }
 

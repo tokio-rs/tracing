@@ -14,8 +14,6 @@ use tracing_core::{
 #[cfg(feature = "tracing-log")]
 use tracing_log::NormalizeEvent;
 
-use nu_ansi_term::{Color, Style};
-
 /// An excessively pretty, human-readable event formatter.
 ///
 /// Unlike the [`Full`], [`Compact`], and [`Json`] formatters, this is a
@@ -143,11 +141,11 @@ impl Default for Pretty {
 impl Pretty {
     fn style_for(level: &Level) -> Style {
         match *level {
-            Level::TRACE => Style::new().fg(Color::Purple),
-            Level::DEBUG => Style::new().fg(Color::Blue),
-            Level::INFO => Style::new().fg(Color::Green),
-            Level::WARN => Style::new().fg(Color::Yellow),
-            Level::ERROR => Style::new().fg(Color::Red),
+            Level::TRACE => Style::new().purple(),
+            Level::DEBUG => Style::new().blue(),
+            Level::INFO => Style::new().green(),
+            Level::WARN => Style::new().yellow(),
+            Level::ERROR => Style::new().red(),
         }
     }
 
@@ -206,10 +204,9 @@ where
             };
             write!(
                 writer,
-                "{}{}{}:",
-                target_style.prefix(),
-                meta.target(),
-                target_style.infix(style)
+                "{}{}",
+                target_style.paint(meta.target()),
+                style.paint(":")
             )?;
         }
         let line_number = if self.display_line_number {
@@ -226,13 +223,7 @@ where
             self.display_filename,
             self.format.display_location,
         ) {
-            write!(
-                writer,
-                "{}{}{}:",
-                style.prefix(),
-                line_number,
-                style.infix(style)
-            )?;
+            write!(writer, "{}{}", style.paint(line_number), style.paint(":"))?;
         }
 
         writer.write_char(' ')?;
@@ -242,7 +233,7 @@ where
         v.finish()?;
         writer.write_char('\n')?;
 
-        let dimmed = if writer.has_ansi_escapes() {
+        let dimmed_italic = if writer.has_ansi_escapes() {
             Style::new().dimmed().italic()
         } else {
             Style::new()
@@ -254,7 +245,7 @@ where
             self.format.display_location,
             self.display_filename,
         ) {
-            write!(writer, "    {} {}", dimmed.paint("at"), file,)?;
+            write!(writer, "    {} {}", dimmed_italic.paint("at"), file,)?;
 
             if let Some(line) = line_number {
                 write!(writer, ":{}", line)?;
@@ -265,7 +256,7 @@ where
         };
 
         if thread {
-            write!(writer, "{} ", dimmed.paint("on"))?;
+            write!(writer, "{} ", dimmed_italic.paint("on"))?;
             let thread = std::thread::current();
             if self.display_thread_name {
                 if let Some(name) = thread.name() {
@@ -295,7 +286,7 @@ where
                 write!(
                     writer,
                     "    {} {}::{}",
-                    dimmed.paint("in"),
+                    dimmed_italic.paint("in"),
                     meta.target(),
                     bold.paint(meta.name()),
                 )?;
@@ -303,7 +294,7 @@ where
                 write!(
                     writer,
                     "    {} {}",
-                    dimmed.paint("in"),
+                    dimmed_italic.paint("in"),
                     bold.paint(meta.name()),
                 )?;
             }
@@ -313,7 +304,7 @@ where
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
             if !fields.is_empty() {
-                write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                write!(writer, " {} {}", dimmed_italic.paint("with"), fields)?;
             }
             writer.write_char('\n')?;
         }
@@ -406,21 +397,63 @@ impl<'a> PrettyVisitor<'a> {
         Self { style, ..self }
     }
 
-    fn write_padded(&mut self, value: &impl fmt::Debug) {
-        let padding = if self.is_empty {
+    #[must_use]
+    fn write_padding(&mut self) -> fmt::Result {
+        if self.is_empty {
             self.is_empty = false;
-            ""
+            Ok(())
         } else {
-            ", "
-        };
-        self.result = write!(self.writer, "{}{:?}", padding, value);
+            write!(self.writer, "{}", self.style.paint(", "))
+        }
     }
 
-    fn bold(&self) -> Style {
+    fn style(&self) -> Style {
+        if self.writer.has_ansi_escapes() {
+            self.style
+        } else {
+            Style::new()
+        }
+    }
+
+    fn bold_style(&self) -> Style {
         if self.writer.has_ansi_escapes() {
             self.style.bold()
         } else {
-            Style::new()
+            self.style
+        }
+    }
+
+    #[must_use]
+    fn record_debug_impl(&mut self, field: &Field, styled_value: &dyn fmt::Debug) -> fmt::Result {
+        let bold = self.bold_style();
+        match field.name() {
+            "message" => {
+                self.write_padding()?;
+                write!(self.writer, "{:?}", styled_value)
+            }
+            // Skip fields that are actually log metadata that have already been handled
+            #[cfg(feature = "tracing-log")]
+            name if name.starts_with("log.") => Ok(()),
+            name if name.starts_with("r#") => {
+                self.write_padding()?;
+                write!(
+                    self.writer,
+                    "{}{} {:?}",
+                    bold.paint(&name[2..]),
+                    bold.paint(":"),
+                    styled_value
+                )
+            }
+            name => {
+                self.write_padding()?;
+                write!(
+                    self.writer,
+                    "{}{} {:?}",
+                    bold.paint(name),
+                    bold.paint(":"),
+                    styled_value
+                )
+            }
         }
     }
 }
@@ -431,29 +464,35 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
             return;
         }
 
-        if field.name() == "message" {
-            self.record_debug(field, &format_args!("{}", value))
+        self.result = if field.name() == "message" {
+            self.record_debug_impl(field, &format_args!("{}", self.style().paint(value)))
         } else {
-            self.record_debug(field, &value)
+            self.record_debug_impl(field, &self.style().paint(value))
         }
     }
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        if let Some(source) = value.source() {
-            let bold = self.bold();
-            self.record_debug(
+        if self.result.is_err() {
+            return;
+        }
+
+        let style = self.style();
+        self.result = if let Some(source) = value.source() {
+            let bold = self.bold_style();
+            self.record_debug_impl(
                 field,
                 &format_args!(
-                    "{}, {}{}.sources{}: {}",
-                    value,
-                    bold.prefix(),
-                    field,
-                    bold.infix(self.style),
-                    ErrorSourceList(source),
+                    "{}{} {}{}{} {}",
+                    style.paint(value),
+                    style.paint(","),
+                    bold.paint(field),
+                    bold.paint(".sources"),
+                    style.paint(":"),
+                    style.paint(ErrorSourceList(source))
                 ),
             )
         } else {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug_impl(field, &format_args!("{}", style.paint(value)))
         }
     }
 
@@ -461,33 +500,12 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
         if self.result.is_err() {
             return;
         }
-        let bold = self.bold();
-        match field.name() {
-            "message" => self.write_padded(&format_args!("{}{:?}", self.style.prefix(), value,)),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => self.result = Ok(()),
-            name if name.starts_with("r#") => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                &name[2..],
-                bold.infix(self.style),
-                value
-            )),
-            name => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                name,
-                bold.infix(self.style),
-                value
-            )),
-        };
+        self.result = self.record_debug_impl(field, &self.style().paint(value));
     }
 }
 
 impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
-    fn finish(mut self) -> fmt::Result {
-        write!(&mut self.writer, "{}", self.style.suffix())?;
+    fn finish(self) -> fmt::Result {
         self.result
     }
 }
