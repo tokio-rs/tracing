@@ -1272,6 +1272,13 @@ impl FilterState {
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 struct MagicPsfDowncastMarker(FilterId);
+
+static MAGIC_MARKER: MagicPsfDowncastMarker = MagicPsfDowncastMarker(FilterId::disabled());
+
+pub(crate) fn static_psf_downcast_marker() -> NonNull<()> {
+    NonNull::from(&MAGIC_MARKER).cast()
+}
+
 impl fmt::Debug for MagicPsfDowncastMarker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Just pretend that `MagicPsfDowncastMarker` doesn't exist for
