@@ -605,6 +605,11 @@ impl Inner {
             rotation,
             max_files,
         };
+
+        if let Some(max_files) = max_files {
+            inner.prune_old_logs(max_files);
+        }
+
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
         Ok((inner, writer))
