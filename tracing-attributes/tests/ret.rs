@@ -62,14 +62,14 @@ fn ret() -> i32 {
     42
 }
 
-#[instrument(target = "my_target", ret)]
-fn ret_with_target() -> i32 {
-    42
-}
-
 #[test]
 fn test() {
     expect_return("ret", Some(tracing::field::debug(42)), Level::INFO, ret);
+}
+
+#[instrument(target = "my_target", ret)]
+fn ret_with_target() -> i32 {
+    42
 }
 
 #[test]
@@ -203,33 +203,25 @@ fn test_dbg() {
     );
 }
 
-#[instrument(err, ret)]
-fn ret_and_err() -> Result<u8, TryFromIntError> {
-    u8::try_from(1234)
+#[instrument(ret, err)]
+fn ret_err(x: Result<u8, TryFromIntError>) -> Result<u8, TryFromIntError> {
+    x
 }
 
 #[test]
-fn test_ret_and_err() {
+fn test_ret_err() {
     expect_err(
-        "ret_and_err",
+        "ret_err",
         tracing::field::display(u8::try_from(1234).unwrap_err()),
         Level::ERROR,
-        ret_and_err,
+        || ret_err(u8::try_from(1234)).ok(),
     );
-}
 
-#[instrument(err, ret)]
-fn ret_and_ok() -> Result<u8, TryFromIntError> {
-    u8::try_from(123)
-}
-
-#[test]
-fn test_ret_and_ok() {
     expect_return(
-        "ret_and_ok",
-        tracing::field::debug(u8::try_from(123).unwrap()),
+        "ret_err",
+        tracing::field::debug(123_u8),
         Level::INFO,
-        ret_and_ok,
+        || ret_err(u8::try_from(123)).ok(),
     );
 }
 
