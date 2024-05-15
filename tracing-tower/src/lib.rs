@@ -71,11 +71,11 @@ where
     }
 }
 
-#[cfg(feature = "tower-util")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
+#[cfg(feature = "tower_make")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower_make")))]
 pub trait InstrumentMake<T, R>
 where
-    Self: tower_util::MakeService<T, R> + Sized,
+    Self: tower_make::MakeService<T, R> + Sized,
 {
     fn with_traced_service<G>(self, get_span: G) -> service_span::MakeService<Self, T, R, G>
     where
@@ -94,9 +94,9 @@ where
 
 impl<S, R> InstrumentableService<R> for S where S: Service<R> + Sized {}
 
-#[cfg(feature = "tower-util")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
-impl<M, T, R> InstrumentMake<T, R> for M where M: tower_util::MakeService<T, R> {}
+#[cfg(feature = "tower_make")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tower_make")))]
+impl<M, T, R> InstrumentMake<T, R> for M where M: tower_make::MakeService<T, R> {}
 
 pub trait GetSpan<T>: crate::sealed::Sealed<T> {
     fn span_for(&self, target: &T) -> tracing::Span;
