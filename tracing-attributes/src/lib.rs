@@ -245,9 +245,6 @@ mod expand;
 /// }
 /// ```
 ///
-/// **Note**:  if the function returns a [`Result<T, E>`], `ret` will record returned values if and
-/// only if the function returns [`Result::Ok`].
-///
 /// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
 /// If a returned value implements [`std::fmt::Display`], it can be recorded using its `Display`
 /// implementation instead, by writing `ret(Display)`:
