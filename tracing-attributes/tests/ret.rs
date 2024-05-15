@@ -215,6 +215,30 @@ fn test_dbg() {
     );
 }
 
+#[instrument(skip(x), ret)]
+fn ret_result(x: Result<OnlyDebug, OnlyDebug>) -> Result<OnlyDebug, OnlyDebug> {
+    x
+}
+
+#[test]
+fn test_ret_result() {
+    let err = Err(OnlyDebug(42));
+    expect_return(
+        "ret_result",
+        Some(tracing::field::debug(err.clone())),
+        Level::INFO,
+        || ret_result(err).ok(),
+    );
+
+    let ok = Ok(OnlyDebug(42));
+    expect_return(
+        "ret_result",
+        Some(tracing::field::debug(ok.clone())),
+        Level::INFO,
+        || ret_result(ok).ok(),
+    );
+}
+
 #[instrument(skip(x), ret, err)]
 fn ret_err(x: Result<OnlyDebug, OnlyDisplay>) -> Result<OnlyDebug, OnlyDisplay> {
     x
