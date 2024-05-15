@@ -69,6 +69,9 @@ impl Display for OnlyDisplay {
 #[allow(dead_code)] // field is only used in Debug impl
 struct OnlyDebug(i32);
 
+#[derive(Clone)]
+struct NoFormatting;
+
 #[instrument(ret)]
 fn ret() -> i32 {
     42
@@ -260,6 +263,70 @@ fn test_ret_err() {
         Some(tracing::field::debug(ok.clone())),
         Level::INFO,
         || ret_err(Ok(ok)).ok(),
+    );
+}
+
+#[instrument(skip(x), level = Level::TRACE, ret(ok))]
+fn new_ret_ok(x: Result<OnlyDebug, NoFormatting>) -> Result<OnlyDebug, NoFormatting> {
+    x
+}
+
+#[test]
+fn test_new_ret_ok() {
+    expect_err("new_ret_ok", None::<bool>, Level::ERROR, || {
+        new_ret_ok(Err(NoFormatting)).ok()
+    });
+
+    let ok = OnlyDebug(42);
+    expect_return(
+        "new_ret_ok",
+        Some(tracing::field::debug(ok.clone())),
+        Level::TRACE,
+        || new_ret_ok(Ok(ok)).ok(),
+    );
+}
+
+#[instrument(skip(x), ret(err))]
+fn new_ret_err(x: Result<NoFormatting, OnlyDisplay>) -> Result<NoFormatting, OnlyDisplay> {
+    x
+}
+
+#[test]
+fn test_new_ret_err() {
+    let err = OnlyDisplay(42);
+    expect_err(
+        "new_ret_err",
+        Some(tracing::field::display(err.clone())),
+        Level::ERROR,
+        || new_ret_err(Err(err)).ok(),
+    );
+
+    expect_return("new_ret_err", None::<bool>, Level::INFO, || {
+        new_ret_err(Ok(NoFormatting)).ok()
+    });
+}
+
+#[instrument(skip(x), ret(ok(level = "debug"), err(level = "warn", Debug)))]
+fn new_ret_ok_err_debug(x: Result<OnlyDebug, OnlyDebug>) -> Result<OnlyDebug, OnlyDebug> {
+    x
+}
+
+#[test]
+fn test_new_ret_ok_err_debug() {
+    let err = OnlyDebug(42);
+    expect_err(
+        "new_ret_ok_err_debug",
+        Some(tracing::field::debug(err.clone())),
+        Level::WARN,
+        || new_ret_ok_err_debug(Err(err)).ok(),
+    );
+
+    let ok = OnlyDebug(42);
+    expect_return(
+        "new_ret_ok_err_debug",
+        Some(tracing::field::debug(ok.clone())),
+        Level::DEBUG,
+        || new_ret_ok_err_debug(Ok(ok)).ok(),
     );
 }
 
