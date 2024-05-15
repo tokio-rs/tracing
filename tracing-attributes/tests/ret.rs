@@ -1,5 +1,4 @@
-use std::convert::TryFrom;
-use std::num::TryFromIntError;
+use std::fmt::Display;
 
 use tracing::{collect::with_default, Level};
 use tracing_attributes::instrument;
@@ -56,6 +55,19 @@ fn expect_err<V: tracing::Value, T>(
     with_default(collector, func);
     handle.assert_finished();
 }
+
+// Helper structs that ensure no incorrect formatting is attempted
+#[derive(Clone)]
+struct OnlyDisplay(i32);
+impl Display for OnlyDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OnlyDisplay({})", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)] // field is only used in Debug impl
+struct OnlyDebug(i32);
 
 #[instrument(ret)]
 fn ret() -> i32 {
@@ -203,25 +215,27 @@ fn test_dbg() {
     );
 }
 
-#[instrument(ret, err)]
-fn ret_err(x: Result<u8, TryFromIntError>) -> Result<u8, TryFromIntError> {
+#[instrument(skip(x), ret, err)]
+fn ret_err(x: Result<OnlyDebug, OnlyDisplay>) -> Result<OnlyDebug, OnlyDisplay> {
     x
 }
 
 #[test]
 fn test_ret_err() {
+    let err = OnlyDisplay(42);
     expect_err(
         "ret_err",
-        tracing::field::display(u8::try_from(1234).unwrap_err()),
+        Some(tracing::field::display(err.clone())),
         Level::ERROR,
-        || ret_err(u8::try_from(1234)).ok(),
+        || ret_err(Err(err)).ok(),
     );
 
+    let ok = OnlyDebug(42);
     expect_return(
         "ret_err",
-        tracing::field::debug(123_u8),
+        Some(tracing::field::debug(ok.clone())),
         Level::INFO,
-        || ret_err(u8::try_from(123)).ok(),
+        || ret_err(Ok(ok)).ok(),
     );
 }
 
