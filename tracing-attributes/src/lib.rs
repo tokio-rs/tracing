@@ -257,37 +257,51 @@ mod expand;
 /// }
 /// ```
 ///
-/// If the function returns a [`Result<T, E>`] and `E` implements [`std::fmt::Display`], adding
-/// `err` or `err(Display)` will emit error events when the function returns `Err`:
+/// If the function returns a [`Result<T, E>`], the `ok(...)` and `err(...)` attributes can be
+/// added inside of `ret()` for special handling of `Ok` and `Err` values, respectively:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err)]
+/// #[instrument(ret(ok, err))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
 /// ```
 ///
-/// The level of the error value event defaults to [`ERROR`][`Level::ERROR`].
+/// By default, `Ok` values are emitted using [`std::fmt::Debug`] unless `ret(ok(Display))` is
+/// specified, and `Err` values are emitted using [`std::fmt::Display`] unless `ret(err(Debug))` is
+/// specified.
 ///
-/// Similarly, overriding the level of the `err` event :
+/// If only one of the two attributes is given, values of the other `Result` variant are not
+/// emitted at all; for example, to emit only `Ok` return values:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(ok))]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
+/// The level of `Err` value events defaults to [`ERROR`][`Level::ERROR`] but can be changed using
+/// `ret(err(level = ...))`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
 /// # use tracing::Level;
-/// #[instrument(err(level = Level::INFO))]
+/// #[instrument(ret(err(level = Level::INFO)))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
 /// ```
 ///
-/// By default, error values will be recorded using their [`std::fmt::Display`] implementations.
-/// If an error implements [`std::fmt::Debug`], it can be recorded using its `Debug` implementation
-/// instead by writing `err(Debug)`:
+/// The level of `Ok` value events defaults to the level of the span emitted by `#[instrument]`
+/// (same as for plain `ret()`, see above), but can be changed using `ret(ok(level = ...))`:
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(err(Debug))]
+/// # use tracing::Level;
+/// #[instrument(ret(ok(level = Level::INFO)))]
 /// fn my_function(arg: usize) -> Result<(), std::io::Error> {
 ///     Ok(())
 /// }
