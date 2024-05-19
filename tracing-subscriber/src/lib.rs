@@ -210,7 +210,11 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
+    /// Creates a default [`Registry`], a [`Collect`](tracing_core::Collect)
+    /// implementation which tracks per-span data and exposes it to
+    /// [`Subscribe`]s.
     ///
+    /// For more information see [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }
