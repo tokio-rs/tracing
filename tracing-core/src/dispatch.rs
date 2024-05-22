@@ -205,9 +205,11 @@ enum Kind<T> {
 
 #[cfg(feature = "std")]
 thread_local! {
-    static CURRENT_STATE: State = State {
-        default: RefCell::new(None),
-        can_enter: Cell::new(true),
+    static CURRENT_STATE: State = const {
+        State {
+            default: RefCell::new(None),
+            can_enter: Cell::new(true),
+        }
     };
 }
 
@@ -508,6 +510,7 @@ pub(crate) fn get_global() -> &'static Dispatch {
     unsafe {
         // This is safe given the invariant that setting the global dispatcher
         // also sets `GLOBAL_INIT` to `INITIALIZED`.
+        #[allow(static_mut_refs)]
         &GLOBAL_DISPATCH
     }
 }
