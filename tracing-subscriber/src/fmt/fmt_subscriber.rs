@@ -944,7 +944,7 @@ where
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
+            static BUF: RefCell<String> = const { RefCell::new(String::new()) };
         }
 
         BUF.with(|buf| {
