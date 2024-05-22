@@ -63,6 +63,7 @@
 //!   feature does nothing. **Requires "fmt" and "std"**.
 //! - `local-time`: Enables local time formatting when using the [`time`
 //!   crate]'s timestamp formatters with the `fmt` subscriber.
+//! - `reload`: Allows the `Collect` or `Subscribe` to be reloaded dynamically at runtime.
 //!
 //! ### Optional Dependencies
 //!
@@ -183,12 +184,16 @@ pub mod filter;
 pub mod prelude;
 pub mod registry;
 
+feature! {
+    #![all(feature = "reload", feature = "std")]
+    pub mod reload;
+}
+
 pub mod subscribe;
 pub mod util;
 
 feature! {
     #![feature = "std"]
-    pub mod reload;
     pub(crate) mod sync;
 }
 
