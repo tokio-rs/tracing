@@ -1239,26 +1239,34 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             return;
         }
 
-        self.maybe_pad();
         self.result = match field.name() {
-            "message" => write!(self.writer, "{:?}", value),
+            "message" => {
+                self.maybe_pad();
+                write!(self.writer, "{:?}", value)
+            }
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(
-                self.writer,
-                "{}{}{:?}",
-                self.writer.italic().paint(&name[2..]),
-                self.writer.dimmed().paint("="),
-                value
-            ),
-            name => write!(
-                self.writer,
-                "{}{}{:?}",
-                self.writer.italic().paint(name),
-                self.writer.dimmed().paint("="),
-                value
-            ),
+            name if name.starts_with("r#") => {
+                self.maybe_pad();
+                write!(
+                    self.writer,
+                    "{}{}{:?}",
+                    self.writer.italic().paint(&name[2..]),
+                    self.writer.dimmed().paint("="),
+                    value
+                )
+            }
+            name => {
+                self.maybe_pad();
+                write!(
+                    self.writer,
+                    "{}{}{:?}",
+                    self.writer.italic().paint(name),
+                    self.writer.dimmed().paint("="),
+                    value
+                )
+            }
         };
     }
 }
