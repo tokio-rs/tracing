@@ -148,6 +148,15 @@ mod expand;
 ///     // ...
 /// }
 /// ```
+/// Using a string expression to override the generated span's name:
+/// ```
+/// # use tracing_attributes::instrument;
+/// const MY_NAME: &str = "my_name";
+/// #[instrument(name = MY_NAME)]
+/// pub fn my_function() {
+///     // ...
+/// }
+/// ```
 /// Overriding the generated span's target:
 /// ```
 /// # use tracing_attributes::instrument;
