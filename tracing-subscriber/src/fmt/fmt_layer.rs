@@ -241,6 +241,27 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         self.is_ansi = ansi;
     }
 
+    /// Modifies how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// See [`Self::with_span_events`] for documentation on the [`FmtSpan`]
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method
+    ///
+    /// Note that using this method modifies the span configuration instantly and does not take into
+    /// account any current spans. If the previous configuration was set to capture
+    /// `FmtSpan::ALL`, for example, using this method to change to `FmtSpan::NONE` will cause an
+    /// exit event for currently entered events not to be formatted
+    ///
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
+    pub fn set_span_events(&mut self, kind: FmtSpan) {
+        self.fmt_span = format::FmtSpanConfig {
+            kind,
+            fmt_timing: self.fmt_span.fmt_timing,
+        }
+    }
+
     /// Configures the layer to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///
@@ -1586,5 +1607,53 @@ mod test {
 
         // dropping `_saved_no_color` will restore the previous value of
         // `NO_COLOR`.
+    }
+
+    // Validates that span event configuration can be modified with a reload handle
+    #[test]
+    fn modify_span_events() {
+        let make_writer = MockMakeWriter::default();
+
+        let inner_layer = fmt::Layer::default()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::ACTIVE);
+
+        let (reloadable_layer, reload_handle) =
+            crate::reload::Layer::new(inner_layer);
+        let reload = reloadable_layer.with_subscriber(Registry::default());
+
+        with_default(reload, || {
+            {
+                let span1 = tracing::info_span!("span1", x = 42);
+                let _e = span1.enter();
+            }
+
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::NONE));
+
+            // this span should not be logged at all!
+            {
+                let span2 = tracing::info_span!("span2", x = 100);
+                let _e = span2.enter();
+            }
+
+            {
+                let span3 = tracing::info_span!("span3", x = 42);
+                let _e = span3.enter();
+
+                // The span config was modified after span3 was already entered.
+                // We should only see an exit
+                let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::ACTIVE));
+            }
+        });
+        let actual = sanitize_timings(make_writer.get_string());
+        assert_eq!(
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
+             fake time span3{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
+            actual.as_str()
+        );
     }
 }
