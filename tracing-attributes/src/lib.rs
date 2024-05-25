@@ -226,8 +226,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// To add additional context not known at the time of the function call, add a
-/// field without a value.
+/// To record a field whose value is not known at the time of the function call, add a
+/// field without a value:
 ///
 /// ```
 /// # use tracing::Span;
