@@ -9,7 +9,7 @@ minimum supported Rust version (MSRV) to Rust 1.63.0.
 - **non_blocking**: allow worker thread name to be configured ([#2365])
 - **rolling**: add a builder for constructing `RollingFileAppender`s ([#2227])
 - **rolling**: add `Builder::filename_suffix` parameter ([#2225])
-- **non_blocking**: remove Sync bound from writer for NonBlocking ([#2607]) 
+- **non_blocking**: remove `Sync` bound from writer for `NonBlocking` ([#2607]) 
 - **non_blocking**: name spawned threads ([#2219])
 
 ### Fixed
@@ -19,6 +19,7 @@ minimum supported Rust version (MSRV) to Rust 1.63.0.
 ### Changed
 
 - Increased minimum supported Rust version (MSRV) to 1.63.0+ ([#2793])
+- Updated minimum `tracing-subscriber` version to [0.3.18][subscriber-v0.3.18] ([#2790])
 
 [#2323]: https://github.com/tokio-rs/tracing/pull/2323
 [#2365]: https://github.com/tokio-rs/tracing/pull/2365
@@ -29,6 +30,8 @@ minimum supported Rust version (MSRV) to Rust 1.63.0.
 [#2689]: https://github.com/tokio-rs/tracing/pull/2689
 [#2375]: https://github.com/tokio-rs/tracing/pull/2375
 [#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2790]: https://github.com/tokio-rs/tracing/pull/2790
+
 
 # 0.2.2 (March 17, 2022)
 
