@@ -115,7 +115,7 @@ mod expand;
 ///
 /// When an additional field does not include a value and does not shadow a
 /// function argument name, [`Empty`](tracing-core::field::Empty) will be
-/// inserted and this field can be recorded later with
+/// inserted. This field's value can be recorded later with
 /// [`Span::record`](tracing::Span::record).
 ///
 /// Note that overlap between the names of fields and (non-skipped) arguments
