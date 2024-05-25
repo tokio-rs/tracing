@@ -1,0 +1,5 @@
+error: expected "field.name" (string literal) or field.name (punctuated identifier)
+ --> tests/ui/invalid_keyword_instrument.rs:3:47
+  |
+3 | #[tracing::instrument(level = "trace", fields(() = "test"))]
+  |                                               ^

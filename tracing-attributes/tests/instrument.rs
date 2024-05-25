@@ -239,3 +239,32 @@ fn impl_trait_return_type() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn keywords_in_fields() {
+    #[instrument(fields("d.type" = "test", "x" = ?x))]
+    fn my_fn(x: u64) {
+        tracing::event!(Level::TRACE, "r.type" = "test", "event name");
+    }
+
+    let span = expect::span().named("my_fn");
+
+    let (subscriber, handle) = collector::mock()
+        .new_span(
+            span.clone().with_fields(
+                expect::field("d.type")
+                    .with_value(&"test")
+                    .and(expect::field("x").with_value(&tracing::field::display(10))),
+            ),
+        )
+        .enter(span.clone())
+        .event(expect::event().with_fields(expect::field("r.type").with_value(&"test")))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || my_fn(10));
+
+    handle.assert_finished();
+}
