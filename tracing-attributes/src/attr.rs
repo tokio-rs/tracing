@@ -17,8 +17,8 @@ pub(crate) struct EventArgs {
 #[derive(Clone, Default, Debug)]
 pub(crate) struct InstrumentArgs {
     level: Option<Level>,
-    pub(crate) name: Option<LitStr>,
-    target: Option<LitStr>,
+    pub(crate) name: Option<LitStrOrIdent>,
+    target: Option<LitStrOrIdent>,
     pub(crate) parent: Option<Expr>,
     pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
@@ -87,6 +87,8 @@ impl Parse for InstrumentArgs {
                 // XXX: apparently we support names as either named args with an
                 // sign, _or_ as unnamed string literals. That's weird, but
                 // changing it is apparently breaking.
+                // This also means that when using idents for name, it must be via
+                // a named arg, i.e. `#[instrument(name = SOME_IDENT)]`.
                 if args.name.is_some() {
                     return Err(input.error("expected only a single `name` argument"));
                 }
@@ -211,8 +213,32 @@ impl Parse for EventArgs {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(super) enum LitStrOrIdent {
+    LitStr(LitStr),
+    Ident(Ident),
+}
+
+impl ToTokens for LitStrOrIdent {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            LitStrOrIdent::LitStr(target) => target.to_tokens(tokens),
+            LitStrOrIdent::Ident(ident) => ident.to_tokens(tokens),
+        }
+    }
+}
+
+impl Parse for LitStrOrIdent {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        input
+            .parse::<LitStr>()
+            .map(LitStrOrIdent::LitStr)
+            .or_else(|_| input.parse::<Ident>().map(LitStrOrIdent::Ident))
+    }
+}
+
 struct StrArg<T> {
-    value: LitStr,
+    value: LitStrOrIdent,
     _p: std::marker::PhantomData<T>,
 }
 
