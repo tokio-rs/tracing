@@ -316,11 +316,10 @@ where
 
     /// Returns an iterator over the [stored data] for all the spans in the
     /// current context, starting with the specified span and ending with the
-    /// root of the trace tree and ending with the current span.
+    /// root of the trace tree.
     ///
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
-    /// returns the spans in reverse order (from leaf to root). Use
+    /// <strong>Note</strong>: This returns the spans in reverse order (from leaf to root). Use
     /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
     /// in case root-to-leaf ordering is desired.
     /// </pre>
