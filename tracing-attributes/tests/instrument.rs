@@ -100,6 +100,7 @@ fn fields() {
 
 #[test]
 fn skip() {
+    #[allow(dead_code)]
     struct UnDebug(pub u32);
 
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
@@ -234,6 +235,78 @@ fn impl_trait_return_type() {
         for _ in returns_impl_trait(10) {
             // nop
         }
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn name_ident() {
+    const MY_NAME: &str = "my_name";
+    #[instrument(name = MY_NAME)]
+    fn name() {}
+
+    let span_name = expect::span().named(MY_NAME);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_name.clone())
+        .enter(span_name.clone())
+        .exit(span_name.clone())
+        .drop_span(span_name)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        name();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_ident() {
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET)]
+    fn target() {}
+
+    let span_target = expect::span().named("target").with_target(MY_TARGET);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_target.clone())
+        .enter(span_target.clone())
+        .exit(span_target.clone())
+        .drop_span(span_target)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        target();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_name_ident() {
+    const MY_NAME: &str = "my_name";
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET, name = MY_NAME)]
+    fn name_target() {}
+
+    let span_name_target = expect::span().named(MY_NAME).with_target(MY_TARGET);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_name_target.clone())
+        .enter(span_name_target.clone())
+        .exit(span_name_target.clone())
+        .drop_span(span_name_target)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        name_target();
     });
 
     handle.assert_finished();
