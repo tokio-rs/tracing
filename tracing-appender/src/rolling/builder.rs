@@ -191,6 +191,9 @@ impl Builder {
     ///
     /// When a new log file is created, if there are `n` or more
     /// existing log files in the directory, the oldest will be deleted.
+    /// At startup, the `RollingFileAppender` will also prune files that are
+    /// older than the first `n`, so that without rollover we can still guarantee
+    /// less than `n` files.
     /// If no value is supplied, the `RollingAppender` will not remove any files.
     ///
     /// Files are considered candidates for deletion based on the following
