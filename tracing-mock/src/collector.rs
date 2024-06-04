@@ -141,6 +141,7 @@ use crate::{
     event::ExpectedEvent,
     expect::Expect,
     field::ExpectedFields,
+    parent::Parent,
     span::{ExpectedSpan, NewSpan},
 };
 use std::{
@@ -1034,16 +1035,36 @@ where
                         )
                     }
                 }
-                let get_parent_name = || {
-                    let stack = self.current.lock().unwrap();
+
+                let get_parent = || {
                     let spans = self.spans.lock().unwrap();
-                    event
-                        .parent()
-                        .and_then(|id| spans.get(id))
-                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
-                        .map(|s| s.name.to_string())
+
+                    if event.is_contextual() {
+                        let stack = self.current.lock().unwrap();
+                        if let Some(parent_id) = stack.last() {
+                            let contextual_parent = spans.get(parent_id).expect(
+                                "tracing-mock: contextual parent cannot \
+                                be looked up by ID. Was it recorded correctly?",
+                            );
+                            Parent::Contextual(contextual_parent.name.to_string())
+                        } else {
+                            Parent::ContextualRoot
+                        }
+                    } else if event.is_root() {
+                        Parent::ExplicitRoot
+                    } else {
+                        let parent_id = event.parent().expect(
+                            "tracing-mock: is_contextual=false is_root=false \
+                            but no explicit parent found. This is a bug!",
+                        );
+                        let explicit_parent = spans.get(parent_id).expect(
+                            "tracing-mock: explicit parent cannot be looked \
+                            up by ID. Is the provided Span ID valid: {parent_id}",
+                        );
+                        Parent::Explicit(explicit_parent.name.to_string())
+                    }
                 };
-                expected.check(event, get_parent_name, &self.name);
+                expected.check(event, get_parent, &self.name);
             }
             Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
@@ -1100,14 +1121,33 @@ where
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let get_parent_name = || {
-                    let stack = self.current.lock().unwrap();
-                    span.parent()
-                        .and_then(|id| spans.get(id))
-                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
-                        .map(|s| s.name.to_string())
+                let get_parent = || {
+                    if span.is_contextual() {
+                        let stack = self.current.lock().unwrap();
+                        if let Some(parent_id) = stack.last() {
+                            let contextual_parent = spans.get(parent_id).expect(
+                                "tracing-mock: contextual parent cannot \
+                                be looked up by ID. Was it recorded correctly?",
+                            );
+                            Parent::Contextual(contextual_parent.name.to_string())
+                        } else {
+                            Parent::ContextualRoot
+                        }
+                    } else if span.is_root() {
+                        Parent::ExplicitRoot
+                    } else {
+                        let parent_id = span.parent().expect(
+                            "tracing-mock: is_contextual=false is_root=false \
+                            but no explicit parent found. This is a bug!",
+                        );
+                        let explicit_parent = spans.get(parent_id).expect(
+                            "tracing-mock: explicit parent cannot be looked \
+                            up by ID. Is the provided Span ID valid: {parent_id}",
+                        );
+                        Parent::Explicit(explicit_parent.name.to_string())
+                    }
                 };
-                expected.check(span, get_parent_name, &self.name);
+                expected.check(span, get_parent, &self.name);
             }
         }
         spans.insert(

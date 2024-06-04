@@ -18,26 +18,15 @@ fn default_parent_test() {
     let child = expect::span().named("with_default_parent");
 
     let (collector, handle) = collector::mock()
-        .new_span(
-            contextual_parent
-                .clone()
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
-        )
-        .new_span(
-            child
-                .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(None),
-        )
+        .new_span(contextual_parent.clone().with_contextual_parent(None))
+        .new_span(child.clone().with_contextual_parent(None))
         .enter(child.clone())
         .exit(child.clone())
         .enter(contextual_parent.clone())
         .new_span(
             child
                 .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(None),
+                .with_contextual_parent(Some("contextual_parent")),
         )
         .enter(child.clone())
         .exit(child)
@@ -65,24 +54,10 @@ fn explicit_parent_test() {
     let child = expect::span().named("with_explicit_parent");
 
     let (collector, handle) = collector::mock()
-        .new_span(
-            contextual_parent
-                .clone()
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
-        )
-        .new_span(
-            explicit_parent
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
-        )
+        .new_span(contextual_parent.clone().with_contextual_parent(None))
+        .new_span(explicit_parent.with_contextual_parent(None))
         .enter(contextual_parent.clone())
-        .new_span(
-            child
-                .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(Some("explicit_parent")),
-        )
+        .new_span(child.clone().with_explicit_parent(Some("explicit_parent")))
         .enter(child.clone())
         .exit(child)
         .exit(contextual_parent)
