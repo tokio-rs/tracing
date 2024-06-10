@@ -10,10 +10,8 @@
     -D warnings \
     --force-warn rustdoc::redundant-explicit-links \
     --force-warn renamed-and-removed-lints \
-    --cfg docsrs \
-    --cfg tracing_unstable
+    --cfg docsrs
     """
-  RUSTFLAGS="--cfg tracing_unstable"
 
 [[redirects]]
   from = "/"

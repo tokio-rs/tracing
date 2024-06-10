@@ -45,12 +45,6 @@
 //! If the [`Subscriber`] also supports the `valuable` crate, it can
 //! then visit those types fields as structured values using `valuable`.
 //!
-//! <pre class="ignore" style="white-space:normal;font:inherit;">
-//!     <strong>Note</strong>: <code>valuable</code> support is an
-//!     <a href = "../index.html#unstable-features">unstable feature</a>. See
-//!     the documentation on unstable features for details on how to enable it.
-//! </pre>
-//!
 //! For example:
 //! ```ignore
 //! // Derive `Valuable` for our types:
@@ -267,8 +261,8 @@ pub trait Visit {
     /// Visits an arbitrary type implementing the [`valuable`] crate's `Valuable` trait.
     ///
     /// [`valuable`]: https://docs.rs/valuable
-    #[cfg(all(tracing_unstable, feature = "valuable"))]
-    #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+    #[cfg(feature = "valuable")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
     fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         self.record_debug(field, &value)
     }
@@ -371,8 +365,8 @@ where
 /// can be recorded using its `Valuable` implementation.
 ///
 /// [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
-#[cfg(all(tracing_unstable, feature = "valuable"))]
-#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+#[cfg(feature = "valuable")]
+#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
 pub fn valuable<T>(t: &T) -> valuable::Value<'_>
 where
     T: valuable::Valuable,
@@ -716,22 +710,22 @@ impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
 
 // ===== impl ValuableValue =====
 
-#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg(feature = "valuable")]
 impl crate::sealed::Sealed for valuable::Value<'_> {}
 
-#[cfg(all(tracing_unstable, feature = "valuable"))]
-#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+#[cfg(feature = "valuable")]
+#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
 impl Value for valuable::Value<'_> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_value(key, *self)
     }
 }
 
-#[cfg(all(tracing_unstable, feature = "valuable"))]
+#[cfg(feature = "valuable")]
 impl crate::sealed::Sealed for &'_ dyn valuable::Valuable {}
 
-#[cfg(all(tracing_unstable, feature = "valuable"))]
-#[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
+#[cfg(feature = "valuable")]
+#[cfg_attr(docsrs, doc(cfg(feature = "valuable")))]
 impl Value for &'_ dyn valuable::Valuable {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_value(key, self.as_value())

@@ -71,20 +71,15 @@ use tracing_log::NormalizeEvent;
 ///
 /// # Valuable Support
 ///
-/// Experimental support is available for using the [`valuable`] crate to record
-/// user-defined values as structured JSON. When the ["valuable" unstable
-/// feature][unstable] is enabled, types implementing [`valuable::Valuable`] will
-/// be recorded as structured JSON, rather than
-/// using their [`std::fmt::Debug`] implementations.
-///
-/// **Note**: This is an experimental feature. [Unstable features][unstable]
-/// must be enabled in order to use `valuable` support.
+/// Support is available for using the [`valuable`] crate to record user-defined
+/// values as structured JSON. When the "valuable" feature is enabled, types
+/// implementing [`valuable::Valuable`] will be recorded as structured JSON,
+/// rather than using their [`std::fmt::Debug`] implementations.
 ///
 /// [`Json::flatten_event`]: Json::flatten_event()
 /// [`Json::with_current_span`]: Json::with_current_span()
 /// [`Json::with_span_list`]: Json::with_span_list()
 /// [`valuable`]: https://crates.io/crates/valuable
-/// [unstable]: crate#unstable-features
 /// [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
@@ -475,8 +470,8 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
 }
 
 impl<'a> field::Visit for JsonVisitor<'a> {
-    #[cfg(all(tracing_unstable, feature = "valuable"))]
-    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+    #[cfg(feature = "valuable")]
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         let value = match serde_json::to_value(valuable_serde::Serializable::new(value)) {
             Ok(value) => value,
             Err(_e) => {

@@ -837,37 +837,6 @@
 //!     requires <code>liballoc</code>.
 //! </pre>
 //!
-//! ### Unstable Features
-//!
-//! These feature flags enable **unstable** features. The public API may break in 0.1.x
-//! releases. To enable these features, the `--cfg tracing_unstable` must be passed to
-//! `rustc` when compiling.
-//!
-//! The following unstable feature flags are currently available:
-//!
-//! * `valuable`: Enables support for recording [field values] using the
-//!   [`valuable`] crate.
-//!
-//! #### Enabling Unstable Features
-//!
-//! The easiest way to set the `tracing_unstable` cfg is to use the `RUSTFLAGS`
-//! env variable when running `cargo` commands:
-//!
-//! ```shell
-//! RUSTFLAGS="--cfg tracing_unstable" cargo build
-//! ```
-//! Alternatively, the following can be added to the `.cargo/config` file in a
-//! project to automatically enable the cfg flag for that project:
-//!
-//! ```toml
-//! [build]
-//! rustflags = ["--cfg", "tracing_unstable"]
-//! ```
-//!
-//! [feature flags]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-features-section
-//! [field values]: crate::field
-//! [`valuable`]: https://crates.io/crates/valuable
-//!
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported

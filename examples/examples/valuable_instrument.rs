@@ -1,4 +1,3 @@
-#[cfg(tracing_unstable)]
 mod app {
     use std::collections::HashMap;
     use tracing::field::valuable;
@@ -38,8 +37,5 @@ fn main() {
         .with_max_level(tracing::Level::TRACE)
         .init();
 
-    #[cfg(tracing_unstable)]
     app::run();
-    #[cfg(not(tracing_unstable))]
-    println!("Nothing to do, this example needs --cfg=tracing_unstable to run");
 }

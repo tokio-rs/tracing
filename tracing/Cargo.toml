@@ -38,6 +38,7 @@ criterion = { version = "0.3.6", default_features = false }
 futures = { version = "0.3.21", default_features = false }
 log = "0.4.17"
 tracing-mock = { path = "../tracing-mock" }
+valuable = { version = "0.1.0", features = ["derive"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3.38"
@@ -108,8 +109,4 @@ maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 all-features = true
-# enable unstable features in the documentation
-rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
-# it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
-# dependencies will not be enabled, and the docs build will fail.
-rustc-args = ["--cfg", "tracing_unstable"]
+rustdoc-args = ["--cfg", "docsrs"]
