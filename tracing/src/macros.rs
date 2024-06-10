@@ -759,7 +759,7 @@ macro_rules! event {
 
         let enabled = $crate::level_enabled!($lvl) && {
             let interest = __CALLSITE.interest();
-            !interest.is_never() && __CALLSITE.is_enabled(interest)
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         };
         if enabled {
             (|value_set: $crate::field::ValueSet| {
