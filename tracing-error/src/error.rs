@@ -60,11 +60,12 @@ pub struct TracedError<E> {
     inner: ErrorImpl<E>,
 }
 
-impl<E> From<E> for TracedError<E>
+impl<E> TracedError<E>
 where
-    E: Error + Send + Sync + 'static,
+    E: std::error::Error + Send + Sync + 'static,
 {
-    fn from(error: E) -> Self {
+    /// Construct a TracedError given both the SpanTrace and the inner Error
+    pub fn new(error: E, span_trace: SpanTrace) -> Self {
         // # SAFETY
         //
         // This function + the repr(C) on the ErrorImpl make the type erasure throughout the rest
@@ -74,19 +75,118 @@ where
         // error/display/debug impls to the internal error type from the type erased error type.
         //
         // The repr(C) is necessary to ensure that the struct is layed out in the order we
-        // specified it so that we can safely access the vtable and spantrace fields thru a type
+        // specified it, so that we can safely access the vtable and spantrace fields through a type
         // erased pointer to the original object.
         let vtable = &ErrorVTable {
             object_ref: object_ref::<E>,
         };
 
-        Self {
+        TracedError {
             inner: ErrorImpl {
                 vtable,
-                span_trace: SpanTrace::capture(),
+                span_trace,
                 error,
             },
         }
+    }
+
+    /// Convert the inner error type of a `TracedError` while preserving the
+    /// attached `SpanTrace`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Debug)]
+    /// # struct InnerError;
+    /// # #[derive(Debug)]
+    /// # struct OuterError(InnerError);
+    /// # impl std::fmt::Display for InnerError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for InnerError {
+    /// # }
+    /// # impl std::fmt::Display for OuterError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Outer Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for OuterError {
+    /// #     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    /// #         Some(&self.0)
+    /// #     }
+    /// # }
+    ///
+    /// let err: TracedError<InnerError> = InnerError.into();
+    /// let err: TracedError<OuterError> = err.map(|inner| OuterError(inner));
+    /// ```
+    pub fn map<F, O>(self, op: O) -> TracedError<F>
+    where
+        O: FnOnce(E) -> F,
+        F: std::error::Error + Send + Sync + 'static,
+    {
+        let span_trace = self.inner.span_trace;
+        let error = self.inner.error;
+        let error = op(error);
+
+        TracedError::new(error, span_trace)
+    }
+
+    /// Convert the inner error type of a `TracedError` using the inner error's `Into`
+    /// implementation, while preserving the attached `SpanTrace`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Debug)]
+    /// # struct InnerError;
+    /// # #[derive(Debug)]
+    /// # struct OuterError(InnerError);
+    /// # impl std::fmt::Display for InnerError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for InnerError {
+    /// # }
+    /// # impl std::fmt::Display for OuterError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Outer Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for OuterError {
+    /// #     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    /// #         Some(&self.0)
+    /// #     }
+    /// # }
+    ///
+    /// impl From<InnerError> for OuterError {
+    ///     fn from(inner: InnerError) -> Self {
+    ///         Self(inner)
+    ///     }
+    /// }
+    ///
+    /// let err: TracedError<InnerError> = InnerError.into();
+    /// let err: TracedError<OuterError> = err.err_into();
+    /// ```
+    pub fn err_into<F>(self) -> TracedError<F>
+    where
+        E: Into<F>,
+        F: std::error::Error + Send + Sync + 'static,
+    {
+        self.map(Into::into)
+    }
+}
+
+impl<E> From<E> for TracedError<E>
+where
+    E: Error + Send + Sync + 'static,
+{
+    fn from(error: E) -> Self {
+        TracedError::new(error, SpanTrace::capture())
     }
 }
 
