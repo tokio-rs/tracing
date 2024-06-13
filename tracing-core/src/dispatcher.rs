@@ -159,7 +159,7 @@ pub struct Dispatch {
 /// `WeakDispatch` is a version of [`Dispatch`] that holds a non-owning reference
 /// to a [`Subscriber`].
 ///
-/// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+/// The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 /// which returns an `Option<Dispatch>`. If all [`Dispatch`] clones that point
 /// at the `Subscriber` have been dropped, [`WeakDispatch::upgrade`] will return
 /// `None`. Otherwise, it will return `Some(Dispatch)`.
