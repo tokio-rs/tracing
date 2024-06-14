@@ -266,7 +266,7 @@ impl ExpectedSpan {
     ///
     /// handle.assert_finished();
     /// ```
-    /// 
+    ///
     /// If the order that the spans are entered changes, the test will
     /// fail:
     ///
@@ -889,10 +889,7 @@ impl fmt::Debug for NewSpan {
 
 impl PartialEq for ExpectedId {
     fn eq(&self, other: &Self) -> bool {
-        let own_id = self.inner.load(Ordering::Relaxed);
-        let other_id = other.inner.load(Ordering::Relaxed);
-
-        own_id != Self::UNSET && own_id == other_id
+        self.inner.load(Ordering::Relaxed) == other.inner.load(Ordering::Relaxed)
     }
 }
 
@@ -947,7 +944,7 @@ impl fmt::Display for SetActualSpanIdError {
         write!(
             f,
             "Could not set `ExpecedId` to {new}, \
-               it had already been set to {previous}",
+            it had already been set to {previous}",
             new = self.new_span_id,
             previous = self.previous_span_id
         )
