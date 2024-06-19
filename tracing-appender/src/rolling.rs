@@ -83,9 +83,9 @@ pub use builder::{Builder, InitError};
 /// ```
 ///
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
-pub struct RollingFileAppender {
+pub struct RollingFileAppender<W = File> {
     state: Inner,
-    writer: RwLock<File>,
+    writer: RwLock<W>,
     #[cfg(test)]
     now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
 }
@@ -97,7 +97,7 @@ pub struct RollingFileAppender {
 /// [writer]: std::io::Write
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
-pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
+pub struct RollingWriter<'a, W = File>(RwLockReadGuard<'a, W>);
 
 #[derive(Debug)]
 struct Inner {
@@ -208,7 +208,9 @@ impl RollingFileAppender {
             now: Box::new(OffsetDateTime::now_utc),
         })
     }
+}
 
+impl<W> RollingFileAppender<W> {
     #[inline]
     fn now(&self) -> OffsetDateTime {
         #[cfg(test)]
@@ -219,25 +221,32 @@ impl RollingFileAppender {
     }
 }
 
-impl io::Write for RollingFileAppender {
+impl<W> io::Write for RollingFileAppender<W>
+where
+    for<'a> &'a W: Write,
+{
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let now = self.now();
         let writer = self.writer.get_mut();
         if let Some(current_time) = self.state.should_rollover(now) {
             let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
-            self.state.refresh_writer(now, writer);
+            self.state.refresh_writer(now, todo!("writer"));
         }
-        writer.write(buf)
+        (&*writer).write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.writer.get_mut().flush()
+        (&*self.writer.get_mut()).flush()
     }
 }
 
-impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
-    type Writer = RollingWriter<'a>;
+impl<'a, W> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender<W>
+where
+    for<'b> &'b W: Write,
+    W: 'a,
+{
+    type Writer = RollingWriter<'a, W>;
     fn make_writer(&'a self) -> Self::Writer {
         let now = self.now();
 
@@ -246,14 +255,15 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
             if self.state.advance_date(now, current_time) {
-                self.state.refresh_writer(now, &mut self.writer.write());
+                self.state
+                    .refresh_writer(now, todo!("&mut self.writer.write()"));
             }
         }
         RollingWriter(self.writer.read())
     }
 }
 
-impl fmt::Debug for RollingFileAppender {
+impl<W: fmt::Debug> fmt::Debug for RollingFileAppender<W> {
     // This manual impl is required because of the `now` field (only present
     // with `cfg(test)`), which is not `Debug`...
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -505,7 +515,10 @@ impl Rotation {
 
 // === impl RollingWriter ===
 
-impl io::Write for RollingWriter<'_> {
+impl<W> io::Write for RollingWriter<'_, W>
+where
+    for<'a> &'a W: Write,
+{
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&*self.0).write(buf)
     }
