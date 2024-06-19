@@ -72,6 +72,21 @@ impl Builder {
             make_writer: Arc::new(|file| file),
         }
     }
+}
+
+impl<W> Builder<W> {
+    /// Wraps the current file writer with the provided writer
+    ///
+    /// With this approach, compression can be enabled if a compression writer builder is provided.
+    ///
+    /// # Examples
+    /// TODO
+    pub fn writer_builder(self, builder: impl Fn(File) -> W + 'static) -> Self {
+        Self {
+            make_writer: Arc::new(builder),
+            ..self
+        }
+    }
 
     /// Sets the [rotation strategy] for log files.
     ///
@@ -248,7 +263,12 @@ impl Builder {
             ..self
         }
     }
+}
 
+impl<W> Builder<W>
+where
+    for<'a> &'a W: std::io::Write,
+{
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
     /// emitting log files to the provided directory.
     ///
@@ -277,7 +297,7 @@ impl Builder {
     /// # drop(appender);
     /// # }
     /// ```
-    pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender, InitError> {
+    pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender<W>, InitError> {
         RollingFileAppender::from_builder(self, directory)
     }
 }
