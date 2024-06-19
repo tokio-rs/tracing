@@ -80,11 +80,45 @@ impl<W> Builder<W> {
     /// With this approach, compression can be enabled if a compression writer builder is provided.
     ///
     /// # Examples
-    /// TODO
-    pub fn writer_builder(self, builder: impl Fn(File) -> W + Send + Sync + 'static) -> Self {
-        Self {
+    /// ```
+    /// # fn docs() {
+    /// # use std::sync::Mutex;
+    /// # use std::io::Result;
+    /// // Assume you have some helper like this
+    /// struct MutexWriter<W>(Mutex<W>);
+    ///
+    /// impl<W: std::io::Write> std::io::Write for &'_ MutexWriter<W> {
+    /// # fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    /// #   self.0.lock().unwrap().write(buf)
+    /// # }
+    /// # fn flush(&mut self) -> Result<()> {
+    /// #   self.0.lock().unwrap().flush()
+    /// # }
+    ///   // ...
+    /// }
+    ///
+    /// use tracing_appender::rolling::RollingFileAppender;
+    /// use snap::write::FrameEncoder;
+    ///
+    /// let appender = RollingFileAppender::builder()
+    ///     .writer_builder(|file| {
+    ///        let buf_writer = std::io::BufWriter::new(file);
+    ///        let snap_writer = snap::write::FrameEncoder::new(buf_writer);
+    ///        MutexWriter(Mutex::new(snap_writer))
+    ///     })
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    pub fn writer_builder<W2>(self, builder: impl Fn(File) -> W2 + Send + Sync + 'static) -> Builder<W2> {
+        Builder {
             make_writer: Arc::new(builder),
-            ..self
+            rotation: self.rotation,
+            prefix: self.prefix,
+            suffix: self.suffix,
+            max_files: self.max_files,
         }
     }
 
