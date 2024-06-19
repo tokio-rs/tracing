@@ -1,16 +1,31 @@
 use super::{RollingFileAppender, Rotation};
-use std::{io, path::Path};
+use std::{fs::File, io, path::Path, sync::Arc};
 use thiserror::Error;
+
+pub(super) type WriterFn<W> = Arc<dyn Fn(File) -> W>;
 
 /// A [builder] for configuring [`RollingFileAppender`]s.
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
-#[derive(Debug)]
-pub struct Builder {
+pub struct Builder<W = File> {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) make_writer: WriterFn<W>,
+}
+
+impl<W> std::fmt::Debug for Builder<W> {
+    // This manual impl is required because of the `now` field (only present
+    // with `cfg(test)`), which is not `Debug`...
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("rotation", &self.rotation)
+            .field("prefix", &self.rotation)
+            .field("suffix", &self.rotation)
+            .field("max_files", &self.max_files)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Errors returned by [`Builder::build`].
@@ -48,12 +63,13 @@ impl Builder {
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
             max_files: None,
+            make_writer: Arc::new(|file| file),
         }
     }
 

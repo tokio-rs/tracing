@@ -37,6 +37,7 @@ use std::{
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
 mod builder;
+use builder::WriterFn;
 pub use builder::{Builder, InitError};
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
@@ -84,7 +85,7 @@ pub use builder::{Builder, InitError};
 ///
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 pub struct RollingFileAppender<W = File> {
-    state: Inner,
+    state: Inner<W>,
     writer: RwLock<W>,
     #[cfg(test)]
     now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
@@ -99,8 +100,7 @@ pub struct RollingFileAppender<W = File> {
 #[derive(Debug)]
 pub struct RollingWriter<'a, W = File>(RwLockReadGuard<'a, W>);
 
-#[derive(Debug)]
-struct Inner {
+struct Inner<W> {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
     log_filename_suffix: Option<String>,
@@ -108,6 +108,21 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    make_writer: WriterFn<W>,
+}
+
+impl<W> fmt::Debug for Inner<W> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Inner")
+            .field("log_directory", &self.log_directory)
+            .field("log_filename_prefix", &self.log_filename_prefix)
+            .field("log_filename_suffix", &self.log_filename_suffix)
+            .field("date_format", &self.date_format)
+            .field("rotation", &self.rotation)
+            .field("next_date", &self.next_date)
+            .field("max_files", &self.max_files)
+            .finish_non_exhaustive()
+    }
 }
 
 // === impl RollingFileAppender ===
@@ -183,13 +198,19 @@ impl RollingFileAppender {
     pub fn builder() -> Builder {
         Builder::new()
     }
+}
 
-    fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
+impl<W> RollingFileAppender<W>
+where
+    for<'a> &'a W: Write,
+{
+    fn from_builder(builder: &Builder<W>, directory: impl AsRef<Path>) -> Result<Self, InitError> {
         let Builder {
             ref rotation,
             ref prefix,
             ref suffix,
             ref max_files,
+            ref make_writer,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -200,6 +221,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            std::sync::Arc::clone(make_writer),
         )?;
         Ok(Self {
             state,
@@ -208,9 +230,7 @@ impl RollingFileAppender {
             now: Box::new(OffsetDateTime::now_utc),
         })
     }
-}
 
-impl<W> RollingFileAppender<W> {
     #[inline]
     fn now(&self) -> OffsetDateTime {
         #[cfg(test)]
@@ -231,7 +251,7 @@ where
         if let Some(current_time) = self.state.should_rollover(now) {
             let _did_cas = self.state.advance_date(now, current_time);
             debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
-            self.state.refresh_writer(now, todo!("writer"));
+            self.state.refresh_writer(now, writer);
         }
         (&*writer).write(buf)
     }
@@ -255,8 +275,7 @@ where
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
             if self.state.advance_date(now, current_time) {
-                self.state
-                    .refresh_writer(now, todo!("&mut self.writer.write()"));
+                self.state.refresh_writer(now, &mut self.writer.write());
             }
         }
         RollingWriter(self.writer.read())
@@ -264,8 +283,6 @@ where
 }
 
 impl<W: fmt::Debug> fmt::Debug for RollingFileAppender<W> {
-    // This manual impl is required because of the `now` field (only present
-    // with `cfg(test)`), which is not `Debug`...
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RollingFileAppender")
             .field("state", &self.state)
@@ -530,7 +547,10 @@ where
 
 // === impl Inner ===
 
-impl Inner {
+impl<W> Inner<W>
+where
+    for<'a> &'a W: Write,
+{
     fn new(
         now: OffsetDateTime,
         rotation: Rotation,
@@ -538,7 +558,8 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
-    ) -> Result<(Self, RwLock<File>), builder::InitError> {
+        make_writer: WriterFn<W>,
+    ) -> Result<(Self, RwLock<W>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
         let next_date = rotation.next_date(&now);
@@ -555,9 +576,11 @@ impl Inner {
             ),
             rotation,
             max_files,
+            make_writer,
         };
         let filename = inner.join_date(&now);
-        let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
+        let file = create_writer(inner.log_directory.as_ref(), &filename)?;
+        let writer = RwLock::new((inner.make_writer)(file));
         Ok((inner, writer))
     }
 
@@ -647,7 +670,7 @@ impl Inner {
         }
     }
 
-    fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
+    fn refresh_writer(&self, now: OffsetDateTime, writer: &mut W) {
         let filename = self.join_date(&now);
 
         if let Some(max_files) = self.max_files {
@@ -656,10 +679,10 @@ impl Inner {
 
         match create_writer(&self.log_directory, &filename) {
             Ok(new_file) => {
-                if let Err(err) = file.flush() {
+                if let Err(err) = (&*writer).flush() {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
-                *file = new_file;
+                *writer = (self.make_writer)(new_file);
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }
