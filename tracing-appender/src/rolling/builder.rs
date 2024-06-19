@@ -2,7 +2,7 @@ use super::{RollingFileAppender, Rotation};
 use std::{fs::File, io, path::Path, sync::Arc};
 use thiserror::Error;
 
-pub(super) type WriterFn<W> = Arc<dyn Fn(File) -> W>;
+pub(super) type WriterFn<W> = Arc<dyn Fn(File) -> W + Send + Sync>;
 
 /// A [builder] for configuring [`RollingFileAppender`]s.
 ///
@@ -81,7 +81,7 @@ impl<W> Builder<W> {
     ///
     /// # Examples
     /// TODO
-    pub fn writer_builder(self, builder: impl Fn(File) -> W + 'static) -> Self {
+    pub fn writer_builder(self, builder: impl Fn(File) -> W + Send + Sync + 'static) -> Self {
         Self {
             make_writer: Arc::new(builder),
             ..self

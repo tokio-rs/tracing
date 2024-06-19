@@ -865,6 +865,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                std::sync::Arc::new(|id| id),
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -977,6 +978,7 @@ mod test {
             Some("test_make_writer".to_string()),
             None,
             None,
+            std::sync::Arc::new(|id| id),
         )
         .unwrap();
 
@@ -1059,6 +1061,7 @@ mod test {
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            std::sync::Arc::new(|id| id),
         )
         .unwrap();
 
