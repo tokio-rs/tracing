@@ -225,7 +225,7 @@ impl ExpectedSpan {
     /// [`MockCollector::new_span`]. The same [`ExpectedId`] can then
     /// be used to match the exact same span when passed to
     /// [`MockCollector::enter`], [`MockCollector::exit`], and
-    /// [`MockColletor::drop_span`].
+    /// [`MockCollector::drop_span`].
     ///
     /// This is especially useful when `tracing-mock` is being used to
     /// test the traces being generated within your own crate, in which
