@@ -65,7 +65,7 @@ pub fn span() -> ExpectedSpan {
 /// on [`ExpectedSpan::with_id`].
 ///
 /// [`MockCollector`]: struct@crate::collector::MockCollector
-/// [`MockCollector::new_span`]: fn@crate::MockCollector::new_span
+/// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
 pub fn id() -> ExpectedId {
     ExpectedId::new_unset()
 }

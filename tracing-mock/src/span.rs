@@ -299,10 +299,10 @@ impl ExpectedSpan {
     /// handle.assert_finished();
     /// ```
     ///
-    /// [`MockCollector::new_span`]: fn@crate::MockCollector::new_span
-    /// [`MockCollector::enter`]: fn@crate::MockCollector::enter
-    /// [`MockCollector::exit`]: fn@crate::MockCollector::exit
-    /// [`MockCollector::drop_span`]: fn@crate::MockCollector::drop_span
+    /// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
+    /// [`MockCollector::enter`]: fn@crate::collector::MockCollector::enter
+    /// [`MockCollector::exit`]: fn@crate::collector::MockCollector::exit
+    /// [`MockCollector::drop_span`]: fn@crate::collector::MockCollector::drop_span
     pub fn with_id(self, id: ExpectedId) -> Self {
         Self {
             id: Some(id),
