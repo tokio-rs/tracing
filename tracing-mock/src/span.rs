@@ -230,8 +230,8 @@ impl ExpectedSpan {
     /// This is especially useful when `tracing-mock` is being used to
     /// test the traces being generated within your own crate, in which
     /// case you may need to distinguish between spans which have
-    /// identical metadata but different field values, which can only
-    /// be checked in [`MockCollector::new_span`].
+    /// identical metadata but different field values, which can
+    /// otherwise only be checked in [`MockCollector::new_span`].
     ///
     /// # Examples
     ///
