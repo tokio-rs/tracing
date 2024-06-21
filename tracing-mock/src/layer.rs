@@ -116,6 +116,7 @@
 //!
 //! [`Layer`]: trait@tracing_subscriber::layer::Layer
 use crate::{
+    ancestry::{get_ancestry, Ancestry, HasAncestry},
     event::ExpectedEvent,
     expect::Expect,
     span::{ExpectedSpan, NewSpan},
@@ -904,8 +905,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
-                let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
-                expected.check(event, get_parent_name, &self.name);
+                expected.check(event, || context_get_ancestry(event, &cx), &self.name);
 
                 if let Some(expected_scope) = expected.scope_mut() {
                     self.check_event_scope(cx.event_scope(event), expected_scope);
@@ -936,13 +936,7 @@ where
         let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let get_parent_name = || {
-                    span.parent()
-                        .and_then(|id| cx.span(id))
-                        .or_else(|| cx.lookup_current())
-                        .map(|span| span.name().to_string())
-                };
-                expected.check(span, get_parent_name, &self.name);
+                expected.check(span, || context_get_ancestry(span, &cx), &self.name);
             }
         }
     }
@@ -1040,6 +1034,17 @@ where
     fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
     }
+}
+
+fn context_get_ancestry<C>(item: impl HasAncestry, ctx: &Context<'_, C>) -> Ancestry
+where
+    C: Subscriber + for<'a> LookupSpan<'a>,
+{
+    get_ancestry(
+        item,
+        || ctx.lookup_current().map(|s| s.id()),
+        |span_id| ctx.span(span_id).map(|span| span.name()),
+    )
 }
 
 impl fmt::Debug for MockLayer {

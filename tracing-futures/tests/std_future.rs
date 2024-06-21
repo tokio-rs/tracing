@@ -69,13 +69,21 @@ fn span_on_drop() {
 
     let subscriber = subscriber::mock()
         .enter(expect::span().named("foo"))
-        .event(expect::event().at_level(Level::INFO))
+        .event(
+            expect::event()
+                .with_ancestry(expect::has_contextual_parent("foo"))
+                .at_level(Level::INFO),
+        )
         .exit(expect::span().named("foo"))
         .enter(expect::span().named("foo"))
         .exit(expect::span().named("foo"))
         .drop_span(expect::span().named("foo"))
         .enter(expect::span().named("bar"))
-        .event(expect::event().at_level(Level::INFO))
+        .event(
+            expect::event()
+                .with_ancestry(expect::has_contextual_parent("bar"))
+                .at_level(Level::INFO),
+        )
         .exit(expect::span().named("bar"))
         .drop_span(expect::span().named("bar"))
         .only()
