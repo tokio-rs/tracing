@@ -703,6 +703,36 @@ where
         }
     }
 
+    /// Sets whether or not the binary name of the process is displayed when
+    /// formatting events. If binary_name is None, argv\[0\] will be used,
+    /// otherwise the spcified string will be used.
+    ///
+    /// [argv\[0\]]: std::env::args
+    pub fn with_binary_name(
+        self,
+        display_binary_name: bool,
+        binary_name: Option<&str>,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_binary_name(display_binary_name, binary_name),
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [process ID] of the current thread is displayed
+    /// when formatting events.
+    ///
+    /// [process ID]: std::process::id
+    pub fn with_process_id(
+        self,
+        display_process_id: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_process_id(display_process_id),
+            ..self
+        }
+    }
+
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events.
     ///
