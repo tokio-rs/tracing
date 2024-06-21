@@ -23,7 +23,7 @@ std = ["log/std"]
 log-tracer = []
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.2"}
+tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 log = "0.4.17"
 once_cell = "1.13.0"
 env_logger = { version = "0.8.4", optional = true }
