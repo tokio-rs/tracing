@@ -445,6 +445,7 @@ enum RotationKind {
     Hourly,
     Daily,
     Never,
+    Custom(Duration),
 }
 
 impl Rotation {
@@ -457,12 +458,27 @@ impl Rotation {
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
+    /// Provides a custom rotation
+    pub fn custom(duration: Duration) -> Result<Self, String> {
+        if !duration.is_positive() {
+            Err("Custom Rotation duration must be positive".to_string())
+        } else if duration > Duration::days(365 * 10) {
+            // 10 years... Ridiculous, but we need to cap it somewhere to avoid overflow.
+            Err("Custom Rotation duration must be less than 10 years".to_string())
+        } else {
+            Ok(Self(RotationKind::Custom(duration)))
+        }
+    }
+
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
             Rotation::MINUTELY => *current_date + Duration::minutes(1),
             Rotation::HOURLY => *current_date + Duration::hours(1),
             Rotation::DAILY => *current_date + Duration::days(1),
             Rotation::NEVER => return None,
+            // This is safe from overflow because we only create a `Rotation::Custom` if the
+            // duration is positive and less than 10 years.
+            Self(RotationKind::Custom(duration)) => *current_date + duration,
         };
         Some(self.round_date(&unrounded_next_date))
     }
@@ -485,6 +501,27 @@ impl Rotation {
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
+            Self(RotationKind::Custom(duration)) => {
+                let date_nanos = date.unix_timestamp_nanos();
+                let duration_nanos = duration.whole_nanoseconds();
+                debug_assert!(duration_nanos > 0);
+
+                // find how many nanoseconds after the next rotation time we are.
+                // Use Euclidean division to properly handle negative date values.
+                // This is safe because `Duration` is always positive.
+                let nanos_above = date_nanos.rem_euclid(duration_nanos);
+                let round_nanos = date_nanos - nanos_above;
+
+                // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
+                // `date_nanos - 0 >= date_nanos - nanos_above > date_nanos - duration_nanos` (by algebra)
+                // thus, `date_nanos >= round_nanos > date_nanos - duration_nanos`
+                // `date_nanos` is already a valid `OffsetDateTime`, and
+                // `date_nanos - duration_nanos` equals the `current_date` from `Rotation::next_date`.
+                // Since `round_nanos` is between these two valid values, it must also be a valid
+                // input to `OffsetDateTime::from_unix_timestamp_nanos`.
+                OffsetDateTime::from_unix_timestamp_nanos(round_nanos)
+                    .expect("Invalid time; this is a bug in tracing-appender")
+            }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
                 unreachable!("Rotation::NEVER is impossible to round.")
@@ -498,6 +535,21 @@ impl Rotation {
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+            Self(RotationKind::Custom(duration)) => {
+                if duration >= Duration::DAY {
+                    format_description::parse("[year]-[month]-[day]")
+                } else if duration >= Duration::HOUR {
+                    format_description::parse("[year]-[month]-[day]-[hour]")
+                } else if duration >= Duration::MINUTE {
+                    format_description::parse("[year]-[month]-[day]-[hour]-[minute]")
+                } else if duration >= Duration::SECOND {
+                    format_description::parse("[year]-[month]-[day]-[hour]-[minute]-[second]")
+                } else {
+                    format_description::parse(
+                        "[year]-[month]-[day]-[hour]-[minute]-[second]-[subsecond]",
+                    )
+                }
+            }
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
     }
@@ -709,6 +761,7 @@ mod test {
     use super::*;
     use std::fs;
     use std::io::Write;
+    use time::ext::NumericalDuration;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -767,6 +820,11 @@ mod test {
     }
 
     #[test]
+    fn write_custom_log() {
+        test_appender(Rotation::custom(20.minutes()).unwrap(), "custom.log");
+    }
+
+    #[test]
     fn test_rotations() {
         // per-minute basis
         let now = OffsetDateTime::now_utc();
@@ -790,6 +848,36 @@ mod test {
     }
 
     #[test]
+    fn test_custom_rotations() {
+        let now = OffsetDateTime::now_utc().replace_time(Time::from_hms(0, 0, 20).unwrap());
+        let duration = Duration::seconds(20);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 20.seconds(), next);
+
+        let now = OffsetDateTime::now_utc().replace_time(Time::from_hms(1, 0, 20).unwrap());
+        let duration = Duration::minutes(120);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 59.minutes() + 40.seconds(), next);
+
+        let now = OffsetDateTime::UNIX_EPOCH + 50.days() + 11.hours();
+        let duration = Duration::days(7);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 5.days() + 13.hours(), next);
+
+        // negative timestamps, -23 hours, 59 minutes
+        let now = OffsetDateTime::UNIX_EPOCH - 23.hours() - 59.minutes();
+        let duration = Duration::minutes(30);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 29.minutes(), next);
+
+        // negative timestamps, -12 hours
+        let now = OffsetDateTime::UNIX_EPOCH - 12.hours();
+        let duration = Duration::days(1);
+        let next = Rotation::custom(duration).unwrap().next_date(&now).unwrap();
+        assert_eq!(now + 12.hours(), next);
+    }
+
+    #[test]
     #[should_panic(
         expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
     )]
@@ -808,6 +896,7 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
 
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let now = now + Duration::nanoseconds(12345);
 
         struct TestCase {
             expected: &'static str,
@@ -914,6 +1003,49 @@ mod test {
                 rotation: Rotation::NEVER,
                 prefix: None,
                 suffix: Some("log"),
+            },
+            // custom
+            TestCase {
+                expected: "2020-02-01-10-01-00-000012345",
+                rotation: Rotation::custom(100.nanoseconds()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10-01-00",
+                rotation: Rotation::custom(1.seconds()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10-01",
+                rotation: Rotation::custom(30.minutes()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10",
+                rotation: Rotation::custom(1.hours()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10",
+                rotation: Rotation::custom(12.hours()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::custom(1.days()).unwrap(),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::custom(100.weeks()).unwrap(),
+                prefix: None,
+                suffix: None,
             },
         ];
         for test_case in test_cases {
