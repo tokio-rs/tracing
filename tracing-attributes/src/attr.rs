@@ -4,7 +4,7 @@ use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
-use syn::parse::{Parse, ParseStream};
+use syn::parse::{Parse, ParseBuffer, ParseStream};
 
 /// Arguments to `#[instrument(err(...))]` and `#[instrument(ret(...))]` which describe how the
 /// return value event should be emitted.
@@ -12,6 +12,15 @@ use syn::parse::{Parse, ParseStream};
 pub(crate) struct EventArgs {
     level: Option<Level>,
     pub(crate) mode: FormatMode,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum RetArgs {
+    AnyType(EventArgs),
+    Result {
+        ok: Option<EventArgs>,
+        err: Option<EventArgs>,
+    },
 }
 
 #[derive(Clone, Default, Debug)]
@@ -23,8 +32,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
-    pub(crate) err_args: Option<EventArgs>,
-    pub(crate) ret_args: Option<EventArgs>,
+    pub(crate) ret_args: Option<RetArgs>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -74,6 +82,7 @@ impl InstrumentArgs {
 impl Parse for InstrumentArgs {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut args = Self::default();
+        let mut err_args = None;
         while !input.is_empty() {
             let lookahead = input.lookahead1();
             if lookahead.peek(kw::name) {
@@ -127,12 +136,12 @@ impl Parse for InstrumentArgs {
                 }
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
+                let error_fork = input.fork();
                 let _ = input.parse::<kw::err>();
-                let err_args = EventArgs::parse(input)?;
-                args.err_args = Some(err_args);
+                err_args = Some((error_fork, EventArgs::parse(input)?));
             } else if lookahead.peek(kw::ret) {
                 let _ = input.parse::<kw::ret>()?;
-                let ret_args = EventArgs::parse(input)?;
+                let ret_args = RetArgs::parse(input)?;
                 args.ret_args = Some(ret_args);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
@@ -147,6 +156,22 @@ impl Parse for InstrumentArgs {
                 let _ = input.parse::<proc_macro2::TokenTree>();
             }
         }
+
+        if let Some((error_fork, err)) = err_args {
+            // emulate old behaviour: err() sets Err formatting, ret() sets Ok formatting
+            let ok = match args.ret_args.take() {
+                None => None,
+                Some(RetArgs::AnyType(ok)) => Some(ok),
+                Some(RetArgs::Result { .. }) => {
+                    return Err(
+                        error_fork.error("`err()` and `ret(err())`/`ret(ok())` are incompatible")
+                    )
+                }
+            };
+
+            args.ret_args = Some(RetArgs::Result { ok, err: Some(err) });
+        }
+
         Ok(args)
     }
 }
@@ -221,6 +246,64 @@ impl Parse for LitStrOrIdent {
             .parse::<LitStr>()
             .map(LitStrOrIdent::LitStr)
             .or_else(|_| input.parse::<Ident>().map(LitStrOrIdent::Ident))
+    }
+}
+
+impl Parse for RetArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        if !input.peek(syn::token::Paren) {
+            return Ok(Self::AnyType(EventArgs::default()));
+        }
+
+        {
+            let ahead = input.fork();
+
+            let content;
+            let _ = syn::parenthesized!(content in ahead);
+
+            if !content.peek(kw::ok) && !content.peek(kw::err) {
+                return Ok(Self::AnyType(input.parse()?));
+            }
+        }
+
+        let content;
+        let _ = syn::parenthesized!(content in input);
+
+        fn parse_nested<KW: ToTokens + Parse>(
+            content: &ParseBuffer<'_>,
+            args: &mut Option<EventArgs>,
+        ) -> syn::Result<()> {
+            let kw = content.parse::<KW>()?;
+            if args.is_some() {
+                return Err(content.error(format!(
+                    "expected only a single `{}` argument",
+                    kw.into_token_stream()
+                )));
+            }
+            *args = Some(content.parse()?);
+            if content.peek(Token![,]) {
+                let _ = content.parse::<Token![,]>()?;
+            }
+            Ok(())
+        }
+
+        let mut ok_args = None;
+        let mut err_args = None;
+        while !content.is_empty() {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::ok) {
+                parse_nested::<kw::ok>(&content, &mut ok_args)?;
+            } else if lookahead.peek(kw::err) {
+                parse_nested::<kw::err>(&content, &mut err_args)?;
+            } else {
+                return Err(lookahead.error());
+            }
+        }
+
+        Ok(Self::Result {
+            ok: ok_args,
+            err: err_args,
+        })
     }
 }
 
@@ -333,7 +416,7 @@ impl Parse for Field {
             kind = FieldKind::Debug;
         };
         let name = Punctuated::parse_separated_nonempty_with(input, Ident::parse_any)?;
-        let value = if input.peek(Token![=]) {
+        let value = if kind == FieldKind::Value && input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
             if input.peek(Token![%]) {
                 input.parse::<Token![%]>()?;
@@ -459,6 +542,7 @@ mod kw {
     syn::custom_keyword!(parent);
     syn::custom_keyword!(follows_from);
     syn::custom_keyword!(name);
+    syn::custom_keyword!(ok);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
 }

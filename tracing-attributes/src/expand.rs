@@ -9,6 +9,7 @@ use syn::{
     Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
+use crate::attr::{EventArgs, RetArgs};
 use crate::{
     attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
@@ -236,34 +237,28 @@ fn gen_block<B: ToTokens>(
 
     let target = args.target();
 
-    let err_event = match args.err_args {
-        Some(event_args) => {
-            let level_tokens = event_args.level(Level::Error);
-            match event_args.mode {
-                FormatMode::Default | FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = %e)
-                )),
-                FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = ?e)
-                )),
-            }
+    let make_err_event = |event_args: &EventArgs| {
+        let level_tokens = event_args.level(Level::Error);
+        match event_args.mode {
+            FormatMode::Default | FormatMode::Display => quote!(
+                tracing::event!(target: #target, #level_tokens, error = %e);
+            ),
+            FormatMode::Debug => quote!(
+                tracing::event!(target: #target, #level_tokens, error = ?e);
+            ),
         }
-        _ => None,
     };
 
-    let ret_event = match args.ret_args {
-        Some(event_args) => {
-            let level_tokens = event_args.level(args_level);
-            match event_args.mode {
-                FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = %x)
-                )),
-                FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = ?x)
-                )),
-            }
+    let make_ret_event = |event_args: &EventArgs| {
+        let level_tokens = event_args.level(args_level);
+        match event_args.mode {
+            FormatMode::Display => quote!(
+                tracing::event!(target: #target, #level_tokens, return = %x);
+            ),
+            FormatMode::Default | FormatMode::Debug => quote!(
+                tracing::event!(target: #target, #level_tokens, return = ?x);
+            ),
         }
-        _ => None,
     };
 
     // Generate the instrumented function body.
@@ -274,42 +269,39 @@ fn gen_block<B: ToTokens>(
     // If `ret` is in args, instrument any resulting `Ok`s when the function
     // returns `Result`s, otherwise instrument any resulting values.
     if async_context {
-        let mk_fut = match (err_event, ret_event) {
-            (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
-                async move {
-                    match async move #block.await {
-                        #[allow(clippy::unit_arg)]
-                        Ok(x) => {
-                            #ret_event;
-                            Ok(x)
-                        },
-                        Err(e) => {
-                            #err_event;
-                            Err(e)
+        let mk_fut = match args.ret_args {
+            Some(RetArgs::Result { ok, err }) => {
+                let ok_event = ok.as_ref().map(make_ret_event).unwrap_or(quote! {});
+                let err_event = err.as_ref().map(make_err_event).unwrap_or(quote! {});
+
+                quote_spanned!(block.span()=>
+                    async move {
+                        match async move #block.await {
+                            #[allow(clippy::unit_arg)]
+                            Ok(x) => {
+                                #ok_event
+                                Ok(x)
+                            },
+                            Err(e) => {
+                                #err_event
+                                Err(e)
+                            }
                         }
                     }
-                }
-            ),
-            (Some(err_event), None) => quote_spanned!(block.span()=>
-                async move {
-                    match async move #block.await {
-                        #[allow(clippy::unit_arg)]
-                        Ok(x) => Ok(x),
-                        Err(e) => {
-                            #err_event;
-                            Err(e)
-                        }
+                )
+            }
+            Some(RetArgs::AnyType(args)) => {
+                let ret_event = make_ret_event(&args);
+
+                quote_spanned!(block.span()=>
+                    async move {
+                        let x = async move #block.await;
+                        #ret_event
+                        x
                     }
-                }
-            ),
-            (None, Some(ret_event)) => quote_spanned!(block.span()=>
-                async move {
-                    let x = async move #block.await;
-                    #ret_event;
-                    x
-                }
-            ),
-            (None, None) => quote_spanned!(block.span()=>
+                )
+            }
+            None => quote_spanned!(block.span()=>
                 async move #block
             ),
         };
@@ -350,42 +342,39 @@ fn gen_block<B: ToTokens>(
         }
     );
 
-    match (err_event, ret_event) {
-        (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
-            #span
-            #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
-                #[allow(clippy::unit_arg)]
-                Ok(x) => {
-                    #ret_event;
-                    Ok(x)
-                },
-                Err(e) => {
-                    #err_event;
-                    Err(e)
+    match args.ret_args {
+        Some(RetArgs::Result { ok, err }) => {
+            let ret_event = ok.as_ref().map(make_ret_event).unwrap_or(quote! {});
+            let err_event = err.as_ref().map(make_err_event).unwrap_or(quote! {});
+
+            quote_spanned! {block.span()=>
+                #span
+                #[allow(clippy::redundant_closure_call)]
+                match (move || #block)() {
+                    #[allow(clippy::unit_arg)]
+                    Ok(x) => {
+                        #ret_event;
+                        Ok(x)
+                    },
+                    Err(e) => {
+                        #err_event;
+                        Err(e)
+                    }
                 }
             }
-        },
-        (Some(err_event), None) => quote_spanned!(block.span()=>
-            #span
-            #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
-                #[allow(clippy::unit_arg)]
-                Ok(x) => Ok(x),
-                Err(e) => {
-                    #err_event;
-                    Err(e)
-                }
-            }
-        ),
-        (None, Some(ret_event)) => quote_spanned!(block.span()=>
-            #span
-            #[allow(clippy::redundant_closure_call)]
-            let x = (move || #block)();
-            #ret_event;
-            x
-        ),
-        (None, None) => quote_spanned!(block.span() =>
+        }
+        Some(RetArgs::AnyType(args)) => {
+            let ret_event = make_ret_event(&args);
+
+            quote_spanned!(block.span()=>
+                #span
+                #[allow(clippy::redundant_closure_call)]
+                let x = (move || #block)();
+                #ret_event;
+                x
+            )
+        }
+        None => quote_spanned!(block.span() =>
             // Because `quote` produces a stream of tokens _without_ whitespace, the
             // `if` and the block will appear directly next to each other. This
             // generates a clippy lint about suspicious `if/else` formatting.

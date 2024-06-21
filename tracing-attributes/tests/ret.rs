@@ -1,41 +1,90 @@
-use std::convert::TryFrom;
-use std::num::TryFromIntError;
+use std::fmt::Display;
 
 use tracing::{collect::with_default, Level};
 use tracing_attributes::instrument;
-use tracing_mock::{collector, expect};
+use tracing_mock::{collector, expect, field::ExpectedFields, span::ExpectedSpan};
 use tracing_subscriber::subscribe::CollectExt;
 use tracing_subscriber::EnvFilter;
 use tracing_test::block_on_future;
+
+fn run_collector(
+    span: ExpectedSpan,
+    field: Option<ExpectedFields>,
+    level: Level,
+) -> (impl tracing::Collect, collector::MockHandle) {
+    let mut c = collector::mock().new_span(span.clone()).enter(span.clone());
+    if let Some(field) = field {
+        c = c.event(expect::event().with_fields(field).at_level(level));
+    }
+    c.exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle()
+}
+
+fn expect_return<V: tracing::Value, T>(
+    span: &'static str,
+    value: Option<V>,
+    level: Level,
+    func: impl FnOnce() -> T,
+) {
+    let span = expect::span().named(span);
+    let (collector, handle) = run_collector(
+        span,
+        value.map(|v| expect::field("return").with_value(&v).only()),
+        level,
+    );
+
+    with_default(collector, func);
+    handle.assert_finished();
+}
+
+fn expect_err<V: tracing::Value, T>(
+    span: &'static str,
+    value: Option<V>,
+    level: Level,
+    func: impl FnOnce() -> T,
+) {
+    let span = expect::span().named(span);
+    let (collector, handle) = run_collector(
+        span,
+        value.map(|v| expect::field("error").with_value(&v).only()),
+        level,
+    );
+
+    with_default(collector, func);
+    handle.assert_finished();
+}
+
+// Helper structs that ensure no incorrect formatting is attempted
+#[derive(Clone)]
+struct OnlyDisplay(i32);
+impl Display for OnlyDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OnlyDisplay({})", self.0)
+    }
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)] // field is only used in Debug impl
+struct OnlyDebug(i32);
+
+#[derive(Clone)]
+struct NoFormatting;
 
 #[instrument(ret)]
 fn ret() -> i32 {
     42
 }
 
+#[test]
+fn test() {
+    expect_return("ret", Some(tracing::field::debug(42)), Level::INFO, ret);
+}
+
 #[instrument(target = "my_target", ret)]
 fn ret_with_target() -> i32 {
     42
-}
-
-#[test]
-fn test() {
-    let span = expect::span().named("ret");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::INFO),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret);
-    handle.assert_finished();
 }
 
 #[test]
@@ -72,22 +121,12 @@ fn ret_warn() -> i32 {
 
 #[test]
 fn test_warn() {
-    let span = expect::span().named("ret_warn");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::WARN),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret_warn);
-    handle.assert_finished();
+    expect_return(
+        "ret_warn",
+        Some(tracing::field::debug(42)),
+        Level::WARN,
+        ret_warn,
+    );
 }
 
 #[instrument(ret)]
@@ -156,22 +195,12 @@ fn ret_impl_type() -> impl Copy {
 
 #[test]
 fn test_impl_type() {
-    let span = expect::span().named("ret_impl_type");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::INFO),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret_impl_type);
-    handle.assert_finished();
+    expect_return(
+        "ret_impl_type",
+        Some(tracing::field::debug(42)),
+        Level::INFO,
+        ret_impl_type,
+    );
 }
 
 #[instrument(ret(Display))]
@@ -181,80 +210,124 @@ fn ret_display() -> i32 {
 
 #[test]
 fn test_dbg() {
-    let span = expect::span().named("ret_display");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::display(42)))
-                .at_level(Level::INFO),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret_display);
-    handle.assert_finished();
+    expect_return(
+        "ret_display",
+        Some(tracing::field::display(42)),
+        Level::INFO,
+        ret_display,
+    );
 }
 
-#[instrument(err, ret)]
-fn ret_and_err() -> Result<u8, TryFromIntError> {
-    u8::try_from(1234)
+#[instrument(skip(x), ret)]
+fn ret_result(x: Result<OnlyDebug, OnlyDebug>) -> Result<OnlyDebug, OnlyDebug> {
+    x
 }
 
 #[test]
-fn test_ret_and_err() {
-    let span = expect::span().named("ret_and_err");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(
-                    expect::field("error")
-                        .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err()))
-                        .only(),
-                )
-                .at_level(Level::ERROR),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
+fn test_ret_result() {
+    let err = Err(OnlyDebug(42));
+    expect_return(
+        "ret_result",
+        Some(tracing::field::debug(err.clone())),
+        Level::INFO,
+        || ret_result(err).ok(),
+    );
 
-    with_default(collector, || ret_and_err().ok());
-    handle.assert_finished();
+    let ok = Ok(OnlyDebug(42));
+    expect_return(
+        "ret_result",
+        Some(tracing::field::debug(ok.clone())),
+        Level::INFO,
+        || ret_result(ok).ok(),
+    );
 }
 
-#[instrument(err, ret)]
-fn ret_and_ok() -> Result<u8, TryFromIntError> {
-    u8::try_from(123)
+#[instrument(skip(x), ret, err)]
+fn ret_err(x: Result<OnlyDebug, OnlyDisplay>) -> Result<OnlyDebug, OnlyDisplay> {
+    x
 }
 
 #[test]
-fn test_ret_and_ok() {
-    let span = expect::span().named("ret_and_ok");
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(
-                    expect::field("return")
-                        .with_value(&tracing::field::debug(u8::try_from(123).unwrap()))
-                        .only(),
-                )
-                .at_level(Level::INFO),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
+fn test_ret_err() {
+    let err = OnlyDisplay(42);
+    expect_err(
+        "ret_err",
+        Some(tracing::field::display(err.clone())),
+        Level::ERROR,
+        || ret_err(Err(err)).ok(),
+    );
 
-    with_default(collector, || ret_and_ok().ok());
-    handle.assert_finished();
+    let ok = OnlyDebug(42);
+    expect_return(
+        "ret_err",
+        Some(tracing::field::debug(ok.clone())),
+        Level::INFO,
+        || ret_err(Ok(ok)).ok(),
+    );
+}
+
+#[instrument(skip(x), level = Level::TRACE, ret(ok))]
+fn new_ret_ok(x: Result<OnlyDebug, NoFormatting>) -> Result<OnlyDebug, NoFormatting> {
+    x
+}
+
+#[test]
+fn test_new_ret_ok() {
+    expect_err("new_ret_ok", None::<bool>, Level::ERROR, || {
+        new_ret_ok(Err(NoFormatting)).ok()
+    });
+
+    let ok = OnlyDebug(42);
+    expect_return(
+        "new_ret_ok",
+        Some(tracing::field::debug(ok.clone())),
+        Level::TRACE,
+        || new_ret_ok(Ok(ok)).ok(),
+    );
+}
+
+#[instrument(skip(x), ret(err))]
+fn new_ret_err(x: Result<NoFormatting, OnlyDisplay>) -> Result<NoFormatting, OnlyDisplay> {
+    x
+}
+
+#[test]
+fn test_new_ret_err() {
+    let err = OnlyDisplay(42);
+    expect_err(
+        "new_ret_err",
+        Some(tracing::field::display(err.clone())),
+        Level::ERROR,
+        || new_ret_err(Err(err)).ok(),
+    );
+
+    expect_return("new_ret_err", None::<bool>, Level::INFO, || {
+        new_ret_err(Ok(NoFormatting)).ok()
+    });
+}
+
+#[instrument(skip(x), ret(ok(level = "debug"), err(level = "warn", Debug)))]
+fn new_ret_ok_err_debug(x: Result<OnlyDebug, OnlyDebug>) -> Result<OnlyDebug, OnlyDebug> {
+    x
+}
+
+#[test]
+fn test_new_ret_ok_err_debug() {
+    let err = OnlyDebug(42);
+    expect_err(
+        "new_ret_ok_err_debug",
+        Some(tracing::field::debug(err.clone())),
+        Level::WARN,
+        || new_ret_ok_err_debug(Err(err)).ok(),
+    );
+
+    let ok = OnlyDebug(42);
+    expect_return(
+        "new_ret_ok_err_debug",
+        Some(tracing::field::debug(ok.clone())),
+        Level::DEBUG,
+        || new_ret_ok_err_debug(Ok(ok)).ok(),
+    );
 }
 
 #[instrument(level = "warn", ret(level = "info"))]
@@ -264,22 +337,12 @@ fn ret_warn_info() -> i32 {
 
 #[test]
 fn test_warn_info() {
-    let span = expect::span().named("ret_warn_info").at_level(Level::WARN);
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::INFO),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret_warn_info);
-    handle.assert_finished();
+    expect_return(
+        "ret_warn_info",
+        Some(tracing::field::debug(42)),
+        Level::INFO,
+        ret_warn_info,
+    );
 }
 
 #[instrument(ret(level = "warn", Debug))]
@@ -289,20 +352,10 @@ fn ret_dbg_warn() -> i32 {
 
 #[test]
 fn test_dbg_warn() {
-    let span = expect::span().named("ret_dbg_warn").at_level(Level::INFO);
-    let (collector, handle) = collector::mock()
-        .new_span(span.clone())
-        .enter(span.clone())
-        .event(
-            expect::event()
-                .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
-                .at_level(Level::WARN),
-        )
-        .exit(span.clone())
-        .drop_span(span)
-        .only()
-        .run_with_handle();
-
-    with_default(collector, ret_dbg_warn);
-    handle.assert_finished();
+    expect_return(
+        "ret_dbg_warn",
+        Some(tracing::field::debug(42)),
+        Level::WARN,
+        ret_dbg_warn,
+    );
 }
