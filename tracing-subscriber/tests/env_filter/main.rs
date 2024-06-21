@@ -121,7 +121,7 @@ fn add_directive_enables_event() {
     // this test reproduces tokio-rs/tracing#591
 
     // by default, use info level
-    let mut filter = EnvFilter::new(LevelFilter::INFO.to_string());
+    let mut filter = EnvFilter::try_new(LevelFilter::INFO.to_string()).unwrap();
 
     // overwrite with a more specific directive
     filter = filter.add_directive("hello=trace".parse().expect("directive should parse"));
@@ -192,6 +192,6 @@ fn method_name_resolution() {
     #[allow(unused_imports)]
     use tracing_subscriber::subscribe::{Filter, Subscribe};
 
-    let filter = EnvFilter::new("hello_world=info");
+    let filter = EnvFilter::try_new("hello_world=info").unwrap();
     filter.max_level_hint();
 }
