@@ -39,7 +39,7 @@ bytes = "1.2.0"
 argh = "0.1.8"
 
 # sloggish example
-nu-ansi-term = "0.46.0"
+nu-ansi-term = "0.48.0"
 humantime = "2.1.0"
 log = "0.4.17"
 
