@@ -659,6 +659,35 @@ impl<C, T, W> Subscriber<C, format::JsonFields, format::Format<format::Json, T>,
             ..self
         }
     }
+
+    /// Formats all fields of the current span at root level.
+    ///
+    /// See [`format::Json`]
+    pub fn flatten_current_span(
+        self,
+        flatten_current_span: bool,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.flatten_current_span(flatten_current_span),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
+
+    /// Formats all fields of the span list at root level, overwritting
+    /// colliding fields from root to leaf.
+    ///
+    /// See [`format::Json`]
+    pub fn flatten_span_list(
+        self,
+        flatten_span_list: bool,
+    ) -> Subscriber<C, format::JsonFields, format::Format<format::Json, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.flatten_span_list(flatten_span_list),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
 }
 
 impl<C, N, E, W> Subscriber<C, N, E, W> {
