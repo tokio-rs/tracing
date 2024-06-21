@@ -191,7 +191,7 @@ pub struct Kind(u8);
 ///         // ...
 ///         # drop(span); Id::from_u64(1)
 ///     }
-
+///
 ///     fn event(&self, event: &Event<'_>) {
 ///         // ...
 ///         # drop(event);
