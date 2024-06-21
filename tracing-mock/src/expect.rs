@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     event::ExpectedEvent,
     field::{ExpectedField, ExpectedFields, ExpectedValue},
-    span::{ExpectedSpan, NewSpan},
+    span::{ExpectedId, ExpectedSpan, NewSpan},
 };
 
 #[derive(Debug, Eq, PartialEq)]
@@ -49,6 +49,25 @@ pub fn span() -> ExpectedSpan {
     ExpectedSpan {
         ..Default::default()
     }
+}
+
+/// Returns a new, unset `ExpectedId`.
+///
+/// The `ExpectedId` needs to be attached to a [`NewSpan`] or an
+/// [`ExpectedSpan`] passed to [`MockCollector::new_span`] to
+/// ensure that it gets set. When the a clone of the same
+/// `ExpectedSpan` is attached to an [`ExpectedSpan`] and passed to
+/// any other method on [`MockCollector`] that accepts it, it will
+/// ensure that it is exactly the same span used across those
+/// distinct expectations.
+///
+/// For more details on how to use this struct, see the documentation
+/// on [`ExpectedSpan::with_id`].
+///
+/// [`MockCollector`]: struct@crate::collector::MockCollector
+/// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
+pub fn id() -> ExpectedId {
+    ExpectedId::new_unset()
 }
 
 impl Expect {
