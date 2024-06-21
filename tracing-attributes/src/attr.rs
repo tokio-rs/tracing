@@ -294,9 +294,24 @@ pub(crate) struct Fields(pub(crate) Punctuated<Field, Token![,]>);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Field {
-    pub(crate) name: Punctuated<Ident, Token![.]>,
+    pub(crate) name: FieldName,
     pub(crate) value: Option<Expr>,
     pub(crate) kind: FieldKind,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum FieldName {
+    Str(LitStr),
+    Idents(Punctuated<Ident, Token![.]>),
+}
+
+impl ToTokens for FieldName {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            FieldName::Str(lit) => lit.to_tokens(tokens),
+            FieldName::Idents(idents) => idents.to_tokens(tokens),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -332,7 +347,15 @@ impl Parse for Field {
             input.parse::<Token![?]>()?;
             kind = FieldKind::Debug;
         };
-        let name = Punctuated::parse_separated_nonempty_with(input, Ident::parse_any)?;
+        let name = if input.peek(syn::LitStr) {
+            FieldName::Str(input.parse::<LitStr>()?)
+        } else {
+            FieldName::Idents(Punctuated::parse_separated_nonempty_with(
+                input,
+                Ident::parse_any,
+            )?)
+        };
+
         let value = if input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
             if input.peek(Token![%]) {

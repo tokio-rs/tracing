@@ -34,6 +34,12 @@ fn fn_string(s: String) {
     let _ = s;
 }
 
+#[instrument(fields("trait.type" = val), skip(val))]
+fn fn_string_key(val: i32) {}
+
+#[instrument(fields(my_param = "From attribute"))]
+fn fn_string_key_param(my_param: bool) {}
+
 #[derive(Debug)]
 struct HasField {
     my_field: &'static str,
@@ -143,6 +149,23 @@ fn string_field() {
     let span = expect::span().with_fields(expect::field("s").with_value(&"hello world").only());
     run_test(span, || {
         fn_string(String::from("hello world"));
+    });
+}
+
+#[test]
+fn string_key() {
+    let span = expect::span().with_fields(expect::field("trait.type").with_value(&42).only());
+    run_test(span, || {
+        fn_string_key(42);
+    });
+}
+
+#[test]
+fn string_key_and_param() {
+    let span =
+        expect::span().with_fields(expect::field("my_param").with_value(&"From attribute").only());
+    run_test(span, || {
+        fn_string_key_param(true);
     });
 }
 

@@ -220,6 +220,16 @@ mod expand;
 /// }
 /// ```
 ///
+/// Keys can be passed as strings to 'fields', which can be useful for keys that are not valid Rust identifiers:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(fields("my.type" = "foo"))]
+/// fn my_function(arg: usize) {
+///     // ...
+/// }
+/// ```
+///
 /// Adding the `ret` argument to `#[instrument]` will emit an event with the function's
 /// return value when the function returns:
 ///
