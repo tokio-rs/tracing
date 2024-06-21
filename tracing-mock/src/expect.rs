@@ -1,9 +1,10 @@
 use std::fmt;
 
 use crate::{
+    ancestry::Ancestry,
     event::ExpectedEvent,
     field::{ExpectedField, ExpectedFields, ExpectedValue},
-    span::{ExpectedSpan, NewSpan},
+    span::{ExpectedId, ExpectedSpan, NewSpan},
 };
 
 #[derive(Debug, Eq, PartialEq)]
@@ -49,6 +50,47 @@ pub fn span() -> ExpectedSpan {
     ExpectedSpan {
         ..Default::default()
     }
+}
+
+/// Returns a new, unset `ExpectedId`.
+///
+/// The `ExpectedId` needs to be attached to a [`NewSpan`] or an
+/// [`ExpectedSpan`] passed to [`MockCollector::new_span`] to
+/// ensure that it gets set. When the a clone of the same
+/// `ExpectedSpan` is attached to an [`ExpectedSpan`] and passed to
+/// any other method on [`MockCollector`] that accepts it, it will
+/// ensure that it is exactly the same span used across those
+/// distinct expectations.
+///
+/// For more details on how to use this struct, see the documentation
+/// on [`ExpectedSpan::with_id`].
+///
+/// [`MockCollector`]: struct@crate::collector::MockCollector
+/// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
+pub fn id() -> ExpectedId {
+    ExpectedId::new_unset()
+}
+
+/// Convenience function that returns [`Ancestry::IsContextualRoot`].
+pub fn is_contextual_root() -> Ancestry {
+    Ancestry::IsContextualRoot
+}
+
+/// Convenience function that returns [`Ancestry::HasContextualParent`] with
+/// provided name.
+pub fn has_contextual_parent<S: Into<String>>(name: S) -> Ancestry {
+    Ancestry::HasContextualParent(name.into())
+}
+
+/// Convenience function that returns [`Ancestry::IsExplicitRoot`].
+pub fn is_explicit_root() -> Ancestry {
+    Ancestry::IsExplicitRoot
+}
+
+/// Convenience function that returns [`Ancestry::HasExplicitParent`] with
+/// provided name.
+pub fn has_explicit_parent<S: Into<String>>(name: S) -> Ancestry {
+    Ancestry::HasExplicitParent(name.into())
 }
 
 impl Expect {

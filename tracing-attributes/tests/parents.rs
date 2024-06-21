@@ -21,23 +21,16 @@ fn default_parent_test() {
         .new_span(
             contextual_parent
                 .clone()
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
+                .with_ancestry(expect::is_contextual_root()),
         )
-        .new_span(
-            child
-                .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(None),
-        )
+        .new_span(child.clone().with_ancestry(expect::is_contextual_root()))
         .enter(child.clone())
         .exit(child.clone())
         .enter(contextual_parent.clone())
         .new_span(
             child
                 .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(None),
+                .with_ancestry(expect::has_contextual_parent("contextual_parent")),
         )
         .enter(child.clone())
         .exit(child)
@@ -68,20 +61,14 @@ fn explicit_parent_test() {
         .new_span(
             contextual_parent
                 .clone()
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
+                .with_ancestry(expect::is_contextual_root()),
         )
-        .new_span(
-            explicit_parent
-                .with_contextual_parent(None)
-                .with_explicit_parent(None),
-        )
+        .new_span(explicit_parent.with_ancestry(expect::is_contextual_root()))
         .enter(contextual_parent.clone())
         .new_span(
             child
                 .clone()
-                .with_contextual_parent(Some("contextual_parent"))
-                .with_explicit_parent(Some("explicit_parent")),
+                .with_ancestry(expect::has_explicit_parent("explicit_parent")),
         )
         .enter(child.clone())
         .exit(child)
