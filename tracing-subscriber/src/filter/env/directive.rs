@@ -459,6 +459,8 @@ impl SpanMatcher {
 
 #[cfg(test)]
 mod test {
+    use field::ValueMatch;
+
     use super::*;
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
@@ -863,5 +865,42 @@ mod test {
 
         let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
         assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+    }
+
+    #[test]
+    fn parse_directives_with_quoted_values() {
+        let dirs = parse_directives(concat!(
+            "target[name{value=\"true\"}]",
+            ",target[name{value=\"1\"}],",
+        ));
+
+        {
+            let dir = &dirs[0];
+            assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+            assert_eq!(dir.target, Some("target".to_string()));
+            assert_eq!(dir.level, LevelFilter::TRACE);
+            assert_eq!(dir.in_span, Some("name".to_string()));
+            assert_eq!(dir.fields.len(), 1, "\nparsed[0].fields: {:#?}", dir.fields);
+            assert_eq!(dir.fields[0].name, "value");
+            assert_eq!(dir.fields[0].value.is_some(), true);
+            let Some(ValueMatch::Pat(pattern)) = &dir.fields[0].value else {
+                panic!("unexpected value: {:#?}", dir.fields[0].value)
+            };
+            assert_eq!((**pattern).as_ref(), "true");
+        }
+
+        {
+            let dir = &dirs[0];
+            assert_eq!(dir.target, Some("target".to_string()));
+            assert_eq!(dir.level, LevelFilter::TRACE);
+            assert_eq!(dir.in_span, Some("name".to_string()));
+            assert_eq!(dir.fields.len(), 1, "\nparsed[0].fields: {:#?}", dir.fields);
+            assert_eq!(dir.fields[0].name, "value");
+            assert_eq!(dir.fields[0].value.is_some(), true);
+            let Some(ValueMatch::Pat(pattern)) = &dir.fields[0].value else {
+                panic!("unexpected value: {:#?}", dir.fields[0].value)
+            };
+            assert_eq!((**pattern).as_ref(), "true");
+        }
     }
 }

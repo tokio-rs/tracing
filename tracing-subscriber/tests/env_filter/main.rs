@@ -2,8 +2,12 @@
 
 mod per_subscriber;
 
-use tracing::{self, collect::with_default, Level};
-use tracing_mock::{collector, expect};
+use tracing::{self, collect::with_default, Level, Metadata, Value};
+use tracing_core::field;
+use tracing_mock::{
+    collector::{self, MockCollector},
+    expect,
+};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
@@ -82,6 +86,113 @@ fn level_filter_event_with_target() {
         tracing::warn!(target: "stuff", "this should be enabled");
         tracing::error!("this should be enabled too");
         tracing::error!(target: "stuff", "this should be enabled also");
+    });
+
+    finished.assert_finished();
+}
+
+fn expect_span_and_event<F>(
+    mock: MockCollector<F>,
+    field: &str,
+    value: &dyn Value,
+) -> MockCollector<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+{
+    let name = format!("enabled, with {field}");
+    mock.new_span(
+        expect::span()
+            .named(&name)
+            .at_level(Level::DEBUG)
+            .with_fields(expect::field(field).with_value(value).only()),
+    )
+    .enter(expect::span().named(&name))
+    .event(expect::event().at_level(Level::DEBUG))
+    .exit(expect::span().named(name))
+}
+
+fn expect_span_and_no_event<F>(
+    mock: MockCollector<F>,
+    field: &str,
+    value: &dyn Value,
+) -> MockCollector<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+{
+    let name = format!("disabled, with {field}");
+    mock.new_span(
+        expect::span()
+            .named(&name)
+            .at_level(Level::DEBUG)
+            .with_fields(expect::field(field).with_value(value).only()),
+    )
+    .enter(expect::span().named(&name))
+    .exit(expect::span().named(name))
+}
+
+#[test]
+fn level_filter_event_with_field_values() {
+    let filter: EnvFilter = concat!(
+        "info",
+        ",[{b=false}]=debug",
+        ",[{sb=\"true\"}]=debug",
+        ",[{n=10}]=debug",
+        ",[{sn=\"12\"}]=debug"
+    )
+    .parse()
+    .expect("filter should parse");
+
+    let mut mock = collector::mock().event(expect::event().at_level(Level::INFO));
+    mock = expect_span_and_event(mock, "b", &false);
+    mock = expect_span_and_event(mock, "sb", &field::debug(true));
+    mock = expect_span_and_event(mock, "n", &10i64);
+    mock = expect_span_and_event(mock, "sn", &field::debug(12i64));
+
+    mock = expect_span_and_no_event(mock, "b", &true);
+    mock = expect_span_and_no_event(mock, "sb", &field::debug(false));
+    mock = expect_span_and_no_event(mock, "n", &11i64);
+    mock = expect_span_and_no_event(mock, "sn", &field::debug(13i64));
+
+    let (subscriber, finished) = mock.only().run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::debug!("disabled, no value");
+        tracing::info!("enabled, no value");
+
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with b", b = false).entered();
+            tracing::debug!("enabled, with b");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with sb", sb = %true).entered();
+            tracing::debug!("enabled, with sb");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with n", n = 10).entered();
+            tracing::debug!("enabled, with n");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with sn",  sn = %12).entered();
+            tracing::debug!("enabled, with sn");
+        }
+
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with b", b = true).entered();
+            tracing::debug!("disabled, with b");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with sb", sb = %false).entered();
+            tracing::debug!("disabled, with sb");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with n", n = 11).entered();
+            tracing::debug!("disabled, with n");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with sn",  sn = %13).entered();
+            tracing::debug!("disabled, with sn");
+        }
     });
 
     finished.assert_finished();

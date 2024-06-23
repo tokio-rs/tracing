@@ -145,6 +145,13 @@ pub struct BadName {
     name: String,
 }
 
+/// Indicates that the outer quotation of a field value is unbalanced.
+#[derive(Clone, Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
+pub struct BadValueQuotation {
+    value: String,
+}
+
 // === impl Match ===
 
 impl Match {
@@ -170,7 +177,7 @@ impl Match {
             .next()
             .map(|part| match regex {
                 true => ValueMatch::parse_regex(part),
-                false => Ok(ValueMatch::parse_non_regex(part)),
+                false => ValueMatch::parse_non_regex(part),
             })
             .transpose()?;
         Ok(Match { name, value })
@@ -231,10 +238,12 @@ impl ValueMatch {
     /// Parse a `ValueMatch` that will match `fmt::Debug` fields using regular
     /// expressions.
     ///
+    /// A single pair of wrapping `"` quotation marks will be stripped if given.
+    ///
     /// This returns an error if the string didn't contain a valid `bool`,
     /// `u64`, `i64`, or `f64` literal, and couldn't be parsed as a regular
     /// expression.
-    fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
+    fn parse_regex(s: &str) -> Result<Self, Box<dyn Error + Send + Sync>> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
@@ -249,16 +258,19 @@ impl ValueMatch {
     /// Parse a `ValueMatch` that will match `fmt::Debug` against a fixed
     /// string.
     ///
-    /// This does *not* return an error, because any string that isn't a valid
+    /// A single pair of wrapping `"` quotation marks will be stripped if given.
+    ///
+    /// This returns an error if the string either starts or ends with a `"` quotation
+    /// mark. In all cases it doesn't error because any string that isn't a valid
     /// `bool`, `u64`, `i64`, or `f64` literal is treated as expected
     /// `fmt::Debug` output.
-    fn parse_non_regex(s: &str) -> Self {
+    fn parse_non_regex(s: &str) -> Result<Self, Box<dyn Error + Send + Sync>> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
             .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
             .or_else(|_| s.parse::<f64>().map(value_match_f64))
-            .unwrap_or_else(|_| ValueMatch::Debug(MatchDebug::new(s)))
+            .or_else(|_| s.parse::<MatchDebug>().map(ValueMatch::Debug))
     }
 }
 
@@ -278,9 +290,22 @@ impl fmt::Display for ValueMatch {
 
 // === impl MatchPattern ===
 
+fn strip_outer_field_value_quotes(s: &str) -> Result<&str, Box<dyn Error + Send + Sync>> {
+    match (s.starts_with('"'), s.ends_with('"')) {
+        (false, false) => Ok(s),
+        (true, true) if s.len() > 1 => Ok(&s[1..s.len() - 1]),
+        _ => Err(BadValueQuotation {
+            value: s.to_string(),
+        }
+        .into()),
+    }
+}
+
 impl FromStr for MatchPattern {
-    type Err = matchers::Error;
+    type Err = Box<dyn Error + Send + Sync>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = strip_outer_field_value_quotes(s)?;
+
         let matcher = Pattern::new_anchored(s)?;
         Ok(Self {
             matcher,
@@ -346,13 +371,16 @@ impl Ord for MatchPattern {
 
 // === impl MatchDebug ===
 
-impl MatchDebug {
-    fn new(s: &str) -> Self {
-        Self {
-            pattern: s.to_owned().into(),
-        }
+impl FromStr for MatchDebug {
+    type Err = Box<dyn Error + Send + Sync>;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            pattern: strip_outer_field_value_quotes(s)?.to_owned().into(),
+        })
     }
+}
 
+impl MatchDebug {
     #[inline]
     fn debug_matches(&self, d: &impl fmt::Debug) -> bool {
         // Naively, we would probably match a value's `fmt::Debug` output by
@@ -450,6 +478,16 @@ impl fmt::Display for BadName {
     }
 }
 
+// === impl BadName ===
+
+impl Error for BadValueQuotation {}
+
+impl fmt::Display for BadValueQuotation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unbalanced wrapping value quotes `{}`", self.value)
+    }
+}
+
 impl CallsiteMatch {
     pub(crate) fn to_span_match(&self) -> SpanMatch {
         let fields = self
@@ -506,9 +544,7 @@ impl<'a> Visit for MatchVisitor<'a> {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched))
-                if (value - *e).abs() < f64::EPSILON =>
-            {
+            Some((ValueMatch::F64(ref e), ref matched)) if (value - *e).abs() < f64::EPSILON => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -622,5 +658,19 @@ mod tests {
             pattern: pattern.into(),
         };
         assert!(!matcher.debug_matches(&my_struct))
+    }
+
+    #[test]
+    fn match_pattern_handles_outer_quotes() {
+        assert_eq!("bob".parse::<MatchPattern>().unwrap().as_ref(), "bob");
+        assert_eq!("\"bob\"".parse::<MatchPattern>().unwrap().as_ref(), "bob");
+        assert_eq!("\"\"".parse::<MatchPattern>().unwrap().as_ref(), "");
+        assert_eq!(
+            "\"\"bob\"\"".parse::<MatchPattern>().unwrap().as_ref(),
+            "\"bob\""
+        );
+        assert!("\"bob".parse::<MatchPattern>().is_err());
+        assert!("bob\"".parse::<MatchPattern>().is_err());
+        assert!("\"".parse::<MatchPattern>().is_err());
     }
 }

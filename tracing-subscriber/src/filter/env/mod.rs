@@ -4,7 +4,11 @@
 // these are publicly re-exported, but the compiler doesn't realize
 // that for some reason.
 #[allow(unreachable_pub)]
-pub use self::{builder::Builder, directive::Directive, field::BadName as BadFieldName};
+pub use self::{
+    builder::Builder,
+    directive::Directive,
+    field::{BadName as BadFieldName, BadValueQuotation as BadFieldValueQuotation},
+};
 mod builder;
 mod directive;
 mod field;
