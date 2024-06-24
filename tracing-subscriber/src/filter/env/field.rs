@@ -10,6 +10,8 @@ use std::{
     },
 };
 
+use crate::filter::ParseError;
+
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
 
@@ -27,7 +29,7 @@ pub(crate) struct CallsiteMatch {
 
 #[derive(Debug)]
 pub(crate) struct SpanMatch {
-    fields: FieldMap<(ValueMatch, AtomicBool)>,
+    fields: FieldMap<(ValueMatchInternal, AtomicBool)>,
     level: LevelFilter,
     has_matched: AtomicBool,
 }
@@ -36,8 +38,19 @@ pub(crate) struct MatchVisitor<'a> {
     inner: &'a SpanMatch,
 }
 
+/// Specifies how a [field] [value] is matched when applying directives to [span]s.
+///
+/// [span]: mod@tracing::span
+/// [field]: fn@tracing::Metadata::fields
+/// [value]: tracing#recording-fields
 #[derive(Debug, Clone)]
-pub(crate) enum ValueMatch {
+#[repr(transparent)]
+pub struct ValueMatch {
+    inner: ValueMatchInternal,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum ValueMatchInternal {
     /// Matches a specific `bool` value.
     Bool(bool),
     /// Matches a specific `f64` value.
@@ -55,12 +68,113 @@ pub(crate) enum ValueMatch {
     Pat(Box<MatchPattern>),
 }
 
+// === impl ValueMatch ===
+
+impl ValueMatch {
+    /// Match a recorded `bool`.
+    ///
+    /// Does not match a debug or display recorded `bool`.
+    pub fn bool(value: impl Into<bool>) -> Self {
+        Self {
+            inner: ValueMatchInternal::Bool(value.into()),
+        }
+    }
+
+    /// Match a recorded `f64`.
+    ///
+    /// Does not match a debug or display recorded `f64`.
+    pub fn f64(value: impl Into<f64>) -> Self {
+        let value = value.into();
+        if value.is_nan() {
+            Self {
+                inner: ValueMatchInternal::NaN,
+            }
+        } else {
+            Self {
+                inner: ValueMatchInternal::F64(value),
+            }
+        }
+    }
+
+    /// Matches a recorded `f64` NaN
+    pub fn nan() -> Self {
+        Self {
+            inner: ValueMatchInternal::NaN,
+        }
+    }
+
+    /// Match a recorded `i64`.
+    ///
+    /// Does not match a debug or display recorded `i64`.
+    pub fn i64(value: impl Into<i64>) -> Self {
+        Self {
+            inner: ValueMatchInternal::I64(value.into()),
+        }
+    }
+
+    /// Match a recorded `u64`.
+    ///
+    /// Does not match a debug or display recorded `u64`.
+    pub fn u64(value: impl Into<u64>) -> Self {
+        Self {
+            inner: ValueMatchInternal::U64(value.into()),
+        }
+    }
+
+    /// Match a recorded value by checking if it's debug representation
+    /// matches the given string.
+    ///
+    /// Matching will be done as following:
+    ///
+    /// - Match debug ([`?value`]) recorded values by exactly matching their
+    ///   debug output against given sting.
+    /// - Match display ([`%value`]) recorded values by exactly matching their
+    ///   display output against given string.
+    /// - Matches recorded strings by exactly matching the debug representation of the
+    ///   string against given string. This means `bob` will be matched as `\"bob\"`.
+    /// - does not match any other recorded primitives
+    ///
+    /// [`?value`]: tracing#recording-fields
+    /// [`%value`]: tracing#recording-fields
+    pub fn debug(value: impl Into<String>) -> Self {
+        Self {
+            inner: ValueMatchInternal::Debug(MatchDebug::new(value)),
+        }
+    }
+
+    /// Matches values against given regex pattern.
+    ///
+    /// Matching will be done as following:
+    ///
+    /// - Match debug (`?value`) recorded values by matching their debug output against the pattern.
+    /// - Match display (`%`) recorded values by matching their display output against the pattern.
+    /// - Match recorded strings by matching their display output (e.g. their value) against the pattern.
+    /// - Does not match any other recorded primitives.
+    pub fn pattern(pattern: &str) -> Result<Self, ParseError> {
+        Ok(Self {
+            inner: ValueMatchInternal::Pat(Box::new(
+                pattern
+                    .parse()
+                    .map_err(<Box<dyn std::error::Error + Send + Sync>>::from)?,
+            )),
+        })
+    }
+
+    pub(super) fn deregexify(self) -> Self {
+        let inner = match self.inner {
+            ValueMatchInternal::Pat(pat) => ValueMatchInternal::Debug(pat.into_debug_match()),
+            x => x,
+        };
+        Self { inner }
+    }
+}
+
 impl Eq for ValueMatch {}
 
 impl PartialEq for ValueMatch {
     fn eq(&self, other: &Self) -> bool {
-        use ValueMatch::*;
-        match (self, other) {
+        use ValueMatchInternal::*;
+        match (&self.inner, &other.inner) {
             (Bool(a), Bool(b)) => a.eq(b),
             (F64(a), F64(b)) => {
                 debug_assert!(!a.is_nan());
@@ -79,14 +193,14 @@ impl PartialEq for ValueMatch {
 
 impl Ord for ValueMatch {
     fn cmp(&self, other: &Self) -> Ordering {
-        use ValueMatch::*;
-        match (self, other) {
+        use ValueMatchInternal::*;
+        match (&self.inner, &other.inner) {
             (Bool(this), Bool(that)) => this.cmp(that),
             (Bool(_), _) => Ordering::Less,
 
             (F64(this), F64(that)) => this
                 .partial_cmp(that)
-                .expect("`ValueMatch::F64` may not contain `NaN` values"),
+                .expect("`ValueMatchInternal::F64` may not contain `NaN` values"),
             (F64(_), Bool(_)) => Ordering::Greater,
             (F64(_), _) => Ordering::Less,
 
@@ -116,6 +230,20 @@ impl Ord for ValueMatch {
 impl PartialOrd for ValueMatch {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl fmt::Display for ValueMatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.inner {
+            ValueMatchInternal::Bool(inner) => fmt::Display::fmt(inner, f),
+            ValueMatchInternal::F64(inner) => fmt::Display::fmt(inner, f),
+            ValueMatchInternal::NaN => fmt::Display::fmt(&f64::NAN, f),
+            ValueMatchInternal::I64(inner) => fmt::Display::fmt(inner, f),
+            ValueMatchInternal::U64(inner) => fmt::Display::fmt(inner, f),
+            ValueMatchInternal::Debug(inner) => fmt::Display::fmt(inner, f),
+            ValueMatchInternal::Pat(inner) => fmt::Display::fmt(inner, f),
+        }
     }
 }
 
@@ -169,10 +297,11 @@ impl Match {
         let value = parts
             .next()
             .map(|part| match regex {
-                true => ValueMatch::parse_regex(part),
-                false => Ok(ValueMatch::parse_non_regex(part)),
+                true => ValueMatchInternal::parse_regex(part),
+                false => Ok(ValueMatchInternal::parse_non_regex(part)),
             })
-            .transpose()?;
+            .transpose()?
+            .map(|inner| ValueMatch { inner });
         Ok(Match { name, value })
     }
 }
@@ -217,18 +346,18 @@ impl PartialOrd for Match {
     }
 }
 
-// === impl ValueMatch ===
+// === impl ValueMatchInternal ===
 
-fn value_match_f64(v: f64) -> ValueMatch {
+fn value_match_f64(v: f64) -> ValueMatchInternal {
     if v.is_nan() {
-        ValueMatch::NaN
+        ValueMatchInternal::NaN
     } else {
-        ValueMatch::F64(v)
+        ValueMatchInternal::F64(v)
     }
 }
 
-impl ValueMatch {
-    /// Parse a `ValueMatch` that will match `fmt::Debug` fields using regular
+impl ValueMatchInternal {
+    /// Parse a [`ValueMatchInternal`] that will match [`fmt::Debug`] fields using regular
     /// expressions.
     ///
     /// This returns an error if the string didn't contain a valid `bool`,
@@ -236,17 +365,17 @@ impl ValueMatch {
     /// expression.
     fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
         s.parse::<bool>()
-            .map(ValueMatch::Bool)
-            .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
-            .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
+            .map(ValueMatchInternal::Bool)
+            .or_else(|_| s.parse::<u64>().map(ValueMatchInternal::U64))
+            .or_else(|_| s.parse::<i64>().map(ValueMatchInternal::I64))
             .or_else(|_| s.parse::<f64>().map(value_match_f64))
             .or_else(|_| {
                 s.parse::<MatchPattern>()
-                    .map(|p| ValueMatch::Pat(Box::new(p)))
+                    .map(|p| ValueMatchInternal::Pat(Box::new(p)))
             })
     }
 
-    /// Parse a `ValueMatch` that will match `fmt::Debug` against a fixed
+    /// Parse a `ValueMatchInternal` that will match `fmt::Debug` against a fixed
     /// string.
     ///
     /// This does *not* return an error, because any string that isn't a valid
@@ -254,25 +383,11 @@ impl ValueMatch {
     /// `fmt::Debug` output.
     fn parse_non_regex(s: &str) -> Self {
         s.parse::<bool>()
-            .map(ValueMatch::Bool)
-            .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
-            .or_else(|_| s.parse::<i64>().map(ValueMatch::I64))
+            .map(ValueMatchInternal::Bool)
+            .or_else(|_| s.parse::<u64>().map(ValueMatchInternal::U64))
+            .or_else(|_| s.parse::<i64>().map(ValueMatchInternal::I64))
             .or_else(|_| s.parse::<f64>().map(value_match_f64))
-            .unwrap_or_else(|_| ValueMatch::Debug(MatchDebug::new(s)))
-    }
-}
-
-impl fmt::Display for ValueMatch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ValueMatch::Bool(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::F64(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::NaN => fmt::Display::fmt(&f64::NAN, f),
-            ValueMatch::I64(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::U64(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::Debug(ref inner) => fmt::Display::fmt(inner, f),
-            ValueMatch::Pat(ref inner) => fmt::Display::fmt(inner, f),
-        }
+            .unwrap_or_else(|_| ValueMatchInternal::Debug(MatchDebug::new(s)))
     }
 }
 
@@ -347,9 +462,9 @@ impl Ord for MatchPattern {
 // === impl MatchDebug ===
 
 impl MatchDebug {
-    fn new(s: &str) -> Self {
+    pub(super) fn new(s: impl Into<String>) -> Self {
         Self {
-            pattern: s.to_owned().into(),
+            pattern: s.into().into(),
         }
     }
 
@@ -455,7 +570,7 @@ impl CallsiteMatch {
         let fields = self
             .fields
             .iter()
-            .map(|(k, v)| (k.clone(), (v.clone(), AtomicBool::new(false))))
+            .map(|(k, v)| (k.clone(), (v.inner.clone(), AtomicBool::new(false))))
             .collect();
         SpanMatch {
             fields,
@@ -503,10 +618,10 @@ impl SpanMatch {
 impl<'a> Visit for MatchVisitor<'a> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
+            Some((ValueMatchInternal::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched))
+            Some((ValueMatchInternal::F64(ref e), ref matched))
                 if (value - *e).abs() < f64::EPSILON =>
             {
                 matched.store(true, Release);
@@ -519,10 +634,10 @@ impl<'a> Visit for MatchVisitor<'a> {
         use std::convert::TryInto;
 
         match self.inner.fields.get(field) {
-            Some((ValueMatch::I64(ref e), ref matched)) if value == *e => {
+            Some((ValueMatchInternal::I64(ref e), ref matched)) if value == *e => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::U64(ref e), ref matched)) if Ok(value) == (*e).try_into() => {
+            Some((ValueMatchInternal::U64(ref e), ref matched)) if Ok(value) == (*e).try_into() => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -531,7 +646,7 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_u64(&mut self, field: &Field, value: u64) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::U64(ref e), ref matched)) if value == *e => {
+            Some((ValueMatchInternal::U64(ref e), ref matched)) if value == *e => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -540,7 +655,7 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_bool(&mut self, field: &Field, value: bool) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::Bool(ref e), ref matched)) if value == *e => {
+            Some((ValueMatchInternal::Bool(ref e), ref matched)) if value == *e => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -549,10 +664,10 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_str(&mut self, field: &Field, value: &str) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::Pat(ref e), ref matched)) if e.str_matches(&value) => {
+            Some((ValueMatchInternal::Pat(ref e), ref matched)) if e.str_matches(&value) => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
+            Some((ValueMatchInternal::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
                 matched.store(true, Release)
             }
             _ => {}
@@ -561,10 +676,10 @@ impl<'a> Visit for MatchVisitor<'a> {
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         match self.inner.fields.get(field) {
-            Some((ValueMatch::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
+            Some((ValueMatchInternal::Pat(ref e), ref matched)) if e.debug_matches(&value) => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
+            Some((ValueMatchInternal::Debug(ref e), ref matched)) if e.debug_matches(&value) => {
                 matched.store(true, Release)
             }
             _ => {}
@@ -622,5 +737,11 @@ mod tests {
             pattern: pattern.into(),
         };
         assert!(!matcher.debug_matches(&my_struct))
+    }
+
+    #[test]
+    fn value_match_f64_with_nan_matches_to_nan_variant() {
+        assert_eq!(ValueMatch::nan(), ValueMatch::f64(f64::NAN));
+        assert_eq!(ValueMatch::nan(), ValueMatch { inner: ValueMatchInternal::NaN});
     }
 }

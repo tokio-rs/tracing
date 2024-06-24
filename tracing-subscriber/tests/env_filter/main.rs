@@ -2,10 +2,13 @@
 
 mod per_subscriber;
 
-use tracing::{self, collect::with_default, Level};
-use tracing_mock::{collector, expect};
+use tracing::{self, collect::with_default, field, Level, Metadata, Value};
+use tracing_mock::{
+    collector::{self, MockCollector},
+    expect,
+};
 use tracing_subscriber::{
-    filter::{EnvFilter, LevelFilter},
+    filter::{Directive, EnvFilter, LevelFilter, ValueMatch},
     prelude::*,
 };
 
@@ -194,4 +197,140 @@ fn method_name_resolution() {
 
     let filter = EnvFilter::new("hello_world=info");
     filter.max_level_hint();
+}
+
+fn expect_span_and_event<F>(
+    mock: MockCollector<F>,
+    field: &str,
+    value: &dyn Value,
+) -> MockCollector<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+{
+    let name = format!("enabled, with {field}");
+    mock.new_span(
+        expect::span()
+            .named(&name)
+            .at_level(Level::DEBUG)
+            .with_fields(expect::field(field).with_value(value).only()),
+    )
+    .enter(expect::span().named(&name))
+    .event(expect::event().at_level(Level::DEBUG))
+    .exit(expect::span().named(name))
+}
+
+fn expect_span_and_no_event<F>(
+    mock: MockCollector<F>,
+    field: &str,
+    value: &dyn Value,
+) -> MockCollector<F>
+where
+    F: Fn(&Metadata<'_>) -> bool + 'static,
+{
+    let name = format!("disabled, with {field}");
+    mock.new_span(
+        expect::span()
+            .named(&name)
+            .at_level(Level::DEBUG)
+            .with_fields(expect::field(field).with_value(value).only()),
+    )
+    .enter(expect::span().named(&name))
+    .exit(expect::span().named(name))
+}
+
+#[test]
+fn build_directives_can_match_on_primitive_like_string_and_other_unusual_values() {
+    const PROBLEMATIC_VALUE: &str = "value,\"}]";
+    let filter = EnvFilter::new("info")
+        .add_directive(
+            Directive::builder()
+                .with_field("b", Some(ValueMatch::bool(false)))
+                .with_level(LevelFilter::DEBUG)
+                .build(),
+        )
+        .add_directive(
+            Directive::builder()
+                .with_field("sb", Some(ValueMatch::debug("true")))
+                .with_level(LevelFilter::DEBUG)
+                .build(),
+        )
+        .add_directive(
+            Directive::builder()
+                .with_field("n", Some(ValueMatch::i64(10)))
+                .with_level(LevelFilter::DEBUG)
+                .build(),
+        )
+        .add_directive(
+            Directive::builder()
+                .with_field("sn", Some(ValueMatch::debug("12")))
+                .with_level(LevelFilter::DEBUG)
+                .build(),
+        )
+        .add_directive(
+            Directive::builder()
+                .with_field("pv", Some(ValueMatch::debug(PROBLEMATIC_VALUE)))
+                .with_level(LevelFilter::DEBUG)
+                .build(),
+        );
+
+    let mut mock = collector::mock().event(expect::event().at_level(Level::INFO));
+    mock = expect_span_and_event(mock, "b", &false);
+    mock = expect_span_and_event(mock, "sb", &field::debug(true));
+    mock = expect_span_and_event(mock, "n", &10i64);
+    mock = expect_span_and_event(mock, "sn", &field::debug(12i64));
+    mock = expect_span_and_event(mock, "pv", &field::display(PROBLEMATIC_VALUE));
+
+    mock = expect_span_and_no_event(mock, "b", &true);
+    mock = expect_span_and_no_event(mock, "sb", &field::debug(false));
+    mock = expect_span_and_no_event(mock, "n", &11i64);
+    mock = expect_span_and_no_event(mock, "sn", &field::debug(13i64));
+
+    let (subscriber, finished) = mock.only().run_with_handle();
+    let subscriber = subscriber.with(filter);
+
+    with_default(subscriber, || {
+        tracing::debug!("disabled, no value");
+        tracing::info!("enabled, no value");
+
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with b", b = false).entered();
+            tracing::debug!("enabled, with b");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with sb", sb = %true).entered();
+            tracing::debug!("enabled, with sb");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with n", n = 10).entered();
+            tracing::debug!("enabled, with n");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with sn",  sn = %12).entered();
+            tracing::debug!("enabled, with sn");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "enabled, with pv",  pv = %PROBLEMATIC_VALUE)
+                .entered();
+            tracing::debug!("enabled, with ,\"}}]field");
+        }
+
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with b", b = true).entered();
+            tracing::debug!("disabled, with b");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with sb", sb = %false).entered();
+            tracing::debug!("disabled, with sb");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with n", n = 11).entered();
+            tracing::debug!("disabled, with n");
+        }
+        {
+            let _span = tracing::span!(Level::DEBUG, "disabled, with sn",  sn = %13).entered();
+            tracing::debug!("disabled, with sn");
+        }
+    });
+
+    finished.assert_finished();
 }
