@@ -994,6 +994,7 @@ pub mod field;
 /// Attach a span to a `std::future::Future`.
 pub mod instrument;
 pub mod level_filters;
+pub mod prelude;
 pub mod span;
 
 #[doc(hidden)]
