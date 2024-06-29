@@ -110,7 +110,7 @@ use fmt::{Debug, Display};
 ///
 /// # Examples
 ///
-/// This example re-implements a simiplified version of this crate's [default
+/// This example re-implements a simplified version of this crate's [default
 /// formatter]:
 ///
 /// ```rust
