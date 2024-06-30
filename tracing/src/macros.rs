@@ -693,11 +693,11 @@ macro_rules! event {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: ::core::concat!(
                 "event ",
-                file!(),
+                ::core::file!(),
                 ":",
-                line!()
+                ::core::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -854,11 +854,11 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: ::core::concat!(
                 "event ",
-                file!(),
+                ::core::file!(),
                 ":",
-                line!()
+                ::core::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -1184,11 +1184,11 @@ macro_rules! enabled {
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
             static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
+                name: ::core::concat!(
                     "enabled ",
-                    file!(),
+                    ::core::file!(),
                     ":",
-                    line!()
+                    ::core::line!()
                 ),
                 kind: $kind.hint(),
                 target: $target,

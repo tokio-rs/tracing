@@ -264,9 +264,9 @@ macro_rules! metadata {
             $name,
             $target,
             $level,
-            ::core::option::Option::Some(file!()),
-            ::core::option::Option::Some(line!()),
-            ::core::option::Option::Some(module_path!()),
+            ::core::option::Option::Some(::core::file!()),
+            ::core::option::Option::Some(::core::line!()),
+            ::core::option::Option::Some(::core::module_path!()),
             $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,
         )
