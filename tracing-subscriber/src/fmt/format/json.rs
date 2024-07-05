@@ -65,15 +65,75 @@ use tracing_log::NormalizeEvent;
 /// span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 /// object.
+/// - [`Json::with_newlines`] can be used to disable newlines in the log event
+/// format.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
 ///
+/// # Wrapping JSON entries with custom formatters
+/// 
+/// [`Json::with_newlines`] can be used to re-use [`Json`] formatters in
+/// custom formatter implementations that also log additional information.
+/// For example, wrapping log entries in a serde-style "externally tagged"
+/// enum can be implemented by extending logged events with prefix and
+/// postfix strings:
+/// 
+/// ```rust
+/// use std::default::Default;
+/// use std::fmt::Result;
+/// 
+/// use tracing_core::{Collect, Event};
+/// use tracing_subscriber::fmt::FmtContext;
+/// use tracing_subscriber::fmt::format::{Format, FormatEvent, FormatFields, Json, JsonFields, Writer};
+/// use tracing_subscriber::fmt::time::SystemTime;
+/// use tracing_subscriber::registry::LookupSpan;
+/// 
+/// #[derive(Clone)]
+/// pub struct MyJsonFormatter(Format<Json, SystemTime>);
+/// 
+/// impl Default for MyJsonFormatter {
+///     fn default() -> Self {
+///         Self(Format::default().json().with_newlines(false))
+///     }
+/// }
+/// 
+/// impl<C, N> FormatEvent<C, N> for MyJsonFormatter
+/// where
+///     C: Collect + for<'a> LookupSpan<'a>,
+///     N: for<'a> FormatFields<'a> + 'static,
+/// {
+///     fn format_event(
+///         &self,
+///         ctx: &FmtContext<'_, C, N>,
+///         mut writer: Writer<'_>,
+///         event: &Event<'_>,
+///     ) -> Result {
+///         write!(&mut writer, "{{\"log\":")?;
+///         self.0.format_event(ctx, writer.by_ref(), event)?;
+///         writeln!(&mut writer, "}}")
+///     }
+/// }
+/// 
+/// let _subscriber = tracing_subscriber::fmt()
+///     .event_format(MyJsonFormatter::default())
+///     .fmt_fields(JsonFields::default()) 
+///     .init();
+/// 
+/// tracing::info!("hello world");
+/// ```
+/// 
+/// This formatter will print events like this:
+///
+/// ```text
+/// {"log":{"timestamp":"2022-11-09T22:03:56.332925Z","level":"INFO","fields":{"message":"hello world"},"target":"rust_out"}}
+/// ```
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) print_newlines: bool,
 }
 
 impl Json {
@@ -91,6 +151,18 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    /// If set to `false`, formatted events won't be followed by a newline.
+    /// Defaults to `true`.
+    /// 
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the type-level documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: Json#wrapping-json-entries-with-custom-formatters
+    pub fn with_newlines(&mut self, print_newlines: bool) {
+        self.print_newlines = print_newlines;
     }
 }
 
@@ -308,7 +380,12 @@ where
         };
 
         visit().map_err(|_| fmt::Error)?;
-        writeln!(writer)
+
+        if self.format.print_newlines {
+            writeln!(writer)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -318,6 +395,7 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            print_newlines: true,
         }
     }
 }
@@ -786,6 +864,25 @@ mod test {
 
             drop(span);
             assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
+        });
+    }
+
+    #[test]
+    fn json_without_newlines() {
+        let buffer = MockMakeWriter::default();
+        let subscriber = collector()
+            .with_writer(buffer.clone())
+            .json()
+            .with_newlines(false)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("Log message 1");
+            tracing::info!("Log message 2");
+            tracing::info!("Log message 3");
+
+            let buf = String::from_utf8(buffer.buf().to_vec()).unwrap();
+            assert_eq!(1, buf.lines().count());
         });
     }
 

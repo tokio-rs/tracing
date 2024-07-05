@@ -815,6 +815,26 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
             inner: self.inner.with_span_list(display_span_list),
         }
     }
+
+    /// Sets whether or not the formatter will include newline characters after
+    /// formatting a log event.
+    ///
+    /// Defaults to `true`, which enables newlines.
+    ///
+    /// This option is mainly useful for logic that is supposed to expand logged
+    /// JSON values by embedding them in a wrapping JSON structure.
+    /// See [the `fmt::format::Json` documentation][wrapping] for more details on this.
+    /// 
+    /// [wrapping]: super::fmt::format::Json#wrapping-json-entries-with-custom-formatters
+    pub fn with_newlines(
+        self,
+        print_newlines: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.with_newlines(print_newlines),
+        }
+    }
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
