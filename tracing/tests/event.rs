@@ -606,3 +606,15 @@ fn constant_field_name() {
 
     handle.assert_finished();
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn keyword_ident_in_field_name() {
+    let (subscriber, handle) = subscriber::mock()
+        .event(expect::event().with_fields(expect::field("crate").with_value(&"tracing")))
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || error!(crate = "tracing", "message"));
+    handle.assert_finished();
+}
