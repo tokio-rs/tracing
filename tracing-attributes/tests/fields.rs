@@ -34,6 +34,9 @@ fn fn_string(s: String) {
     let _ = s;
 }
 
+#[instrument(fields(keywords.impl.type.fn = _arg), skip(_arg))]
+fn fn_keyword_ident_in_field(_arg: &str) {}
+
 #[derive(Debug)]
 struct HasField {
     my_field: &'static str,
@@ -144,6 +147,16 @@ fn string_field() {
     run_test(span, || {
         fn_string(String::from("hello world"));
     });
+}
+
+#[test]
+fn keyword_ident_in_field_name() {
+    let span = expect::span().with_fields(
+        expect::field("keywords.impl.type.fn")
+            .with_value(&"test")
+            .only(),
+    );
+    run_test(span, || fn_keyword_ident_in_field("test"));
 }
 
 fn run_test<F: FnOnce() -> T, T>(span: NewSpan, fun: F) {
