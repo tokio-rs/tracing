@@ -11,6 +11,7 @@ pub struct Builder {
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) max_size_bytes: Option<usize>,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -42,11 +43,13 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
     /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
+    /// | [`max_log_size_bytes`] | `None` | By default, there is no limit for maximum file size. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
+    /// [`max_log_size_bytes`]: Self::max_log_size_bytes
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -54,6 +57,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            max_size_bytes: None,
         }
     }
 
@@ -230,6 +234,39 @@ impl Builder {
         Self {
             max_files: Some(n),
             ..self
+        }
+    }
+
+    /// Limits the size of log files.
+    ///
+    /// When a log file reaches the specified size, it will be rotated
+    /// and a new log file will be created.
+    /// If no value is supplied or the value is 0, the `RollingAppender` will
+    /// not limit the size of log files.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .max_log_size_bytes(10 * 1024 * 1024) // rotate the log file when it reaches 10 MiB
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn max_log_size_bytes(self, bytes: usize) -> Self {
+        if bytes > 0 {
+            Self {
+                max_size_bytes: Some(bytes),
+                ..self
+            }
+        } else {
+            self
         }
     }
 

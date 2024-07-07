@@ -108,6 +108,8 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    max_size_bytes: Option<usize>,
+    same_date_file_count: AtomicUsize,
 }
 
 // === impl RollingFileAppender ===
@@ -190,6 +192,7 @@ impl RollingFileAppender {
             ref prefix,
             ref suffix,
             ref max_files,
+            ref max_size_bytes,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -200,6 +203,7 @@ impl RollingFileAppender {
             prefix.clone(),
             suffix.clone(),
             *max_files,
+            *max_size_bytes,
         )?;
         Ok(Self {
             state,
@@ -221,11 +225,24 @@ impl RollingFileAppender {
 
 impl io::Write for RollingFileAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let should_rollover = |now: OffsetDateTime| -> bool {
+            if let Some(current_time) = self.state.should_rollover_by_date(now) {
+                let _did_cas = self.state.advance_date(now, current_time);
+                debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
+                return true;
+            }
+            if self.state.should_rollover_by_size(&self.writer.read()) {
+                self.state.advance_same_date_file_counter();
+                return true;
+            }
+            false
+        };
+
         let now = self.now();
+        let should_rollover = should_rollover(now);
+
         let writer = self.writer.get_mut();
-        if let Some(current_time) = self.state.should_rollover(now) {
-            let _did_cas = self.state.advance_date(now, current_time);
-            debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
+        if should_rollover {
             self.state.refresh_writer(now, writer);
         }
         writer.write(buf)
@@ -239,16 +256,24 @@ impl io::Write for RollingFileAppender {
 impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
     type Writer = RollingWriter<'a>;
     fn make_writer(&'a self) -> Self::Writer {
-        let now = self.now();
-
-        // Should we try to roll over the log file?
-        if let Some(current_time) = self.state.should_rollover(now) {
-            // Did we get the right to lock the file? If not, another thread
-            // did it and we can just make a writer.
-            if self.state.advance_date(now, current_time) {
-                self.state.refresh_writer(now, &mut self.writer.write());
+        let should_rollover = |now: OffsetDateTime| -> bool {
+            if let Some(current_time) = self.state.should_rollover_by_date(now) {
+                // Did we get the right to lock the file? If not, another thread
+                // did it and we can just make a writer.
+                return self.state.advance_date(now, current_time);
             }
+            if self.state.should_rollover_by_size(&self.writer.read()) {
+                self.state.advance_same_date_file_counter();
+                return true;
+            }
+            false
+        };
+
+        let now = self.now();
+        if should_rollover(now) {
+            self.state.refresh_writer(now, &mut self.writer.write());
         }
+
         RollingWriter(self.writer.read())
     }
 }
@@ -525,6 +550,7 @@ impl Inner {
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
         max_files: Option<usize>,
+        max_size_bytes: Option<usize>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
@@ -542,6 +568,8 @@ impl Inner {
             ),
             rotation,
             max_files,
+            max_size_bytes,
+            same_date_file_count: AtomicUsize::new(0),
         };
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
@@ -634,8 +662,32 @@ impl Inner {
         }
     }
 
+    /// This function appends a suffix to the rotated file (a counter starting at 1),
+    /// so that the new file can keep using the previous name based on the date.
+    ///
+    /// For example, if the log file is rotated hourly, and the current time is `2020-02-01 12:00:00`,
+    /// the current log file will be named `2020-02-01-12`. If the log file is rotated within
+    /// the same hour after exceeding the size limit, it will get renamed to `2020-02-01-12.1`
+    /// and the new log file will use the previous name, i.e. `2020-02-01-12`.
+    fn rename_same_date_file(&self, filename: &str) {
+        if self.max_size_bytes.is_none() {
+            return;
+        }
+        let same_date_file_count = self.same_date_file_count.load(Ordering::Acquire);
+        if same_date_file_count > 0 {
+            if let Err(err) = fs::rename(
+                self.log_directory.join(filename),
+                self.log_directory
+                    .join(&format!("{filename}.{same_date_file_count}")),
+            ) {
+                eprintln!("Couldn't rename previous log file: {err}");
+            }
+        }
+    }
+
     fn refresh_writer(&self, now: OffsetDateTime, file: &mut File) {
         let filename = self.join_date(&now);
+        self.rename_same_date_file(&filename);
 
         if let Some(max_files) = self.max_files {
             self.prune_old_logs(max_files);
@@ -652,15 +704,15 @@ impl Inner {
         }
     }
 
-    /// Checks whether or not it's time to roll over the log file.
+    /// Checks whether it's time to roll over the log file given a date.
     ///
     /// Rather than returning a `bool`, this returns the current value of
     /// `next_date` so that we can perform a `compare_exchange` operation with
     /// that value when setting the next rollover time.
     ///
     /// If this method returns `Some`, we should roll to a new log file.
-    /// Otherwise, if this returns we should not rotate the log file.
-    fn should_rollover(&self, date: OffsetDateTime) -> Option<usize> {
+    /// Otherwise, if this returns `None`, we should not rotate the log file.
+    fn should_rollover_by_date(&self, date: OffsetDateTime) -> Option<usize> {
         let next_date = self.next_date.load(Ordering::Acquire);
         // if the next date is 0, this appender *never* rotates log files.
         if next_date == 0 {
@@ -675,6 +727,7 @@ impl Inner {
     }
 
     fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
+        self.same_date_file_count.store(0, Ordering::Release);
         let next_date = self
             .rotation
             .next_date(&now)
@@ -683,6 +736,30 @@ impl Inner {
         self.next_date
             .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
+    }
+
+    /// Checks whether it's time to roll over the log file by size.
+    ///
+    /// Returns `true` if the current log file size exceeds the maximum size limit.
+    /// If the size of the file can't be determined, this function returns `false`.
+    fn should_rollover_by_size(&self, file: &File) -> bool {
+        match self.max_size_bytes {
+            Some(max_size_bytes) => {
+                let current_file_size_bytes = match file.metadata() {
+                    Ok(metadata) => metadata.len() as usize,
+                    Err(err) => {
+                        eprintln!("Couldn't get file metadata: {}", err);
+                        return false;
+                    }
+                };
+                current_file_size_bytes >= max_size_bytes
+            }
+            None => false,
+        }
+    }
+
+    fn advance_same_date_file_counter(&self) {
+        self.same_date_file_count.fetch_add(1, Ordering::AcqRel);
     }
 }
 
@@ -829,6 +906,7 @@ mod test {
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
                 None,
+                None,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -941,6 +1019,7 @@ mod test {
             Some("test_make_writer".to_string()),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -1023,6 +1102,7 @@ mod test {
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
+            None,
         )
         .unwrap();
 
@@ -1103,6 +1183,114 @@ mod test {
                     assert_eq!("file 3\nfile 3\n", file);
                 }
                 x => panic!("unexpected date {}", x),
+            }
+        }
+    }
+
+    #[test]
+    fn test_max_log_size() {
+        use std::sync::{Arc, Mutex};
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            None,
+            None,
+            None,
+            Some(10),
+        )
+        .unwrap();
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        // Log two lines that will exceed the max file size
+        tracing::info!("1.log");
+        tracing::info!("2.log-with-contents");
+
+        // Log another two lines exceeding the limit
+        tracing::info!("3.log");
+        tracing::info!("4.log-with-contents");
+
+        // Log the contents for the current file
+        tracing::info!("5.log");
+
+        // Advance clock to trigger rotation by date
+        (*clock.lock().unwrap()) += Duration::hours(1);
+        (*clock.lock().unwrap()) += Duration::seconds(1);
+
+        // Log the same messages again to trigger rotation by size
+        // and check that the suffixes were reset correctly
+        tracing::info!("1.log");
+        tracing::info!("2.log-with-contents");
+        tracing::info!("3.log");
+        tracing::info!("4.log-with-contents");
+        tracing::info!("5.log");
+
+        drop(default);
+
+        // We should have rolled over the log file at this point.
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        println!("dir={:?}", dir_contents);
+
+        for entry in dir_contents {
+            let entry = entry.expect("Expected dir entry");
+            println!("entry={:?}", entry);
+            if !entry.file_type().unwrap().is_file() {
+                continue;
+            }
+            let filename = entry.file_name();
+            let path = entry.path();
+            let contents = fs::read_to_string(&path).expect("Failed to read file");
+            println!("path={}\nfile={:?}", path.display(), contents);
+
+            match filename.to_str().expect("filename should be UTF8") {
+                // Logs on hour 10
+                "2020-02-01-10.1" => {
+                    assert_eq!("1.log\n2.log-with-contents\n", contents);
+                }
+                "2020-02-01-10.2" => {
+                    assert_eq!("3.log\n4.log-with-contents\n", contents);
+                }
+                //// The file with no suffix is the current file with the latest contents
+                "2020-02-01-10" => {
+                    assert_eq!("5.log\n", contents);
+                }
+
+                // Logs on hour 11
+                "2020-02-01-11.1" => {
+                    assert_eq!("1.log\n2.log-with-contents\n", contents);
+                }
+                "2020-02-01-11.2" => {
+                    assert_eq!("3.log\n4.log-with-contents\n", contents);
+                }
+                "2020-02-01-11" => {
+                    assert_eq!("5.log\n", contents);
+                }
+
+                x => panic!("unexpected file {}", x),
             }
         }
     }
