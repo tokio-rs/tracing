@@ -35,7 +35,7 @@ jobs:
     name: cargo check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: Check
       run: cargo check --all --tests --benches
@@ -46,7 +46,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: rustfmt
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
@@ -88,7 +88,7 @@ jobs:
         - tracing
         - tracing-subscriber
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
@@ -121,7 +121,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.56.0). This
+    # Run `cargo check` on our minimum supported Rust version (1.63.0). This
     # checks with minimal versions; maximal versions are checked above.
     name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
@@ -143,10 +143,10 @@ jobs:
         - tracing-tower
         - tracing
         toolchain:
-        - 1.56.0
+        - 1.63.0
         - stable
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
     - name: "install Rust ${{ matrix.toolchain }}"
@@ -210,7 +210,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: "install Rust ${{ matrix.rust }}"
       uses: dtolnay/rust-toolchain@master
       with:
@@ -252,7 +252,7 @@ jobs:
         - tracing-tower
       fail-fast: false
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -268,7 +268,7 @@ jobs:
         subcrate:
         - tracing
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -279,35 +279,26 @@ jobs:
 
   test-features-stable:
     # Feature flag tests that run on stable Rust.
-    # TODO(david): once tracing's MSRV goes up to Rust 1.51, we should be able to switch to
-    # using cargo's V2 feature resolver (https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions)
-    # and avoid cd'ing into each crate's directory.
     name: cargo test (feature-specific)
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: "Test log support"
       run: cargo test
-      working-directory: "tracing/test-log-support"
     - name: "Test static max level"
       run: cargo test
-      working-directory: "tracing/test_static_max_level_features"
     - name: "Test static max level (release)"
       run: cargo test --release
-      working-directory: "tracing/test_static_max_level_features"
     - name: "Test tracing-core no-std support"
       run: cargo test --no-default-features
-      working-directory: tracing
     - name: "Test tracing no-std support"
       run: cargo test --no-default-features
-      working-directory: tracing
       # this skips running doctests under the `--no-default-features` flag,
       # as rustdoc isn't aware of cargo's feature flags.
     - name: "Test tracing-subscriber with all features disabled"
       run: cargo test --lib --tests --no-default-features
-      working-directory: tracing-subscriber
 
   # all required checks except for the main test run (which we only require
   # specific matrix combinations from)

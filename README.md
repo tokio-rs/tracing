@@ -254,7 +254,7 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.56. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -438,7 +438,7 @@ please let us know!)
 [Tracy]: https://github.com/wolfpld/tracy
 [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 [Elastic APM]: https://www.elastic.co/apm
-[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[`tracing-etw`]: https://github.com/microsoft/rust_win_etw/tree/main/win_etw_tracing
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 [Sentry]: https://sentry.io/welcome/

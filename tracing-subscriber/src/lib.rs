@@ -10,7 +10,7 @@
 //! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! *Compiler support: [requires `rustc` 1.56+][msrv]*
+//! *Compiler support: [requires `rustc` 1.63+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -106,7 +106,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.56. The current Tracing version is not guaranteed to build on
+//! version is 1.63. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -156,7 +156,8 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
+    private_interfaces,
+    private_bounds,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -209,7 +210,11 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
+    /// Creates a default [`Registry`], a [`Collect`](tracing_core::Collect)
+    /// implementation which tracks per-span data and exposes it to
+    /// [`Subscribe`]s.
     ///
+    /// For more information see [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }

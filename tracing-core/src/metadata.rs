@@ -223,10 +223,9 @@ pub struct Level(LevelInner);
 
 /// A filter comparable to a verbosity [`Level`].
 ///
-/// If a [`Level`] is considered less than a `LevelFilter`, it should be
-/// considered enabled; if greater than or equal to the `LevelFilter`,
-/// that level is disabled. See [`LevelFilter::current`] for more
-/// details.
+/// If a [`Level`] is considered less than or equal to a `LevelFilter`, it
+/// should be considered enabled; if greater than the `LevelFilter`, that level
+/// is disabled. See [`LevelFilter::current`] for more details.
 ///
 /// Note that this is essentially identical to the `Level` type, but with the
 /// addition of an [`OFF`] level that completely disables all trace
@@ -379,7 +378,7 @@ impl Kind {
     pub const SPAN: Kind = Kind(Self::SPAN_BIT);
 
     /// `enabled!` callsite. [`Collect`][`crate::collect::Collect`]s can assume
-    /// this `Kind` means they will never recieve a
+    /// this `Kind` means they will never receive a
     /// full event with this [`Metadata`].
     pub const HINT: Kind = Kind(Self::HINT_BIT);
 

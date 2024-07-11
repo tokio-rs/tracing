@@ -4,6 +4,7 @@ use tracing_attributes::instrument;
 use tracing_mock::*;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::subscribe::CollectExt;
+use tracing_test::{block_on_future, PollN};
 
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
@@ -159,7 +160,7 @@ fn impl_trait_return_type() {
     let (collector, handle) = collector::mock()
         .new_span(
             span.clone()
-                .with_field(expect::field("x").with_value(&10usize).only()),
+                .with_fields(expect::field("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())

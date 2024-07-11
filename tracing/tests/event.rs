@@ -85,7 +85,7 @@ fn message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(field::msg(format_args!(
+                    .and(expect::message(format_args!(
                         "hello from my event! tricky? {:?}!",
                         true
                     )))
@@ -114,7 +114,7 @@ fn string_message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(field::msg(format_args!("hello from my event")))
+                    .and(expect::message(format_args!("hello from my event")))
                     .only(),
             ),
         )
@@ -418,6 +418,12 @@ fn constant_field_name() {
     let (collector, handle) = collector::mock()
         .event(expect_event())
         .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
+        .event(expect_event())
         .only()
         .run_with_handle();
 
@@ -439,7 +445,67 @@ fn constant_field_name() {
             },
             "quux"
         );
+        tracing::info!(
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "quux"
+        );
+        tracing::info!(
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "quux"
+        );
+        tracing::event!(
+            Level::INFO,
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "{}",
+            "quux"
+        );
+        tracing::event!(
+            Level::INFO,
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "{}",
+            "quux"
+        );
+        tracing::info!(
+            { std::convert::identity(FOO) } = "bar",
+            { "constant string" } = "also works",
+            foo.bar = "baz",
+            "{}",
+            "quux"
+        );
+        tracing::info!(
+            {
+                { std::convert::identity(FOO) } = "bar",
+                { "constant string" } = "also works",
+                foo.bar = "baz",
+            },
+            "{}",
+            "quux"
+        );
     });
 
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn keyword_ident_in_field_name() {
+    let (collector, handle) = collector::mock()
+        .event(expect::event().with_fields(expect::field("crate").with_value(&"tracing")))
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || error!(crate = "tracing", "message"));
     handle.assert_finished();
 }

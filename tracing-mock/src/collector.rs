@@ -12,7 +12,7 @@
 //!
 //! let (collector, handle) = collector::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .event(expect::event().with_fields(expect::message("droids")))
 //!     .only()
 //!     .run_with_handle();
 //!
@@ -40,7 +40,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     // Record a value for the field `parting` on a matching span
 //!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
@@ -81,7 +81,7 @@
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
 //!     .enter(span.clone())
-//!     .event(expect::event().with_fields(field::msg("collect parting message")))
+//!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
@@ -158,10 +158,21 @@ use tracing::{
     Collect, Event, Metadata,
 };
 
-struct SpanState {
+pub(crate) struct SpanState {
+    id: u64,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
+}
+
+impl SpanState {
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
+        self.meta
+    }
 }
 
 struct Running<F: Fn(&Metadata<'_>) -> bool> {
@@ -215,7 +226,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     // Enter a matching span
 ///     .enter(span.clone())
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(field::msg("collect parting message")))
+///     .event(expect::event().with_fields(expect::message("collect parting message")))
 ///     // Record a value for the field `parting` on a matching span
 ///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
@@ -399,7 +410,7 @@ where
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (collector, handle) = collector::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
@@ -420,7 +431,7 @@ where
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (collector, handle) = collector::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
@@ -1094,6 +1105,9 @@ where
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
+                if let Some(expected_id) = &expected.span.id {
+                    expected_id.set(id.into_u64()).unwrap();
+                }
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     span.parent()
@@ -1107,6 +1121,7 @@ where
         spans.insert(
             id.clone(),
             SpanState {
+                id: id.into_u64(),
                 name: meta.name(),
                 refs: 1,
                 meta,
@@ -1122,9 +1137,7 @@ where
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
-                    if let Some(name) = expected_span.name() {
-                        assert_eq!(name, span.name);
-                    }
+                    expected_span.check(span, &self.name);
                 }
                 Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
@@ -1147,9 +1160,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                if let Some(name) = expected_span.name() {
-                    assert_eq!(name, span.name);
-                }
+                expected_span.check(span, &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
