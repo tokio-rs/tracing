@@ -7,6 +7,7 @@ use std::thread;
 
 use tracing::{
     collect::with_default,
+    error_span,
     field::{debug, display},
     Level, Span,
 };
@@ -896,5 +897,22 @@ fn constant_field_name() {
         );
     });
 
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn keyword_ident_in_field_name_span_macro() {
+    #[derive(Debug)]
+    struct Foo;
+
+    let (collector, handle) = collector::mock()
+        .new_span(expect::span().with_fields(expect::field("self").with_value(&debug(Foo)).only()))
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        error_span!("span", self = ?Foo);
+    });
     handle.assert_finished();
 }
