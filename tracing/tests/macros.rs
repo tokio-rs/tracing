@@ -2,6 +2,7 @@
 // We call all macros in this module with `no_implicit_prelude` to ensure they do not depend on the standard prelude.
 #![no_implicit_prelude]
 extern crate tracing;
+extern crate valuable;
 #[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen_test;
 
@@ -9,6 +10,7 @@ use tracing::{
     callsite, debug, debug_span, enabled, error, error_span, event, event_enabled, info, info_span,
     span, span_enabled, trace, trace_span, warn, warn_span, Level,
 };
+use valuable::Valuable;
 
 // Tests that macros work across various invocation syntax.
 //
@@ -19,7 +21,7 @@ use tracing::{
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span() {
-    span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 3);
     span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
     span!(target: "foo_events", Level::DEBUG, "foo");
@@ -30,6 +32,7 @@ fn span() {
     span!(Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
     span!(Level::DEBUG, "foo", bar.baz = ?2);
     span!(Level::DEBUG, "foo", bar.baz = %2);
+    span!(Level::DEBUG, "foo", bar.baz = ~2);
     span!(Level::DEBUG, "foo");
     span!(Level::DEBUG, "bar",);
 }
@@ -37,7 +40,7 @@ fn span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span() {
-    trace_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    trace_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
     trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
     trace_span!(target: "foo_events", "foo");
@@ -46,6 +49,7 @@ fn trace_span() {
     trace_span!("foo", bar.baz = 2, quux = 4,);
     trace_span!("foo", bar.baz = ?2);
     trace_span!("foo", bar.baz = %2);
+    trace_span!("foo", bar.baz = ~2);
     trace_span!("bar");
     trace_span!("bar",);
 }
@@ -53,7 +57,7 @@ fn trace_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span() {
-    debug_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    debug_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
     debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
     debug_span!(target: "foo_events", "foo");
@@ -62,6 +66,7 @@ fn debug_span() {
     debug_span!("foo", bar.baz = 2, quux = 4,);
     debug_span!("foo", bar.baz = ?2);
     debug_span!("foo", bar.baz = %2);
+    debug_span!("foo", bar.baz = ~2);
     debug_span!("bar");
     debug_span!("bar",);
 }
@@ -69,7 +74,7 @@ fn debug_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span() {
-    info_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    info_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
     info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
     info_span!(target: "foo_events", "foo");
@@ -78,6 +83,7 @@ fn info_span() {
     info_span!("foo", bar.baz = 2, quux = 4,);
     info_span!("foo", bar.baz = ?2);
     info_span!("foo", bar.baz = %2);
+    info_span!("foo", bar.baz = ~2);
     info_span!("bar");
     info_span!("bar",);
 }
@@ -85,7 +91,7 @@ fn info_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span() {
-    warn_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    warn_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
     warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
     warn_span!(target: "foo_events", "foo");
@@ -94,6 +100,7 @@ fn warn_span() {
     warn_span!("foo", bar.baz = 2, quux = 4,);
     warn_span!("foo", bar.baz = ?2);
     warn_span!("foo", bar.baz = %2);
+    warn_span!("foo", bar.baz = ~2);
     warn_span!("bar");
     warn_span!("bar",);
 }
@@ -101,7 +108,7 @@ fn warn_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span() {
-    error_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    error_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4, quuuux = ~5);
     error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
     error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
     error_span!(target: "foo_events", "foo");
@@ -110,6 +117,7 @@ fn error_span() {
     error_span!("foo", bar.baz = 2, quux = 4,);
     error_span!("foo", bar.baz = ?2);
     error_span!("foo", bar.baz = %2);
+    error_span!("foo", bar.baz = ~2);
     error_span!("bar");
     error_span!("bar",);
 }
@@ -354,6 +362,7 @@ fn error_span_with_parent() {
 fn span_with_non_rust_symbol() {
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef", "more {}", 42);
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef", "more {}", 51);
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ~"abcdef", "more {}", 60);
     span!(
         Level::TRACE,
         "non-rust",
@@ -363,6 +372,7 @@ fn span_with_non_rust_symbol() {
     );
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef");
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef");
+    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ~"abcdef");
     span!(Level::TRACE, "non-rust", "guid:x-request-id" = "abcdef");
 }
 
@@ -411,12 +421,12 @@ fn large_span() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event() {
-    event!(Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
+    event!(Level::DEBUG, foo = ?3, bar.baz = %2, bar.baz.lol = ~1, quux = false);
     event!(Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
     event!(Level::DEBUG, foo = 3, bar.baz = 3,);
     event!(Level::DEBUG, "foo");
     event!(Level::DEBUG, "foo: {}", 3);
-    event!(Level::INFO, foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    event!(Level::INFO, foo = ?3, bar.baz = %2, bar.baz.lol = ~1, quux = false, "hello world {:?}", 42);
     event!(
         Level::INFO,
         foo = 3,
@@ -429,7 +439,7 @@ fn event() {
     event!(Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
     event!(Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     event!(Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(Level::DEBUG, { foo = ?2, bar.baz = %78, bar.baz.lol = ~77 }, "quux");
     event!(target: "foo_events", Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
     event!(target: "foo_events", Level::DEBUG, foo = 3, bar.baz = 3,);
     event!(target: "foo_events", Level::DEBUG, "foo");
@@ -441,6 +451,7 @@ fn event() {
     let foo = 1;
     event!(Level::DEBUG, ?foo);
     event!(Level::DEBUG, %foo);
+    event!(Level::DEBUG, ~foo);
     event!(Level::DEBUG, foo);
 }
 
@@ -493,6 +504,7 @@ fn locals_with_message() {
     let private_data = "private";
     let error = "a bad error";
     event!(Level::ERROR, %error, "Received error");
+    event!(Level::ERROR, ~error, "Received error");
     event!(
         target: "app_events",
         Level::WARN,
@@ -542,19 +554,19 @@ fn locals_no_message() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace() {
-    trace!(foo = ?3, bar.baz = %2, quux = false);
+    trace!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     trace!(foo = 3, bar.baz = 2, quux = false);
     trace!(foo = 3, bar.baz = 3,);
     trace!("foo");
     trace!("foo: {}", 3);
-    trace!(foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    trace!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false, "hello world {:?}", 42);
     trace!(foo = 3, bar.baz = 2, quux = false, "hello world {:?}", 42);
     trace!(foo = 3, bar.baz = 3, "hello world {:?}", 42,);
     trace!({ foo = 3, bar.baz = 80 }, "quux");
     trace!({ foo = 2, bar.baz = 79 }, "quux {:?}", true);
     trace!({ foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     trace!({ foo = 2, bar.baz = 78 }, "quux");
-    trace!({ foo = ?2, bar.baz = %78 }, "quux");
+    trace!({ foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     trace!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     trace!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
@@ -568,37 +580,42 @@ fn trace() {
     let foo = 1;
     trace!(?foo);
     trace!(%foo);
+    trace!(~foo);
     trace!(foo);
     trace!(name: "foo", ?foo);
     trace!(name: "foo", %foo);
+    trace!(name: "foo", ~foo);
     trace!(name: "foo", foo);
     trace!(name: "foo", ?foo, true, "message");
     trace!(name: "foo", %foo, true, "message");
+    trace!(name: "foo", ~foo, true, "message");
     trace!(name: "foo", foo, true, "message");
     trace!(target: "foo_events", ?foo);
     trace!(target: "foo_events", %foo);
+    trace!(target: "foo_events", ~foo);
     trace!(target: "foo_events", foo);
     trace!(target: "foo_events", ?foo, true, "message");
     trace!(target: "foo_events", %foo, true, "message");
+    trace!(target: "foo_events", ~foo, true, "message");
     trace!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug() {
-    debug!(foo = ?3, bar.baz = %2, quux = false);
+    debug!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     debug!(foo = 3, bar.baz = 2, quux = false);
     debug!(foo = 3, bar.baz = 3,);
     debug!("foo");
     debug!("foo: {}", 3);
-    debug!(foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    debug!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false, "hello world {:?}", 42);
     debug!(foo = 3, bar.baz = 2, quux = false, "hello world {:?}", 42);
     debug!(foo = 3, bar.baz = 3, "hello world {:?}", 42,);
     debug!({ foo = 3, bar.baz = 80 }, "quux");
     debug!({ foo = 2, bar.baz = 79 }, "quux {:?}", true);
     debug!({ foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     debug!({ foo = 2, bar.baz = 78 }, "quux");
-    debug!({ foo = ?2, bar.baz = %78 }, "quux");
+    debug!({ foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     debug!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     debug!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
@@ -612,37 +629,42 @@ fn debug() {
     let foo = 1;
     debug!(?foo);
     debug!(%foo);
+    debug!(~foo);
     debug!(foo);
     debug!(name: "foo", ?foo);
     debug!(name: "foo", %foo);
+    debug!(name: "foo", ~foo);
     debug!(name: "foo", foo);
     debug!(name: "foo", ?foo, true, "message");
     debug!(name: "foo", %foo, true, "message");
+    debug!(name: "foo", ~foo, true, "message");
     debug!(name: "foo", foo, true, "message");
     debug!(target: "foo_events", ?foo);
     debug!(target: "foo_events", %foo);
+    debug!(target: "foo_events", ~foo);
     debug!(target: "foo_events", foo);
     debug!(target: "foo_events", ?foo, true, "message");
     debug!(target: "foo_events", %foo, true, "message");
+    debug!(target: "foo_events", ~foo, true, "message");
     debug!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info() {
-    info!(foo = ?3, bar.baz = %2, quux = false);
+    info!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     info!(foo = 3, bar.baz = 2, quux = false);
     info!(foo = 3, bar.baz = 3,);
     info!("foo");
     info!("foo: {}", 3);
-    info!(foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    info!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false, "hello world {:?}", 42);
     info!(foo = 3, bar.baz = 2, quux = false, "hello world {:?}", 42);
     info!(foo = 3, bar.baz = 3, "hello world {:?}", 42,);
     info!({ foo = 3, bar.baz = 80 }, "quux");
     info!({ foo = 2, bar.baz = 79 }, "quux {:?}", true);
     info!({ foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     info!({ foo = 2, bar.baz = 78 }, "quux");
-    info!({ foo = ?2, bar.baz = %78 }, "quux");
+    info!({ foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     info!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     info!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
@@ -656,37 +678,42 @@ fn info() {
     let foo = 1;
     info!(?foo);
     info!(%foo);
+    info!(~foo);
     info!(foo);
     info!(name: "foo", ?foo);
     info!(name: "foo", %foo);
+    info!(name: "foo", ~foo);
     info!(name: "foo", foo);
     info!(name: "foo", ?foo, true, "message");
     info!(name: "foo", %foo, true, "message");
+    info!(name: "foo", ~foo, true, "message");
     info!(name: "foo", foo, true, "message");
     info!(target: "foo_events", ?foo);
     info!(target: "foo_events", %foo);
+    info!(target: "foo_events", ~foo);
     info!(target: "foo_events", foo);
     info!(target: "foo_events", ?foo, true, "message");
     info!(target: "foo_events", %foo, true, "message");
+    info!(target: "foo_events", ~foo, true, "message");
     info!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn() {
-    warn!(foo = ?3, bar.baz = %2, quux = false);
+    warn!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     warn!(foo = 3, bar.baz = 2, quux = false);
     warn!(foo = 3, bar.baz = 3,);
     warn!("foo");
     warn!("foo: {}", 3);
-    warn!(foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    warn!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false, "hello world {:?}", 42);
     warn!(foo = 3, bar.baz = 2, quux = false, "hello world {:?}", 42);
     warn!(foo = 3, bar.baz = 3, "hello world {:?}", 42,);
     warn!({ foo = 3, bar.baz = 80 }, "quux");
     warn!({ foo = 2, bar.baz = 79 }, "quux {:?}", true);
     warn!({ foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     warn!({ foo = 2, bar.baz = 78 }, "quux");
-    warn!({ foo = ?2, bar.baz = %78 }, "quux");
+    warn!({ foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     warn!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     warn!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
@@ -700,37 +727,42 @@ fn warn() {
     let foo = 1;
     warn!(?foo);
     warn!(%foo);
+    warn!(~foo);
     warn!(foo);
     warn!(name: "foo", ?foo);
     warn!(name: "foo", %foo);
+    warn!(name: "foo", ~foo);
     warn!(name: "foo", foo);
     warn!(name: "foo", ?foo, true, "message");
     warn!(name: "foo", %foo, true, "message");
+    warn!(name: "foo", ~foo, true, "message");
     warn!(name: "foo", foo, true, "message");
     warn!(target: "foo_events", ?foo);
     warn!(target: "foo_events", %foo);
+    warn!(target: "foo_events", ~foo);
     warn!(target: "foo_events", foo);
     warn!(target: "foo_events", ?foo, true, "message");
     warn!(target: "foo_events", %foo, true, "message");
+    warn!(target: "foo_events", ~foo, true, "message");
     warn!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error() {
-    error!(foo = ?3, bar.baz = %2, quux = false);
+    error!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     error!(foo = 3, bar.baz = 2, quux = false);
     error!(foo = 3, bar.baz = 3,);
     error!("foo");
     error!("foo: {}", 3);
-    error!(foo = ?3, bar.baz = %2, quux = false, "hello world {:?}", 42);
+    error!(foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false, "hello world {:?}", 42);
     error!(foo = 3, bar.baz = 2, quux = false, "hello world {:?}", 42);
     error!(foo = 3, bar.baz = 3, "hello world {:?}", 42,);
     error!({ foo = 3, bar.baz = 80 }, "quux");
     error!({ foo = 2, bar.baz = 79 }, "quux {:?}", true);
     error!({ foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     error!({ foo = 2, bar.baz = 78, }, "quux");
-    error!({ foo = ?2, bar.baz = %78 }, "quux");
+    error!({ foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     error!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     error!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
@@ -744,25 +776,30 @@ fn error() {
     let foo = 1;
     error!(?foo);
     error!(%foo);
+    error!(~foo);
     error!(foo);
     error!(name: "foo", ?foo);
     error!(name: "foo", %foo);
+    error!(name: "foo", ~foo);
     error!(name: "foo", foo);
     error!(name: "foo", ?foo, true, "message");
     error!(name: "foo", %foo, true, "message");
+    error!(name: "foo", ~foo, true, "message");
     error!(name: "foo", foo, true, "message");
     error!(target: "foo_events", ?foo);
     error!(target: "foo_events", %foo);
+    error!(target: "foo_events", ~foo);
     error!(target: "foo_events", foo);
     error!(target: "foo_events", ?foo, true, "message");
     error!(target: "foo_events", %foo, true, "message");
+    error!(target: "foo_events", ~foo, true, "message");
     error!(target: "foo_events", foo, true, "message");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn event_root() {
-    event!(parent: ::core::option::Option::None, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
+    event!(parent: ::core::option::Option::None, Level::DEBUG, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     event!(
         parent: ::core::option::Option::None,
         Level::DEBUG,
@@ -786,7 +823,7 @@ fn event_root() {
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(parent: ::core::option::Option::None, Level::DEBUG, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
     event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, foo = 3, bar.baz = 3,);
     event!(target: "foo_events", parent: ::core::option::Option::None, Level::DEBUG, "foo");
@@ -808,7 +845,7 @@ fn event_root() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_root() {
-    trace!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    trace!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     trace!(
         parent: ::core::option::Option::None,
         foo = 3,
@@ -822,7 +859,7 @@ fn trace_root() {
     trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     trace!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
-    trace!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    trace!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     trace!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     trace!(target: "foo_events", parent: ::core::option::Option::None, "foo");
@@ -844,7 +881,7 @@ fn trace_root() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_root() {
-    debug!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    debug!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     debug!(
         parent: ::core::option::Option::None,
         foo = 3,
@@ -858,7 +895,7 @@ fn debug_root() {
     debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     debug!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
-    debug!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    debug!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     debug!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     debug!(target: "foo_events", parent: ::core::option::Option::None, "foo");
@@ -880,7 +917,7 @@ fn debug_root() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_root() {
-    info!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    info!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     info!(
         parent: ::core::option::Option::None,
         foo = 3,
@@ -894,7 +931,7 @@ fn info_root() {
     info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     info!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
-    info!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    info!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     info!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     info!(target: "foo_events", parent: ::core::option::Option::None, "foo");
@@ -916,7 +953,7 @@ fn info_root() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_root() {
-    warn!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    warn!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     warn!(
         parent: ::core::option::Option::None,
         foo = 3,
@@ -930,7 +967,7 @@ fn warn_root() {
     warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     warn!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
-    warn!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    warn!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     warn!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     warn!(target: "foo_events", parent: ::core::option::Option::None, "foo");
@@ -952,7 +989,7 @@ fn warn_root() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_root() {
-    error!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, quux = false);
+    error!(parent: ::core::option::Option::None, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     error!(
         parent: ::core::option::Option::None,
         foo = 3,
@@ -966,7 +1003,7 @@ fn error_root() {
     error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     error!(parent: ::core::option::Option::None, { foo = 2, bar.baz = 78 }, "quux");
-    error!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78 }, "quux");
+    error!(parent: ::core::option::Option::None, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     error!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", parent: ::core::option::Option::None, foo = 3, bar.baz = 3,);
     error!(target: "foo_events", parent: ::core::option::Option::None, "foo");
@@ -989,7 +1026,7 @@ fn error_root() {
 #[test]
 fn event_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    event!(parent: &p, Level::DEBUG, foo = ?3, bar.baz = %2, quux = false);
+    event!(parent: &p, Level::DEBUG, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     event!(parent: &p, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
     event!(parent: &p, Level::DEBUG, foo = 3, bar.baz = 3,);
     event!(parent: &p, Level::DEBUG, "foo");
@@ -997,7 +1034,7 @@ fn event_with_parent() {
     event!(parent: &p, Level::DEBUG, { foo = 3, bar.baz = 80 }, "quux");
     event!(parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     event!(parent: &p, Level::DEBUG, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
-    event!(parent: &p, Level::DEBUG, { foo = ?2, bar.baz = %78 }, "quux");
+    event!(parent: &p, Level::DEBUG, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     event!(target: "foo_events", parent: &p, Level::DEBUG, foo = 3, bar.baz = 2, quux = false);
     event!(target: "foo_events", parent: &p, Level::DEBUG, foo = 3, bar.baz = 3,);
     event!(target: "foo_events", parent: &p, Level::DEBUG, "foo");
@@ -1020,7 +1057,7 @@ fn event_with_parent() {
 #[test]
 fn trace_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    trace!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
+    trace!(parent: &p, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     trace!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     trace!(parent: &p, foo = 3, bar.baz = 3,);
     trace!(parent: &p, "foo");
@@ -1029,7 +1066,7 @@ fn trace_with_parent() {
     trace!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     trace!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     trace!(parent: &p, { foo = 2, bar.baz = 78 }, "quux");
-    trace!(parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
+    trace!(parent: &p, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     trace!(target: "foo_events", parent: &p, foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", parent: &p, foo = 3, bar.baz = 3,);
     trace!(target: "foo_events", parent: &p, "foo");
@@ -1051,8 +1088,8 @@ fn trace_with_parent() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
-    debug!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
+    let p = span!(Level::DEBUG, "im_a_parent!");
+    debug!(parent: &p, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     debug!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     debug!(parent: &p, foo = 3, bar.baz = 3,);
     debug!(parent: &p, "foo");
@@ -1061,7 +1098,7 @@ fn debug_with_parent() {
     debug!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     debug!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     debug!(parent: &p, { foo = 2, bar.baz = 78 }, "quux");
-    debug!(parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
+    debug!(parent: &p, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     debug!(target: "foo_events", parent: &p, foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", parent: &p, foo = 3, bar.baz = 3,);
     debug!(target: "foo_events", parent: &p, "foo");
@@ -1083,8 +1120,8 @@ fn debug_with_parent() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
-    info!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
+    let p = span!(Level::INFO, "im_a_parent!");
+    info!(parent: &p, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     info!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     info!(parent: &p, foo = 3, bar.baz = 3,);
     info!(parent: &p, "foo");
@@ -1093,7 +1130,7 @@ fn info_with_parent() {
     info!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     info!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     info!(parent: &p, { foo = 2, bar.baz = 78 }, "quux");
-    info!(parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
+    info!(parent: &p, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     info!(target: "foo_events", parent: &p, foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", parent: &p, foo = 3, bar.baz = 3,);
     info!(target: "foo_events", parent: &p, "foo");
@@ -1115,8 +1152,8 @@ fn info_with_parent() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
-    warn!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
+    let p = span!(Level::WARN, "im_a_parent!");
+    warn!(parent: &p, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     warn!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     warn!(parent: &p, foo = 3, bar.baz = 3,);
     warn!(parent: &p, "foo");
@@ -1125,7 +1162,7 @@ fn warn_with_parent() {
     warn!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     warn!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     warn!(parent: &p, { foo = 2, bar.baz = 78 }, "quux");
-    warn!(parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
+    warn!(parent: &p, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     warn!(target: "foo_events", parent: &p, foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", parent: &p, foo = 3, bar.baz = 3,);
     warn!(target: "foo_events", parent: &p, "foo");
@@ -1147,8 +1184,8 @@ fn warn_with_parent() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_with_parent() {
-    let p = span!(Level::TRACE, "im_a_parent!");
-    error!(parent: &p, foo = ?3, bar.baz = %2, quux = false);
+    let p = span!(Level::ERROR, "im_a_parent!");
+    error!(parent: &p, foo = ?3, bar.baz = %2, lol.wut = ~1, quux = false);
     error!(parent: &p, foo = 3, bar.baz = 2, quux = false);
     error!(parent: &p, foo = 3, bar.baz = 3,);
     error!(parent: &p, "foo");
@@ -1157,7 +1194,7 @@ fn error_with_parent() {
     error!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}", true);
     error!(parent: &p, { foo = 2, bar.baz = 79 }, "quux {:?}, {quux}", true, quux = false);
     error!(parent: &p, { foo = 2, bar.baz = 78 }, "quux");
-    error!(parent: &p, { foo = ?2, bar.baz = %78 }, "quux");
+    error!(parent: &p, { foo = ?2, bar.baz = %78, lol.wut = ~77 }, "quux");
     error!(target: "foo_events", parent: &p, foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", parent: &p, foo = 3, bar.baz = 3,);
     error!(target: "foo_events", parent: &p, "foo");
@@ -1179,7 +1216,7 @@ fn error_with_parent() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn field_shorthand_only() {
-    #[derive(Debug)]
+    #[derive(Debug, Valuable)]
     struct Position {
         x: f32,
         y: f32,
@@ -1195,6 +1232,20 @@ fn field_shorthand_only() {
     warn!(?pos.x, ?pos.y);
     error!(?pos.x, ?pos.y);
     event!(Level::TRACE, ?pos.x, ?pos.y);
+
+    trace!(%pos.x, %pos.y);
+    debug!(%pos.x, %pos.y);
+    info!(%pos.x, %pos.y);
+    warn!(%pos.x, %pos.y);
+    error!(%pos.x, %pos.y);
+    event!(Level::TRACE, %pos.x, %pos.y);
+
+    trace!(~pos.x, ~pos.y);
+    debug!(~pos.x, ~pos.y);
+    info!(~pos.x, ~pos.y);
+    warn!(~pos.x, ~pos.y);
+    error!(~pos.x, ~pos.y);
+    event!(Level::TRACE, ~pos.x, ~pos.y);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

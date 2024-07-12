@@ -38,18 +38,13 @@
 //! user-defined `struct` and `enum` types without having to format them as
 //! unstructured text.
 //!
-//! To address `Value`'s limitations, `tracing` offers experimental support for
-//! the [`valuable`] crate, which provides object-safe inspection of structured
+//! To address `Value`'s limitations, `tracing` offers support for the
+//! [`valuable`] crate, which provides object-safe inspection of structured
 //! values. User-defined types can implement the [`valuable::Valuable`] trait,
 //! and be recorded as a `tracing` field by calling their [`as_value`] method.
-//! If the [`Subscriber`] also supports the `valuable` crate, it can
-//! then visit those types fields as structured values using `valuable`.
-//!
-//! <pre class="ignore" style="white-space:normal;font:inherit;">
-//!     <strong>Note</strong>: <code>valuable</code> support is an
-//!     <a href = "../index.html#unstable-features">unstable feature</a>. See
-//!     the documentation on unstable features for details on how to enable it.
-//! </pre>
+//! If the [`Subscriber`] also supports the `valuable` crate, it can then visit
+//! those types fields as structured values using `valuable`. Otherwise, it will
+//! fall back to using the type's [`fmt::Debug`] implementation.
 //!
 //! For example:
 //! ```ignore
