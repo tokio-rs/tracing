@@ -27,7 +27,7 @@ edition = "2018"
 rust-version = "1.63.0"
 
 [features]
-default = ["std", "valuable/std"]
+default = ["std", "valuable?/std"]
 std = ["once_cell"]
 
 [badges]
