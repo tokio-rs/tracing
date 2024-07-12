@@ -387,11 +387,11 @@ where
 {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
     #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
-    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &valuable_serde::Serializable::new(value));
+                .serialize_entry(field.name(), &valuable::Serializable::new(value));
         }
     }
 
@@ -449,7 +449,7 @@ where
 {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
     #[cfg_attr(docsrs, doc(cfg(all(tracing_unstable, feature = "valuable"))))]
-    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         if self.state.is_ok() {
             self.state = self
                 .serializer
