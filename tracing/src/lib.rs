@@ -116,7 +116,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tracing = "0.1"
+//! tracing = "0.2"
 //! ```
 //!
 //! ## Recording Spans and Events
