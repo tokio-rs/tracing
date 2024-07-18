@@ -159,12 +159,17 @@ use tracing::{
 };
 
 pub(crate) struct SpanState {
+    id: u64,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
 }
 
 impl SpanState {
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
+
     pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
         self.meta
     }
@@ -1100,6 +1105,9 @@ where
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
+                if let Some(expected_id) = &expected.span.id {
+                    expected_id.set(id.into_u64()).unwrap();
+                }
                 let get_parent_name = || {
                     let stack = self.current.lock().unwrap();
                     span.parent()
@@ -1113,6 +1121,7 @@ where
         spans.insert(
             id.clone(),
             SpanState {
+                id: id.into_u64(),
                 name: meta.name(),
                 refs: 1,
                 meta,
