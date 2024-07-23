@@ -1212,6 +1212,11 @@ where
     }
 }
 
+/// Tracks the idle and busy times of a span.
+///
+/// The number of times the span has been entered is tracked to determine the current state. This
+/// ensures that entering and exiting the span multiple times out of order does not affect the
+/// timings.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Timings {
     idle: Duration,
@@ -1220,11 +1225,6 @@ struct Timings {
     entered_count: u64,
 }
 
-/// Tracks the idle and busy times of a span.
-///
-/// The number of times the span has been entered is tracked to determine the current state. This
-/// ensures that entering and exiting the span multiple times out of order does not affect the
-/// timings.
 impl Timings {
     fn new() -> Self {
         Self {
