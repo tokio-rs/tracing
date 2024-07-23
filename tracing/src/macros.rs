@@ -1115,15 +1115,15 @@ macro_rules! span_enabled {
 /// in false positives or false negatives include:
 ///
 /// - If a collector is using a filter which may enable a span or event based
-/// on field names, but `enabled!` is invoked without listing field names,
-/// `enabled!` may return a false negative if a specific field name would
-/// cause the collector to enable something that would otherwise be disabled.
+///   on field names, but `enabled!` is invoked without listing field names,
+///   `enabled!` may return a false negative if a specific field name would
+///   cause the collector to enable something that would otherwise be disabled.
 /// - If a collector is using a filter which enables or disables specific events by
-/// file path and line number,  a particular event may be enabled/disabled
-/// even if an `enabled!` invocation with the same level, target, and fields
-/// indicated otherwise.
+///   file path and line number,  a particular event may be enabled/disabled
+///   even if an `enabled!` invocation with the same level, target, and fields
+///   indicated otherwise.
 /// - The collector can choose to enable _only_ spans or _only_ events, which `enabled`
-/// will not reflect.
+///   will not reflect.
 ///
 /// `enabled!()` requires a [level](crate::Level) argument, an optional `target:`
 /// argument, and an optional set of field names. If the fields are not provided,
@@ -3069,8 +3069,8 @@ macro_rules! level_to_log {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
-    ($s:expr) => {
-        stringify!($s)
+    ($($t:tt)*) => {
+        stringify!($($t)*)
     };
 }
 
