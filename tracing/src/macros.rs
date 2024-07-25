@@ -693,11 +693,11 @@ macro_rules! event {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: $crate::__macro_support::concat!(
                 "event ",
-                file!(),
+                $crate::__macro_support::file!(),
                 ":",
-                line!()
+                $crate::__macro_support::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -854,11 +854,11 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: $crate::__macro_support::concat!(
                 "event ",
-                file!(),
+                $crate::__macro_support::file!(),
                 ":",
-                line!()
+                $crate::__macro_support::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -1115,15 +1115,15 @@ macro_rules! span_enabled {
 /// in false positives or false negatives include:
 ///
 /// - If a collector is using a filter which may enable a span or event based
-/// on field names, but `enabled!` is invoked without listing field names,
-/// `enabled!` may return a false negative if a specific field name would
-/// cause the collector to enable something that would otherwise be disabled.
+///   on field names, but `enabled!` is invoked without listing field names,
+///   `enabled!` may return a false negative if a specific field name would
+///   cause the collector to enable something that would otherwise be disabled.
 /// - If a collector is using a filter which enables or disables specific events by
-/// file path and line number,  a particular event may be enabled/disabled
-/// even if an `enabled!` invocation with the same level, target, and fields
-/// indicated otherwise.
+///   file path and line number,  a particular event may be enabled/disabled
+///   even if an `enabled!` invocation with the same level, target, and fields
+///   indicated otherwise.
 /// - The collector can choose to enable _only_ spans or _only_ events, which `enabled`
-/// will not reflect.
+///   will not reflect.
 ///
 /// `enabled!()` requires a [level](crate::Level) argument, an optional `target:`
 /// argument, and an optional set of field names. If the fields are not provided,
@@ -1184,11 +1184,11 @@ macro_rules! enabled {
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
             static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
+                name: $crate::__macro_support::concat!(
                     "enabled ",
-                    file!(),
+                    $crate::__macro_support::file!(),
                     ":",
-                    line!()
+                    $crate::__macro_support::line!()
                 ),
                 kind: $kind.hint(),
                 target: $target,
