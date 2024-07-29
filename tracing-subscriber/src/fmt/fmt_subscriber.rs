@@ -595,7 +595,7 @@ where
     /// # Options
     ///
     /// - [`Subscriber::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
+    ///   object.
     ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
