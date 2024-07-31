@@ -353,6 +353,23 @@ mod expand;
 /// const fn my_const_function() {}
 /// ```
 ///
+/// When a function returns a [`pin`]ned future and the function and it's future have to be inside the
+/// same span, current span can be attached to the returned future like this:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// # use std::pin::Pin;
+/// # use std::future::Future;
+/// #[instrument]
+/// fn foo() -> Pin<Box<dyn Future<Output = ()>>> {
+///     tracing::info!("works inside foo");
+///     let f = async {
+///          tracing::info!("works inside future returned by foo");
+///     }.instrument(tracing::Span::current());
+///     return Box::pin(f);
+/// }
+/// ```
+///
 /// [span]: https://docs.rs/tracing/latest/tracing/span/index.html
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
@@ -360,6 +377,7 @@ mod expand;
 /// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
 /// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
 /// [`Level::ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
+/// [`pin`]: std::pin
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
