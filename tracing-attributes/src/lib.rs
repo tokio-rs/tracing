@@ -353,7 +353,7 @@ mod expand;
 /// const fn my_const_function() {}
 /// ```
 ///
-/// When a function returns a [`pin`]ned future and the function and it's future have to be inside the
+/// When a function returns a [`pin`]ned future and the function and its future have to be inside the
 /// same span, current span can be attached to the returned future like this:
 ///
 /// ```
