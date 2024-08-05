@@ -337,7 +337,7 @@ fn both_shorthands() {
 fn explicit_child() {
     let (collector, handle) = collector::mock()
         .new_span(expect::span().named("foo"))
-        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
         .only()
         .run_with_handle();
 
@@ -354,11 +354,11 @@ fn explicit_child() {
 fn explicit_child_at_levels() {
     let (collector, handle) = collector::mock()
         .new_span(expect::span().named("foo"))
-        .event(expect::event().with_explicit_parent(Some("foo")))
-        .event(expect::event().with_explicit_parent(Some("foo")))
-        .event(expect::event().with_explicit_parent(Some("foo")))
-        .event(expect::event().with_explicit_parent(Some("foo")))
-        .event(expect::event().with_explicit_parent(Some("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
+        .event(expect::event().with_ancestry(expect::has_explicit_parent("foo")))
         .only()
         .run_with_handle();
 

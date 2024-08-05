@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::{
+    ancestry::Ancestry,
     event::ExpectedEvent,
     field::{ExpectedField, ExpectedFields, ExpectedValue},
     span::{ExpectedId, ExpectedSpan, NewSpan},
@@ -68,6 +69,28 @@ pub fn span() -> ExpectedSpan {
 /// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
 pub fn id() -> ExpectedId {
     ExpectedId::new_unset()
+}
+
+/// Convenience function that returns [`Ancestry::IsContextualRoot`].
+pub fn is_contextual_root() -> Ancestry {
+    Ancestry::IsContextualRoot
+}
+
+/// Convenience function that returns [`Ancestry::HasContextualParent`] with
+/// provided name.
+pub fn has_contextual_parent<S: Into<String>>(name: S) -> Ancestry {
+    Ancestry::HasContextualParent(name.into())
+}
+
+/// Convenience function that returns [`Ancestry::IsExplicitRoot`].
+pub fn is_explicit_root() -> Ancestry {
+    Ancestry::IsExplicitRoot
+}
+
+/// Convenience function that returns [`Ancestry::HasExplicitParent`] with
+/// provided name.
+pub fn has_explicit_parent<S: Into<String>>(name: S) -> Ancestry {
+    Ancestry::HasExplicitParent(name.into())
 }
 
 impl Expect {
