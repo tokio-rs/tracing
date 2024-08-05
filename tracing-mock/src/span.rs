@@ -516,19 +516,14 @@ impl ExpectedSpan {
     /// ```
     /// use tracing_mock::{subscriber, expect};
     ///
-    /// let parent_span = expect::span().named("parent_span");
     /// let span = expect::span()
-    ///     .with_ancestry(expect::has_contextual_parent("parent_span"));
+    ///     .with_ancestry(expect::is_contextual_root());
     ///
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(parent_span.clone())
-    ///     .enter(parent_span)
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
-    ///     let parent = tracing::info_span!("parent_span");
-    ///     let _guard = parent.enter();
     ///     tracing::info_span!("span");
     /// });
     ///
