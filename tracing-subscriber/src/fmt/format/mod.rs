@@ -250,6 +250,34 @@ pub trait FormatFields<'writer> {
         }
         self.format_fields(current.as_writer(), fields)
     }
+
+    /// Merge fields of two [`FormatFields`] instances to add additinal fields
+    /// on an existing spans.
+    ///
+    /// By default, if both the provided formatted fields' sets are non-empty,
+    /// this appends a space to the current set of fields and then the other
+    /// field's contents.  If exactly one of them is non-empty, it is set as the
+    /// current set.
+    ///
+    /// If different behavior is required, the default implementation of this
+    /// method can be overridden.
+    fn merge_fields(
+        &self,
+        current: &'writer mut FormattedFields<Self>,
+        other: FormattedFields<Self>,
+    ) -> fmt::Result {
+        if !current.fields.is_empty() {
+            if !other.fields.is_empty() {
+                current.fields.reserve(other.fields.len() + 1);
+                current.fields.push(' ');
+                current.fields.push_str(&other.fields);
+            }
+        } else {
+            current.fields = other.fields;
+        }
+
+        fmt::Result::Ok(())
+    }
 }
 
 /// Returns the default configuration for an [event formatter].
