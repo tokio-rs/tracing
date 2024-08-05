@@ -1,5 +1,5 @@
 use super::{
-    directive::{self, Directive},
+    directive::{self, split_directives, Directive},
     EnvFilter, FromEnvError,
 };
 use crate::sync::RwLock;
@@ -134,11 +134,10 @@ impl Builder {
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// *ignoring* any that are invalid.
     pub fn parse_lossy<S: AsRef<str>>(&self, dirs: S) -> EnvFilter {
-        let directives = dirs
-            .as_ref()
-            .split(',')
+        let directives = split_directives(dirs.as_ref())
+            .into_iter()
             .filter(|s| !s.is_empty())
-            .filter_map(|s| match Directive::parse(s, self.regex) {
+            .filter_map(|s| match Directive::parse(&s, self.regex) {
                 Ok(d) => Some(d),
                 Err(err) => {
                     eprintln!("ignoring `{}`: {}", s, err);
@@ -155,10 +154,10 @@ impl Builder {
         if dirs.is_empty() {
             return Ok(self.from_directives(std::iter::empty()));
         }
-        let directives = dirs
-            .split(',')
+        let directives = split_directives(dirs)
+            .into_iter()
             .filter(|s| !s.is_empty())
-            .map(|s| Directive::parse(s, self.regex))
+            .map(|s| Directive::parse(&s, self.regex))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self.from_directives(directives))
     }
