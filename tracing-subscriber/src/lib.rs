@@ -4,7 +4,7 @@
 //! scoped, structured, and async-aware diagnostics. The [`Collect`] trait
 //! represents the functionality necessary to collect this trace data. This
 //! crate contains tools for composing subscribers out of smaller units of
-//! behaviour, and batteries-included implementations of common subscriber
+//! behavior, and batteries-included implementations of common subscriber
 //! functionality.
 //!
 //! `tracing-subscriber` is intended for use by both `Collector` authors and
@@ -28,7 +28,7 @@
 //!
 //! In addition, the [`Filter`] trait defines an interface for filtering what
 //! spans and events are recorded by a particular subscriber. This allows different
-//! [`Subscribe`] implementationss to handle separate subsets of the trace data
+//! [`Subscribe`] implementations to handle separate subsets of the trace data
 //! emitted by a program. See the [documentation on per-subscriber
 //! filtering][psf] for more information on using [`Filter`]s.
 //!
