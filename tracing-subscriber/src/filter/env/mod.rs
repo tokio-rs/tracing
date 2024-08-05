@@ -8,6 +8,7 @@ pub use self::{builder::Builder, directive::Directive, field::BadName as BadFiel
 mod builder;
 mod directive;
 mod field;
+mod matchers;
 
 use crate::{
     filter::LevelFilter,
