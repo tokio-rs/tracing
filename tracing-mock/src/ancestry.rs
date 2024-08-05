@@ -20,11 +20,14 @@ pub enum Ancestry {
     /// The event or span is an explicitly defined root. It was created with `parent: None` and
     /// has no parent.
     IsExplicitRoot,
-    /// The event or span has a contextually assigned parent with the specified name. Additionally,
-    /// it has no explicitly assigned parent.
+    /// The event or span has a contextually assigned parent with the specified name. It has no
+    /// explicitly assigned parent, nor has it been explicitly defined as a root (it was created
+    /// without the `parent:` directive). There was a span in context when this event or span was
+    /// created.
     HasContextualParent(String),
-    /// The event or span is a contextual root. It has no contextual parent and also has no
-    /// explicitly assigned parent.
+    /// The event or span is a contextual root. It has no explicitly assigned parent, nor has it
+    /// been explicitly defined as a root (it was created without the `parent:` directive).
+    /// Additionally, no span was in context when this event or span was created.
     IsContextualRoot,
 }
 
