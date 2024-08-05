@@ -38,7 +38,7 @@
 //! referred to as that thread's _current_ span.
 //!
 //! For example:
-//! ```
+//! ```rust
 //! use tracing::{span, Level};
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my_span");
@@ -69,7 +69,7 @@
 //! an `Event` may occur within the context of a span.
 //!
 //! For example:
-//! ```
+//! ```rust
 //! use tracing::{event, span, Level};
 //!
 //! # fn main() {
@@ -155,9 +155,9 @@
 //! fields using `fmt::Debug`.
 //!
 //! For example:
-//! ```ignore
-//! # // this doctest is ignored because we don't have a way to say
-//! # // that it should only be run with cfg(feature = "attributes")
+//! ```rust
+//! # #[cfg(feature = "attributes")]
+//! # {
 //! use tracing::{Level, event, instrument};
 //!
 //! #[instrument]
@@ -168,6 +168,7 @@
 //!     // ...
 //! }
 //! # fn main() {}
+//! # }
 //! ```
 //!
 //! For functions which don't have built-in tracing support and can't have
@@ -221,14 +222,14 @@
 //!
 //! For example:
 //!
-//! ```
+//! ```rust
 //! # use tracing::{span, event, Level};
 //! # fn main() {
 //! span!(target: "app_spans", Level::TRACE, "my span");
 //! event!(target: "app_events", Level::INFO, "something has happened!");
 //! # }
 //! ```
-//! ```
+//! ```rust
 //! # use tracing::{span, event, Level};
 //! # fn main() {
 //! let span = span!(Level::TRACE, "my span");
@@ -240,7 +241,7 @@
 //! of the span (as above).  In the case of the event macros, the name of the event can
 //! be overridden (the default is `event file:line`) using the `name:` specifier.
 //!
-//! ```
+//! ```rust
 //! # use tracing::{span, event, Level};
 //! # fn main() {
 //! span!(Level::TRACE, "my span");
@@ -253,7 +254,7 @@
 //! Structured fields on spans and events are specified using the syntax
 //! `field_name = field_value`. Fields are separated by commas.
 //!
-//! ```
+//! ```rust
 //! # use tracing::{event, Level};
 //! # fn main() {
 //! // records an event with two fields:
@@ -266,7 +267,7 @@
 //! As shorthand, local variables may be used as field values without an
 //! assignment, similar to [struct initializers]. For example:
 //!
-//! ```
+//! ```rust
 //! # use tracing::{span, Level};
 //! # fn main() {
 //! let user = "ferris";
@@ -278,7 +279,7 @@
 //!```
 //!
 //! Field names can include dots, but should not be terminated by them:
-//! ```
+//! ```rust
 //! # use tracing::{span, Level};
 //! # fn main() {
 //! let user = "ferris";
@@ -289,7 +290,7 @@
 //!
 //! Since field names can include dots, fields on local structs can be used
 //! using the local variable shorthand:
-//! ```
+//! ```rust
 //! # use tracing::{span, Level};
 //! # fn main() {
 //! # struct User {
@@ -309,7 +310,7 @@
 //! Fields with names that are not Rust identifiers, or with names that are Rust reserved words,
 //! may be created using quoted string literals. However, this may not be used with the local
 //! variable shorthand.
-//! ```
+//! ```rust
 //! # use tracing::{span, Level};
 //! # fn main() {
 //! // records an event with fields whose names are not Rust identifiers
@@ -323,7 +324,7 @@
 //! must be enclosed in curly braces (`{}`) to indicate that the *value*
 //! of the constant is to be used as the field name, rather than the
 //! constant's name. For example:
-//! ```
+//! ```rust
 //! # use tracing::{span, Level};
 //! # fn main() {
 //! const RESOURCE_NAME: &str = "foo";
@@ -334,7 +335,7 @@
 //!
 //! The `?` sigil is shorthand that specifies a field should be recorded using
 //! its [`fmt::Debug`] implementation:
-//! ```
+//! ```rust
 //! # use tracing::{event, Level};
 //! # fn main() {
 //! #[derive(Debug)]
@@ -355,7 +356,7 @@
 //!
 //! The `%` sigil operates similarly, but indicates that the value should be
 //! recorded using its [`fmt::Display`] implementation:
-//! ```
+//! ```rust
 //! # use tracing::{event, Level};
 //! # fn main() {
 //! # #[derive(Debug)]
@@ -375,7 +376,7 @@
 //!
 //! The `%` and `?` sigils may also be used with local variable shorthand:
 //!
-//! ```
+//! ```rust
 //! # use tracing::{event, Level};
 //! # fn main() {
 //! # #[derive(Debug)]
@@ -395,7 +396,7 @@
 //! which indicates that that the value for that field does not currently exist
 //! but may be recorded later. For example:
 //!
-//! ```
+//! ```rust
 //! use tracing::{trace_span, field};
 //!
 //! // Create a span with two fields: `greeting`, with the value "hello world", and
@@ -416,7 +417,7 @@
 //!
 //! For example:
 //!
-//! ```
+//! ```rust
 //! # use tracing::{event, Level};
 //! # fn main() {
 //! let question = "the ultimate question of life, the universe, and everything";
@@ -481,7 +482,7 @@
 //!
 //! Let's consider the `log` crate's yak-shaving example:
 //!
-//! ```rust,ignore
+//! ```rust
 //! use std::{error::Error, io};
 //! use tracing::{debug, error, info, span, warn, Level};
 //!
@@ -558,7 +559,7 @@
 //! The simplest way to use a collector is to call the [`set_global_default`]
 //! function:
 //!
-//! ```
+//! ```rust
 //! # pub struct FooCollector;
 //! # use tracing::{span::{Id, Attributes, Record}, Metadata};
 //! # use tracing_core::span::Current;
