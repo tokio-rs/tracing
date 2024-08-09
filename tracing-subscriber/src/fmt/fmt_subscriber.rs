@@ -611,6 +611,15 @@ where
             _inner: self._inner,
         }
     }
+
+    /// Set the function to make extra fields.
+    #[cfg(feature = "extra-fields")]
+    pub fn with_extra_fields(self, make_extra_fields: Box<dyn format::MakeExtraFields>) -> Self {
+        Subscriber {
+            fmt_event: self.fmt_event.with_make_extra_fields(make_extra_fields),
+            ..self
+        }
+    }
 }
 
 #[cfg(feature = "json")]
