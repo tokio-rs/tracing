@@ -9,7 +9,7 @@
 use tracing::{
     collect::with_default,
     debug, error,
-    field::{debug, display},
+    field::{debug, display, option_display},
     info, trace, warn, Level,
 };
 use tracing_mock::*;
@@ -225,6 +225,42 @@ fn borrowed_field() {
         let mut message = format!("hello from {}", from);
         tracing::event!(Level::INFO, foo = display(&message));
         message.push_str(", which happened!");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn option_display_field_some() {
+    let (collector, handle) = collector::mock()
+        .event(
+            expect::event().with_fields(
+                expect::field("foo")
+                    .with_value(&display("hello from my event"))
+                    .only(),
+            ),
+        )
+        .only()
+        .run_with_handle();
+    with_default(collector, || {
+        let from = "my event";
+        let message = Some(format!("hello from {}", from));
+        tracing::event!(Level::INFO, foo = option_display(message));
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn option_display_field_none() {
+    let (collector, handle) = collector::mock()
+        .event(expect::event())
+        .only()
+        .run_with_handle();
+    with_default(collector, || {
+        tracing::event!(Level::INFO, foo = option_display::<String>(None));
     });
 
     handle.assert_finished();

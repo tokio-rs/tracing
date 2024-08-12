@@ -266,6 +266,13 @@ pub trait Value: crate::sealed::Sealed {
 #[derive(Clone)]
 pub struct DisplayValue<T: fmt::Display>(T);
 
+/// An optional `Value` which serializes using `fmt::Display`.
+///
+/// Uses `record_debug` in the `Value` implementation to
+/// avoid an unnecessary evaluation.
+#[derive(Clone)]
+pub struct OptionDisplayValue<T: fmt::Display>(Option<T>);
+
 /// A `Value` which serializes as a string using `fmt::Debug`.
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
@@ -277,6 +284,15 @@ where
     T: fmt::Display,
 {
     DisplayValue(t)
+}
+
+/// Wraps a type implementing `fmt::Display` as a `Value` that can be
+/// recorded using its `Display` implementation.
+pub fn option_display<T>(t: Option<T>) -> OptionDisplayValue<T>
+where
+    T: fmt::Display,
+{
+    OptionDisplayValue(t)
 }
 
 /// Wraps a type implementing `fmt::Debug` as a `Value` that can be
@@ -636,6 +652,41 @@ impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
 impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+// ===== impl OptionDisplayValue =====
+
+impl<T: fmt::Display> crate::sealed::Sealed for OptionDisplayValue<T> {}
+
+impl<T> Value for OptionDisplayValue<T>
+where
+    T: fmt::Display + fmt::Debug,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        if let Some(inner) = self.0.as_ref() {
+            visitor.record_debug(key, inner)
+        }
+    }
+}
+
+impl<T: fmt::Display> fmt::Debug for OptionDisplayValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(inner) = self.0.as_ref() {
+            return fmt::Display::fmt(inner, f);
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for OptionDisplayValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(inner) = self.0.as_ref() {
+            return inner.fmt(f);
+        }
+
+        Ok(())
     }
 }
 
