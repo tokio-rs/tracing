@@ -138,6 +138,7 @@
 //! [`Collect`]: trait@tracing::Collect
 //! [`MockCollector`]: struct@crate::collector::MockCollector
 use crate::{
+    ancestry::get_ancestry,
     event::ExpectedEvent,
     expect::Expect,
     field::ExpectedFields,
@@ -159,12 +160,17 @@ use tracing::{
 };
 
 pub(crate) struct SpanState {
+    id: u64,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
 }
 
 impl SpanState {
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
+
     pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
         self.meta
     }
@@ -1034,16 +1040,20 @@ where
                         )
                     }
                 }
-                let get_parent_name = || {
-                    let stack = self.current.lock().unwrap();
-                    let spans = self.spans.lock().unwrap();
-                    event
-                        .parent()
-                        .and_then(|id| spans.get(id))
-                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
-                        .map(|s| s.name.to_string())
+                let event_get_ancestry = || {
+                    get_ancestry(
+                        event,
+                        || self.lookup_current(),
+                        |span_id| {
+                            self.spans
+                                .lock()
+                                .unwrap()
+                                .get(span_id)
+                                .map(|span| span.name)
+                        },
+                    )
                 };
-                expected.check(event, get_parent_name, &self.name);
+                expected.check(event, event_get_ancestry, &self.name);
             }
             Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
         }
@@ -1100,19 +1110,27 @@ where
         let mut spans = self.spans.lock().unwrap();
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let get_parent_name = || {
-                    let stack = self.current.lock().unwrap();
-                    span.parent()
-                        .and_then(|id| spans.get(id))
-                        .or_else(|| stack.last().and_then(|id| spans.get(id)))
-                        .map(|s| s.name.to_string())
-                };
-                expected.check(span, get_parent_name, &self.name);
+                if let Some(expected_id) = &expected.span.id {
+                    expected_id.set(id.into_u64()).unwrap();
+                }
+
+                expected.check(
+                    span,
+                    || {
+                        get_ancestry(
+                            span,
+                            || self.lookup_current(),
+                            |span_id| spans.get(span_id).map(|span| span.name),
+                        )
+                    },
+                    &self.name,
+                );
             }
         }
         spans.insert(
             id.clone(),
             SpanState {
+                id: id.into_u64(),
                 name: meta.name(),
                 refs: 1,
                 meta,
@@ -1253,6 +1271,16 @@ where
             }
             None => tracing_core::span::Current::none(),
         }
+    }
+}
+
+impl<F> Running<F>
+where
+    F: Fn(&Metadata<'_>) -> bool,
+{
+    fn lookup_current(&self) -> Option<span::Id> {
+        let stack = self.current.lock().unwrap();
+        stack.last().cloned()
     }
 }
 

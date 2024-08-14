@@ -71,7 +71,7 @@ fn span_on_drop() {
         .enter(expect::span().named("foo"))
         .event(
             expect::event()
-                .with_contextual_parent(Some("foo"))
+                .with_ancestry(expect::has_contextual_parent("foo"))
                 .at_level(Level::INFO),
         )
         .exit(expect::span().named("foo"))
@@ -81,7 +81,7 @@ fn span_on_drop() {
         .enter(expect::span().named("bar"))
         .event(
             expect::event()
-                .with_contextual_parent(Some("bar"))
+                .with_ancestry(expect::has_contextual_parent("bar"))
                 .at_level(Level::INFO),
         )
         .exit(expect::span().named("bar"))
