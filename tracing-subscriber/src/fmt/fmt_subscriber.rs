@@ -4,10 +4,9 @@ use crate::{
     registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
-use format::{FmtSpan, TimingDisplay};
+use format::FmtSpan;
 use std::{
     any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
-    time::Instant,
 };
 use tracing_core::{
     field,
@@ -851,13 +850,6 @@ where
             }
         }
 
-        if self.fmt_span.fmt_timing
-            && self.fmt_span.trace_close()
-            && extensions.get_mut::<Timings>().is_none()
-        {
-            extensions.insert(Timings::new());
-        }
-
         if self.fmt_span.trace_new() {
             with_event_from_span!(id, span, "message" = "new", |event| {
                 drop(extensions);
@@ -887,42 +879,22 @@ where
     }
 
     fn on_enter(&self, id: &Id, ctx: Context<'_, C>) {
-        if self.fmt_span.trace_enter() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+        if self.fmt_span.trace_enter() {
             let span = ctx.span(id).expect("Span not found, this is a bug");
-            let mut extensions = span.extensions_mut();
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.idle += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
-            }
-
-            if self.fmt_span.trace_enter() {
-                with_event_from_span!(id, span, "message" = "enter", |event| {
-                    drop(extensions);
-                    drop(span);
-                    self.on_event(&event, ctx);
-                });
-            }
+            with_event_from_span!(id, span, "message" = "enter", |event| {
+                drop(span);
+                self.on_event(&event, ctx);
+            });
         }
     }
 
     fn on_exit(&self, id: &Id, ctx: Context<'_, C>) {
-        if self.fmt_span.trace_exit() || self.fmt_span.trace_close() && self.fmt_span.fmt_timing {
+        if self.fmt_span.trace_exit() {
             let span = ctx.span(id).expect("Span not found, this is a bug");
-            let mut extensions = span.extensions_mut();
-            if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.busy += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
-            }
-
-            if self.fmt_span.trace_exit() {
-                with_event_from_span!(id, span, "message" = "exit", |event| {
-                    drop(extensions);
-                    drop(span);
-                    self.on_event(&event, ctx);
-                });
-            }
+            with_event_from_span!(id, span, "message" = "exit", |event| {
+                drop(span);
+                self.on_event(&event, ctx);
+            });
         }
     }
 
@@ -930,23 +902,18 @@ where
         if self.fmt_span.trace_close() {
             let span = ctx.span(&id).expect("Span not found, this is a bug");
             let extensions = span.extensions();
-            if let Some(timing) = extensions.get::<Timings>() {
-                let Timings {
-                    busy,
-                    mut idle,
-                    last,
-                } = *timing;
-                idle += (Instant::now() - last).as_nanos() as u64;
-
-                let t_idle = field::display(TimingDisplay(idle));
-                let t_busy = field::display(TimingDisplay(busy));
+            if let Some(timing) = extensions.get::<super::timing::Timing>() {
+                let busy = field::debug(timing.busy());
+                let idle = field::debug(timing.idle());
+                let total = field::debug(timing.total());
 
                 with_event_from_span!(
                     id,
                     span,
                     "message" = "close",
-                    "time.busy" = t_busy,
-                    "time.idle" = t_idle,
+                    "time.busy" = busy,
+                    "time.idle" = idle,
+                    "time.total" = total,
                     |event| {
                         drop(extensions);
                         drop(span);
@@ -1221,22 +1188,6 @@ where
     }
 }
 
-struct Timings {
-    idle: u64,
-    busy: u64,
-    last: Instant,
-}
-
-impl Timings {
-    fn new() -> Self {
-        Self {
-            idle: 0,
-            busy: 0,
-            last: Instant::now(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1302,7 +1253,7 @@ mod test {
     }
 
     fn sanitize_timings(s: String) -> String {
-        let re = Regex::new("time\\.(idle|busy)=([0-9.]+)[mµn]s").unwrap();
+        let re = Regex::new("time\\.(idle|busy|total)=([0-9.]+)[mµn]s").unwrap();
         re.replace_all(s.as_str(), "timing").to_string()
     }
 
