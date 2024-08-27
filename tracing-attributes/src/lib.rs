@@ -357,9 +357,9 @@ mod expand;
 /// same span, current span can be attached to the returned future like this:
 ///
 /// ```
+/// # use std::{future::Future, pin::Pin};
+/// use tracing::Instrument;
 /// # use tracing_attributes::instrument;
-/// # use std::pin::Pin;
-/// # use std::future::Future;
 /// #[instrument]
 /// fn foo() -> Pin<Box<dyn Future<Output = ()>>> {
 ///     tracing::info!("works inside foo");
