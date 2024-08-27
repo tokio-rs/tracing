@@ -365,7 +365,7 @@ mod expand;
 ///     tracing::info!("works inside foo");
 ///     let f = async {
 ///          tracing::info!("works inside future returned by foo");
-///     }.instrument(tracing::Span::current());
+///     }.in_current_span();
 ///     return Box::pin(f);
 /// }
 /// ```
