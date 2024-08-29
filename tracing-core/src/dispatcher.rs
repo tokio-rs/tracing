@@ -123,6 +123,8 @@
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
 //!
+use core::ptr::addr_of;
+
 use crate::{
     callsite, span,
     subscriber::{self, NoSubscriber, Subscriber},
@@ -455,7 +457,7 @@ fn get_global() -> &'static Dispatch {
     unsafe {
         // This is safe given the invariant that setting the global dispatcher
         // also sets `GLOBAL_INIT` to `INITIALIZED`.
-        &GLOBAL_DISPATCH
+        &*addr_of!(GLOBAL_DISPATCH)
     }
 }
 
