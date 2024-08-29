@@ -34,3 +34,6 @@ valuable-serde = { version = "0.1.0", optional = true, default-features = false 
 
 [badges]
 maintenance = { status = "experimental" }
+
+[lints]
+workspace = true

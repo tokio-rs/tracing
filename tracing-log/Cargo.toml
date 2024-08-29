@@ -45,3 +45,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 [[bench]]
 name = "logging"
 harness = false
+
+[lints]
+workspace = true

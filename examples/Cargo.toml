@@ -50,9 +50,12 @@ tempfile = "3"
 snafu = "0.6.10"
 thiserror = "1.0.31"
 
-# valuable examples 
+# valuable examples
 valuable = { version = "0.1.0", features = ["derive"] }
 
 [target.'cfg(tracing_unstable)'.dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.28", features = ["valuable"]}
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", features = ["json", "env-filter", "valuable"]}
+
+[lints]
+workspace = true

@@ -46,3 +46,6 @@ rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
 # it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
 # dependencies will not be enabled, and the docs build will fail.
 rustc-args = ["--cfg", "tracing_unstable"]
+
+[lints]
+workspace = true

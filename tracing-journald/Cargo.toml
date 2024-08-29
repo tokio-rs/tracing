@@ -24,3 +24,6 @@ tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", defaul
 serde_json = "1.0.82"
 serde = { version = "1.0.140", features = ["derive"] }
 tracing = { path = "../tracing", version = "0.1.35" }
+
+[lints]
+workspace = true
