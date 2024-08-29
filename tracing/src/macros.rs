@@ -1117,15 +1117,15 @@ macro_rules! span_enabled {
 /// in false positives or false negatives include:
 ///
 /// - If a subscriber is using a filter which may enable a span or event based
-/// on field names, but `enabled!` is invoked without listing field names,
-/// `enabled!` may return a false negative if a specific field name would
-/// cause the subscriber to enable something that would otherwise be disabled.
+///   on field names, but `enabled!` is invoked without listing field names,
+///   `enabled!` may return a false negative if a specific field name would
+///   cause the subscriber to enable something that would otherwise be disabled.
 /// - If a subscriber is using a filter which enables or disables specific events by
-/// file path and line number,  a particular event may be enabled/disabled
-/// even if an `enabled!` invocation with the same level, target, and fields
-/// indicated otherwise.
+///   file path and line number,  a particular event may be enabled/disabled
+///   even if an `enabled!` invocation with the same level, target, and fields
+///   indicated otherwise.
 /// - The subscriber can choose to enable _only_ spans or _only_ events, which `enabled`
-/// will not reflect.
+///   will not reflect.
 ///
 /// `enabled!()` requires a [level](crate::Level) argument, an optional `target:`
 /// argument, and an optional set of field names. If the fields are not provided,

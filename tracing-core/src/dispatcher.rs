@@ -146,12 +146,6 @@ use crate::stdlib::{
     error,
 };
 
-#[cfg(feature = "alloc")]
-use alloc::sync::{Arc, Weak};
-
-#[cfg(feature = "alloc")]
-use core::ops::Deref;
-
 /// `Dispatch` trace data to a [`Subscriber`].
 #[derive(Clone)]
 pub struct Dispatch {
@@ -189,10 +183,10 @@ enum Kind<T> {
 
 #[cfg(feature = "std")]
 thread_local! {
-    static CURRENT_STATE: State = State {
+    static CURRENT_STATE: State = const { State {
         default: RefCell::new(None),
         can_enter: Cell::new(true),
-    };
+    } };
 }
 
 static EXISTS: AtomicBool = AtomicBool::new(false);

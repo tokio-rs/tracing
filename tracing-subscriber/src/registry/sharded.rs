@@ -214,7 +214,7 @@ thread_local! {
     /// track how many layers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
+    static CLOSE_COUNT: Cell<usize> = const { Cell::new(0) };
 }
 
 impl Subscriber for Registry {
@@ -352,7 +352,7 @@ impl Subscriber for Registry {
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
+            assert!(refs < usize::MAX, "reference count overflow!");
         }
         if refs > 1 {
             return false;
@@ -545,10 +545,6 @@ mod tests {
         Subscriber,
     };
 
-    #[derive(Debug)]
-    struct DoesNothing;
-    impl<S: Subscriber> Layer<S> for DoesNothing {}
-
     struct AssertionLayer;
     impl<S> Layer<S> for AssertionLayer
     where
@@ -596,6 +592,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)] // Field is exercised via checking `Arc::downgrade()`
     struct SetRemoved(Arc<()>);
 
     impl<S> Layer<S> for CloseLayer

@@ -60,11 +60,11 @@ use tracing_log::NormalizeEvent;
 /// output JSON objects:
 ///
 /// - [`Json::flatten_event`] can be used to enable flattening event fields into
-/// the root
+///   the root
 /// - [`Json::with_current_span`] can be used to control logging of the current
-/// span
+///   span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
-/// object.
+///   object.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.

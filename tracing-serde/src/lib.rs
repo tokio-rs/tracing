@@ -200,18 +200,6 @@ use tracing_core::{
 pub mod fields;
 
 #[derive(Debug)]
-pub struct SerializeField(Field);
-
-impl Serialize for SerializeField {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(self.0.name())
-    }
-}
-
-#[derive(Debug)]
 pub struct SerializeFieldSet<'a>(&'a FieldSet);
 
 impl<'a> Serialize for SerializeFieldSet<'a> {

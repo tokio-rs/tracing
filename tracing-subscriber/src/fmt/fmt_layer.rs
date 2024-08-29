@@ -572,7 +572,7 @@ where
     /// # Options
     ///
     /// - [`Layer::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
+    ///   object.
     ///
     /// [`Layer::flatten_event`]: Layer::flatten_event()
     #[cfg(feature = "json")]
@@ -943,7 +943,7 @@ where
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
+            static BUF: RefCell<String> = const { RefCell::new(String::new()) };
         }
 
         BUF.with(|buf| {
