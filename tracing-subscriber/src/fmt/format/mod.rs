@@ -1193,12 +1193,14 @@ impl<'a> DefaultVisitor<'a> {
         }
     }
 
-    fn maybe_pad(&mut self) {
-        if self.is_empty {
+    fn write_padded(&mut self, value: &(impl fmt::Debug + ?Sized)) {
+        let padding = if self.is_empty {
             self.is_empty = false;
+            ""
         } else {
-            self.result = write!(self.writer, " ");
-        }
+            " "
+        };
+        self.result = write!(self.writer, "{}{:?}", padding, value);
     }
 }
 
@@ -1239,26 +1241,23 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
             return;
         }
 
-        self.maybe_pad();
-        self.result = match field.name() {
-            "message" => write!(self.writer, "{:?}", value),
+        match field.name() {
+            "message" => self.write_padded(value),
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => Ok(()),
-            name if name.starts_with("r#") => write!(
-                self.writer,
+            name if name.starts_with("log.") => self.result = Ok(()),
+            name if name.starts_with("r#") => self.write_padded(&format_args!(
                 "{}{}{:?}",
                 self.writer.italic().paint(&name[2..]),
                 self.writer.dimmed().paint("="),
                 value
-            ),
-            name => write!(
-                self.writer,
+            )),
+            name => self.write_padded(&format_args!(
                 "{}{}{:?}",
                 self.writer.italic().paint(name),
                 self.writer.dimmed().paint("="),
                 value
-            ),
+            )),
         };
     }
 }
