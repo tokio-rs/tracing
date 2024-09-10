@@ -626,6 +626,10 @@ where
     /// whether or not other crates in the dependency graph enable the "ansi"
     /// feature flag.
     pub fn with_ansi(self, ansi: bool) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        if ansi {
+            #[cfg(target_os = "windows")]
+            nu_ansi_term::enable_ansi_support();
+        }
         CollectorBuilder {
             inner: self.inner.with_ansi(ansi),
             ..self
@@ -750,6 +754,8 @@ where
     pub fn pretty(
         self,
     ) -> CollectorBuilder<format::Pretty, format::Format<format::Pretty, T>, F, W> {
+        #[cfg(target_os = "windows")]
+        nu_ansi_term::enable_ansi_support();
         CollectorBuilder {
             filter: self.filter,
             inner: self.inner.pretty(),
