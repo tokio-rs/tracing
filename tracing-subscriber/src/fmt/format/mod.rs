@@ -678,7 +678,7 @@ impl<F, T> Format<F, T> {
     /// # Options
     ///
     /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
+    ///   object.
     ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
@@ -1748,7 +1748,7 @@ pub(super) mod test {
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
             current_path()
                 // if we're on Windows, the path might contain backslashes, which
-                // have to be escpaed before compiling the regex.
+                // have to be escaped before compiling the regex.
                 .replace('\\', "\\\\")
         ))
         .unwrap();

@@ -173,7 +173,7 @@
 //! For functions which don't have built-in tracing support and can't have
 //! the `#[instrument]` attribute applied (such as from an external crate),
 //! the [`Span` struct][`Span`] has a [`in_scope()` method][`in_scope`]
-//! which can be used to easily wrap synchonous code in a span.
+//! which can be used to easily wrap synchronous code in a span.
 //!
 //! For example:
 //! ```rust
@@ -1005,7 +1005,7 @@ pub mod __macro_support {
     // Re-export the `core` functions that are used in macros. This allows
     // a crate to be named `core` and avoid name clashes.
     // See here: https://github.com/tokio-rs/tracing/issues/2761
-    pub use core::{concat, format_args, iter::Iterator, option::Option};
+    pub use core::{concat, file, format_args, iter::Iterator, line, option::Option};
 
     /// Callsite implementation used by macro-generated code.
     ///

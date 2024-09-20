@@ -10,11 +10,11 @@
 //! The following helpers are available for creating a rolling file appender.
 //!
 //! - [`Rotation::minutely()`][minutely]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH-mm`
-//! will be created minutely (once per minute)
+//!   will be created minutely (once per minute)
 //! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH`
-//! will be created hourly
+//!   will be created hourly
 //! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
-//! will be created daily
+//!   will be created daily
 //! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
 //!

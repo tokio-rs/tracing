@@ -430,7 +430,7 @@
 //!   callsite). See [`Collect::register_callsite`] and
 //!   [`tracing_core::callsite`] for a summary of how this behaves.
 //! - [`enabled`], once per emitted event (roughly: once per time that `event!`
-//!   or `span!` is *executed*), and only if `register_callsite` regesters an
+//!   or `span!` is *executed*), and only if `register_callsite` registers an
 //!   [`Interest::sometimes`]. This is the main customization point to globally
 //!   filter events based on their [`Metadata`]. If an event can be disabled
 //!   based only on [`Metadata`], it should be, as this allows the construction
@@ -573,6 +573,7 @@
 //!    the [`INFO`] [level] and above.
 //! - A third subscriber, `subscriber_c`, which should receive spans and events at
 //!    the [`DEBUG`] [level] as well.
+//!
 //! The subscribers and filters would be composed thusly:
 //!
 //! ```
@@ -768,7 +769,7 @@ where
     /// [`Collect`] has been set as the default, both the subscriber and
     /// [`Collect`] are passed to this method _mutably_. This gives the
     /// subscribe the opportunity to set any of its own fields with values
-    /// recieved by method calls on the [`Collect`].
+    /// received by method calls on the [`Collect`].
     ///
     /// For example, [`Filtered`] subscribers implement `on_subscribe` to call the
     /// [`Collect`]'s [`register_filter`] method, and store the returned
@@ -900,7 +901,7 @@ where
     ///
     /// **Note**: This method determines whether an event is globally enabled,
     /// *not* whether the individual subscriber will be notified about the
-    /// event. This is intended to be used by subscibers that implement
+    /// event. This is intended to be used by subscribers that implement
     /// filtering for the entire stack. Subscribers which do not wish to be
     /// notified about certain events but do not wish to globally disable them
     /// should ignore those events in their [on_event][Self::on_event].
@@ -1287,7 +1288,7 @@ pub trait Filter<S> {
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// <strong>Note</strong>: If a <code>Filter</code> will perform
     /// <em>dynamic filtering</em> that depends on the current context in which
-    /// a span or event was observered (e.g. only enabling an event when it
+    /// a span or event was observed (e.g. only enabling an event when it
     /// occurs within a particular span), it <strong>must</strong> return
     /// <code>Interest::sometimes()</code> from this method. If it returns
     /// <code>Interest::always()</code> or <code>Interest::never()</code>, the
@@ -1306,7 +1307,7 @@ pub trait Filter<S> {
     /// other hand, when a `Filter` returns [`Interest::always()`][always] or
     /// [`Interest::never()`][never] for a callsite, _other_ [`Subscribe`]s may have
     /// differing interests in that callsite. If this is the case, the callsite
-    /// will recieve [`Interest::sometimes()`][sometimes], and the [`enabled`]
+    /// will receive [`Interest::sometimes()`][sometimes], and the [`enabled`]
     /// method will still be called for that callsite when it records a span or
     /// event.
     ///

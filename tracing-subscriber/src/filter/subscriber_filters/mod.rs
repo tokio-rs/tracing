@@ -99,9 +99,15 @@ pub struct FilterId(u64);
 ///
 /// [`Registry`]: crate::Registry
 /// [`Filter`]: crate::subscribe::Filter
-#[derive(Default, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct FilterMap {
     bits: u64,
+}
+
+impl FilterMap {
+    pub(crate) const fn new() -> Self {
+        Self { bits: 0 }
+    }
 }
 
 /// The current state of `enabled` calls to per-subscriber filters on this
@@ -145,7 +151,7 @@ pub(crate) struct FilterState {
 
 /// Extra counters added to `FilterState` used only to make debug assertions.
 #[cfg(debug_assertions)]
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct DebugCounters {
     /// How many per-subscriber filters have participated in the current `enabled`
     /// call?
@@ -156,8 +162,18 @@ struct DebugCounters {
     in_interest_pass: Cell<usize>,
 }
 
+#[cfg(debug_assertions)]
+impl DebugCounters {
+    const fn new() -> Self {
+        Self {
+            in_filter_pass: Cell::new(0),
+            in_interest_pass: Cell::new(0),
+        }
+    }
+}
+
 thread_local! {
-    pub(crate) static FILTERING: FilterState = FilterState::new();
+    pub(crate) static FILTERING: FilterState = const { FilterState::new() };
 }
 
 /// Extension trait adding [combinators] for combining [`Filter`].
@@ -717,7 +733,7 @@ where
     //
     // it would be cool if there was some wild rust reflection way of checking
     // if a trait impl has the default impl of a trait method or not, but that's
-    // almsot certainly impossible...right?
+    // almost certainly impossible...right?
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
@@ -1072,13 +1088,13 @@ impl fmt::Binary for FilterMap {
 // === impl FilterState ===
 
 impl FilterState {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
-            enabled: Cell::new(FilterMap::default()),
+            enabled: Cell::new(FilterMap::new()),
             interest: RefCell::new(None),
 
             #[cfg(debug_assertions)]
-            counters: DebugCounters::default(),
+            counters: DebugCounters::new(),
         }
     }
 
@@ -1087,7 +1103,7 @@ impl FilterState {
         {
             let in_current_pass = self.counters.in_filter_pass.get();
             if in_current_pass == 0 {
-                debug_assert_eq!(self.enabled.get(), FilterMap::default());
+                debug_assert_eq!(self.enabled.get(), FilterMap::new());
             }
             self.counters.in_filter_pass.set(in_current_pass + 1);
             debug_assert_eq!(
@@ -1132,7 +1148,7 @@ impl FilterState {
                 #[cfg(debug_assertions)]
                 {
                     if this.counters.in_filter_pass.get() == 0 {
-                        debug_assert_eq!(this.enabled.get(), FilterMap::default());
+                        debug_assert_eq!(this.enabled.get(), FilterMap::new());
                     }
 
                     // Nothing enabled this event, we won't tick back down the
@@ -1169,7 +1185,7 @@ impl FilterState {
         {
             let in_current_pass = self.counters.in_filter_pass.get();
             if in_current_pass <= 1 {
-                debug_assert_eq!(self.enabled.get(), FilterMap::default());
+                debug_assert_eq!(self.enabled.get(), FilterMap::new());
             }
             self.counters
                 .in_filter_pass
@@ -1199,7 +1215,7 @@ impl FilterState {
         // a panic and the thread-local has been torn down, that's fine, just
         // ignore it ratehr than panicking.
         let _ = FILTERING.try_with(|filtering| {
-            filtering.enabled.set(FilterMap::default());
+            filtering.enabled.set(FilterMap::new());
 
             #[cfg(debug_assertions)]
             filtering.counters.in_filter_pass.set(0);
@@ -1225,7 +1241,7 @@ impl FilterState {
         let map = self.enabled.get();
         #[cfg(debug_assertions)]
         if self.counters.in_filter_pass.get() == 0 {
-            debug_assert_eq!(map, FilterMap::default());
+            debug_assert_eq!(map, FilterMap::new());
         }
 
         map

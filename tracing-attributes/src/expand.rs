@@ -795,6 +795,7 @@ impl<'a> VisitMut for IdentAndTypesRenamer<'a> {
 }
 
 // A visitor struct that replace an async block by its patched version
+#[allow(dead_code)]
 struct AsyncTraitBlockReplacer<'a> {
     block: &'a Block,
     patched_block: Block,

@@ -1105,9 +1105,9 @@ impl Span {
 
     /// Returns a [`Field`](super::field::Field) for the field with the
     /// given `name`, if one exists,
-    pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
+    pub fn field<Q>(&self, field: &Q) -> Option<field::Field>
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
     {
         self.metadata().and_then(|meta| field.as_field(meta))
     }
@@ -1115,9 +1115,9 @@ impl Span {
     /// Returns true if this `Span` has a field for the given
     /// [`Field`](super::field::Field) or field name.
     #[inline]
-    pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
+    pub fn has_field<Q>(&self, field: &Q) -> bool
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
     {
         self.field(field).is_some()
     }
@@ -1193,9 +1193,9 @@ impl Span {
     ///
     /// [`field::Empty`]: super::field::Empty
     /// [`Metadata`]: super::Metadata
-    pub fn record<Q: ?Sized, V>(&self, field: &Q, value: V) -> &Self
+    pub fn record<Q, V>(&self, field: &Q, value: V) -> &Self
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
         V: field::Value,
     {
         if let Some(meta) = self.meta {
@@ -1594,9 +1594,11 @@ unsafe impl Sync for PhantomNotSend {}
 mod test {
     use super::*;
 
+    #[allow(dead_code)]
     trait AssertSend: Send {}
     impl AssertSend for Span {}
 
+    #[allow(dead_code)]
     trait AssertSync: Sync {}
     impl AssertSync for Span {}
     impl AssertSync for Entered<'_> {}

@@ -26,10 +26,10 @@
 //!
 //! - `traced-error` - Enables the [`TracedError`] type and related Traits
 //!     - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
-//!     provide an [`in_current_span()`] method for bundling errors with a
-//!     [`SpanTrace`].
+//!       provide an [`in_current_span()`] method for bundling errors with a
+//!       [`SpanTrace`].
 //!     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
-//!     behind `dyn Error` trait objects.
+//!       behind `dyn Error` trait objects.
 //!
 //! ## Usage
 //!
