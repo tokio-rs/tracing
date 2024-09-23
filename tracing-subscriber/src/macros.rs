@@ -4,7 +4,7 @@ macro_rules! try_lock {
         try_lock!($lock, else return)
     };
     ($lock:expr, else $els:expr) => {
-        if let Ok(l) = $lock {
+        if let ::core::result::Result::Ok(l) = $lock {
             l
         } else if std::thread::panicking() {
             $els

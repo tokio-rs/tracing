@@ -1,6 +1,7 @@
 use tracing::{collect::with_default, Id, Level, Span};
 use tracing_attributes::instrument;
-use tracing_mock::*;
+use tracing_mock::{collector, expect};
+use tracing_test::block_on_future;
 
 #[instrument(follows_from = causes, skip(causes))]
 fn with_follows_from_sync(causes: impl IntoIterator<Item = impl Into<Option<Id>>>) {}
@@ -57,6 +58,8 @@ fn follows_from_async_test() {
         .follows_from(consequence.clone(), cause_a)
         .follows_from(consequence.clone(), cause_b)
         .follows_from(consequence.clone(), cause_c)
+        .enter(consequence.clone())
+        .exit(consequence.clone())
         .enter(consequence.clone())
         .exit(consequence)
         .only()

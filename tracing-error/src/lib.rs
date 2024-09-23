@@ -18,7 +18,7 @@
 //!
 //! **Note**: This crate is currently experimental.
 //!
-//! *Compiler support: [requires `rustc` 1.49+][msrv]*
+//! *Compiler support: [requires `rustc` 1.63+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -26,10 +26,10 @@
 //!
 //! - `traced-error` - Enables the [`TracedError`] type and related Traits
 //!     - [`InstrumentResult`] and [`InstrumentError`] extension traits, which
-//!     provide an [`in_current_span()`] method for bundling errors with a
-//!     [`SpanTrace`].
+//!       provide an [`in_current_span()`] method for bundling errors with a
+//!       [`SpanTrace`].
 //!     - [`ExtractSpanTrace`] extension trait, for extracting `SpanTrace`s from
-//!     behind `dyn Error` trait objects.
+//!       behind `dyn Error` trait objects.
 //!
 //! ## Usage
 //!
@@ -166,14 +166,14 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.49. The current Tracing version is not guaranteed to build on
+//! version is 1.63. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
@@ -183,6 +183,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![allow(clippy::needless_doctest_main)]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -196,7 +197,8 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
+    private_interfaces,
+    private_bounds,
     unconditional_recursion,
     unused,
     unused_allocation,

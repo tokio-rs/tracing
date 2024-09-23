@@ -4,16 +4,6 @@ use futures_01::{
     Future,
 };
 
-macro_rules! deinstrument_err {
-    ($e:expr) => {
-        $e.map_err(|e| {
-            let kind = e.kind();
-            let future = e.into_future().inner;
-            ExecuteError::new(kind, future)
-        })
-    };
-}
-
 impl<T, F> Executor<F> for Instrumented<T>
 where
     T: Executor<Instrumented<F>>,
@@ -21,7 +11,11 @@ where
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let future = future.instrument(self.span.clone());
-        deinstrument_err!(self.inner.execute(future))
+        self.inner.execute(future).map_err(|e| {
+            let kind = e.kind();
+            let future = e.into_future().into_inner();
+            ExecuteError::new(kind, future)
+        })
     }
 }
 
@@ -32,7 +26,11 @@ where
 {
     fn execute(&self, future: F) -> Result<(), ExecuteError<F>> {
         let future = self.with_dispatch(future);
-        deinstrument_err!(self.inner.execute(future))
+        self.inner.execute(future).map_err(|e| {
+            let kind = e.kind();
+            let future = e.into_future().inner;
+            ExecuteError::new(kind, future)
+        })
     }
 }
 

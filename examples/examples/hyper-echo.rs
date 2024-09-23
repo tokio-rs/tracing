@@ -89,18 +89,9 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tracing_log::env_logger::BuilderExt;
-
-    let collector = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
-        .finish();
-    let mut builder = env_logger::Builder::new();
-    builder
-        .filter(Some("hyper_echo"), log::LevelFilter::Off)
-        .filter(Some("hyper"), log::LevelFilter::Trace)
-        .emit_traces() // from `tracing_log::env_logger::BuilderExt`
-        .try_init()?;
-    tracing::collect::set_global_default(collector)?;
+        .init();
 
     let local_addr: std::net::SocketAddr = ([127, 0, 0, 1], 3000).into();
     let server_span = span!(Level::TRACE, "server", %local_addr);

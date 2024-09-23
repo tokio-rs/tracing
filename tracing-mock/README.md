@@ -29,7 +29,7 @@ structured, event-based diagnostic information. `tracing-mock` provides
 tools for making assertions about what `tracing` diagnostics are emitted
 by code under test.
 
-*Compiler support: [requires `rustc` 1.49+][msrv]*
+*Compiler support: [requires `rustc` 1.63+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -71,14 +71,14 @@ Below is an example that checks that an event contains a message:
 
 ```rust
 use tracing::collect::with_default;
-use tracing_mock::{collector, expect, field};
+use tracing_mock::{collector, expect};
 
 fn yak_shaving() {
     tracing::info!("preparing to shave yaks");
 }
 
 let (collector, handle) = collector::mock()
-    .event(expect::event().with_fields(field::msg("preparing to shave yaks")))
+    .event(expect::event().with_fields(expect::message("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
@@ -102,7 +102,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 
 ```rust
 use tracing::collect::with_default;
-use tracing_mock::{collector, expect, field};
+use tracing_mock::{collector, expect};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
@@ -121,14 +121,14 @@ let span = expect::span().named("yak_shaving");
 let (collector, handle) = collector::mock()
     .new_span(
         span.clone()
-            .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
+            .with_fields(expect::field("number_of_yaks").with_value(&yak_count).only()),
     )
     .enter(span.clone())
     .event(
         expect::event().with_fields(
             expect::field("number_of_yaks")
                 .with_value(&yak_count)
-                .and(field::msg("preparing to shave yaks"))
+                .and(expect::message("preparing to shave yaks"))
                 .only(),
         ),
     )
@@ -136,7 +136,7 @@ let (collector, handle) = collector::mock()
         expect::event().with_fields(
             expect::field("all_yaks_shaved")
                 .with_value(&true)
-                .and(field::msg("yak shaving completed."))
+                .and(expect::message("yak shaving completed."))
                 .only(),
         ),
     )
@@ -154,14 +154,14 @@ handle.assert_finished();
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.49. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
 versions before it will always be supported. For example, if the current stable
-compiler version is 1.45, the minimum supported version will not be increased
-past 1.42, three minor versions prior. Increasing the minimum supported compiler
+compiler version is 1.69, the minimum supported version will not be increased
+past 1.66, three minor versions prior. Increasing the minimum supported compiler
 version is not considered a semver breaking change as long as doing so complies
 with this policy.
 

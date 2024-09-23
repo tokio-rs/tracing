@@ -21,7 +21,7 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [crates-badge]: https://img.shields.io/crates/v/tracing-subscriber.svg
 [crates-url]: https://crates.io/crates/tracing-subscriber
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
-[docs-url]: https://docs.rs/tracing-subscriber/0.2.12
+[docs-url]: https://docs.rs/tracing-subscriber/latest
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -32,21 +32,21 @@ Utilities for implementing and composing [`tracing`][tracing] subscribers.
 [discord-url]: https://discord.gg/EeF3cQw
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
 
-*Compiler support: [requires `rustc` 1.50+][msrv]*
+*Compiler support: [requires `rustc` 1.63+][msrv]*
 
 [msrv]: #supported-rust-versions
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.50. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
 versions before it will always be supported. For example, if the current stable
-compiler version is 1.45, the minimum supported version will not be increased
-past 1.42, three minor versions prior. Increasing the minimum supported compiler
+compiler version is 1.69, the minimum supported version will not be increased
+past 1.66, three minor versions prior. Increasing the minimum supported compiler
 version is not considered a semver breaking change as long as doing so complies
 with this policy.
 

@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::io::Write;
 use std::{io, thread};
 
-pub(crate) struct Worker<T: Write + Send + Sync + 'static> {
+pub(crate) struct Worker<T: Write + Send + 'static> {
     writer: T,
     receiver: Receiver<Msg>,
     shutdown: Receiver<()>,
@@ -18,7 +18,7 @@ pub(crate) enum WorkerState {
     Shutdown,
 }
 
-impl<T: Write + Send + Sync + 'static> Worker<T> {
+impl<T: Write + Send + 'static> Worker<T> {
     pub(crate) fn new(receiver: Receiver<Msg>, writer: T, shutdown: Receiver<()>) -> Worker<T> {
         Self {
             writer,

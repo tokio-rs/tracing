@@ -1,5 +1,5 @@
 //! An implementation of the [`Subscribe`] trait which validates that
-//! the `tracing` data it recieves matches  the expected output for a test.
+//! the `tracing` data it receives matches the expected output for a test.
 //!
 //!
 //! The [`MockSubscriber`] is the central component in these tools. The
@@ -7,12 +7,12 @@
 //! validated as the code under test is run.
 //!
 //! ```
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(field::msg("droids")))
+//!     .event(expect::event().with_fields(expect::message("droids")))
 //!     .run_with_handle();
 //!
 //! // Use `set_default` to apply the `MockSubscriber` until the end
@@ -33,7 +33,7 @@
 //! their respective fields:
 //!
 //! ```
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let span = expect::span()
@@ -42,7 +42,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -75,7 +75,7 @@
 //! span before recording an event, the test will fail:
 //!
 //! ```should_panic
-//! use tracing_mock::{expect, field, subscriber};
+//! use tracing_mock::{expect, subscriber};
 //! use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 //!
 //! let span = expect::span()
@@ -84,7 +84,7 @@
 //!     // Enter a matching span
 //!     .enter(span.clone())
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(field::msg("say hello")))
+//!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -116,6 +116,7 @@
 //!
 //! [`Subscribe`]: trait@tracing_subscriber::subscribe::Subscribe
 use crate::{
+    ancestry::{get_ancestry, Ancestry, HasAncestry},
     collector::MockHandle,
     event::ExpectedEvent,
     expect::Expect,
@@ -145,7 +146,7 @@ use std::{
 /// # Examples
 ///
 /// ```
-/// use tracing_mock::{expect, field, subscriber};
+/// use tracing_mock::{expect, subscriber};
 /// use tracing_subscriber::{subscribe::CollectExt, util::SubscriberInitExt, Subscribe};
 ///
 /// let span = expect::span()
@@ -154,7 +155,7 @@ use std::{
 ///     // Enter a matching span
 ///     .enter(span.clone())
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(field::msg("say hello")))
+///     .event(expect::event().with_fields(expect::message("say hello")))
 ///     // Exit a matching span
 ///     .exit(span)
 ///     // Expect no further messages to be recorded
@@ -414,7 +415,7 @@ impl MockSubscriberBuilder {
     ///
     /// This function accepts `Into<NewSpan>` instead of
     /// [`ExpectedSpan`] directly. [`NewSpan`] can be used to test
-    /// span fields and the span parent.
+    /// span fields and the span ancestry.
     ///
     /// The new span doesn't need to be entered for this expectation
     /// to succeed.
@@ -432,7 +433,7 @@ impl MockSubscriberBuilder {
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (subscriber, handle) = subscriber::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
@@ -456,7 +457,7 @@ impl MockSubscriberBuilder {
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing")
-    ///     .with_field(expect::field("testing").with_value(&"yes"));
+    ///     .with_fields(expect::field("testing").with_value(&"yes"));
     /// let (subscriber, handle) = subscriber::mock()
     ///     .new_span(span)
     ///     .run_with_handle();
@@ -905,8 +906,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Event(mut expected)) => {
-                let get_parent_name = || cx.event_span(event).map(|span| span.name().to_string());
-                expected.check(event, get_parent_name, &self.name);
+                expected.check(event, || context_get_ancestry(event, &cx), &self.name);
 
                 if let Some(expected_scope) = expected.scope_mut() {
                     self.check_event_scope(cx.event_scope(event), expected_scope);
@@ -937,13 +937,7 @@ where
         let was_expected = matches!(expected.front(), Some(Expect::NewSpan(_)));
         if was_expected {
             if let Expect::NewSpan(mut expected) = expected.pop_front().unwrap() {
-                let get_parent_name = || {
-                    span.parent()
-                        .and_then(|id| cx.span(id))
-                        .or_else(|| cx.lookup_current())
-                        .map(|span| span.name().to_string())
-                };
-                expected.check(span, get_parent_name, &self.name);
+                expected.check(span, || context_get_ancestry(span, &cx), &self.name);
             }
         }
     }
@@ -1041,6 +1035,17 @@ where
     fn on_id_change(&self, _old: &Id, _new: &Id, _ctx: Context<'_, C>) {
         panic!("well-behaved subscribers should never do this to us, lol");
     }
+}
+
+fn context_get_ancestry<C>(item: impl HasAncestry, ctx: &Context<'_, C>) -> Ancestry
+where
+    C: Collect + for<'a> LookupSpan<'a>,
+{
+    get_ancestry(
+        item,
+        || ctx.lookup_current().map(|s| s.id()),
+        |span_id| ctx.span(span_id).map(|span| span.name()),
+    )
 }
 
 impl fmt::Debug for MockSubscriber {

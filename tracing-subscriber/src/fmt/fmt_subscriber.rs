@@ -6,7 +6,7 @@ use crate::{
 };
 use format::{FmtSpan, TimingDisplay};
 use std::{
-    any::TypeId, cell::RefCell, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
+    any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
     time::Instant,
 };
 use tracing_core::{
@@ -240,6 +240,27 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         self.is_ansi = ansi;
     }
 
+    /// Modifies how synthesized events are emitted at points in the [span
+    /// lifecycle][lifecycle].
+    ///
+    /// See [`Self::with_span_events`] for documentation on the [`FmtSpan`]
+    ///
+    /// This method is primarily expected to be used with the
+    /// [`reload::Handle::modify`](crate::reload::Handle::modify) method
+    ///
+    /// Note that using this method modifies the span configuration instantly and does not take into
+    /// account any current spans. If the previous configuration was set to capture
+    /// `FmtSpan::ALL`, for example, using this method to change to `FmtSpan::NONE` will cause an
+    /// exit event for currently entered events not to be formatted
+    ///
+    /// [lifecycle]: mod@tracing::span#the-span-lifecycle
+    pub fn set_span_events(&mut self, kind: FmtSpan) {
+        self.fmt_span = format::FmtSpanConfig {
+            kind,
+            fmt_timing: self.fmt_span.fmt_timing,
+        }
+    }
+
     /// Configures the subscriber to support [`libtest`'s output capturing][capturing] when used in
     /// unit tests.
     ///
@@ -274,10 +295,44 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
         }
     }
 
-    /// Enable ANSI terminal colors for formatted output.
-    #[cfg(feature = "ansi")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
+    /// Sets whether or not the formatter emits ANSI terminal escape codes
+    /// for colors and other text formatting.
+    ///
+    /// When the "ansi" crate feature flag is enabled, ANSI colors are enabled
+    /// by default unless the [`NO_COLOR`] environment variable is set to
+    /// a non-empty value.  If the [`NO_COLOR`] environment variable is set to
+    /// any non-empty value, then ANSI colors will be suppressed by default.
+    /// The [`with_ansi`] and [`set_ansi`] methods can be used to forcibly
+    /// enable ANSI colors, overriding any [`NO_COLOR`] environment variable.
+    ///
+    /// [`NO_COLOR`]: https://no-color.org/
+    ///
+    /// Enabling ANSI escapes (calling `with_ansi(true)`) requires the "ansi"
+    /// crate feature flag. Calling `with_ansi(true)` without the "ansi"
+    /// feature flag enabled will panic if debug assertions are enabled, or
+    /// print a warning otherwise.
+    ///
+    /// This method itself is still available without the feature flag. This
+    /// is to allow ANSI escape codes to be explicitly *disabled* without
+    /// having to opt-in to the dependencies required to emit ANSI formatting.
+    /// This way, code which constructs a formatter that should never emit
+    /// ANSI escape codes can ensure that they are not used, regardless of
+    /// whether or not other crates in the dependency graph enable the "ansi"
+    /// feature flag.
+    ///
+    /// [`with_ansi`]: Subscriber::with_ansi
+    /// [`set_ansi`]: Subscriber::set_ansi
     pub fn with_ansi(self, ansi: bool) -> Self {
+        #[cfg(not(feature = "ansi"))]
+        if ansi {
+            const ERROR: &str =
+                "tracing-subscriber: the `ansi` crate feature is required to enable ANSI terminal colors";
+            #[cfg(debug_assertions)]
+            panic!("{}", ERROR);
+            #[cfg(not(debug_assertions))]
+            eprintln!("{}", ERROR);
+        }
+
         Subscriber {
             is_ansi: ansi,
             ..self
@@ -540,7 +595,7 @@ where
     /// # Options
     ///
     /// - [`Subscriber::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
+    ///   object.
     ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
@@ -658,12 +713,16 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
 
 impl<C> Default for Subscriber<C> {
     fn default() -> Self {
+        // only enable ANSI when the feature is enabled, and the NO_COLOR
+        // environment variable is unset or empty.
+        let ansi = cfg!(feature = "ansi") && env::var("NO_COLOR").map_or(true, |v| v.is_empty());
+
         Subscriber {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
-            is_ansi: cfg!(feature = "ansi"),
+            is_ansi: ansi,
             log_internal_errors: false,
             _inner: PhantomData,
         }
@@ -756,7 +815,7 @@ macro_rules! with_event_from_span {
         #[allow(unused)]
         let mut iter = fs.iter();
         let v = [$(
-            (&iter.next().unwrap(), Some(&$value as &dyn field::Value)),
+            (&iter.next().unwrap(), ::core::option::Option::Some(&$value as &dyn field::Value)),
         )*];
         let vs = fs.value_set(&v);
         let $event = Event::new_child_of($id, meta, &vs);
@@ -906,7 +965,7 @@ where
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, C>) {
         thread_local! {
-            static BUF: RefCell<String> = RefCell::new(String::new());
+            static BUF: RefCell<String> = const { RefCell::new(String::new()) };
         }
 
         BUF.with(|buf| {
@@ -1480,6 +1539,123 @@ mod test {
         assert_eq!(
             "fake time writer1_span{x=42}: hello writer2!\n\
              fake time writer1_span{x=42}:writer2_span: close timing timing\n",
+            actual.as_str()
+        );
+    }
+
+    // Because we need to modify an environment variable for these test cases,
+    // we do them all in a single test.
+    #[cfg(feature = "ansi")]
+    #[test]
+    fn subscriber_no_color() {
+        const NO_COLOR: &str = "NO_COLOR";
+
+        // Restores the previous value of the `NO_COLOR` env variable when
+        // dropped.
+        //
+        // This is done in a `Drop` implementation, rather than just resetting
+        // the value at the end of the test, so that the previous value is
+        // restored even if the test panics.
+        struct RestoreEnvVar(Result<String, env::VarError>);
+        impl Drop for RestoreEnvVar {
+            fn drop(&mut self) {
+                match self.0 {
+                    Ok(ref var) => env::set_var(NO_COLOR, var),
+                    Err(_) => env::remove_var(NO_COLOR),
+                }
+            }
+        }
+
+        let _saved_no_color = RestoreEnvVar(env::var(NO_COLOR));
+
+        let cases: Vec<(Option<&str>, bool)> = vec![
+            (Some("0"), false),   // any non-empty value disables ansi
+            (Some("off"), false), // any non-empty value disables ansi
+            (Some("1"), false),
+            (Some(""), true), // empty value does not disable ansi
+            (None, true),
+        ];
+
+        for (var, ansi) in cases {
+            if let Some(value) = var {
+                env::set_var(NO_COLOR, value);
+            } else {
+                env::remove_var(NO_COLOR);
+            }
+
+            let subscriber: Subscriber<()> = fmt::Subscriber::default();
+            assert_eq!(
+                subscriber.is_ansi, ansi,
+                "NO_COLOR={:?}; Subscriber::default().is_ansi should be {}",
+                var, ansi
+            );
+
+            // with_ansi should override any `NO_COLOR` value
+            let subscriber: Subscriber<()> = fmt::Subscriber::default().with_ansi(true);
+            assert!(
+                subscriber.is_ansi,
+                "NO_COLOR={:?}; Subscriber::default().with_ansi(true).is_ansi should be true",
+                var
+            );
+
+            // set_ansi should override any `NO_COLOR` value
+            let mut subscriber: Subscriber<()> = fmt::Subscriber::default();
+            subscriber.set_ansi(true);
+            assert!(
+                subscriber.is_ansi,
+                "NO_COLOR={:?}; subscriber.set_ansi(true); subscriber.is_ansi should be true",
+                var
+            );
+        }
+
+        // dropping `_saved_no_color` will restore the previous value of
+        // `NO_COLOR`.
+    }
+
+    // Validates that span event configuration can be modified with a reload handle
+    #[test]
+    fn modify_span_events() {
+        let make_writer = MockMakeWriter::default();
+
+        let inner_subscriber = fmt::Subscriber::default()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::ACTIVE);
+
+        let (reloadable_subscriber, reload_handle) =
+            crate::reload::Subscriber::new(inner_subscriber);
+        let reload = reloadable_subscriber.with_collector(Registry::default());
+
+        with_default(reload, || {
+            {
+                let span1 = tracing::info_span!("span1", x = 42);
+                let _e = span1.enter();
+            }
+
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::NONE));
+
+            // this span should not be logged at all!
+            {
+                let span2 = tracing::info_span!("span2", x = 100);
+                let _e = span2.enter();
+            }
+
+            {
+                let span3 = tracing::info_span!("span3", x = 42);
+                let _e = span3.enter();
+
+                // The span config was modified after span3 was already entered.
+                // We should only see an exit
+                let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::ACTIVE));
+            }
+        });
+        let actual = sanitize_timings(make_writer.get_string());
+        assert_eq!(
+            "fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: enter\n\
+             fake time span1{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n\
+             fake time span3{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
             actual.as_str()
         );
     }

@@ -60,11 +60,11 @@ use tracing_log::NormalizeEvent;
 /// output JSON objects:
 ///
 /// - [`Json::flatten_event`] can be used to enable flattening event fields into
-/// the root
+///   the root
 /// - [`Json::with_current_span`] can be used to control logging of the current
-/// span
+///   span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
-/// object.
+///   object.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -488,6 +488,11 @@ impl<'a> field::Visit for JsonVisitor<'a> {
             .insert(field.name(), serde_json::Value::from(value));
     }
 
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.values
+            .insert(field.name(), serde_json::Value::from(value));
+    }
+
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         match field.name() {
             // Skip fields that are actually log metadata that have already been handled
@@ -528,13 +533,19 @@ mod test {
     #[test]
     fn json() {
         let expected =
-        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":42,\"name\":\"json_span\",\"number\":3,\"slice\":[97,98,99]},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3,\"slice\":[97,98,99]}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
         let collector = collector()
             .flatten_event(false)
             .with_current_span(true)
             .with_span_list(true);
         test_json(expected, collector, || {
-            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let span = tracing::span!(
+                tracing::Level::INFO,
+                "json_span",
+                answer = 42,
+                number = 3,
+                slice = &b"abc"[..]
+            );
             let _guard = span.enter();
             tracing::info!("some json test");
         });

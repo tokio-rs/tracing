@@ -254,14 +254,14 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.49. The current Tracing version is not guaranteed to build on Rust
+version is 1.63. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
 project. The current stable Rust compiler and the three most recent minor
 versions before it will always be supported. For example, if the current stable
-compiler version is 1.45, the minimum supported version will not be increased
-past 1.42, three minor versions prior. Increasing the minimum supported compiler
+compiler version is 1.69, the minimum supported version will not be increased
+past 1.66, three minor versions prior. Increasing the minimum supported compiler
 version is not considered a semver breaking change as long as doing so complies
 with this policy.
 
@@ -307,11 +307,6 @@ The crates included as part of Tracing are:
 
 * [`tracing-log`]: Compatibility with the `log` crate (unstable).
 
-* [`tracing-opentelemetry`]: Provides a layer that connects spans from multiple
-  systems into a trace and emits them to [OpenTelemetry]-compatible distributed
-  tracing systems for processing and visualization.
-  ([crates.io][otel-crates]|[docs][otel-docs])
-
 * [`tracing-serde`]: A compatibility layer for serializing trace data with
     `serde` (unstable).
 
@@ -339,7 +334,6 @@ The crates included as part of Tracing are:
 [`tracing-macros`]: tracing-macros
 [`tracing-attributes`]: tracing-attributes
 [`tracing-log`]: tracing-log
-[`tracing-opentelemetry`]: tracing-opentelemetry
 [`tracing-serde`]: tracing-serde
 [`tracing-subscriber`]: tracing-subscriber
 [`tracing-tower`]: tracing-tower
@@ -377,6 +371,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix-web`] provides `tracing` integration for the `actix-web` web framework.
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
+- [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
 - [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
@@ -409,6 +404,8 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
 - [`tracing-chrome`] provides a layer that exports trace data that can be viewed in `chrome://tracing`.
 - [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
+- [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
+- [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -419,6 +416,7 @@ please let us know!)
 [honeycomb.io]: https://www.honeycomb.io/
 [`tracing-actix`]: https://crates.io/crates/tracing-actix
 [`tracing-actix-web`]: https://crates.io/crates/tracing-actix-web
+[`axum-insights`]: https://crates.io/crates/axum-insights
 [`tracing-gelf`]: https://crates.io/crates/tracing-gelf
 [`tracing-coz`]: https://crates.io/crates/tracing-coz
 [coz]: https://github.com/plasma-umass/coz
@@ -440,7 +438,7 @@ please let us know!)
 [Tracy]: https://github.com/wolfpld/tracy
 [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 [Elastic APM]: https://www.elastic.co/apm
-[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[`tracing-etw`]: https://github.com/microsoft/rust_win_etw/tree/main/win_etw_tracing
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 [Sentry]: https://sentry.io/welcome/
@@ -451,6 +449,8 @@ please let us know!)
 [`tracing-chrome`]: https://crates.io/crates/tracing-chrome
 [`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
 [`reqwest`]: https://crates.io/crates/reqwest
+[`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
+[`clippy-tracing`]: https://crates.io/crates/clippy-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
@@ -466,14 +466,17 @@ Tracing.
 * [Diagnostics with Tracing][tokio-blog-2019-08] on the Tokio blog, August 2019
 * [Production-Grade Logging in Rust Applications][production-logging-2020], November 2020
 * [Custom Logging in Rust using `tracing` and `tracing-subscriber`, part 1][custom-logging-part-1] and [part 2][custom-logging-part-2], October 2021
+* [Instrumenting Axum projects][detsys-blog-2023-08], August 2023
 
 [tokio-blog-2019-08]: https://tokio.rs/blog/2019-08-tracing/
+[detsys-blog-2023-08]: https://determinate.systems/posts/instrumenting-axum
 
 #### Talks
 
 * [Bay Area Rust Meetup talk and Q&A][bay-rust-2019-03], March 2019
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
+* [Crabs with instruments!][tremorcon-2021-09], September 2021
 
 [bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
@@ -483,6 +486,7 @@ Tracing.
 [production-logging-2020]: https://medium.com/better-programming/production-grade-logging-in-rust-applications-2c7fffd108a6
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
+[tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

@@ -146,11 +146,11 @@ impl NonBlocking {
     ///
     /// [default]: NonBlockingBuilder::default()
     /// [builder]: NonBlockingBuilder
-    pub fn new<T: Write + Send + Sync + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
+    pub fn new<T: Write + Send + 'static>(writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlockingBuilder::default().finish(writer)
     }
 
-    fn create<T: Write + Send + Sync + 'static>(
+    fn create<T: Write + Send + 'static>(
         writer: T,
         buffered_lines_limit: usize,
         is_lossy: bool,
@@ -221,7 +221,7 @@ impl NonBlockingBuilder {
     }
 
     /// Completes the builder, returning the configured `NonBlocking`.
-    pub fn finish<T: Write + Send + Sync + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
+    pub fn finish<T: Write + Send + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlocking::create(
             writer,
             self.buffered_lines_limit,
