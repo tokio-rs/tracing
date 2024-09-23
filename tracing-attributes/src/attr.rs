@@ -148,7 +148,7 @@ impl Parse for InstrumentArgs {
                 args.ret_args = Some(ret_args);
             } else if lookahead.peek(kw::tracing) {
                 if args.tracing.is_some() {
-                    return Err(input.error("expected only a single `fields` argument"));
+                    return Err(input.error("expected only a single `tracing` argument"));
                 }
                 let _ = input.parse::<kw::tracing>()?;
                 let _ = input.parse::<Token![=]>()?;
