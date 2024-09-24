@@ -25,3 +25,5 @@ serde_json = "1.0.82"
 serde = { version = "1.0.139", features = ["derive"] }
 tracing = { path = "../tracing", version = "0.2" }
 
+[lints]
+workspace = true

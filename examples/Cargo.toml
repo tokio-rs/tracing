@@ -50,3 +50,6 @@ tempfile = "3.3.0"
 # fmt examples
 snafu = "0.6.10"
 thiserror = "1.0.31"
+
+[lints]
+workspace = true
