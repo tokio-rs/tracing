@@ -886,7 +886,7 @@ where
 
 impl FilterId {
     const fn disabled() -> Self {
-        Self(std::u64::MAX)
+        Self(u64::MAX)
     }
 
     /// Returns a `FilterId` that will consider _all_ spans enabled.
@@ -1029,7 +1029,7 @@ impl<F, S> FilterExt<S> for F where F: layer::Filter<S> {}
 
 impl FilterMap {
     pub(crate) fn set(self, FilterId(mask): FilterId, enabled: bool) -> Self {
-        if mask == std::u64::MAX {
+        if mask == u64::MAX {
             return self;
         }
 
@@ -1051,7 +1051,7 @@ impl FilterMap {
 
     #[inline]
     pub(crate) fn any_enabled(self) -> bool {
-        self.bits != std::u64::MAX
+        self.bits != u64::MAX
     }
 }
 

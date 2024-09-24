@@ -36,6 +36,7 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
 local-time = ["time/local-offset"]
+nu-ansi-term = ["dep:nu-ansi-term"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.30", default-features = false }
@@ -103,3 +104,6 @@ harness = false
 [[bench]]
 name = "enter"
 harness = false
+
+[lints]
+workspace = true

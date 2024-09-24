@@ -654,6 +654,9 @@ pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 /// Implements [`std::io::Write`] for an [`Arc`]<W> where `&W: Write`.
 ///
 /// This is an implementation detail of the [`MakeWriter`] impl for [`Arc`].
+#[doc(hidden)]
+#[deprecated(since = "0.1.19", note = "unused implementation detail -- do not use")]
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct ArcWriter<W>(Arc<W>);
 
@@ -1134,6 +1137,7 @@ where
 
 // === impl ArcWriter ===
 
+#[allow(deprecated)]
 impl<W> io::Write for ArcWriter<W>
 where
     for<'a> &'a W: io::Write,

@@ -836,10 +836,7 @@ impl FieldSet {
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
     ///
     /// [`Field`]: super::Field
-    pub fn field<Q: ?Sized>(&self, name: &Q) -> Option<Field>
-    where
-        Q: Borrow<str>,
-    {
+    pub fn field<Q: Borrow<str> + ?Sized>(&self, name: &Q) -> Option<Field> {
         let name = &name.borrow();
         self.names.iter().position(|f| f == name).map(|i| Field {
             i,
@@ -1090,8 +1087,8 @@ mod test {
     use crate::stdlib::{borrow::ToOwned, string::String};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
-    struct TestCallsite1(u8);
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1(0);
+    struct TestCallsite1();
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1();
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -1111,8 +1108,8 @@ mod test {
         }
     }
 
-    struct TestCallsite2(u8);
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2(0);
+    struct TestCallsite2();
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2();
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
