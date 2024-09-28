@@ -157,7 +157,7 @@ use tracing_subscriber::Subscribe;
 mod error;
 
 thread_local! {
-    static LAST_EVENT: Cell<Option<Instant>> = Cell::new(None);
+    static LAST_EVENT: Cell<Option<Instant>> = const { Cell::new(None) };
 
     static THREAD_NAME: String = {
         let thread = std::thread::current();
