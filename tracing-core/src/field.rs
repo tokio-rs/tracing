@@ -1078,6 +1078,7 @@ mod private {
     pub trait ValidLen<'a>: Borrow<[(&'a Field, Option<&'a (dyn Value + 'a)>)]> {}
 
     impl<'a, const N: usize> ValidLen<'a> for [(&'a Field, Option<&'a (dyn Value + 'a)>); N] {}
+    impl<'a> ValidLen<'a> for &'a [(&'a Field, Option<&'a (dyn Value + 'a)>)] {}
 }
 
 #[cfg(test)]
