@@ -14,6 +14,11 @@ fn custom_name() {}
 #[instrument("my_other_name")]
 fn custom_name_no_equals() {}
 
+const ANOTHER_NAME: &str = "one_more_name";
+
+#[instrument(name = ANOTHER_NAME)]
+fn custom_name_expr() {}
+
 #[test]
 fn default_name_test() {
     let (subscriber, handle) = subscriber::mock()
@@ -57,6 +62,22 @@ fn custom_name_no_equals_test() {
 
     with_default(subscriber, || {
         custom_name_no_equals();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn custom_name_expr_test() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span::mock().named("one_more_name"))
+        .enter(span::mock().named("one_more_name"))
+        .exit(span::mock().named("one_more_name"))
+        .done()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        custom_name_expr();
     });
 
     handle.assert_finished();
