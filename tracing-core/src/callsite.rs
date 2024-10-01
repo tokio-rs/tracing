@@ -93,7 +93,7 @@
 //! [always]: crate::subscriber::Interest::always
 //! [sometimes]: crate::subscriber::Interest::sometimes
 //! [never]: crate::subscriber::Interest::never
-//! [`Dispatch`]: crate::dispatch::Dispatch
+//! [`Dispatch`]: crate::dispatcher::Dispatch
 //! [macros]: https://docs.rs/tracing/latest/tracing/#macros
 //! [instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 use crate::stdlib::{
