@@ -554,6 +554,19 @@ where
         }
     }
 
+    /// Enable timestamps for log messages using the [`timer`] field in [`Self`].
+    ///
+    /// [`timer`]: time::FormatTime
+    pub fn with_timestamp(
+        self,
+        display_timestamp: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self.inner.with_timestamp(display_timestamp),
+        }
+    }
+
     /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> CollectorBuilder<N, format::Format<L, ()>, F, W> {
         CollectorBuilder {
