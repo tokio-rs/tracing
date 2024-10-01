@@ -588,7 +588,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Field is exercised via checking `Arc::downgrade()`
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber
