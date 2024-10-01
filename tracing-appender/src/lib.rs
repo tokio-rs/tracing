@@ -68,9 +68,11 @@
 //!     .init();
 //! # }
 //! ```
-//! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
+//! **Note 1:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
 //! to ensure buffered logs are flushed to their output in the case of abrupt terminations of a process.
 //! See [`WorkerGuard` module][guard] for more details.
+//! **Note 2:** Note: `non_blocking` appenders are **lossy** by default and will drop events once internal buffers are filled.
+//! See [`non_blocking` module](https://docs.rs/tracing-appender/latest/tracing_appender/non_blocking/index.html) for more details.
 //!
 //! The example below demonstrates the construction of a [`tracing_appender::non_blocking`][non_blocking]
 //! writer constructed with a [`std::io::Write`][write]:
