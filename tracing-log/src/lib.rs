@@ -16,7 +16,7 @@
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.70+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -76,7 +76,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.70. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -124,9 +124,8 @@
     unused_parens,
     while_true
 )]
-use once_cell::sync::Lazy;
 
-use std::{fmt, io};
+use std::{fmt, io, sync::OnceLock};
 
 use tracing_core::{
     callsite::{self, Callsite},
@@ -318,19 +317,28 @@ log_cs!(
     ErrorCallsite
 );
 
-static TRACE_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&TRACE_CS));
-static DEBUG_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&DEBUG_CS));
-static INFO_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&INFO_CS));
-static WARN_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&WARN_CS));
-static ERROR_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&ERROR_CS));
+static TRACE_FIELDS: OnceLock<Fields> = OnceLock::new();
+static DEBUG_FIELDS: OnceLock<Fields> = OnceLock::new();
+static INFO_FIELDS: OnceLock<Fields> = OnceLock::new();
+static WARN_FIELDS: OnceLock<Fields> = OnceLock::new();
+static ERROR_FIELDS: OnceLock<Fields> = OnceLock::new();
 
 fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
     match level {
-        Level::TRACE => (&TRACE_CS, &*TRACE_FIELDS),
-        Level::DEBUG => (&DEBUG_CS, &*DEBUG_FIELDS),
-        Level::INFO => (&INFO_CS, &*INFO_FIELDS),
-        Level::WARN => (&WARN_CS, &*WARN_FIELDS),
-        Level::ERROR => (&ERROR_CS, &*ERROR_FIELDS),
+        Level::TRACE => (
+            &TRACE_CS,
+            TRACE_FIELDS.get_or_init(|| Fields::new(&TRACE_CS)),
+        ),
+        Level::DEBUG => (
+            &DEBUG_CS,
+            DEBUG_FIELDS.get_or_init(|| Fields::new(&DEBUG_CS)),
+        ),
+        Level::INFO => (&INFO_CS, INFO_FIELDS.get_or_init(|| Fields::new(&INFO_CS))),
+        Level::WARN => (&WARN_CS, WARN_FIELDS.get_or_init(|| Fields::new(&WARN_CS))),
+        Level::ERROR => (
+            &ERROR_CS,
+            ERROR_FIELDS.get_or_init(|| Fields::new(&ERROR_CS)),
+        ),
     }
 }
 
@@ -342,11 +350,31 @@ fn loglevel_to_cs(
     &'static Metadata<'static>,
 ) {
     match level {
-        log::Level::Trace => (&TRACE_CS, &*TRACE_FIELDS, &TRACE_META),
-        log::Level::Debug => (&DEBUG_CS, &*DEBUG_FIELDS, &DEBUG_META),
-        log::Level::Info => (&INFO_CS, &*INFO_FIELDS, &INFO_META),
-        log::Level::Warn => (&WARN_CS, &*WARN_FIELDS, &WARN_META),
-        log::Level::Error => (&ERROR_CS, &*ERROR_FIELDS, &ERROR_META),
+        log::Level::Trace => (
+            &TRACE_CS,
+            TRACE_FIELDS.get_or_init(|| Fields::new(&TRACE_CS)),
+            &TRACE_META,
+        ),
+        log::Level::Debug => (
+            &DEBUG_CS,
+            DEBUG_FIELDS.get_or_init(|| Fields::new(&DEBUG_CS)),
+            &DEBUG_META,
+        ),
+        log::Level::Info => (
+            &INFO_CS,
+            INFO_FIELDS.get_or_init(|| Fields::new(&INFO_CS)),
+            &INFO_META,
+        ),
+        log::Level::Warn => (
+            &WARN_CS,
+            WARN_FIELDS.get_or_init(|| Fields::new(&WARN_CS)),
+            &WARN_META,
+        ),
+        log::Level::Error => (
+            &ERROR_CS,
+            ERROR_FIELDS.get_or_init(|| Fields::new(&ERROR_CS)),
+            &ERROR_META,
+        ),
     }
 }
 
