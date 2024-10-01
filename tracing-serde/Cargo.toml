@@ -19,7 +19,7 @@ keywords = ["logging", "tracing", "serialization"]
 rust-version = "1.63.0"
 
 [features]
-valuable = ["valuable_crate", "valuable-serde", "tracing-core/valuable"]
+valuable = ["dep:valuable", "valuable-serde", "tracing-core/valuable"]
 
 [dependencies]
 serde = "1"
@@ -29,7 +29,7 @@ tracing-core = { path = "../tracing-core", version = "0.1.28"}
 serde_json = "1"
 
 [target.'cfg(tracing_unstable)'.dependencies]
-valuable_crate = { package = "valuable", version = "0.1.0", optional = true, default-features = false }
+valuable = { version = "0.1.0", optional = true, default-features = false }
 valuable-serde = { version = "0.1.0", optional = true, default-features = false }
 
 [badges]
