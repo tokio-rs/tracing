@@ -29,3 +29,6 @@ tokio-stream = { version = "0.1.9", optional = true }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

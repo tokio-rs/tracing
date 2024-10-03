@@ -235,7 +235,7 @@ mod tests {
 
     fn lock_for_test() -> impl Drop {
         // We need to make sure only one test runs at a time.
-        static LOCK: Lazy<Mutex<()>> = Lazy::new(Mutex::new);
+        static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
         match LOCK.lock() {
             Ok(guard) => guard,

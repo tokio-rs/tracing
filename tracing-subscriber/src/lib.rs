@@ -240,7 +240,7 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
-    ///
+    /// Returns a default [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }

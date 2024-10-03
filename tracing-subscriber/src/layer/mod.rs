@@ -567,9 +567,10 @@
 //!
 //! Consider the following:
 //! - `layer_a` and `layer_b`, which should only receive spans and events at
-//!    the [`INFO`] [level] and above.
+//!   the [`INFO`] [level] and above.
 //! - A third layer, `layer_c`, which should receive spans and events at
-//!    the [`DEBUG`] [level] as well.
+//!   the [`DEBUG`] [level] as well.
+//!
 //! The layers and filters would be composed thusly:
 //!
 //! ```
