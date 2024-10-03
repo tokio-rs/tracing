@@ -29,7 +29,12 @@
 //! [`collector`]: mod@crate::collector
 //! [`expect::event`]: fn@crate::expect::event
 #![allow(missing_docs)]
-use crate::{ancestry::Ancestry, expect, field, metadata::ExpectedMetadata, span};
+use crate::{
+    ancestry::{ActualAncestry, ExpectedAncestry},
+    expect, field,
+    metadata::ExpectedMetadata,
+    span,
+};
 
 use std::fmt;
 
@@ -42,7 +47,7 @@ use std::fmt;
 #[derive(Default, Eq, PartialEq)]
 pub struct ExpectedEvent {
     pub(super) fields: Option<field::ExpectedFields>,
-    pub(super) ancestry: Option<Ancestry>,
+    pub(super) ancestry: Option<ExpectedAncestry>,
     pub(super) in_spans: Option<Vec<span::ExpectedSpan>>,
     pub(super) metadata: ExpectedMetadata,
 }
@@ -267,9 +272,34 @@ impl ExpectedEvent {
     ///
     /// # Examples
     ///
-    /// If `expect::has_explicit_parent("parent_name")` is passed
-    /// `with_ancestry` then the provided string is the name of the explicit
-    /// parent span to expect.
+    /// An explicit or contextual can be matched on an `ExpectedSpan`.
+    ///
+    /// ```
+    /// use tracing::collect::with_default;
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let parent = expect::span()
+    ///     .named("parent_span")
+    ///     .with_target("custom-target")
+    ///     .at_level(tracing::Level::INFO);
+    /// let event = expect::event()
+    ///     .with_ancestry(expect::has_explicit_parent(parent));
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(collector, || {
+    ///     let parent = tracing::info_span!(target: "custom-target", "parent_span");
+    ///     tracing::info!(parent: parent.id(), field = &"value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    /// The functions `expect::has_explicit_parent` and
+    /// `expect::has_contextual_parent` take `Into<ExpectedSpan>`, so a string
+    /// passed directly will match on a span with that name, or an
+    /// [`ExpectedId`] can be passed to match a span with that Id.
     ///
     /// ```
     /// use tracing::collect::with_default;
@@ -382,7 +412,9 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn with_ancestry(self, ancenstry: Ancestry) -> ExpectedEvent {
+    ///
+    /// [`ExpectedId`]: struct@crate::span::ExpectedId
+    pub fn with_ancestry(self, ancenstry: ExpectedAncestry) -> ExpectedEvent {
         Self {
             ancestry: Some(ancenstry),
             ..self
@@ -506,7 +538,7 @@ impl ExpectedEvent {
     pub(crate) fn check(
         &mut self,
         event: &tracing::Event<'_>,
-        get_ancestry: impl FnOnce() -> Ancestry,
+        get_ancestry: impl FnOnce() -> ActualAncestry,
         collector_name: &str,
     ) {
         let meta = event.metadata();
