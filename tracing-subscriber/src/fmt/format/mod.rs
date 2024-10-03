@@ -743,6 +743,10 @@ impl<F, T> Format<F, T> {
 
     /// Enable ANSI terminal colors for formatted output.
     pub fn with_ansi(self, ansi: bool) -> Format<F, T> {
+        if ansi {
+            #[cfg(target_os = "windows")]
+            nu_ansi_term::enable_ansi_support();
+        }
         Format {
             ansi: Some(ansi),
             ..self
