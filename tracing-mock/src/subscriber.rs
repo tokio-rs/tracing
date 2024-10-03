@@ -120,7 +120,7 @@ use crate::{
     collector::MockHandle,
     event::ExpectedEvent,
     expect::Expect,
-    span::{ExpectedSpan, NewSpan},
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 use tracing_core::{
     span::{Attributes, Id, Record},
@@ -773,66 +773,20 @@ impl MockSubscriberBuilder {
     }
 }
 
-impl MockSubscriber {
-    fn check_span_ref<'spans, S>(
-        &self,
-        expected: &ExpectedSpan,
-        actual: &SpanRef<'spans, S>,
-        what_happened: impl fmt::Display,
-    ) where
-        S: LookupSpan<'spans>,
-    {
-        if let Some(exp_name) = expected.name() {
-            assert_eq!(
-                actual.name(),
-                exp_name,
-                "\n[{}] expected {} a span named {:?}\n\
-                 [{}] but it was named {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_name,
-                self.name,
-                actual.name(),
-                actual.name(),
-                actual.id()
-            );
-        }
-
-        if let Some(exp_level) = expected.level() {
-            let actual_level = actual.metadata().level();
-            assert_eq!(
-                actual_level,
-                &exp_level,
-                "\n[{}] expected {} a span at {:?}\n\
-                 [{}] but it was at {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_level,
-                self.name,
-                actual_level,
-                actual.name(),
-                actual.id(),
-            );
-        }
-
-        if let Some(exp_target) = expected.target() {
-            let actual_target = actual.metadata().target();
-            assert_eq!(
-                actual_target,
-                exp_target,
-                "\n[{}] expected {} a span with target {:?}\n\
-                 [{}] but it had the target {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_target,
-                self.name,
-                actual_target,
-                actual.name(),
-                actual.id(),
-            );
-        }
+impl<'a, S> ActualSpan for SpanRef<'a, S>
+where
+    S: LookupSpan<'a>,
+{
+    fn id(&self) -> tracing_core::span::Id {
+        <SpanRef<'a, S>>::id(self)
     }
 
+    fn metadata(&self) -> Option<&'static tracing_core::Metadata<'static>> {
+        Some(<SpanRef<'a, S>>::metadata(self))
+    }
+}
+
+impl MockSubscriber {
     fn check_event_scope<C>(
         &self,
         current_scope: Option<tracing_subscriber::registry::Scope<'_, C>>,
@@ -851,10 +805,10 @@ impl MockSubscriber {
                 actual.id(),
                 expected
             );
-            self.check_span_ref(
-                expected,
+            expected.check(
                 &actual,
                 format_args!("the {}th span in the event's scope to be", i),
+                &self.name,
             );
             i += 1;
         }
@@ -950,7 +904,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Enter(ref expected_span)) => {
-                self.check_span_ref(expected_span, &span, "to enter");
+                expected_span.check(&span, "to enter", &self.name);
             }
             Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name())),
         }
@@ -971,7 +925,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                self.check_span_ref(expected_span, &span, "to exit");
+                expected_span.check(&span, "to exit", &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -1008,7 +962,7 @@ where
                     // as failing the assertion can cause a double panic.
                     if !::std::thread::panicking() {
                         if let Some(ref span) = span {
-                            self.check_span_ref(expected_span, span, "to close");
+                            expected_span.check(span, "to close a span", &self.name);
                         }
                     }
                     true

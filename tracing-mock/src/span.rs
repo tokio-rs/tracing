@@ -91,10 +91,7 @@
 //! [`collector`]: mod@crate::collector
 //! [`expect::span`]: fn@crate::expect::span
 #![allow(missing_docs)]
-use crate::{
-    ancestry::Ancestry, collector::SpanState, expect, field::ExpectedFields,
-    metadata::ExpectedMetadata,
-};
+use crate::{ancestry::Ancestry, expect, field::ExpectedFields, metadata::ExpectedMetadata};
 use std::{
     error, fmt,
     sync::{
@@ -143,6 +140,24 @@ where
     I: Into<String>,
 {
     expect::span().named(name)
+}
+
+pub(crate) trait ActualSpan {
+    /// The Id of the actual span.
+    fn id(&self) -> tracing_core::span::Id;
+
+    /// The metadata for the actual span if it is available.
+    fn metadata(&self) -> Option<&'static tracing_core::Metadata<'static>>;
+}
+
+impl ActualSpan for tracing_core::span::Id {
+    fn id(&self) -> tracing_core::span::Id {
+        self.clone()
+    }
+
+    fn metadata(&self) -> Option<&'static tracing_core::Metadata<'static>> {
+        None
+    }
 }
 
 /// A mock span ID.
@@ -652,16 +667,35 @@ impl ExpectedSpan {
         self.metadata.target.as_deref()
     }
 
-    pub(crate) fn check(&self, actual: &SpanState, collector_name: &str) {
-        let meta = actual.metadata();
-        let name = meta.name();
-
+    pub(crate) fn check<A: ActualSpan>(
+        &self,
+        actual: &A,
+        ctx: impl fmt::Display,
+        collector_name: &str,
+    ) {
         if let Some(expected_id) = &self.id {
-            expected_id.check(actual.id(), format_args!("span `{}`", name), collector_name);
+            expected_id.check(&actual.id(), format_args!("{ctx} a span"), collector_name);
         }
 
-        self.metadata
-            .check(meta, format_args!("span `{}`", name), collector_name);
+        match actual.metadata() {
+            Some(actual_metadata) => self.metadata.check(
+                actual_metadata,
+                format_args!("{ctx} a span"),
+                collector_name,
+            ),
+            None => {
+                if self.metadata.has_expectations() {
+                    panic!(
+                        "{}",
+                        format_args!(
+                            "[{collector_name}] expected {ctx} a span with valid metadata, \
+                            but got one with unknown Id={actual_id}",
+                            actual_id = actual.id().into_u64()
+                        )
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -742,9 +776,7 @@ impl NewSpan {
     ) {
         let meta = span.metadata();
         let name = meta.name();
-        self.span
-            .metadata
-            .check(meta, format_args!("span `{}`", name), collector_name);
+        self.span.metadata.check(meta, "a new span", collector_name);
         let mut checker = self.fields.checker(name, collector_name);
         span.record(&mut checker);
         checker.finish();
@@ -825,20 +857,26 @@ impl ExpectedId {
         Ok(())
     }
 
-    pub(crate) fn check(&self, actual: u64, ctx: fmt::Arguments<'_>, collector_name: &str) {
+    pub(crate) fn check(
+        &self,
+        actual: &tracing_core::span::Id,
+        ctx: fmt::Arguments<'_>,
+        collector_name: &str,
+    ) {
         let id = self.inner.load(Ordering::Relaxed);
+        let actual = actual.into_u64();
 
         assert!(
             id != Self::UNSET,
-            "\n[{}] expected {} to have expected ID set, but it hasn't been, \
-            perhaps this `ExpectedId` wasn't used in a call to `MockCollector::new_span()`?",
+            "\n[{}] expected {} with an expected Id set, but it hasn't been, \
+            perhaps this `ExpectedId` wasn't used in a call to `new_span()`?",
             collector_name,
             ctx,
         );
 
         assert_eq!(
             id, actual,
-            "\n[{}] expected {} to have ID `{}`, but it has `{}` instead",
+            "\n[{}] expected {} with Id `{}`, but it has Id `{}` instead",
             collector_name, ctx, id, actual,
         );
     }

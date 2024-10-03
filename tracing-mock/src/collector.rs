@@ -142,7 +142,7 @@ use crate::{
     event::ExpectedEvent,
     expect::Expect,
     field::ExpectedFields,
-    span::{ExpectedSpan, NewSpan},
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -160,19 +160,19 @@ use tracing::{
 };
 
 pub(crate) struct SpanState {
-    id: u64,
+    id: Id,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
 }
 
-impl SpanState {
-    pub(crate) fn id(&self) -> u64 {
-        self.id
+impl ActualSpan for SpanState {
+    fn id(&self) -> Id {
+        self.id.clone()
     }
 
-    pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
-        self.meta
+    fn metadata(&self) -> Option<&'static Metadata<'static>> {
+        Some(self.meta)
     }
 }
 
@@ -1130,7 +1130,7 @@ where
         spans.insert(
             id.clone(),
             SpanState {
-                id: id.into_u64(),
+                id: id.clone(),
                 name: meta.name(),
                 refs: 1,
                 meta,
@@ -1146,7 +1146,7 @@ where
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
-                    expected_span.check(span, &self.name);
+                    expected_span.check(span, "to enter", &self.name);
                 }
                 Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
@@ -1169,7 +1169,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                expected_span.check(span, &self.name);
+                expected_span.check(span, "to exit", &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -1185,27 +1185,34 @@ where
     }
 
     fn clone_span(&self, id: &Id) -> Id {
-        let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
-            let name = span.name;
-            println!(
-                "[{}] clone_span: {}; id={:?}; refs={:?};",
-                self.name, name, id, span.refs
-            );
-            span.refs += 1;
-            name
-        });
-        if name.is_none() {
-            println!("[{}] clone_span: id={:?};", self.name, id);
+        let mut spans = self.spans.lock().unwrap();
+        let mut span = spans.get_mut(id);
+        match span.as_deref_mut() {
+            Some(span) => {
+                println!(
+                    "[{}] clone_span: {}; id={:?}; refs={:?};",
+                    self.name, span.name, id, span.refs,
+                );
+                span.refs += 1;
+            }
+            None => {
+                println!(
+                    "[{}] clone_span: id={:?} (not found in span list);",
+                    self.name, id
+                );
+            }
         }
+
         let mut expected = self.expected.lock().unwrap();
-        let was_expected = if let Some(Expect::CloneSpan(ref span)) = expected.front() {
-            assert_eq!(
-                name,
-                span.name(),
-                "[{}] expected to clone a span named {:?}",
-                self.name,
-                span.name()
-            );
+        let was_expected = if let Some(Expect::CloneSpan(ref expected_span)) = expected.front() {
+            match span {
+                Some(actual_span) => {
+                    let actual_span: &_ = actual_span;
+                    expected_span.check(actual_span, "to clone", &self.name);
+                }
+                // Check only by Id
+                None => expected_span.check(id, "to clone", &self.name),
+            }
             true
         } else {
             false
