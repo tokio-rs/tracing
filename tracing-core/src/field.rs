@@ -999,9 +999,8 @@ mod test {
     use crate::metadata::{Kind, Level, Metadata};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
-    #[allow(dead_code)]
-    struct TestCallsite1(u8);
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1(0);
+    struct TestCallsite1();
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1();
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -1021,9 +1020,8 @@ mod test {
         }
     }
 
-    #[allow(dead_code)]
-    struct TestCallsite2(u8);
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2(0);
+    struct TestCallsite2();
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2();
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
