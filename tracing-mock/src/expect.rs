@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    ancestry::Ancestry,
+    ancestry::ExpectedAncestry,
     event::ExpectedEvent,
     field::{ExpectedField, ExpectedFields, ExpectedValue},
     span::{ExpectedId, ExpectedSpan, NewSpan},
@@ -72,25 +72,25 @@ pub fn id() -> ExpectedId {
 }
 
 /// Convenience function that returns [`Ancestry::IsContextualRoot`].
-pub fn is_contextual_root() -> Ancestry {
-    Ancestry::IsContextualRoot
+pub fn is_contextual_root() -> ExpectedAncestry {
+    ExpectedAncestry::IsContextualRoot
 }
 
 /// Convenience function that returns [`Ancestry::HasContextualParent`] with
 /// provided name.
-pub fn has_contextual_parent<S: Into<String>>(name: S) -> Ancestry {
-    Ancestry::HasContextualParent(name.into())
+pub fn has_contextual_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
+    ExpectedAncestry::HasContextualParent(span.into())
 }
 
 /// Convenience function that returns [`Ancestry::IsExplicitRoot`].
-pub fn is_explicit_root() -> Ancestry {
-    Ancestry::IsExplicitRoot
+pub fn is_explicit_root() -> ExpectedAncestry {
+    ExpectedAncestry::IsExplicitRoot
 }
 
 /// Convenience function that returns [`Ancestry::HasExplicitParent`] with
 /// provided name.
-pub fn has_explicit_parent<S: Into<String>>(name: S) -> Ancestry {
-    Ancestry::HasExplicitParent(name.into())
+pub fn has_explicit_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
+    ExpectedAncestry::HasExplicitParent(span.into())
 }
 
 impl Expect {

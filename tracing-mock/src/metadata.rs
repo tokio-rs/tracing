@@ -9,47 +9,68 @@ pub(crate) struct ExpectedMetadata {
 }
 
 impl ExpectedMetadata {
+    /// Checks the given metadata against this expected metadata and panics if
+    /// there is a mismatch.
+    ///
+    /// The context `ctx` should fit into the followint sentence:
+    ///
+    /// > expected {ctx} named `expected_name`, but got one named `actual_name`
+    ///
+    /// Examples could be:
+    /// * a new span
+    /// * to enter a span
+    /// * an event
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if any of the expectations that have been
+    /// specified are noto met.
+    ///
     pub(crate) fn check(
         &self,
         actual: &Metadata<'_>,
-        ctx: fmt::Arguments<'_>,
+        ctx: impl fmt::Display,
         collector_name: &str,
     ) {
         if let Some(ref expected_name) = self.name {
-            let name = actual.name();
+            let actual_name = actual.name();
             assert!(
-                expected_name == name,
-                "\n[{}] expected {} to be named `{}`, but got one named `{}`",
-                collector_name,
-                ctx,
-                expected_name,
-                name
+                expected_name == actual_name,
+                "{}",
+                format_args!(
+                    "\n[{collector_name}] expected {ctx} named `{expected_name}`,\n\
+                    [{collector_name}] but got one named `{actual_name}` instead."
+                ),
             )
         }
 
         if let Some(ref expected_level) = self.level {
-            let level = actual.level();
+            let actual_level = actual.level();
             assert!(
-                expected_level == level,
-                "\n[{}] expected {} to be at level `{:?}`, but it was at level `{:?}` instead",
-                collector_name,
-                ctx,
-                expected_level,
-                level,
+                expected_level == actual_level,
+                "{}",
+                format_args!(
+                    "\n[{collector_name}] expected {ctx} at level `{expected_level:?}`,\n\
+                    [{collector_name}] but got one at level `{actual_level:?}` instead."
+                ),
             )
         }
 
         if let Some(ref expected_target) = self.target {
-            let target = actual.target();
+            let actual_target = actual.target();
             assert!(
-                expected_target == target,
-                "\n[{}] expected {} to have target `{}`, but it had target `{}` instead",
-                collector_name,
-                ctx,
-                expected_target,
-                target,
+                expected_target == actual_target,
+                "{}",
+                format_args!(
+                    "\n[{collector_name}] expected {ctx} with target `{expected_target}`,\n\
+                    [{collector_name}] but got one with target `{actual_target}` instead."
+                ),
             )
         }
+    }
+
+    pub(crate) fn has_expectations(&self) -> bool {
+        self.name.is_some() || self.level.is_some() || self.target.is_some()
     }
 }
 
