@@ -38,11 +38,11 @@
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     // Record a value for the field `parting` on a matching span
-//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -80,9 +80,9 @@
 //! let span = expect::span()
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     .event(expect::event().with_fields(expect::message("collect parting message")))
-//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
 //!     .run_with_handle();
@@ -225,11 +225,11 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     .named("my_span");
 /// let (collector, handle) = collector::mock()
 ///     // Enter a matching span
-///     .enter(span.clone())
+///     .enter(&span)
 ///     // Record an event with message "collect parting message"
 ///     .event(expect::event().with_fields(expect::message("collect parting message")))
 ///     // Record a value for the field `parting` on a matching span
-///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+///     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
 ///     .exit(span)
 ///     // Expect no further messages to be recorded
@@ -472,8 +472,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -495,8 +495,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -511,8 +511,11 @@ where
     ///
     /// [`exit`]: fn@Self::exit
     /// [`only`]: fn@Self::only
-    pub fn enter(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
+    pub fn enter<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Enter(span.into()));
         self
     }
 
@@ -536,8 +539,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -558,8 +561,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -572,8 +575,11 @@ where
     /// ```
     ///
     /// [`enter`]: fn@Self::enter
-    pub fn exit(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
+    pub fn exit<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Exit(span.into()));
         self
     }
 
@@ -627,8 +633,11 @@ where
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn clone_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::CloneSpan(span));
+    pub fn clone_span<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::CloneSpan(span.into()));
         self
     }
 
@@ -644,8 +653,11 @@ where
     ///
     /// [`Collect::drop_span`]: fn@tracing::Collect::drop_span
     #[allow(deprecated)]
-    pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::DropSpan(span));
+    pub fn drop_span<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::DropSpan(span.into()));
         self
     }
 
@@ -710,9 +722,15 @@ where
     /// ```
     ///
     /// [`Span::follows_from`]: fn@tracing::Span::follows_from
-    pub fn follows_from(mut self, consequence: ExpectedSpan, cause: ExpectedSpan) -> Self {
-        self.expected
-            .push_back(Expect::FollowsFrom { consequence, cause });
+    pub fn follows_from<S1, S2>(mut self, consequence: S1, cause: S2) -> Self
+    where
+        S1: Into<ExpectedSpan>,
+        S2: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::FollowsFrom {
+            consequence: consequence.into(),
+            cause: cause.into(),
+        });
         self
     }
 
@@ -775,11 +793,13 @@ where
     /// ```
     ///
     /// [`field`]: mod@crate::field
-    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
+    pub fn record<S, I>(mut self, span: S, fields: I) -> Self
     where
+        S: Into<ExpectedSpan>,
         I: Into<ExpectedFields>,
     {
-        self.expected.push_back(Expect::Visit(span, fields.into()));
+        self.expected
+            .push_back(Expect::Visit(span.into(), fields.into()));
         self
     }
 
