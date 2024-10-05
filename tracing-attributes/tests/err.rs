@@ -206,6 +206,57 @@ fn test_err_dbg() {
     handle.assert_finished();
 }
 
+#[derive(Debug)]
+struct MyError {
+    inner: TryFromIntError,
+}
+
+impl std::fmt::Display for MyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MyError")
+    }
+}
+
+impl std::error::Error for MyError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.inner)
+    }
+}
+
+impl From<TryFromIntError> for MyError {
+    fn from(inner: TryFromIntError) -> Self {
+        Self { inner }
+    }
+}
+
+#[instrument(err(StdError))]
+fn err_std_error() -> Result<u8, MyError> {
+    let v = u8::try_from(1234)?;
+    Ok(v)
+}
+
+#[test]
+fn test_err_std_error() {
+    let span = expect::span().named("err_std_error");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::ERROR).with_fields(
+            expect::field("error").with_value(
+                // use the actual error value that will be emitted, so that this
+                // test doesn't break if the standard library changes the `fmt::Debug`
+                // output from the error type in the future.
+                &(&err_std_error().unwrap_err() as &dyn std::error::Error) as &dyn tracing::Value,
+            ),
+        ))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(collector, || err_std_error().ok());
+    handle.assert_finished();
+}
+
 #[test]
 fn test_err_display_default() {
     let span = expect::span().named("err");
