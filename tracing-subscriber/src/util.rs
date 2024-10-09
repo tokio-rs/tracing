@@ -45,9 +45,9 @@ where
     /// Attempts to set `self` as the [global default subscriber] in the current
     /// scope, returning an error if one is already set.
     ///
-    /// If the "tracing-log" feature flag is enabled, this will also attempt to
-    /// initialize a [`log`] compatibility subscriber. This allows the subscriber to
-    /// consume `log::Record`s as though they were `tracing` `Event`s.
+    /// If the "tracing-log" feature flag is enabled and `with_logger` is set to true,
+    /// this will also attempt to initialize a [`log`] compatibility subscriber.
+    /// This allows the subscriber to consume `log::Record`s as though they were `tracing` `Event`s.
     ///
     /// This method returns an error if a global default subscriber has already
     /// been set, or if a `log` logger has already been set (when the
@@ -55,7 +55,10 @@ where
     ///
     /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
-    fn try_init(self) -> Result<(), TryInitError> {
+    fn try_init(
+        self,
+        #[cfg(feature = "tracing-log")] with_logger: bool,
+    ) -> Result<(), TryInitError> {
         dispatch::set_global_default(self.into()).map_err(TryInitError::new)?;
 
         // Since we are setting the global default subscriber, we can
@@ -63,12 +66,14 @@ where
         // the max level for the `log` crate as well. This should make
         // skipping `log` diagnostics much faster.
         #[cfg(feature = "tracing-log")]
-        tracing_log::LogTracer::builder()
-            // Note that we must call this *after* setting the global default
-            // subscriber, so that we get its max level hint.
-            .with_max_level(tracing_core::LevelFilter::current().as_log())
-            .init()
-            .map_err(TryInitError::new)?;
+        if with_logger {
+            tracing_log::LogTracer::builder()
+                // Note that we must call this *after* setting the global default
+                // subscriber, so that we get its max level hint.
+                .with_max_level(tracing_core::LevelFilter::current().as_log())
+                .init()
+                .map_err(TryInitError::new)?;
+        }
 
         Ok(())
     }
@@ -86,9 +91,14 @@ where
     ///
     /// [global default subscriber]: tracing::dispatch#setting-the-default-collector
     /// [`log`]: https://crates.io/log
-    fn init(self) {
-        self.try_init()
-            .expect("failed to set global default subscriber")
+    fn init(self, #[cfg(feature = "tracing-log")] with_logger: bool) {
+        #[cfg(feature = "tracing-log")]
+        let init = self.try_init(with_logger);
+
+        #[cfg(not(feature = "tracing-log"))]
+        let init = self.try_init();
+
+        init.expect("failed to set global default subscriber")
     }
 }
 
