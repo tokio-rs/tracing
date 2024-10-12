@@ -525,7 +525,7 @@ impl EnvFilter {
     ///
     /// [level]: tracing_core::metadata::Level
     pub fn max_level_hint(&self) -> Option<LevelFilter> {
-        if self.dynamics.has_value_filters() {
+        if self.has_dynamics {
             // If we perform any filtering on span field *values*, we will
             // enable *all* spans, because their field values are not known
             // until recording.

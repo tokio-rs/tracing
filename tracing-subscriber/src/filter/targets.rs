@@ -219,6 +219,7 @@ impl Targets {
     pub fn with_target(mut self, target: impl Into<String>, level: impl Into<LevelFilter>) -> Self {
         self.0.add(StaticDirective::new(
             Some(target.into()),
+            None,
             Default::default(),
             level.into(),
         ));
@@ -273,8 +274,12 @@ impl Targets {
     /// events with targets that did not match any of the configured prefixes
     /// will be enabled if their level is at or below the provided level.
     pub fn with_default(mut self, level: impl Into<LevelFilter>) -> Self {
-        self.0
-            .add(StaticDirective::new(None, Default::default(), level.into()));
+        self.0.add(StaticDirective::new(
+            None,
+            None,
+            Default::default(),
+            level.into(),
+        ));
         self
     }
 
@@ -408,7 +413,7 @@ where
 {
     fn extend<I: IntoIterator<Item = (T, L)>>(&mut self, iter: I) {
         let iter = iter.into_iter().map(|(target, level)| {
-            StaticDirective::new(Some(target.into()), Default::default(), level.into())
+            StaticDirective::new(Some(target.into()), None, Default::default(), level.into())
         });
         self.0.extend(iter);
     }
