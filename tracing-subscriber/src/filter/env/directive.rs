@@ -14,7 +14,7 @@ use tracing_core::{span, Level, Metadata};
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
-    in_span: Option<String>,
+    span: Option<String>,
     fields: Vec<field::Match>,
     pub(crate) target: Option<String>,
     pub(crate) level: LevelFilter,
@@ -36,14 +36,6 @@ pub(crate) struct MatchSet<T> {
 }
 
 impl Directive {
-    pub(super) fn has_name(&self) -> bool {
-        self.in_span.is_some()
-    }
-
-    pub(super) fn has_fields(&self) -> bool {
-        !self.fields.is_empty()
-    }
-
     pub(super) fn to_static(&self) -> Option<StaticDirective> {
         if !self.is_static() {
             return None;
@@ -55,17 +47,14 @@ impl Directive {
 
         Some(StaticDirective::new(
             self.target.clone(),
+            self.span.clone(),
             field_names,
             self.level,
         ))
     }
 
     fn is_static(&self) -> bool {
-        !self.has_name() && !self.fields.iter().any(field::Match::has_value)
-    }
-
-    pub(super) fn is_dynamic(&self) -> bool {
-        self.has_name() || self.has_fields()
+        !self.fields.iter().any(field::Match::has_value)
     }
 
     pub(crate) fn field_matcher(&self, meta: &Metadata<'_>) -> Option<field::CallsiteMatch> {
@@ -98,8 +87,8 @@ impl Directive {
         directives: impl IntoIterator<Item = Directive>,
     ) -> (Dynamics, Statics) {
         // TODO(eliza): this could be made more efficient...
-        let (dyns, stats): (Vec<Directive>, Vec<Directive>) =
-            directives.into_iter().partition(Directive::is_dynamic);
+        let (stats, dyns): (Vec<Directive>, Vec<Directive>) =
+            directives.into_iter().partition(Directive::is_static);
         let statics = stats
             .into_iter()
             .filter_map(|d| d.to_static())
@@ -182,7 +171,7 @@ impl Directive {
             }
         });
 
-        let (in_span, fields) = caps
+        let (span, fields) = caps
             .name("span")
             .and_then(|cap| {
                 let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
@@ -208,10 +197,10 @@ impl Directive {
             .unwrap_or(LevelFilter::TRACE);
 
         Ok(Self {
-            level,
             target,
-            in_span,
+            span,
             fields: fields?,
+            level,
         })
     }
 }
@@ -228,7 +217,7 @@ impl Match for Directive {
 
         // Do we have a name filter, and does it match the metadata's name?
         // TODO(eliza): put name globbing here?
-        if let Some(ref name) = self.in_span {
+        if let Some(ref name) = self.span {
             if name != meta.name() {
                 return false;
             }
@@ -261,10 +250,10 @@ impl FromStr for Directive {
 impl Default for Directive {
     fn default() -> Self {
         Directive {
-            level: LevelFilter::OFF,
             target: None,
-            in_span: None,
+            span: None,
             fields: Vec::new(),
+            level: LevelFilter::OFF,
         }
     }
 }
@@ -289,7 +278,7 @@ impl Ord for Directive {
             .map(String::len)
             .cmp(&other.target.as_ref().map(String::len))
             // Next compare based on the presence of span names.
-            .then_with(|| self.in_span.is_some().cmp(&other.in_span.is_some()))
+            .then_with(|| self.span.is_some().cmp(&other.span.is_some()))
             // Then we compare how many fields are defined by each
             // directive.
             .then_with(|| self.fields.len().cmp(&other.fields.len()))
@@ -300,7 +289,7 @@ impl Ord for Directive {
             .then_with(|| {
                 self.target
                     .cmp(&other.target)
-                    .then_with(|| self.in_span.cmp(&other.in_span))
+                    .then_with(|| self.span.cmp(&other.span))
                     .then_with(|| self.fields[..].cmp(&other.fields[..]))
             })
             .reverse();
@@ -313,8 +302,8 @@ impl Ord for Directive {
                     "invariant violated: Ordering::Equal must imply a.target == b.target"
                 );
                 debug_assert_eq!(
-                    self.in_span, other.in_span,
-                    "invariant violated: Ordering::Equal must imply a.in_span == b.in_span"
+                    self.span, other.span,
+                    "invariant violated: Ordering::Equal must imply a.span == b.span"
                 );
                 debug_assert_eq!(
                     self.fields, other.fields,
@@ -335,10 +324,10 @@ impl fmt::Display for Directive {
             wrote_any = true;
         }
 
-        if self.in_span.is_some() || !self.fields.is_empty() {
+        if self.span.is_some() || !self.fields.is_empty() {
             f.write_str("[")?;
 
-            if let Some(ref span) = self.in_span {
+            if let Some(ref span) = self.span {
                 fmt::Display::fmt(span, f)?;
             }
 
@@ -411,11 +400,6 @@ impl Dynamics {
         } else {
             None
         }
-    }
-
-    pub(crate) fn has_value_filters(&self) -> bool {
-        self.directives()
-            .any(|d| d.fields.iter().any(|f| f.value.is_some()))
     }
 }
 
@@ -535,7 +519,7 @@ mod test {
             .map(|d| {
                 (
                     d.target.as_ref().unwrap().as_ref(),
-                    d.in_span.as_ref().map(String::as_ref),
+                    d.span.as_ref().map(String::as_ref),
                 )
             })
             .collect::<Vec<_>>();
@@ -571,11 +555,11 @@ mod test {
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("server".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::TRACE);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
     }
 
     #[test]
@@ -584,11 +568,11 @@ mod test {
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("server".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
     }
 
     #[test]
@@ -597,11 +581,11 @@ mod test {
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("server".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
     }
 
     #[test]
@@ -610,19 +594,19 @@ mod test {
         assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::TRACE);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
 
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(dirs[2].span, None);
 
         assert_eq!(dirs[3].target, Some("crate3".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::OFF);
-        assert_eq!(dirs[3].in_span, None);
+        assert_eq!(dirs[3].span, None);
     }
 
     #[test]
@@ -635,27 +619,27 @@ mod test {
         assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::WARN);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
 
         assert_eq!(dirs[2].target, Some("crate1::mod2::mod3".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::INFO);
-        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(dirs[2].span, None);
 
         assert_eq!(dirs[3].target, Some("crate2".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[3].in_span, None);
+        assert_eq!(dirs[3].span, None);
 
         assert_eq!(dirs[4].target, Some("crate3".to_string()));
         assert_eq!(dirs[4].level, LevelFilter::TRACE);
-        assert_eq!(dirs[4].in_span, None);
+        assert_eq!(dirs[4].span, None);
 
         assert_eq!(dirs[5].target, Some("crate3::mod2::mod1".to_string()));
         assert_eq!(dirs[5].level, LevelFilter::OFF);
-        assert_eq!(dirs[5].in_span, None);
+        assert_eq!(dirs[5].span, None);
     }
 
     #[test]
@@ -667,27 +651,27 @@ mod test {
         assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::WARN);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
 
         assert_eq!(dirs[2].target, Some("crate1::mod2::mod3".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::INFO);
-        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(dirs[2].span, None);
 
         assert_eq!(dirs[3].target, Some("crate2".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[3].in_span, None);
+        assert_eq!(dirs[3].span, None);
 
         assert_eq!(dirs[4].target, Some("crate3".to_string()));
         assert_eq!(dirs[4].level, LevelFilter::TRACE);
-        assert_eq!(dirs[4].in_span, None);
+        assert_eq!(dirs[4].span, None);
 
         assert_eq!(dirs[5].target, Some("crate3::mod2::mod1".to_string()));
         assert_eq!(dirs[5].level, LevelFilter::OFF);
-        assert_eq!(dirs[5].in_span, None);
+        assert_eq!(dirs[5].span, None);
     }
 
     #[test]
@@ -699,27 +683,27 @@ mod test {
         assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::WARN);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
 
         assert_eq!(dirs[2].target, Some("crate1::mod2::mod3".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::INFO);
-        assert_eq!(dirs[2].in_span, None);
+        assert_eq!(dirs[2].span, None);
 
         assert_eq!(dirs[3].target, Some("crate2".to_string()));
         assert_eq!(dirs[3].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[3].in_span, None);
+        assert_eq!(dirs[3].span, None);
 
         assert_eq!(dirs[4].target, Some("crate3".to_string()));
         assert_eq!(dirs[4].level, LevelFilter::TRACE);
-        assert_eq!(dirs[4].in_span, None);
+        assert_eq!(dirs[4].span, None);
 
         assert_eq!(dirs[5].target, Some("crate3::mod2::mod1".to_string()));
         assert_eq!(dirs[5].level, LevelFilter::OFF);
-        assert_eq!(dirs[5].in_span, None);
+        assert_eq!(dirs[5].span, None);
     }
 
     #[test]
@@ -729,7 +713,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -739,7 +723,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -749,7 +733,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::WARN);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -759,7 +743,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -769,11 +753,11 @@ mod test {
         assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, None);
         assert_eq!(dirs[0].level, LevelFilter::WARN);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
 
         assert_eq!(dirs[1].target, Some("crate2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[1].in_span, None);
+        assert_eq!(dirs[1].span, None);
     }
 
     // helper function for tests below
@@ -788,7 +772,7 @@ mod test {
         );
         assert_eq!(dirs[0].target, None);
         assert_eq!(dirs[0].level, level_expected);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -815,15 +799,15 @@ mod test {
         assert_eq!(dirs.len(), 3, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
-        assert_eq!(dirs[0].in_span, Some("foo".to_string()));
+        assert_eq!(dirs[0].span, Some("foo".to_string()));
 
         assert_eq!(dirs[1].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[1].level, LevelFilter::TRACE);
-        assert_eq!(dirs[1].in_span, Some("bar".to_string()));
+        assert_eq!(dirs[1].span, Some("bar".to_string()));
 
         assert_eq!(dirs[2].target, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, LevelFilter::DEBUG);
-        assert_eq!(dirs[2].in_span, Some("baz".to_string()));
+        assert_eq!(dirs[2].span, Some("baz".to_string()));
     }
 
     #[test]
@@ -832,7 +816,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("target-name".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[0].in_span, None);
+        assert_eq!(dirs[0].span, None);
     }
 
     #[test]
@@ -843,7 +827,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
+        assert_eq!(dirs[0].span, Some("span-name".to_string()));
     }
 
     #[test]
@@ -854,7 +838,7 @@ mod test {
         assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
-        assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
+        assert_eq!(dirs[0].span, Some(span_name.to_string()));
     }
 
     #[test]
