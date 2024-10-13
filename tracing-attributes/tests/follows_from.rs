@@ -12,6 +12,22 @@ async fn with_follows_from_async(causes: impl IntoIterator<Item = impl Into<Opti
 #[instrument(follows_from = [&Span::current()])]
 fn follows_from_current() {}
 
+#[derive(Debug)]
+struct NonCopyContext {
+    id: Option<Id>,
+}
+
+impl NonCopyContext {
+    fn id(&self) -> Option<tracing::Id> {
+        self.id.clone()
+    }
+}
+
+#[instrument(follows_from = [ctx.id()])]
+fn follows_from_noncopy(ctx: NonCopyContext) {
+    println!("{:?}", ctx.id());
+}
+
 #[test]
 fn follows_from_sync_test() {
     let cause_a = expect::span().named("cause_a");
@@ -96,6 +112,30 @@ fn follows_from_current_test() {
 
     with_default(collector, || {
         tracing::span!(Level::TRACE, "cause").in_scope(follows_from_current)
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn follows_from_noncopy_test() {
+    let cause_a = expect::span().named("cause_a");
+    let consequence = expect::span().named("follows_from_noncopy");
+
+    let (collector, handle) = collector::mock()
+        .new_span(cause_a.clone())
+        .new_span(consequence.clone())
+        .follows_from(consequence.clone(), cause_a)
+        .enter(consequence.clone())
+        .exit(consequence)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        let cause_a = tracing::info_span!("cause_a");
+        let context = NonCopyContext { id: cause_a.id() };
+
+        follows_from_noncopy(context)
     });
 
     handle.assert_finished();
