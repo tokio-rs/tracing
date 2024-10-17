@@ -25,14 +25,16 @@ note: return type inferred to be `String` here
    |                               ^^^^^^
 
 error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
-  --> tests/ui/async_instrument.rs:14:1
+  --> tests/ui/async_instrument.rs:15:57
    |
-14 | #[tracing::instrument]
-   | ^^^^^^^^^^^^^^^^^^^^^^ `(&str,)` cannot be formatted with the default formatter
+15 |   async fn opaque_unsatisfied() -> impl std::fmt::Display {
+   |  _________________________________________________________^
+16 | |     ("",)
+17 | | }
+   | |_^ `(&str,)` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: this error originates in the attribute macro `tracing::instrument` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/async_instrument.rs:15:34
@@ -88,11 +90,12 @@ note: return type inferred to be `String` here
    |                            ^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/async_instrument.rs:42:35
+  --> tests/ui/async_instrument.rs:41:1
    |
-42 |   async fn extra_semicolon() -> i32 {
-   |  ___________________________________^
-43 | |     1;
-   | |      - help: remove this semicolon to return this value
-44 | | }
-   | |_^ expected `i32`, found `()`
+41 | #[tracing::instrument]
+   | ^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `()`
+42 | async fn extra_semicolon() -> i32 {
+43 |     1;
+   |      - help: remove this semicolon to return this value
+   |
+   = note: this error originates in the attribute macro `tracing::instrument` (in Nightly builds, run with -Z macro-backtrace for more info)
