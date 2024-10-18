@@ -118,14 +118,19 @@ fn retry<T, E>(f: impl Fn() -> Result<T, E>) -> Result<T, E> {
 /// Additionally filter by the `_PID` field with the PID of this
 /// test process, to make sure this method only reads journal entries
 /// created by this test process.
-fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
+fn read_from_journal(test_name: &str, prefix: Option<&str>) -> Vec<HashMap<String, Field>> {
+    let prefix = if let Some(prefix) = prefix {
+        format!("{prefix}_")
+    } else {
+        String::new()
+    };
     let stdout = String::from_utf8(
         Command::new("journalctl")
             // We pass --all to circumvent journalctl's default limit of 4096 bytes for field values
             .args(["--user", "--output=json", "--all"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
-            .arg(format!("TEST_NAME={}", test_name))
+            .arg(dbg!(format!("{prefix}TEST_NAME={test_name}")))
             .output()
             .unwrap()
             .stdout,
@@ -142,9 +147,12 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
 ///
 /// Try to read lines for `testname` from journal, and `retry()` if the wasn't
 /// _exactly_ one matching line.
-fn retry_read_one_line_from_journal(testname: &str) -> HashMap<String, Field> {
+fn retry_read_one_line_from_journal(
+    testname: &str,
+    prefix: Option<&str>,
+) -> HashMap<String, Field> {
     retry(|| {
-        let mut messages = read_from_journal(testname);
+        let mut messages = read_from_journal(testname, prefix);
         if messages.len() == 1 {
             Ok(messages.pop().unwrap())
         } else {
@@ -162,7 +170,7 @@ fn simple_message() {
     with_journald(|| {
         info!(test.name = "simple_message", "Hello World");
 
-        let message = retry_read_one_line_from_journal("simple_message");
+        let message = retry_read_one_line_from_journal("simple_message", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
     });
@@ -173,7 +181,7 @@ fn multiline_message() {
     with_journald(|| {
         warn!(test.name = "multiline_message", "Hello\nMultiline\nWorld");
 
-        let message = retry_read_one_line_from_journal("multiline_message");
+        let message = retry_read_one_line_from_journal("multiline_message", None);
         assert_eq!(message["MESSAGE"], "Hello\nMultiline\nWorld");
         assert_eq!(message["PRIORITY"], "4");
     });
@@ -187,7 +195,7 @@ fn multiline_message_trailing_newline() {
             "A trailing newline\n"
         );
 
-        let message = retry_read_one_line_from_journal("multiline_message_trailing_newline");
+        let message = retry_read_one_line_from_journal("multiline_message_trailing_newline", None);
         assert_eq!(message["MESSAGE"], "A trailing newline\n");
         assert_eq!(message["PRIORITY"], "3");
     });
@@ -198,7 +206,7 @@ fn internal_null_byte() {
     with_journald(|| {
         debug!(test.name = "internal_null_byte", "An internal\x00byte");
 
-        let message = retry_read_one_line_from_journal("internal_null_byte");
+        let message = retry_read_one_line_from_journal("internal_null_byte", None);
         assert_eq!(message["MESSAGE"], b"An internal\x00byte"[..]);
         assert_eq!(message["PRIORITY"], "6");
     });
@@ -210,7 +218,7 @@ fn large_message() {
     with_journald(|| {
         debug!(test.name = "large_message", "Message: {}", large_string);
 
-        let message = retry_read_one_line_from_journal("large_message");
+        let message = retry_read_one_line_from_journal("large_message", None);
         assert_eq!(
             message["MESSAGE"],
             format!("Message: {}", large_string).as_str()
@@ -228,7 +236,7 @@ fn simple_metadata() {
     with_journald_layer(sub, || {
         info!(test.name = "simple_metadata", "Hello World");
 
-        let message = retry_read_one_line_from_journal("simple_metadata");
+        let message = retry_read_one_line_from_journal("simple_metadata", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
@@ -248,7 +256,7 @@ fn journal_fields() {
     with_journald_layer(sub, || {
         info!(test.name = "journal_fields", "Hello World");
 
-        let message = retry_read_one_line_from_journal("journal_fields");
+        let message = retry_read_one_line_from_journal("journal_fields", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
@@ -268,7 +276,7 @@ fn span_metadata() {
 
         info!(test.name = "span_metadata", "Hello World");
 
-        let message = retry_read_one_line_from_journal("span_metadata");
+        let message = retry_read_one_line_from_journal("span_metadata", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
@@ -294,7 +302,7 @@ fn multiple_spans_metadata() {
 
         info!(test.name = "multiple_spans_metadata", "Hello World");
 
-        let message = retry_read_one_line_from_journal("multiple_spans_metadata");
+        let message = retry_read_one_line_from_journal("multiple_spans_metadata", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["PRIORITY"], "5");
         assert_eq!(message["TARGET"], "journal");
@@ -324,10 +332,42 @@ fn spans_field_collision() {
             "Hello World"
         );
 
-        let message = retry_read_one_line_from_journal("spans_field_collision");
+        let message = retry_read_one_line_from_journal("spans_field_collision", None);
         assert_eq!(message["MESSAGE"], "Hello World");
         assert_eq!(message["SPAN_NAME"], vec!["span1", "span2"]);
 
         assert_eq!(message["SPAN_FIELD"], vec!["foo1", "foo2", "foo3"]);
+    });
+}
+
+#[test]
+fn prefix_custom_fields() {
+    let layer = Layer::new()
+        .unwrap()
+        .with_field_prefix(Some("PRE".to_string()));
+    with_journald_layer(layer, || {
+        info!(bar = "foo", test.name = "prefix_test", "Hello World");
+
+        let message = retry_read_one_line_from_journal("prefix_test", Some("PRE"));
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["PRE_BAR"], "foo");
+    });
+}
+
+#[test]
+fn do_not_prefix_field_message_id() {
+    let layer = Layer::new()
+        .unwrap()
+        .with_field_prefix(Some("PRE".to_string()));
+    with_journald_layer(layer, || {
+        info!(
+            message_id = "68228769143b4a0a946f9ad3bca57b20",
+            test.name = "no_prefix_test",
+            "Hello World"
+        );
+
+        let message = retry_read_one_line_from_journal("no_prefix_test", Some("PRE"));
+        assert_eq!(message["MESSAGE"], "Hello World");
+        assert_eq!(message["MESSAGE_ID"], "68228769143b4a0a946f9ad3bca57b20");
     });
 }
