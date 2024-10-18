@@ -53,6 +53,8 @@ mod memfd;
 #[cfg(target_os = "linux")]
 mod socket;
 
+static FIELDS_NOT_PREFIXED: [&str; 2] = ["message", "message_id"];
+
 /// Sends events and their fields to journald
 ///
 /// [journald conventions] for structured field names differ from typical tracing idioms, and journald
@@ -74,8 +76,8 @@ mod socket;
 /// For events recorded inside spans, an additional `SPAN_NAME` field is emitted with the name of
 /// each of the event's parent spans.
 ///
-/// User-defined fields other than the event `message` field have a prefix applied by default to
-/// prevent collision with standard fields.
+/// User-defined fields other than the event `message` and `message_id` fields have a prefix applied
+/// by default to prevent collision with standard fields.
 ///
 /// [journald conventions]: https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
 pub struct Layer {
@@ -123,7 +125,7 @@ impl Layer {
     }
 
     /// Sets the prefix to apply to names of user-defined fields other than the event `message`
-    /// field. Defaults to `Some("F")`.
+    /// and `message_id` fields. Defaults to `Some("F")`.
     pub fn with_field_prefix(mut self, x: Option<String>) -> Self {
         self.field_prefix = x;
         self
@@ -349,8 +351,8 @@ impl<'a> EventVisitor<'a> {
 
     fn put_prefix(&mut self, field: &Field) {
         if let Some(prefix) = self.prefix {
-            if field.name() != "message" {
-                // message maps to the standard MESSAGE field so don't prefix it
+            if !FIELDS_NOT_PREFIXED.contains(&field.name()) {
+                // message maps to the standard MESSAGE or MESSAGE_ID field so don't prefix it
                 self.buf.extend_from_slice(prefix.as_bytes());
                 self.buf.push(b'_');
             }
