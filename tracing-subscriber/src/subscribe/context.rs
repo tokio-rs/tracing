@@ -30,8 +30,8 @@ use crate::{filter::FilterId, registry::Registry};
 /// [stored data]: ../registry/struct.SpanRef.html
 /// [`LookupSpan`]: "../registry/trait.LookupSpan.html
 #[derive(Debug)]
-pub struct Context<'a, S> {
-    subscriber: Option<&'a S>,
+pub struct Context<'a, C> {
+    collector: Option<&'a C>,
     /// The bitmask of all [`Filtered`] subscribers that currently apply in this
     /// context. If there is only a single [`Filtered`] wrapping the subscriber that
     /// produced this context, then this is that filter's ID. Otherwise, if we
@@ -52,9 +52,9 @@ impl<'a, C> Context<'a, C>
 where
     C: Collect,
 {
-    pub(super) fn new(subscriber: &'a C) -> Self {
+    pub(super) fn new(collector: &'a C) -> Self {
         Self {
-            subscriber: Some(subscriber),
+            collector: Some(collector),
 
             #[cfg(feature = "registry")]
             filter: FilterId::none(),
@@ -64,7 +64,7 @@ where
     /// Returns the wrapped collector's view of the current span.
     #[inline]
     pub fn current_span(&self) -> span::Current {
-        self.subscriber
+        self.collector
             .map(Collect::current_span)
             // TODO: this would be more correct as "unknown", so perhaps
             // `tracing-core` should make `Current::unknown()` public?
@@ -74,8 +74,8 @@ where
     /// Returns whether the wrapped collector would enable the current span.
     #[inline]
     pub fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.subscriber
-            .map(|subscriber| subscriber.enabled(metadata))
+        self.collector
+            .map(|collector| collector.enabled(metadata))
             // If this context is `None`, we are registering a callsite, so
             // return `true` so that the subscriber does not incorrectly assume that
             // the inner subscriber has disabled this metadata.
@@ -104,8 +104,8 @@ where
     /// [`Context::enabled`]: #method.enabled
     #[inline]
     pub fn event(&self, event: &Event<'_>) {
-        if let Some(subscriber) = self.subscriber {
-            subscriber.event(event);
+        if let Some(collector) = self.collector {
+            collector.event(event);
         }
     }
 
@@ -212,7 +212,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let span = self.subscriber.as_ref()?.span(id)?;
+        let span = self.collector.as_ref()?.span(id)?;
 
         #[cfg(all(feature = "registry", feature = "std"))]
         return span.try_with_filter(self.filter);
@@ -235,7 +235,7 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        self.subscriber.as_ref().and_then(|s| s.span(id)).is_some()
+        self.collector.as_ref().and_then(|s| s.span(id)).is_some()
     }
 
     /// Returns [stored data] for the span that the wrapped collector considers
@@ -257,13 +257,13 @@ where
     where
         C: for<'lookup> LookupSpan<'lookup>,
     {
-        let subscriber = *self.subscriber.as_ref()?;
-        let current = subscriber.current_span();
+        let collector = *self.collector.as_ref()?;
+        let current = collector.current_span();
         let id = current.id()?;
-        let span = subscriber.span(id);
+        let span = collector.span(id);
         debug_assert!(
             span.is_some(),
-            "the subscriber should have data for the current span ({:?})!",
+            "the collector should have data for the current span ({:?})!",
             id,
         );
 
@@ -283,7 +283,7 @@ where
                 //
                 // TODO(eliza): when https://github.com/tokio-rs/tracing/issues/1459 is
                 // implemented, change this to use that instead...
-                self.lookup_current_filtered(subscriber)
+                self.lookup_current_filtered(collector)
             }
         }
 
@@ -301,16 +301,16 @@ where
     #[cfg(all(feature = "registry", feature = "std"))]
     fn lookup_current_filtered<'lookup>(
         &self,
-        subscriber: &'lookup C,
+        collector: &'lookup C,
     ) -> Option<registry::SpanRef<'lookup, C>>
     where
         C: LookupSpan<'lookup>,
     {
-        let registry = (subscriber as &dyn Collect).downcast_ref::<Registry>()?;
+        let registry = (collector as &dyn Collect).downcast_ref::<Registry>()?;
         registry
             .span_stack()
             .iter()
-            .find_map(|id| subscriber.span(id)?.try_with_filter(self.filter))
+            .find_map(|id| collector.span(id)?.try_with_filter(self.filter))
     }
 
     /// Returns an iterator over the [stored data] for all the spans in the
@@ -415,10 +415,10 @@ where
     }
 }
 
-impl<'a, S> Context<'a, S> {
+impl<'a, C> Context<'a, C> {
     pub(crate) fn none() -> Self {
         Self {
-            subscriber: None,
+            collector: None,
 
             #[cfg(feature = "registry")]
             filter: FilterId::none(),
@@ -429,9 +429,9 @@ impl<'a, S> Context<'a, S> {
 impl<'a, S> Clone for Context<'a, S> {
     #[inline]
     fn clone(&self) -> Self {
-        let subscriber = self.subscriber.as_ref().copied();
+        let collector = self.collector.as_ref().copied();
         Context {
-            subscriber,
+            collector,
 
             #[cfg(all(feature = "registry", feature = "std"))]
             filter: self.filter,
