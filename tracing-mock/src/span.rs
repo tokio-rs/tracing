@@ -18,8 +18,8 @@
 //!     .at_level(tracing::Level::INFO);
 //!
 //! let (subscriber, handle) = subscriber::mock()
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::subscriber::with_default(subscriber, || {
@@ -30,6 +30,25 @@
 //! handle.assert_finished();
 //! ```
 //!
+//! Instead of passing an `ExpectedSpan`, the subscriber methods will also accept
+//! anything that implements `Into<String>` which is shorthand for
+//! `expect::span().named(name)`.
+//!
+//! ```
+//! use tracing_mock::subscriber;
+//!
+//! let (subscriber, handle) = subscriber::mock()
+//!     .enter("interesting_span")
+//!     .run_with_handle();
+//!
+//! tracing::subscriber::with_default(subscriber, || {
+//!    let span = tracing::info_span!("interesting_span");
+//!     let _guard = span.enter();
+//! });
+//!
+//! handle.assert_finished();
+//! ```
+//
 //! The following example asserts the name, level, parent, and fields of the span:
 //!
 //! ```
@@ -44,10 +63,10 @@
 //!     .with_ancestry(expect::has_explicit_parent("parent_span"));
 //!
 //! let (subscriber, handle) = subscriber::mock()
-//!     .new_span(expect::span().named("parent_span"))
+//!     .new_span("parent_span")
 //!     .new_span(new_span)
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::subscriber::with_default(subscriber, || {
@@ -75,8 +94,8 @@
 //!     .at_level(tracing::Level::INFO);
 //!
 //! let (subscriber, handle) = subscriber::mock()
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::subscriber::with_default(subscriber, || {
@@ -113,6 +132,27 @@ use std::{
 pub struct ExpectedSpan {
     pub(crate) id: Option<ExpectedId>,
     pub(crate) metadata: ExpectedMetadata,
+}
+
+impl<I> From<I> for ExpectedSpan
+where
+    I: Into<String>,
+{
+    fn from(name: I) -> Self {
+        ExpectedSpan::default().named(name)
+    }
+}
+
+impl From<&ExpectedId> for ExpectedSpan {
+    fn from(id: &ExpectedId) -> Self {
+        ExpectedSpan::default().with_id(id.clone())
+    }
+}
+
+impl From<&ExpectedSpan> for ExpectedSpan {
+    fn from(span: &ExpectedSpan) -> Self {
+        span.clone()
+    }
 }
 
 /// A mock new span.
@@ -166,7 +206,8 @@ pub struct ExpectedId {
 impl ExpectedSpan {
     /// Sets a name to expect when matching a span.
     ///
-    /// If an event is recorded with a name that differs from the one provided to this method, the expectation will fail.
+    /// If an event is recorded with a name that differs from the one provided to this method, the
+    /// expectation will fail.
     ///
     /// # Examples
     ///
@@ -177,6 +218,25 @@ impl ExpectedSpan {
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .enter(span)
+    ///     .run_with_handle();
+    ///
+    /// tracing::subscriber::with_default(subscriber, || {
+    ///     let span = tracing::info_span!("span name");
+    ///     let _guard = span.enter();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// If only the name of the span needs to be validated, then
+    /// instead of using the `named` method, a string can be passed
+    /// to the [`MockCollector`] functions directly.
+    ///
+    /// ```
+    /// use tracing_mock::subscriber;
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .enter("span name")
     ///     .run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
@@ -205,6 +265,8 @@ impl ExpectedSpan {
     ///
     /// handle.assert_finished();
     /// ```
+    ///
+    /// [`MockCollector`]: struct@crate::subscriber::MockCollector
     pub fn named<I>(self, name: I) -> Self
     where
         I: Into<String>,
@@ -247,10 +309,41 @@ impl ExpectedSpan {
     /// let span2 = expect::span().named("span").with_id(id2.clone());
     ///
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(span1.clone())
-    ///     .new_span(span2.clone())
-    ///     .enter(span2)
-    ///     .enter(span1)
+    ///     .new_span(&span1)
+    ///     .new_span(&span2)
+    ///     .enter(&span2)
+    ///     .enter(&span1)
+    ///     .run_with_handle();
+    ///
+    /// tracing::subscriber::with_default(subscriber, || {
+    ///     fn create_span() -> tracing::Span {
+    ///         tracing::info_span!("span")
+    ///     }
+    ///
+    ///     let span1 = create_span();
+    ///     let span2 = create_span();
+    ///
+    ///     let _guard2 = span2.enter();
+    ///     let _guard1 = span1.enter();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// Since `ExpectedId` implements `Into<ExpectedSpan>`, in cases where
+    /// only checking on Id is desired, a shorthand version of the previous
+    /// example can be used.
+    ///
+    /// ```
+    /// use tracing_mock::{subscriber, expect};
+    /// let id1 = expect::id();
+    /// let id2 = expect::id();
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .new_span(&id1)
+    ///     .new_span(&id2)
+    ///     .enter(&id2)
+    ///     .enter(&id1)
     ///     .run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
@@ -279,10 +372,10 @@ impl ExpectedSpan {
     /// let span2 = expect::span().named("span").with_id(id2.clone());
     ///
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(span1.clone())
-    ///     .new_span(span2.clone())
-    ///     .enter(span2)
-    ///     .enter(span1)
+    ///     .new_span(&span1)
+    ///     .new_span(&span2)
+    ///     .enter(&span2)
+    ///     .enter(&span1)
     ///     .run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
@@ -496,34 +589,14 @@ impl ExpectedSpan {
     ///     .with_ancestry(expect::has_explicit_parent("parent_span"));
     ///
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(parent_span.clone())
-    ///     .enter(parent_span)
+    ///     .new_span(&parent_span)
+    ///     .enter(&parent_span)
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
     ///     let parent = tracing::info_span!("parent_span");
     ///     let _guard = parent.enter();
-    ///     tracing::info_span!("span");
-    /// });
-    ///
-    /// handle.assert_finished();
-    /// ```
-    ///
-    /// In the following example, we expect that the matched span is
-    /// a contextually-determined root:
-    ///
-    /// ```
-    /// use tracing_mock::{subscriber, expect};
-    ///
-    /// let span = expect::span()
-    ///     .with_ancestry(expect::is_contextual_root());
-    ///
-    /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(span)
-    ///     .run_with_handle();
-    ///
-    /// tracing::subscriber::with_default(subscriber, || {
     ///     tracing::info_span!("span");
     /// });
     ///
@@ -562,8 +635,8 @@ impl ExpectedSpan {
     ///     .with_ancestry(expect::has_explicit_parent("parent_span"));
     ///
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .new_span(parent_span.clone())
-    ///     .enter(parent_span)
+    ///     .new_span(&parent_span)
+    ///     .enter(&parent_span)
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
@@ -719,10 +792,13 @@ impl fmt::Display for ExpectedSpan {
     }
 }
 
-impl From<ExpectedSpan> for NewSpan {
-    fn from(span: ExpectedSpan) -> Self {
+impl<S> From<S> for NewSpan
+where
+    S: Into<ExpectedSpan>,
+{
+    fn from(span: S) -> Self {
         Self {
-            span,
+            span: span.into(),
             ..Default::default()
         }
     }
