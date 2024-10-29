@@ -1,5 +1,5 @@
 //! An implementation of the [`Layer`] trait which validates that
-//! the `tracing` data it recieves matches the expected output for a test.
+//! the `tracing` data it receives matches the expected output for a test.
 //!
 //!
 //! The [`MockLayer`] is the central component in these tools. The
@@ -7,7 +7,7 @@
 //! validated as the code under test is run.
 //!
 //! ```
-//! use tracing_mock::{expect, field, layer};
+//! use tracing_mock::{expect, layer};
 //! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 //!
 //! let (layer, handle) = layer::mock()
@@ -40,11 +40,11 @@
 //!     .named("my_span");
 //! let (layer, handle) = layer::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
-//!     .exit(span)
+//!     .exit(&span)
 //!     // Expect no further messages to be recorded
 //!     .only()
 //!     // Return the layer and handle
@@ -75,18 +75,18 @@
 //! span before recording an event, the test will fail:
 //!
 //! ```should_panic
-//! use tracing_mock::{expect, field, layer};
+//! use tracing_mock::{expect, layer};
 //! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};  
 //!
 //! let span = expect::span()
 //!     .named("my_span");
 //! let (layer, handle) = layer::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
-//!     .exit(span)
+//!     .exit(&span)
 //!     // Expect no further messages to be recorded
 //!     .only()
 //!     // Return the subscriber and handle
@@ -146,18 +146,18 @@ use std::{
 /// # Examples
 ///
 /// ```
-/// use tracing_mock::{expect, field, layer};
+/// use tracing_mock::{expect, layer};
 /// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 ///
 /// let span = expect::span()
 ///     .named("my_span");
 /// let (layer, handle) = layer::mock()
 ///     // Enter a matching span
-///     .enter(span.clone())
+///     .enter(&span)
 ///     // Record an event with message "collect parting message"
 ///     .event(expect::event().with_fields(expect::message("say hello")))
 ///     // Exit a matching span
-///     .exit(span)
+///     .exit(&span)
 ///     // Expect no further messages to be recorded
 ///     .only()
 ///     // Return the subscriber and handle
@@ -414,7 +414,7 @@ impl MockLayerBuilder {
     ///
     /// This function accepts `Into<NewSpan>` instead of
     /// [`ExpectedSpan`] directly. [`NewSpan`] can be used to test
-    /// span fields and the span parent.
+    /// span fields and the span ancestry.
     ///
     /// The new span doesn't need to be entered for this expectation
     /// to succeed.
@@ -504,8 +504,8 @@ impl MockLayerBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (layer, handle) = layer::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -532,8 +532,8 @@ impl MockLayerBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (layer, handle) = layer::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -552,8 +552,11 @@ impl MockLayerBuilder {
     ///
     /// [`exit`]: fn@Self::exit
     /// [`only`]: fn@Self::only
-    pub fn enter(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
+    pub fn enter<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Enter(span.into()));
         self
     }
 
@@ -581,8 +584,8 @@ impl MockLayerBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (layer, handle) = layer::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -608,8 +611,8 @@ impl MockLayerBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (layer, handle) = layer::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -629,8 +632,11 @@ impl MockLayerBuilder {
     /// [`enter`]: fn@Self::enter
     /// [`MockHandle::assert_finished`]: fn@crate::subscriber::MockHandle::assert_finished
     /// [`Span::enter`]: fn@tracing::Span::enter
-    pub fn exit(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
+    pub fn exit<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Exit(span.into()));
         self
     }
 
