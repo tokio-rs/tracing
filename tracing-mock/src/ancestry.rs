@@ -1,6 +1,6 @@
 //! Define the ancestry of an event or span.
 //!
-//! See the documentation on the [`Ancestry`] enum for further details.
+//! See the documentation on the [`ExpectedAncestry`] enum for further details.
 
 use tracing_core::{
     span::{self, Attributes},

@@ -547,9 +547,10 @@ impl ExpectedSpan {
         }
     }
 
-    /// Configures this `ExpectedSpan` to expect the specified [`Ancestry`]. A
-    /// span's ancestry indicates whether it has a parent or is a root span
-    /// and whether the parent is explitly or contextually assigned.
+    /// Configures this `ExpectedSpan` to expect the specified
+    /// [`ExpectedAncestry`]. A span's ancestry indicates whether it has a
+    /// parent or is a root span and whether the parent is explitly or
+    /// contextually assigned.
     ///
     /// **Note**: This method returns a [`NewSpan`] and as such, this
     /// expectation can only be validated when expecting a new span via
@@ -877,8 +878,8 @@ where
 }
 
 impl NewSpan {
-    /// Configures this `NewSpan` to expect the specified [`Ancestry`]. A
-    /// span's ancestry indicates whether it has a parent or is a root span
+    /// Configures this `NewSpan` to expect the specified [`ExpectedAncestry`].
+    /// A span's ancestry indicates whether it has a parent or is a root span
     /// and whether the parent is explitly or contextually assigned.
     ///
     /// For more information and examples, see the documentation on

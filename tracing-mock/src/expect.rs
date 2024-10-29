@@ -71,23 +71,23 @@ pub fn id() -> ExpectedId {
     ExpectedId::new_unset()
 }
 
-/// Convenience function that returns [`Ancestry::IsContextualRoot`].
+/// Convenience function that returns [`ExpectedAncestry::IsContextualRoot`].
 pub fn is_contextual_root() -> ExpectedAncestry {
     ExpectedAncestry::IsContextualRoot
 }
 
-/// Convenience function that returns [`Ancestry::HasContextualParent`] with
+/// Convenience function that returns [`ExpectedAncestry::HasContextualParent`] with
 /// provided name.
 pub fn has_contextual_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
     ExpectedAncestry::HasContextualParent(span.into())
 }
 
-/// Convenience function that returns [`Ancestry::IsExplicitRoot`].
+/// Convenience function that returns [`ExpectedAncestry::IsExplicitRoot`].
 pub fn is_explicit_root() -> ExpectedAncestry {
     ExpectedAncestry::IsExplicitRoot
 }
 
-/// Convenience function that returns [`Ancestry::HasExplicitParent`] with
+/// Convenience function that returns [`ExpectedAncestry::HasExplicitParent`] with
 /// provided name.
 pub fn has_explicit_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
     ExpectedAncestry::HasExplicitParent(span.into())

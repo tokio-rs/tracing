@@ -258,9 +258,10 @@ impl ExpectedEvent {
         }
     }
 
-    /// Configures this `ExpectedEvent` to expect the specified [`Ancestry`].
-    /// An event's ancestry indicates whether is has a parent or is a root, and
-    /// whether the parent is explicitly or contextually assigned.
+    /// Configures this `ExpectedEvent` to expect the specified
+    /// [`ExpectedAncestry`]. An event's ancestry indicates whether is has a
+    /// parent or is a root, and whether the parent is explicitly or
+    /// contextually assigned.
     ///
     /// An _explicit_ parent span is one passed to the `event!` macro in the
     /// `parent:` field. If no `parent:` field is specified, then the event
