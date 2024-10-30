@@ -1,3 +1,9 @@
+# 0.1.28 (Unreleased)
+
+### Fixed
+
+- Globally qualify attribute paths to avoid ambiguities ([#3119])
+
 # 0.1.27 (October 13, 2023)
 
 ### Changed

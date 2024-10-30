@@ -199,7 +199,7 @@ fn gen_block<B: ToTokens>(
             })
             .map(|(user_name, (real_name, record_type))| match record_type {
                 RecordType::Value => quote!(#user_name = #real_name),
-                RecordType::Debug => quote!(#user_name = tracing::field::debug(&#real_name)),
+                RecordType::Debug => quote!(#user_name = ::tracing::field::debug(&#real_name)),
             })
             .collect();
 
@@ -223,7 +223,7 @@ fn gen_block<B: ToTokens>(
 
         let custom_fields = &args.fields;
 
-        quote!(tracing::span!(
+        quote!(::tracing::span!(
             target: #target,
             #(parent: #parent,)*
             #level,
@@ -241,10 +241,10 @@ fn gen_block<B: ToTokens>(
             let level_tokens = event_args.level(Level::Error);
             match event_args.mode {
                 FormatMode::Default | FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = %e)
+                    ::tracing::event!(target: #target, #level_tokens, error = %e)
                 )),
                 FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, error = ?e)
+                    ::tracing::event!(target: #target, #level_tokens, error = ?e)
                 )),
             }
         }
@@ -256,10 +256,10 @@ fn gen_block<B: ToTokens>(
             let level_tokens = event_args.level(args_level);
             match event_args.mode {
                 FormatMode::Display => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = %x)
+                    ::tracing::event!(target: #target, #level_tokens, return = %x)
                 )),
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    tracing::event!(target: #target, #level_tokens, return = ?x)
+                    ::tracing::event!(target: #target, #level_tokens, return = ?x)
                 )),
             }
         }
@@ -320,7 +320,7 @@ fn gen_block<B: ToTokens>(
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
                 #follows_from
-                tracing::Instrument::instrument(
+                ::tracing::Instrument::instrument(
                     __tracing_instrument_future,
                     __tracing_attr_span
                 )
@@ -344,7 +344,7 @@ fn gen_block<B: ToTokens>(
         // regression in case the level is enabled.
         let __tracing_attr_span;
         let __tracing_attr_guard;
-        if tracing::level_enabled!(#level) || tracing::if_log_enabled!(#level, {true} else {false}) {
+        if ::tracing::level_enabled!(#level) || ::tracing::if_log_enabled!(#level, {true} else {false}) {
             __tracing_attr_span = #span;
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
@@ -724,7 +724,7 @@ impl<'block> AsyncInfo<'block> {
                     let async_attrs = &async_expr.attrs;
                     if pinned_box {
                         quote! {
-                            Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                            ::std::boxed::Box::pin(#(#async_attrs) * async move { #instrumented_block })
                         }
                     } else {
                         quote! {
