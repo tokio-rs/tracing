@@ -39,8 +39,8 @@
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Enter a matching span
 //!     .enter(&span)
-//!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("collect parting message")))
+//!     // Record an event with message "subscriber parting message"
+//!     .event(expect::event().with_fields(expect::message("subscriber parting message")))
 //!     // Record a value for the field `parting` on a matching span
 //!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
@@ -60,7 +60,7 @@
 //!     );
 //!
 //!     let _guard = span.enter();
-//!     tracing::info!("collect parting message");
+//!     tracing::info!("subscriber parting message");
 //!     let parting = "goodbye world!";
 //!
 //!     span.record("parting", &parting);
@@ -80,9 +80,8 @@
 //! let span = expect::span()
 //!     .named("my_span");
 //! let (subscriber, handle) = subscriber::mock()
-//!     // Enter a matching span
 //!     .enter(&span)
-//!     .event(expect::event().with_fields(expect::message("collect parting message")))
+//!     .event(expect::event().with_fields(expect::message("subscriber parting message")))
 //!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
@@ -99,7 +98,7 @@
 //!
 //!     // Don't enter the span.
 //!     // let _guard = span.enter();
-//!     tracing::info!("collect parting message");
+//!     tracing::info!("subscriber parting message");
 //!     let parting = "goodbye world!";
 //!
 //!     span.record("parting", &parting);
@@ -117,7 +116,7 @@
 //! [main] expected to enter a span named `my_span`
 //! [main] but instead observed event Event {
 //!     fields: ValueSet {
-//!         message: collect parting message,
+//!         message: subscriber parting message,
 //!         callsite: Identifier(0x10eda3278),
 //!     },
 //!     metadata: Metadata {
@@ -143,7 +142,7 @@ use crate::{
     event::ExpectedEvent,
     expect::Expect,
     field::ExpectedFields,
-    span::{ExpectedSpan, NewSpan},
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -161,19 +160,15 @@ use tracing::{
 };
 
 pub(crate) struct SpanState {
-    id: u64,
+    id: Id,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
 }
 
-impl SpanState {
-    pub(crate) fn id(&self) -> u64 {
-        self.id
-    }
-
-    pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
-        self.meta
+impl From<&SpanState> for ActualSpan {
+    fn from(span_state: &SpanState) -> Self {
+        Self::new(span_state.id.clone(), Some(span_state.meta))
     }
 }
 
@@ -227,8 +222,8 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 /// let (subscriber, handle) = subscriber::mock()
 ///     // Enter a matching span
 ///     .enter(&span)
-///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(expect::message("collect parting message")))
+///     // Record an event with message "subscriber parting message"
+///     .event(expect::event().with_fields(expect::message("subscriber parting message")))
 ///     // Record a value for the field `parting` on a matching span
 ///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
@@ -248,7 +243,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     );
 ///
 ///     let _guard = span.enter();
-///     tracing::info!("collect parting message");
+///     tracing::info!("subscriber parting message");
 ///     let parting = "goodbye world!";
 ///
 ///     span.record("parting", &parting);
@@ -394,7 +389,7 @@ where
     /// This function accepts `Into<NewSpan>` instead of
     /// [`ExpectedSpan`] directly, so it can be used to test
     /// span fields and the span parent. This is because a
-    /// collector only receives the span fields and parent when
+    /// subscriber only receives the span fields and parent when
     /// a span is created, not when it is entered.
     ///
     /// The new span doesn't need to be entered for this expectation
@@ -1057,7 +1052,7 @@ where
                 {
                     if expected.scope_mut().is_some() {
                         unimplemented!(
-                            "Expected scope for events is not supported with `MockCollector`."
+                            "Expected scope for events is not supported with `MockSubscriber`."
                         )
                     }
                 }
@@ -1070,7 +1065,7 @@ where
                                 .lock()
                                 .unwrap()
                                 .get(span_id)
-                                .map(|span| span.name)
+                                .map(|span| span.into())
                         },
                     )
                 };
@@ -1141,7 +1136,7 @@ where
                         get_ancestry(
                             span,
                             || self.lookup_current(),
-                            |span_id| spans.get(span_id).map(|span| span.name),
+                            |span_id| spans.get(span_id).map(|span| span.into()),
                         )
                     },
                     &self.name,
@@ -1151,7 +1146,7 @@ where
         spans.insert(
             id.clone(),
             SpanState {
-                id: id.into_u64(),
+                id: id.clone(),
                 name: meta.name(),
                 refs: 1,
                 meta,
@@ -1167,7 +1162,7 @@ where
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
-                    expected_span.check(span, &self.name);
+                    expected_span.check(&span.into(), "to enter a span", &self.name);
                 }
                 Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
@@ -1190,7 +1185,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                expected_span.check(span, &self.name);
+                expected_span.check(&span.into(), "to exit a span", &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -1206,27 +1201,34 @@ where
     }
 
     fn clone_span(&self, id: &Id) -> Id {
-        let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
-            let name = span.name;
-            println!(
-                "[{}] clone_span: {}; id={:?}; refs={:?};",
-                self.name, name, id, span.refs
-            );
-            span.refs += 1;
-            name
-        });
-        if name.is_none() {
-            println!("[{}] clone_span: id={:?};", self.name, id);
+        let mut spans = self.spans.lock().unwrap();
+        let mut span = spans.get_mut(id);
+        match span.as_deref_mut() {
+            Some(span) => {
+                println!(
+                    "[{}] clone_span: {}; id={:?}; refs={:?};",
+                    self.name, span.name, id, span.refs,
+                );
+                span.refs += 1;
+            }
+            None => {
+                println!(
+                    "[{}] clone_span: id={:?} (not found in span list);",
+                    self.name, id
+                );
+            }
         }
+
         let mut expected = self.expected.lock().unwrap();
-        let was_expected = if let Some(Expect::CloneSpan(ref span)) = expected.front() {
-            assert_eq!(
-                name,
-                span.name(),
-                "[{}] expected to clone a span named {:?}",
-                self.name,
-                span.name()
-            );
+        let was_expected = if let Some(Expect::CloneSpan(ref expected_span)) = expected.front() {
+            match span {
+                Some(actual_span) => {
+                    let actual_span: &_ = actual_span;
+                    expected_span.check(&actual_span.into(), "to clone a span", &self.name);
+                }
+                // Check only by Id
+                None => expected_span.check(&id.into(), "to clone a span", &self.name),
+            }
             true
         } else {
             false
