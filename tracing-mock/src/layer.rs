@@ -116,10 +116,10 @@
 //!
 //! [`Layer`]: trait@tracing_subscriber::layer::Layer
 use crate::{
-    ancestry::{get_ancestry, Ancestry, HasAncestry},
+    ancestry::{get_ancestry, ActualAncestry, HasAncestry},
     event::ExpectedEvent,
     expect::Expect,
-    span::{ExpectedSpan, NewSpan},
+    span::{ActualSpan, ExpectedSpan, NewSpan},
     subscriber::MockHandle,
 };
 use tracing_core::{
@@ -778,66 +778,16 @@ impl MockLayerBuilder {
     }
 }
 
-impl MockLayer {
-    fn check_span_ref<'spans, S>(
-        &self,
-        expected: &ExpectedSpan,
-        actual: &SpanRef<'spans, S>,
-        what_happened: impl fmt::Display,
-    ) where
-        S: LookupSpan<'spans>,
-    {
-        if let Some(exp_name) = expected.name() {
-            assert_eq!(
-                actual.name(),
-                exp_name,
-                "\n[{}] expected {} a span named {:?}\n\
-                 [{}] but it was named {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_name,
-                self.name,
-                actual.name(),
-                actual.name(),
-                actual.id()
-            );
-        }
-
-        if let Some(exp_level) = expected.level() {
-            let actual_level = actual.metadata().level();
-            assert_eq!(
-                actual_level,
-                &exp_level,
-                "\n[{}] expected {} a span at {:?}\n\
-                 [{}] but it was at {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_level,
-                self.name,
-                actual_level,
-                actual.name(),
-                actual.id(),
-            );
-        }
-
-        if let Some(exp_target) = expected.target() {
-            let actual_target = actual.metadata().target();
-            assert_eq!(
-                actual_target,
-                exp_target,
-                "\n[{}] expected {} a span with target {:?}\n\
-                 [{}] but it had the target {:?} instead (span {} {:?})",
-                self.name,
-                what_happened,
-                exp_target,
-                self.name,
-                actual_target,
-                actual.name(),
-                actual.id(),
-            );
-        }
+impl<'a, S> From<&SpanRef<'a, S>> for ActualSpan
+where
+    S: LookupSpan<'a>,
+{
+    fn from(span_ref: &SpanRef<'a, S>) -> Self {
+        Self::new(span_ref.id(), Some(span_ref.metadata()))
     }
+}
 
+impl MockLayer {
     fn check_event_scope<C>(
         &self,
         current_scope: Option<tracing_subscriber::registry::Scope<'_, C>>,
@@ -856,10 +806,10 @@ impl MockLayer {
                 actual.id(),
                 expected
             );
-            self.check_span_ref(
-                expected,
-                &actual,
+            expected.check(
+                &(&actual).into(),
                 format_args!("the {}th span in the event's scope to be", i),
+                &self.name,
             );
             i += 1;
         }
@@ -955,7 +905,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Enter(ref expected_span)) => {
-                self.check_span_ref(expected_span, &span, "to enter");
+                expected_span.check(&(&span).into(), "to enter", &self.name);
             }
             Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name())),
         }
@@ -976,7 +926,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                self.check_span_ref(expected_span, &span, "to exit");
+                expected_span.check(&(&span).into(), "to exit", &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -1013,7 +963,7 @@ where
                     // as failing the assertion can cause a double panic.
                     if !::std::thread::panicking() {
                         if let Some(ref span) = span {
-                            self.check_span_ref(expected_span, span, "to close");
+                            expected_span.check(&span.into(), "to close a span", &self.name);
                         }
                     }
                     true
@@ -1042,14 +992,14 @@ where
     }
 }
 
-fn context_get_ancestry<C>(item: impl HasAncestry, ctx: &Context<'_, C>) -> Ancestry
+fn context_get_ancestry<C>(item: impl HasAncestry, ctx: &Context<'_, C>) -> ActualAncestry
 where
     C: Subscriber + for<'a> LookupSpan<'a>,
 {
     get_ancestry(
         item,
         || ctx.lookup_current().map(|s| s.id()),
-        |span_id| ctx.span(span_id).map(|span| span.name()),
+        |span_id| ctx.span(span_id).map(|span| (&span).into()),
     )
 }
 
