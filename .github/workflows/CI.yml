@@ -269,8 +269,10 @@ jobs:
         - tracing
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
+    - name: Install Rust 1.81
+      uses: dtolnay/rust-toolchain@stable
       with:
+        toolchain: 1.81
         target: wasm32-unknown-unknown
     - name: install test runner for wasm
       uses: taiki-e/install-action@wasm-pack

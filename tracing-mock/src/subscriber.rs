@@ -40,11 +40,11 @@
 //!     .named("my_span");
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
-//!     .exit(span)
+//!     .exit(&span)
 //!     // Expect no further messages to be recorded
 //!     .only()
 //!     // Return the collector and handle
@@ -82,11 +82,11 @@
 //!     .named("my_span");
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("say hello")))
 //!     // Exit a matching span
-//!     .exit(span)
+//!     .exit(&span)
 //!     // Expect no further messages to be recorded
 //!     .only()
 //!     // Return the collector and handle
@@ -153,11 +153,11 @@ use std::{
 ///     .named("my_span");
 /// let (subscriber, handle) = subscriber::mock()
 ///     // Enter a matching span
-///     .enter(span.clone())
+///     .enter(&span)
 ///     // Record an event with message "collect parting message"
 ///     .event(expect::event().with_fields(expect::message("say hello")))
 ///     // Exit a matching span
-///     .exit(span)
+///     .exit(&span)
 ///     // Expect no further messages to be recorded
 ///     .only()
 ///     // Return the collector and handle
@@ -505,8 +505,8 @@ impl MockSubscriberBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -533,8 +533,8 @@ impl MockSubscriberBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -553,8 +553,11 @@ impl MockSubscriberBuilder {
     ///
     /// [`exit`]: fn@Self::exit
     /// [`only`]: fn@Self::only
-    pub fn enter(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
+    pub fn enter<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Enter(span.into()));
         self
     }
 
@@ -582,8 +585,8 @@ impl MockSubscriberBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -609,8 +612,8 @@ impl MockSubscriberBuilder {
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (subscriber, handle) = subscriber::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -630,8 +633,11 @@ impl MockSubscriberBuilder {
     /// [`enter`]: fn@Self::enter
     /// [`MockHandle::assert_finished`]: fn@crate::collector::MockHandle::assert_finished
     /// [`Span::enter`]: fn@tracing::Span::enter
-    pub fn exit(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
+    pub fn exit<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Exit(span.into()));
         self
     }
 
