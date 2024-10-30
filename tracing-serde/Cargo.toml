@@ -16,7 +16,7 @@ categories = [
     "encoding",
 ]
 keywords = ["logging", "tracing", "serialization"]
-rust-version = "1.49.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["std"]
@@ -31,3 +31,6 @@ serde_json = "1.0.82"
 
 [badges]
 maintenance = { status = "experimental" }
+
+[lints]
+workspace = true

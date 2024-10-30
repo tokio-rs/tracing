@@ -51,7 +51,7 @@ fn override_everything() {
 #[test]
 fn fields() {
     #[instrument(target = "my_target", level = "debug")]
-    fn my_fn(arg1: usize, arg2: bool) {}
+    fn my_fn(arg1: usize, arg2: bool, arg3: String) {}
 
     let span = expect::span()
         .named("my_fn")
@@ -68,6 +68,7 @@ fn fields() {
                 expect::field("arg1")
                     .with_value(&2usize)
                     .and(expect::field("arg2").with_value(&false))
+                    .and(expect::field("arg3").with_value(&"Cool".to_string()))
                     .only(),
             ),
         )
@@ -79,6 +80,7 @@ fn fields() {
                 expect::field("arg1")
                     .with_value(&3usize)
                     .and(expect::field("arg2").with_value(&true))
+                    .and(expect::field("arg3").with_value(&"Still Cool".to_string()))
                     .only(),
             ),
         )
@@ -89,8 +91,8 @@ fn fields() {
         .run_with_handle();
 
     with_default(collector, || {
-        my_fn(2, false);
-        my_fn(3, true);
+        my_fn(2, false, "Cool".to_string());
+        my_fn(3, true, "Still Cool".to_string());
     });
 
     handle.assert_finished();
@@ -98,7 +100,7 @@ fn fields() {
 
 #[test]
 fn skip() {
-    struct UnDebug(pub u32);
+    struct UnDebug();
 
     #[instrument(target = "my_target", level = "debug", skip(_arg2, _arg3))]
     fn my_fn(arg1: usize, _arg2: UnDebug, _arg3: UnDebug) {}
@@ -132,8 +134,8 @@ fn skip() {
         .run_with_handle();
 
     with_default(collector, || {
-        my_fn(2, UnDebug(0), UnDebug(1));
-        my_fn(3, UnDebug(0), UnDebug(1));
+        my_fn(2, UnDebug(), UnDebug());
+        my_fn(3, UnDebug(), UnDebug());
     });
 
     handle.assert_finished();
@@ -232,6 +234,78 @@ fn impl_trait_return_type() {
         for _ in returns_impl_trait(10) {
             // nop
         }
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn name_ident() {
+    const MY_NAME: &str = "my_name";
+    #[instrument(name = MY_NAME)]
+    fn name() {}
+
+    let span_name = expect::span().named(MY_NAME);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_name.clone())
+        .enter(span_name.clone())
+        .exit(span_name.clone())
+        .drop_span(span_name)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        name();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_ident() {
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET)]
+    fn target() {}
+
+    let span_target = expect::span().named("target").with_target(MY_TARGET);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_target.clone())
+        .enter(span_target.clone())
+        .exit(span_target.clone())
+        .drop_span(span_target)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        target();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_name_ident() {
+    const MY_NAME: &str = "my_name";
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET, name = MY_NAME)]
+    fn name_target() {}
+
+    let span_name_target = expect::span().named(MY_NAME).with_target(MY_TARGET);
+
+    let (collector, handle) = collector::mock()
+        .new_span(span_name_target.clone())
+        .enter(span_name_target.clone())
+        .exit(span_name_target.clone())
+        .drop_span(span_name_target)
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        name_target();
     });
 
     handle.assert_finished();

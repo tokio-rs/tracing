@@ -1,5 +1,6 @@
 #![cfg(feature = "registry")]
 mod filter_scopes;
+mod option;
 mod per_event;
 mod targets;
 mod trees;

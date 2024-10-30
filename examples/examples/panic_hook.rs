@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! This example demonstrates how `tracing` events can be recorded from within a
 //! panic hook, capturing the span context in which the program panicked.
 //!
@@ -30,7 +33,7 @@ fn main() {
             // On nightly Rust, where the `PanicInfo` type also exposes a
             // `message()` method returning just the message, we could record
             // just the message instead of the entire `fmt::Display`
-            // implementation, avoiding the duplciated location
+            // implementation, avoiding the duplicated location
             tracing::error!(
                 message = %panic,
                 panic.file = location.file(),

@@ -81,14 +81,14 @@
 //!
 //! [`collector`]: mod@crate::collector
 //! [`expect::field`]: fn@crate::expect::field
+use std::{collections::HashMap, fmt};
+
 use tracing::{
     callsite,
     callsite::Callsite,
     field::{self, Field, Value, Visit},
     metadata::Kind,
 };
-
-use std::{collections::HashMap, fmt};
 
 /// An expectation for multiple fields.
 ///

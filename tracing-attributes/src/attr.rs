@@ -17,8 +17,8 @@ pub(crate) struct EventArgs {
 #[derive(Clone, Default, Debug)]
 pub(crate) struct InstrumentArgs {
     level: Option<Level>,
-    pub(crate) name: Option<LitStr>,
-    target: Option<LitStr>,
+    pub(crate) name: Option<LitStrOrIdent>,
+    target: Option<LitStrOrIdent>,
     pub(crate) parent: Option<Expr>,
     pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
@@ -86,6 +86,8 @@ impl Parse for InstrumentArgs {
                 // XXX: apparently we support names as either named args with an
                 // sign, _or_ as unnamed string literals. That's weird, but
                 // changing it is apparently breaking.
+                // This also means that when using idents for name, it must be via
+                // a named arg, i.e. `#[instrument(name = SOME_IDENT)]`.
                 if args.name.is_some() {
                     return Err(input.error("expected only a single `name` argument"));
                 }
@@ -198,8 +200,32 @@ impl Parse for EventArgs {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(super) enum LitStrOrIdent {
+    LitStr(LitStr),
+    Ident(Ident),
+}
+
+impl ToTokens for LitStrOrIdent {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            LitStrOrIdent::LitStr(target) => target.to_tokens(tokens),
+            LitStrOrIdent::Ident(ident) => ident.to_tokens(tokens),
+        }
+    }
+}
+
+impl Parse for LitStrOrIdent {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        input
+            .parse::<LitStr>()
+            .map(LitStrOrIdent::LitStr)
+            .or_else(|_| input.parse::<Ident>().map(LitStrOrIdent::Ident))
+    }
+}
+
 struct StrArg<T> {
-    value: LitStr,
+    value: LitStrOrIdent,
     _p: std::marker::PhantomData<T>,
 }
 
@@ -239,7 +265,7 @@ impl Parse for Skips {
         let _ = input.parse::<kw::skip>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let names: Punctuated<Ident, Token![,]> = content.parse_terminated(Ident::parse_any)?;
+        let names = content.parse_terminated(Ident::parse_any, Token![,])?;
         let mut skips = HashSet::new();
         for name in names {
             if skips.contains(&name) {
@@ -255,17 +281,12 @@ impl Parse for Skips {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
 pub(crate) enum FormatMode {
+    #[default]
     Default,
     Display,
     Debug,
-}
-
-impl Default for FormatMode {
-    fn default() -> Self {
-        FormatMode::Default
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -290,7 +311,7 @@ impl Parse for Fields {
         let _ = input.parse::<kw::fields>();
         let content;
         let _ = syn::parenthesized!(content in input);
-        let fields: Punctuated<_, Token![,]> = content.parse_terminated(Field::parse)?;
+        let fields = content.parse_terminated(Field::parse, Token![,])?;
         Ok(Self(fields))
     }
 }
@@ -335,7 +356,7 @@ impl ToTokens for Field {
             let name = &self.name;
             let kind = &self.kind;
             tokens.extend(quote! {
-                #name = #kind#value
+                #name = #kind #value
             })
         } else if self.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce

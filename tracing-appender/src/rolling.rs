@@ -10,11 +10,11 @@
 //! The following helpers are available for creating a rolling file appender.
 //!
 //! - [`Rotation::minutely()`][minutely]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH-mm`
-//! will be created minutely (once per minute)
+//!   will be created minutely (once per minute)
 //! - [`Rotation::hourly()`][hourly]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd-HH`
-//! will be created hourly
+//!   will be created hourly
 //! - [`Rotation::daily()`][daily]: A new log file in the format of `some_directory/log_file_name_prefix.yyyy-MM-dd`
-//! will be created daily
+//!   will be created daily
 //! - [`Rotation::never()`][never()]: This will result in log file located at `some_directory/log_file_name`
 //!
 //!
@@ -264,7 +264,7 @@ impl fmt::Debug for RollingFileAppender {
     }
 }
 
-/// Creates a minutely, rolling file appender. This will rotate the log file once per minute.
+/// Creates a minutely-rotating file appender. This will rotate the log file once per minute.
 ///
 /// The appender returned by `rolling::minutely` can be used with `non_blocking` to create
 /// a non-blocking, minutely file appender.
@@ -299,7 +299,7 @@ pub fn minutely(
     RollingFileAppender::new(Rotation::MINUTELY, directory, file_name_prefix)
 }
 
-/// Creates an hourly, rolling file appender.
+/// Creates an hourly-rotating file appender.
 ///
 /// The appender returned by `rolling::hourly` can be used with `non_blocking` to create
 /// a non-blocking, hourly file appender.
@@ -334,7 +334,7 @@ pub fn hourly(
     RollingFileAppender::new(Rotation::HOURLY, directory, file_name_prefix)
 }
 
-/// Creates a file appender that rotates daily.
+/// Creates a daily-rotating file appender.
 ///
 /// The appender returned by `rolling::daily` can be used with `non_blocking` to create
 /// a non-blocking, daily file appender.
@@ -370,13 +370,13 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
-/// Creates a non-rolling, file appender
+/// Creates a non-rolling file appender.
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
 /// a non-blocking, non-rotating appender.
 ///
 /// The location of the log file will be specified the `directory` passed in.
-/// `file_name` specifies the prefix of the log file. No date or time is appended.
+/// `file_name` specifies the complete name of the log file (no date or time is appended).
 ///
 /// # Examples
 ///

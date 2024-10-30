@@ -214,7 +214,7 @@ thread_local! {
     /// track how many subscribers have processed the close.
     /// For additional details, see [`CloseGuard`].
     ///
-    static CLOSE_COUNT: Cell<usize> = Cell::new(0);
+    static CLOSE_COUNT: Cell<usize> = const { Cell::new(0) };
 }
 
 impl Collect for Registry {
@@ -255,7 +255,7 @@ impl Collect for Registry {
                 data.filter_map = crate::filter::FILTERING.with(|filtering| filtering.filter_map());
                 #[cfg(debug_assertions)]
                 {
-                    if data.filter_map != FilterMap::default() {
+                    if data.filter_map != FilterMap::new() {
                         debug_assert!(self.has_per_subscriber_filters());
                     }
                 }
@@ -348,7 +348,7 @@ impl Collect for Registry {
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
+            assert!(refs < usize::MAX, "reference count overflow!");
         }
         if refs > 1 {
             return false;
@@ -477,7 +477,7 @@ impl Default for DataInner {
         };
 
         Self {
-            filter_map: FilterMap::default(),
+            filter_map: FilterMap::new(),
             metadata: &NULL_METADATA,
             parent: None,
             ref_count: AtomicUsize::new(0),
@@ -522,7 +522,7 @@ impl Clear for DataInner {
             })
             .clear();
 
-        self.filter_map = FilterMap::default();
+        self.filter_map = FilterMap::new();
     }
 }
 
@@ -540,10 +540,6 @@ mod tests {
         span::{Attributes, Id},
         Collect,
     };
-
-    #[derive(Debug)]
-    struct DoesNothing;
-    impl<C: Collect> Subscribe<C> for DoesNothing {}
 
     struct AssertionSubscriber;
     impl<C> Subscribe<C> for AssertionSubscriber
@@ -592,6 +588,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)] // Field is exercised via checking `Arc::downgrade()`
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber

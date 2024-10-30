@@ -10,7 +10,7 @@
 //!
 //! let (collector, handle) = collector::mock()
 //!     // Expect an event with message
-//!     .event(expect::event().with_fields(expect::message("message")))
+//!     .event(expect::event().with_fields(expect::msg("message")))
 //!     .only()
 //!     .run_with_handle();
 //!
@@ -20,13 +20,14 @@
 //!
 //! handle.assert_finished();
 //! ```
+use std::fmt;
+
 use crate::{
+    ancestry::ExpectedAncestry,
     event::ExpectedEvent,
     field::{ExpectedField, ExpectedFields, ExpectedValue},
-    span::{ExpectedSpan, NewSpan},
+    span::{ExpectedId, ExpectedSpan, NewSpan},
 };
-
-use std::fmt;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Expect {
@@ -192,10 +193,8 @@ where
 /// Construct a new message [`ExpectedField`].
 ///
 /// For details on how to set the value of the message field and
-/// hwo to expect multiple fields, see the [`field`] module and the
+/// how to expect multiple fields, see the [`field`] module and the
 /// [`ExpectedField`] and [`ExpectedFields`] structs.
-/// span, see the [`span`] module and the [`ExpectedSpan`] and
-/// [`NewSpan`] structs.
 ///
 /// This is equivalent to
 /// `expect::field("message").with_value(message)`.
@@ -206,7 +205,7 @@ where
 /// use tracing_mock::{collector, expect};
 ///
 /// let event = expect::event().with_fields(
-///     expect::message("message"));
+///     expect::msg("message"));
 ///
 /// let (collector, handle) = collector::mock()
 ///     .event(event)
@@ -225,7 +224,7 @@ where
 /// use tracing_mock::{collector, expect};
 ///
 /// let event = expect::event().with_fields(
-///     expect::message("message"));
+///     expect::msg("message"));
 ///
 /// let (collector, handle) = collector::mock()
 ///     .event(event)
@@ -242,6 +241,47 @@ pub fn msg(message: impl fmt::Display) -> ExpectedField {
         name: "message".to_string(),
         value: ExpectedValue::Debug(message.to_string()),
     }
+}
+
+/// Returns a new, unset `ExpectedId`.
+///
+/// The `ExpectedId` needs to be attached to a [`NewSpan`] or an
+/// [`ExpectedSpan`] passed to [`MockCollector::new_span`] to
+/// ensure that it gets set. When the a clone of the same
+/// `ExpectedSpan` is attached to an [`ExpectedSpan`] and passed to
+/// any other method on [`MockCollector`] that accepts it, it will
+/// ensure that it is exactly the same span used across those
+/// distinct expectations.
+///
+/// For more details on how to use this struct, see the documentation
+/// on [`ExpectedSpan::with_id`].
+///
+/// [`MockCollector`]: struct@crate::collector::MockCollector
+/// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
+pub fn id() -> ExpectedId {
+    ExpectedId::new_unset()
+}
+
+/// Convenience function that returns [`ExpectedAncestry::IsContextualRoot`].
+pub fn is_contextual_root() -> ExpectedAncestry {
+    ExpectedAncestry::IsContextualRoot
+}
+
+/// Convenience function that returns [`ExpectedAncestry::HasContextualParent`] with
+/// provided name.
+pub fn has_contextual_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
+    ExpectedAncestry::HasContextualParent(span.into())
+}
+
+/// Convenience function that returns [`ExpectedAncestry::IsExplicitRoot`].
+pub fn is_explicit_root() -> ExpectedAncestry {
+    ExpectedAncestry::IsExplicitRoot
+}
+
+/// Convenience function that returns [`ExpectedAncestry::HasExplicitParent`] with
+/// provided name.
+pub fn has_explicit_parent<S: Into<ExpectedSpan>>(span: S) -> ExpectedAncestry {
+    ExpectedAncestry::HasExplicitParent(span.into())
 }
 
 impl Expect {

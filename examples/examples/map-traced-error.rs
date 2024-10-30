@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! An example on composing errors inside of a `TracedError`, such that the
 //! SpanTrace captured is captured when creating the inner error, but still wraps
 //! the outer error.
@@ -44,7 +47,7 @@ fn do_something() -> Result<(), TracedError<OuterError>> {
 
 #[tracing::instrument]
 fn do_the_real_stuff() -> Result<(), TracedError<InnerError>> {
-    Err(InnerError).map_err(TracedError::from)
+    Err(TracedError::from(InnerError))
 }
 
 #[derive(Debug)]

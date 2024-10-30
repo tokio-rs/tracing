@@ -64,10 +64,13 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // unreachable, but does affect inference, so it needs to be written
     // exactly that way for it to do its magic.
     let fake_return_edge = quote_spanned! {return_span=>
-        #[allow(unreachable_code, clippy::diverging_sub_expression, clippy::let_unit_value, clippy::unreachable)]
+        #[allow(
+            unknown_lints, unreachable_code, clippy::diverging_sub_expression,
+            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore,
+            clippy::empty_loop
+        )]
         if false {
-            let __tracing_attr_fake_return: #return_type =
-                unreachable!("this is just for type inference, and is unreachable code");
+            let __tracing_attr_fake_return: #return_type = loop {};
             return __tracing_attr_fake_return;
         }
     };
@@ -89,7 +92,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     quote!(
         #(#outer_attrs) *
-        #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #output
+        #vis #constness #asyncness #unsafety #abi fn #ident<#gen_params>(#params) #output
         #where_clause
         {
             #(#inner_attrs) *
@@ -274,7 +277,8 @@ fn gen_block<B: ToTokens>(
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    match async move #block.await {
+                    let __match_scrutinee = async move #block.await;
+                    match  __match_scrutinee {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
                             #ret_event;
@@ -340,7 +344,7 @@ fn gen_block<B: ToTokens>(
         // regression in case the level is enabled.
         let __tracing_attr_span;
         let __tracing_attr_guard;
-        if tracing::level_enabled!(#level) {
+        if tracing::level_enabled!(#level) || tracing::if_log_enabled!(#level, {true} else {false}) {
             __tracing_attr_span = #span;
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
@@ -419,10 +423,13 @@ impl RecordType {
         "i32",
         "u64",
         "i64",
+        "u128",
+        "i128",
         "f32",
         "f64",
         "usize",
         "isize",
+        "String",
         "NonZeroU8",
         "NonZeroI8",
         "NonZeroU16",
@@ -431,6 +438,8 @@ impl RecordType {
         "NonZeroI32",
         "NonZeroU64",
         "NonZeroI64",
+        "NonZeroU128",
+        "NonZeroI128",
         "NonZeroUsize",
         "NonZeroIsize",
         "Wrapping",
@@ -477,10 +486,7 @@ fn param_names(pat: Pat, record_type: RecordType) -> Box<dyn Iterator<Item = (Id
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
         ),
-        Pat::TupleStruct(PatTupleStruct {
-            pat: PatTuple { elems, .. },
-            ..
-        }) => Box::new(
+        Pat::TupleStruct(PatTupleStruct { elems, .. }) => Box::new(
             elems
                 .into_iter()
                 .flat_map(|p| param_names(p, RecordType::Debug)),
@@ -564,7 +570,7 @@ impl<'block> AsyncInfo<'block> {
         // last expression of the block: it determines the return value of the
         // block, this is quite likely a `Box::pin` statement or an async block
         let (last_expr_stmt, last_expr) = block.stmts.iter().rev().find_map(|stmt| {
-            if let Stmt::Expr(expr) = stmt {
+            if let Stmt::Expr(expr, _semi) = stmt {
                 Some((stmt, expr))
             } else {
                 None
@@ -790,6 +796,7 @@ impl<'a> VisitMut for IdentAndTypesRenamer<'a> {
 }
 
 // A visitor struct that replace an async block by its patched version
+#[allow(dead_code)]
 struct AsyncTraitBlockReplacer<'a> {
     block: &'a Block,
     patched_block: Block,

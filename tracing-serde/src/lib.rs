@@ -32,7 +32,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting
 //! libraries and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.49+][msrv]*
+//! *Compiler support: [requires `rustc` 1.63+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -71,11 +71,17 @@
 //! use tracing_serde::AsSerde;
 //! use serde_json::json;
 //!
-//! pub struct JsonSubscriber {
+//! pub struct JsonCollector {
 //!     next_id: AtomicUsize, // you need to assign span IDs, so you need a counter
 //! }
 //!
-//! impl Collect for JsonSubscriber {
+//! impl JsonCollector {
+//!     fn new() -> Self {
+//!         Self { next_id: 1.into() }
+//!     }
+//! }
+//!
+//! impl Collect for JsonCollector {
 //!
 //!     fn new_span(&self, attrs: &Attributes<'_>) -> Id {
 //!         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
@@ -97,7 +103,7 @@
 //!     }
 //!
 //!     // ...
-//!     # fn enabled(&self, _: &Metadata<'_>) -> bool { false }
+//!     # fn enabled(&self, _: &Metadata<'_>) -> bool { true }
 //!     # fn enter(&self, _: &Id) {}
 //!     # fn exit(&self, _: &Id) {}
 //!     # fn record(&self, _: &Id, _: &Record<'_>) {}
@@ -107,7 +113,7 @@
 //! ```
 //!
 //! After you implement your `Collector`, you can use your `tracing`
-//! subscriber (`JsonSubscriber` in the above example) to record serialized
+//! collector (`JsonCollector` in the above example) to record serialized
 //! trace data.
 //!
 //! ##  Crate Feature Flags
@@ -128,14 +134,14 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.49. The current Tracing version is not guaranteed to build on
+//! version is 1.63. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
@@ -159,7 +165,8 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
+    private_interfaces,
+    private_bounds,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -187,9 +194,9 @@ use tracing_core::{
 pub mod fields;
 
 #[derive(Debug)]
-pub struct SerializeField(Field);
+pub struct SerializeField<'a>(&'a Field);
 
-impl Serialize for SerializeField {
+impl<'a> Serialize for SerializeField<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -208,7 +215,7 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
     {
         let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
         for element in self.0 {
-            seq.serialize_element(element.name())?;
+            seq.serialize_element(&SerializeField(&element))?;
         }
         seq.end()
     }
@@ -531,6 +538,14 @@ impl<'a> AsSerde<'a> for Level {
     }
 }
 
+impl<'a> AsSerde<'a> for Field {
+    type Serializable = SerializeField<'a>;
+
+    fn as_serde(&'a self) -> Self::Serializable {
+        SerializeField(self)
+    }
+}
+
 impl<'a> AsSerde<'a> for FieldSet {
     type Serializable = SerializeFieldSet<'a>;
 
@@ -550,6 +565,8 @@ impl self::sealed::Sealed for Level {}
 impl<'a> self::sealed::Sealed for Record<'a> {}
 
 impl<'a> self::sealed::Sealed for Metadata<'a> {}
+
+impl self::sealed::Sealed for Field {}
 
 impl self::sealed::Sealed for FieldSet {}
 

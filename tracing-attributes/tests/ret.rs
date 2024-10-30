@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
-use tracing_mock::*;
 
 use tracing::{collect::with_default, Level};
 use tracing_attributes::instrument;
+use tracing_mock::{collector, expect};
 use tracing_subscriber::subscribe::CollectExt;
 use tracing_subscriber::EnvFilter;
+use tracing_test::block_on_future;
 
 #[instrument(ret)]
 fn ret() -> i32 {
@@ -137,6 +138,8 @@ fn test_async() {
                 .with_fields(expect::field("return").with_value(&tracing::field::debug(42)))
                 .at_level(Level::INFO),
         )
+        .exit(span.clone())
+        .enter(span.clone())
         .exit(span.clone())
         .drop_span(span)
         .only()

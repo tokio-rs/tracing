@@ -1,5 +1,5 @@
 [workspace]
-
+resolver = "2"
 members = [
     "tracing",
     "tracing-core",
@@ -11,10 +11,15 @@ members = [
     "tracing-log",
     "tracing-macros",
     "tracing-mock",
-    "tracing-opentelemetry",
     "tracing-subscriber",
     "tracing-serde",
+    "tracing-test",
     "tracing-appender",
     "tracing-journald",
     "examples"
 ]
+
+ # This will be ignored with Rust older than 1.74, but for now that's okay;
+ # we're only using it to fix check-cfg issues that first appeared in Rust 1.80.
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(flaky_tests)", "cfg(tracing_unstable)"] }

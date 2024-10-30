@@ -10,7 +10,7 @@
 //! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! *Compiler support: [requires `rustc` 1.50+][msrv]*
+//! *Compiler support: [requires `rustc` 1.63+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -54,7 +54,7 @@
 //!   similar to the [`env_logger` crate]. **Requires "std"**.
 //! - `fmt`: Enables the [`fmt`] module, which provides a subscriber
 //!   implementation for printing formatted representations of trace events.
-//!   Enabled by default. **Requires "std"**.
+//!   Enabled by default. **Requires "registry" and "std"**.
 //! - `ansi`: Enables `fmt` support for ANSI terminal colors. Enabled by
 //!   default.
 //! - `registry`: enables the [`registry`] module. Enabled by default.
@@ -106,14 +106,14 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.50. The current Tracing version is not guaranteed to build on
+//! version is 1.63. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
 //! project. The current stable Rust compiler and the three most recent minor
 //! versions before it will always be supported. For example, if the current
-//! stable compiler version is 1.45, the minimum supported version will not be
-//! increased past 1.42, three minor versions prior. Increasing the minimum
+//! stable compiler version is 1.69, the minimum supported version will not be
+//! increased past 1.66, three minor versions prior. Increasing the minimum
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
@@ -156,7 +156,8 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
+    private_interfaces,
+    private_bounds,
     unconditional_recursion,
     unused,
     unused_allocation,
@@ -209,7 +210,11 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
+    /// Creates a default [`Registry`], a [`Collect`](tracing_core::Collect)
+    /// implementation which tracks per-span data and exposes it to
+    /// [`Subscribe`]s.
     ///
+    /// Returns a default [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }

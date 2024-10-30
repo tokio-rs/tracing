@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 use snafu::{ResultExt, Snafu};
 use std::error::Error;
 use thiserror::Error;
@@ -5,7 +8,7 @@ use tracing::{debug, error, info, span, trace, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after
-// the function or method. Paramaters passed to the function are recorded as fields.
+// the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // this creates an event at the TRACE log level with two fields:

@@ -68,7 +68,7 @@ pub fn send_one_fd_to<P: AsRef<Path>>(socket: &UnixDatagram, fd: RawFd, path: P)
     msg.msg_control = unsafe { cmsg_buffer.buffer.as_mut_ptr() as _ };
     msg.msg_controllen = unsafe { CMSG_SPACE(size_of::<RawFd>() as _) as _ };
 
-    let mut cmsg: &mut cmsghdr =
+    let cmsg: &mut cmsghdr =
         unsafe { CMSG_FIRSTHDR(&msg).as_mut() }.expect("Control message buffer exhausted");
 
     cmsg.cmsg_level = SOL_SOCKET;

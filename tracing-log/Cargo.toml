@@ -15,7 +15,7 @@ categories = [
 keywords = ["logging", "tracing", "log"]
 license = "MIT"
 readme = "README.md"
-rust-version = "1.49.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["log-tracer", "std"]
@@ -37,3 +37,6 @@ maintenance = { status = "actively-maintained" }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

@@ -42,7 +42,7 @@ feature! {
     pub use self::directive::ParseError;
 }
 
-/// Stub implementations of the per-subscriber-fitler detection functions for
+/// Stub implementations of the per-subscriber-filter detection functions for
 /// when the `registry` feature is disabled.
 #[cfg(not(all(feature = "registry", feature = "std")))]
 mod has_psf_stubs {

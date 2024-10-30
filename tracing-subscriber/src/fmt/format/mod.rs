@@ -333,9 +333,8 @@ pub struct FieldFnVisitor<'a, F> {
 /// The compact format includes fields from all currently entered spans, after
 /// the event's fields. Span fields are ordered (but not grouped) grouped by
 /// span, and span names are  not shown.A more compact representation of the
-/// event's [`Level`](tracing::Level) is used, and additional information, such
-/// as the event's target, is disabled by default (but can be enabled
-/// explicitly).
+/// event's [`Level`] is used, and additional information, such as the event's
+/// target, is disabled by default (but can be enabled explicitly).
 ///
 /// # Example Output
 ///
@@ -423,7 +422,19 @@ impl<'writer> Writer<'writer> {
     // We may not want to do that if we choose to expose specialized
     // constructors instead (e.g. `from_string` that stores whether the string
     // is empty...?)
-    pub(crate) fn new(writer: &'writer mut impl fmt::Write) -> Self {
+    //(@kaifastromai) I suppose having dedicated constructors may have certain benefits
+    // but I am not privy to the larger direction of tracing/subscriber.
+    /// Create a new [`Writer`] from any type that implements [`fmt::Write`].
+    ///
+    /// The returned `Writer` value may be passed as an argument to methods
+    /// such as [`Format::format_event`]. Since constructing a `Writer`
+    /// mutably borrows the underlying [`fmt::Write`] instance, that value may
+    /// be accessed again once the `Writer` is dropped. For example, if the
+    /// value implementing [`fmt::Write`] is a [`String`], it will contain
+    /// the formatted output of [`Format::format_event`], which may then be
+    /// used for other purposes.
+    #[must_use]
+    pub fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
             writer: writer as &mut dyn fmt::Write,
             is_ansi: false,
@@ -667,8 +678,7 @@ impl<F, T> Format<F, T> {
     /// # Options
     ///
     /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
-    /// object.
-    ///
+    ///   object.
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
@@ -1067,7 +1077,12 @@ where
 
         let dimmed = writer.dimmed();
         if self.display_target {
-            write!(writer, "{}{}", dimmed.paint(meta.target()), dimmed.paint(":"))?;
+            write!(
+                writer,
+                "{}{}",
+                dimmed.paint(meta.target()),
+                dimmed.paint(":")
+            )?;
         }
 
         if self.display_filename {
@@ -1732,7 +1747,7 @@ pub(super) mod test {
             "^fake time tracing_subscriber::fmt::format::test: {}:[0-9]+: hello\n$",
             current_path()
                 // if we're on Windows, the path might contain backslashes, which
-                // have to be escpaed before compiling the regex.
+                // have to be escaped before compiling the regex.
                 .replace('\\', "\\\\")
         ))
         .unwrap();
