@@ -35,7 +35,7 @@ jobs:
     name: cargo check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: Check
       run: cargo check --all --tests --benches
@@ -46,7 +46,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: rustfmt
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
@@ -88,7 +88,7 @@ jobs:
         - tracing
         - tracing-subscriber
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: install cargo-hack
       uses: taiki-e/install-action@cargo-hack
@@ -146,7 +146,7 @@ jobs:
         - 1.63.0
         - stable
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
     - name: "install Rust ${{ matrix.toolchain }}"
@@ -210,7 +210,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: "install Rust ${{ matrix.rust }}"
       uses: dtolnay/rust-toolchain@master
       with:
@@ -252,7 +252,7 @@ jobs:
         - tracing-tower
       fail-fast: false
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -268,9 +268,11 @@ jobs:
         subcrate:
         - tracing
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: actions/checkout@v4
+    - name: Install Rust 1.81
+      uses: dtolnay/rust-toolchain@stable
       with:
+        toolchain: 1.81
         target: wasm32-unknown-unknown
     - name: install test runner for wasm
       uses: taiki-e/install-action@wasm-pack
@@ -283,7 +285,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - name: "Test log support"
       run: cargo test
