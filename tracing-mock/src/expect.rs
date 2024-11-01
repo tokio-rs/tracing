@@ -113,7 +113,7 @@ pub fn event() -> ExpectedEvent {
 /// handle.assert_finished();
 /// ```
 ///
-/// If we expect an event and instead record something else, the test
+/// If we expect to enter a span and instead record something else, the test
 /// will fail:
 ///
 /// ```should_panic
