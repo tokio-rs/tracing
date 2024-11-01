@@ -24,7 +24,7 @@
 //!  - Using a [`RollingFileAppender`] to perform writes to a log file. This will block on writes.
 //!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
 //!  - Using a combination of [`NonBlocking`] and [`RollingFileAppender`] to allow writes to a log file
-//! without blocking.
+//!    without blocking.
 //!
 //! ## File Appender
 //!

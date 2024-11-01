@@ -16,10 +16,6 @@ pub struct Service<S> {
 #[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
 pub use self::layer::*;
 
-#[cfg(feature = "tower-util")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tower-util")))]
-pub use self::make::MakeService;
-
 #[cfg(feature = "tower-layer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tower-layer")))]
 mod layer {
