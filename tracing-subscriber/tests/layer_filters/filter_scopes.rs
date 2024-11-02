@@ -1,5 +1,5 @@
 use super::*;
-use tracing_mock::{event, expect, layer::MockLayer};
+use tracing_mock::{expect, layer::MockLayer};
 
 #[test]
 fn filters_span_scopes() {
@@ -8,12 +8,16 @@ fn filters_span_scopes() {
         .enter(expect::span().at_level(Level::INFO))
         .enter(expect::span().at_level(Level::WARN))
         .enter(expect::span().at_level(Level::ERROR))
-        .event(event::msg("hello world").in_scope(vec![
-            expect::span().at_level(Level::ERROR),
-            expect::span().at_level(Level::WARN),
-            expect::span().at_level(Level::INFO),
-            expect::span().at_level(Level::DEBUG),
-        ]))
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(vec![
+                    expect::span().at_level(Level::ERROR),
+                    expect::span().at_level(Level::WARN),
+                    expect::span().at_level(Level::INFO),
+                    expect::span().at_level(Level::DEBUG),
+                ]),
+        )
         .exit(expect::span().at_level(Level::ERROR))
         .exit(expect::span().at_level(Level::WARN))
         .exit(expect::span().at_level(Level::INFO))
@@ -24,11 +28,15 @@ fn filters_span_scopes() {
         .enter(expect::span().at_level(Level::INFO))
         .enter(expect::span().at_level(Level::WARN))
         .enter(expect::span().at_level(Level::ERROR))
-        .event(event::msg("hello world").in_scope(vec![
-            expect::span().at_level(Level::ERROR),
-            expect::span().at_level(Level::WARN),
-            expect::span().at_level(Level::INFO),
-        ]))
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(vec![
+                    expect::span().at_level(Level::ERROR),
+                    expect::span().at_level(Level::WARN),
+                    expect::span().at_level(Level::INFO),
+                ]),
+        )
         .exit(expect::span().at_level(Level::ERROR))
         .exit(expect::span().at_level(Level::WARN))
         .exit(expect::span().at_level(Level::INFO))
@@ -37,10 +45,14 @@ fn filters_span_scopes() {
     let (warn_layer, warn_handle) = layer::named("warn")
         .enter(expect::span().at_level(Level::WARN))
         .enter(expect::span().at_level(Level::ERROR))
-        .event(event::msg("hello world").in_scope(vec![
-            expect::span().at_level(Level::ERROR),
-            expect::span().at_level(Level::WARN),
-        ]))
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(vec![
+                    expect::span().at_level(Level::ERROR),
+                    expect::span().at_level(Level::WARN),
+                ]),
+        )
         .exit(expect::span().at_level(Level::ERROR))
         .exit(expect::span().at_level(Level::WARN))
         .only()
@@ -72,12 +84,17 @@ fn filters_interleaved_span_scopes() {
         layer::named(format!("target_{}", target))
             .enter(expect::span().with_target(target))
             .enter(expect::span().with_target(target))
-            .event(event::msg("hello world").in_scope(vec![
-                expect::span().with_target(target),
-                expect::span().with_target(target),
-            ]))
             .event(
-                event::msg("hello to my target")
+                expect::event()
+                    .with_fields(expect::msg("hello world"))
+                    .in_scope(vec![
+                        expect::span().with_target(target),
+                        expect::span().with_target(target),
+                    ]),
+            )
+            .event(
+                expect::event()
+                    .with_fields(expect::msg("hello to my target"))
                     .in_scope(vec![
                         expect::span().with_target(target),
                         expect::span().with_target(target),
@@ -95,10 +112,14 @@ fn filters_interleaved_span_scopes() {
     let (all_layer, all_handle) = layer::named("all")
         .enter(expect::span().with_target("b"))
         .enter(expect::span().with_target("a"))
-        .event(event::msg("hello world").in_scope(vec![
-            expect::span().with_target("a"),
-            expect::span().with_target("b"),
-        ]))
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(vec![
+                    expect::span().with_target("a"),
+                    expect::span().with_target("b"),
+                ]),
+        )
         .exit(expect::span().with_target("a"))
         .exit(expect::span().with_target("b"))
         .only()

@@ -8,11 +8,11 @@
 //! # Examples
 //!
 //! ```
-//! use tracing_mock::{subscriber, expect, field};
+//! use tracing_mock::{expect, subscriber, field};
 //!
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(expect::message("droids")))
+//!     .event(expect::event().with_fields(expect::msg("droids")))
 //!     .only()
 //!     .run_with_handle();
 //!
@@ -32,7 +32,7 @@
 //! their respective fields:
 //!
 //! ```
-//! use tracing_mock::{subscriber, expect, field};
+//! use tracing_mock::{expect, subscriber, field};
 //!
 //! let span = expect::span()
 //!     .named("my_span");
@@ -40,11 +40,11 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "subscriber parting message"
-//!     .event(expect::event().with_fields(expect::message("subscriber parting message")))
+//!     .event(expect::event().with_fields(expect::msg("subscriber parting message")))
 //!     // Record a value for the field `parting` on a matching span
-//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
-//!     .exit(&span)
+//!     .exit(span)
 //!     // Expect no further messages to be recorded
 //!     .only()
 //!     // Return the subscriber and handle
@@ -75,13 +75,13 @@
 //! span before recording an event, the test will fail:
 //!
 //! ```should_panic
-//! use tracing_mock::{subscriber, expect, field};
+//! use tracing_mock::{expect, subscriber, field};
 //!
 //! let span = expect::span()
 //!     .named("my_span");
 //! let (subscriber, handle) = subscriber::mock()
 //!     .enter(&span)
-//!     .event(expect::event().with_fields(expect::message("subscriber parting message")))
+//!     .event(expect::event().with_fields(expect::msg("collect parting message")))
 //!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
@@ -137,13 +137,6 @@
 //!
 //! [`Subscriber`]: trait@tracing::Subscriber
 //! [`MockSubscriber`]: struct@crate::subscriber::MockSubscriber
-use crate::{
-    ancestry::get_ancestry,
-    event::ExpectedEvent,
-    expect::Expect,
-    field::ExpectedFields,
-    span::{ActualSpan, ExpectedSpan, NewSpan},
-};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
@@ -157,6 +150,14 @@ use tracing::{
     span::{self, Attributes, Id},
     subscriber::Interest,
     Event, Metadata, Subscriber,
+};
+
+use crate::{
+    ancestry::get_ancestry,
+    event::ExpectedEvent,
+    expect::Expect,
+    field::ExpectedFields,
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 
 pub(crate) struct SpanState {
@@ -188,6 +189,7 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
 /// for the methods and the [`subscriber`] module.
 ///
 /// [`subscriber`]: mod@crate::subscriber
+#[derive(Debug)]
 pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
     max_level: Option<LevelFilter>,
@@ -204,6 +206,7 @@ pub struct MockSubscriber<F: Fn(&Metadata<'_>) -> bool> {
 /// module documentation.
 ///
 /// [`subscriber`]: mod@crate::subscriber
+#[derive(Debug)]
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
 /// Create a new [`MockSubscriber`].
@@ -215,7 +218,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///
 ///
 /// ```
-/// use tracing_mock::{subscriber, expect, field};
+/// use tracing_mock::{expect, subscriber, field};
 ///
 /// let span = expect::span()
 ///     .named("my_span");
@@ -223,11 +226,11 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     // Enter a matching span
 ///     .enter(&span)
 ///     // Record an event with message "subscriber parting message"
-///     .event(expect::event().with_fields(expect::message("subscriber parting message")))
+///     .event(expect::event().with_fields(expect::msg("subscriber parting message")))
 ///     // Record a value for the field `parting` on a matching span
-///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+///     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
-///     .exit(&span)
+///     .exit(span)
 ///     // Expect no further messages to be recorded
 ///     .only()
 ///     // Return the subscriber and handle
@@ -293,7 +296,7 @@ where
     /// event, the test will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber_1, handle_1) = subscriber::mock()
     ///     .named("subscriber-1")
@@ -348,7 +351,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(expect::event())
@@ -364,7 +367,7 @@ where
     /// A span is entered before the event, causing the test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(expect::event())
@@ -402,7 +405,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -423,7 +426,7 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -462,7 +465,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -485,7 +488,7 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -529,7 +532,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -551,7 +554,7 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -591,7 +594,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -612,7 +615,7 @@ where
     /// test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .at_level(tracing::Level::INFO)
@@ -674,7 +677,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let cause = expect::span().named("cause");
     /// let consequence = expect::span().named("consequence");
@@ -698,7 +701,7 @@ where
     /// this test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let cause = expect::span().named("cause");
     /// let consequence = expect::span().named("consequence");
@@ -744,7 +747,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .named("my_span");
@@ -768,7 +771,7 @@ where
     /// causing the test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let span = expect::span()
     ///     .named("my_span");
@@ -809,7 +812,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .with_filter(|meta| meta.level() <= &tracing::Level::WARN)
@@ -852,7 +855,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .with_max_level_hint(tracing::Level::INFO)
@@ -888,7 +891,7 @@ where
     /// expect a single event, but receive three:
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(expect::event())
@@ -906,7 +909,7 @@ where
     /// After including `only`, the test will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(expect::event())
@@ -963,7 +966,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// // subscriber and handle are returned from `run_with_handle()`
     /// let (subscriber, handle) = subscriber::mock()
@@ -1326,7 +1329,7 @@ impl MockHandle {
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(expect::event())

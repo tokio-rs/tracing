@@ -12,7 +12,7 @@
 //!
 //! let (layer, handle) = layer::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(expect::message("droids")))
+//!     .event(expect::event().with_fields(expect::msg("droids")))
 //!     .run_with_handle();
 //!
 //! // Use `set_default` to apply the `MockSubscriber` until the end
@@ -33,7 +33,7 @@
 //! their respective fields:
 //!
 //! ```
-//! use tracing_mock::{expect, field, layer};
+//! use tracing_mock::{expect, layer};
 //! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 //!
 //! let span = expect::span()
@@ -42,7 +42,7 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("say hello")))
+//!     .event(expect::event().with_fields(expect::msg("say hello")))
 //!     // Exit a matching span
 //!     .exit(&span)
 //!     // Expect no further messages to be recorded
@@ -84,7 +84,7 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("say hello")))
+//!     .event(expect::event().with_fields(expect::msg("say hello")))
 //!     // Exit a matching span
 //!     .exit(&span)
 //!     // Expect no further messages to be recorded
@@ -115,13 +115,12 @@
 //! ```
 //!
 //! [`Layer`]: trait@tracing_subscriber::layer::Layer
-use crate::{
-    ancestry::{get_ancestry, ActualAncestry, HasAncestry},
-    event::ExpectedEvent,
-    expect::Expect,
-    span::{ActualSpan, ExpectedSpan, NewSpan},
-    subscriber::MockHandle,
+use std::{
+    collections::VecDeque,
+    fmt,
+    sync::{Arc, Mutex},
 };
+
 use tracing_core::{
     span::{Attributes, Id, Record},
     Event, Subscriber,
@@ -131,10 +130,12 @@ use tracing_subscriber::{
     registry::{LookupSpan, SpanRef},
 };
 
-use std::{
-    collections::VecDeque,
-    fmt,
-    sync::{Arc, Mutex},
+use crate::{
+    ancestry::{get_ancestry, ActualAncestry, HasAncestry},
+    event::ExpectedEvent,
+    expect::Expect,
+    span::{ActualSpan, ExpectedSpan, NewSpan},
+    subscriber::MockHandle,
 };
 
 /// Create a [`MockLayerBuilder`] used to construct a
@@ -155,7 +156,7 @@ use std::{
 ///     // Enter a matching span
 ///     .enter(&span)
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(expect::message("say hello")))
+///     .event(expect::event().with_fields(expect::msg("say hello")))
 ///     // Exit a matching span
 ///     .exit(&span)
 ///     // Expect no further messages to be recorded
@@ -207,7 +208,7 @@ pub fn mock() -> MockLayerBuilder {
 ///
 /// # Examples
 ///
-/// The example from [`named`] could be rewritten as:
+/// The example from [`MockLayerBuilder::named`] could be rewritten as:
 ///
 /// ```should_panic
 /// use tracing_mock::{expect, layer};
@@ -258,6 +259,7 @@ pub fn named(name: impl std::fmt::Display) -> MockLayerBuilder {
 ///
 /// [`layer`]: mod@crate::layer
 
+#[derive(Debug)]
 pub struct MockLayerBuilder {
     expected: VecDeque<Expect>,
     name: String,
