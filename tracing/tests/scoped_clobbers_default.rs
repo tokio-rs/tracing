@@ -1,18 +1,18 @@
 #![cfg(feature = "std")]
-use tracing_mock::*;
+use tracing_mock::{expect, subscriber};
 
 #[test]
 fn scoped_clobbers_global() {
     // Reproduces https://github.com/tokio-rs/tracing/issues/2050
 
     let (scoped, scoped_handle) = subscriber::mock()
-        .event(event::msg("before global"))
-        .event(event::msg("before drop"))
+        .event(expect::event().with_fields(expect::msg("before global")))
+        .event(expect::event().with_fields(expect::msg("before drop")))
         .only()
         .run_with_handle();
 
     let (global, global_handle) = subscriber::mock()
-        .event(event::msg("after drop"))
+        .event(expect::event().with_fields(expect::msg("after drop")))
         .only()
         .run_with_handle();
 

@@ -14,7 +14,7 @@
 //! specific name, without any expectation about the value:
 //!
 //! ```
-//! use tracing_mock::{subscriber, expect};
+//! use tracing_mock::{expect, subscriber};
 //!
 //! let event = expect::event()
 //!     .with_fields(expect::field("field_name"));
@@ -34,7 +34,7 @@
 //! each of them:
 //!
 //! ```
-//! use tracing_mock::{subscriber, expect};
+//! use tracing_mock::{expect, subscriber};
 //!
 //! let event = expect::event().with_fields(
 //!     expect::field("string_field")
@@ -63,7 +63,7 @@
 //! different:
 //!
 //! ```should_panic
-//! use tracing_mock::{subscriber, expect};
+//! use tracing_mock::{expect, subscriber};
 //!
 //! let event = expect::event()
 //!     .with_fields(expect::field("field_name").with_value(&"value"));
@@ -81,14 +81,14 @@
 //!
 //! [`subscriber`]: mod@crate::subscriber
 //! [`expect::field`]: fn@crate::expect::field
+use std::{collections::HashMap, fmt};
+
 use tracing::{
     callsite,
     callsite::Callsite,
     field::{self, Field, Value, Visit},
     metadata::Kind,
 };
-
-use std::{collections::HashMap, fmt};
 
 /// An expectation for multiple fields.
 ///
@@ -153,12 +153,13 @@ impl PartialEq for ExpectedValue {
 impl ExpectedField {
     /// Sets the value to expect when matching this field.
     ///
-    /// If the recorded value for this field diffs, the expectation will fail.
+    /// If the recorded value for this field is different, the
+    /// expectation will fail.
     ///
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_fields(expect::field("field_name").with_value(&"value"));
@@ -177,7 +178,7 @@ impl ExpectedField {
     /// A different value will cause the test to fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_fields(expect::field("field_name").with_value(&"value"));
@@ -208,7 +209,7 @@ impl ExpectedField {
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
@@ -233,7 +234,7 @@ impl ExpectedField {
     /// If the second field is not present, the test will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
@@ -268,27 +269,30 @@ impl ExpectedField {
     ///
     /// # Examples
     ///
-    /// Check that only a single field is recorded.
+    /// The following test passes despite the recorded event having
+    /// fields that were not expected because `only` was not
+    /// used:
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_fields(expect::field("field").with_value(&"value").only());
+    ///     .with_fields(expect::field("field").with_value(&"value"));
     ///
     /// let (subscriber, handle) = subscriber::mock().event(event).run_with_handle();
     ///
     /// tracing::subscriber::with_default(subscriber, || {
-    ///     tracing::info!(field = "value");
+    ///     tracing::info!(field = "value", another_field = 42,);
     /// });
     ///
     /// handle.assert_finished();
     /// ```
     ///
-    /// The following example fails because a second field is recorded.
+    /// If we include `only` on the `ExpectedField` then the test
+    /// will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_fields(expect::field("field").with_value(&"value").only());
@@ -323,9 +327,9 @@ impl From<ExpectedField> for ExpectedFields {
 impl ExpectedFields {
     /// Adds an additional [`ExpectedField`] to be matched.
     ///
-    /// _All_ fields must match for the expectation to pass. If any of
-    /// them are not present, if any of the values differs, the
-    /// expectation will fail.
+    /// All fields must match, if any of them are not present, or if
+    /// the value for any field is different, the expectation will
+    /// fail.
     ///
     /// This method performs the same function as
     /// [`ExpectedField::and`], but applies in the case where there are
@@ -334,7 +338,7 @@ impl ExpectedFields {
     /// # Examples
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
@@ -362,7 +366,7 @@ impl ExpectedFields {
     /// event, the test will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
@@ -391,7 +395,7 @@ impl ExpectedFields {
         self
     }
 
-    /// Asserts that no fields other than those specified should be
+    /// Indicates that no fields other than those specified should be
     /// expected.
     ///
     /// This method performs the same function as
@@ -400,16 +404,16 @@ impl ExpectedFields {
     ///
     /// # Examples
     ///
-    /// Check that only two fields are recorded on the event.
+    /// The following test will pass, even though additional fields are
+    /// recorded on the event.
     ///
     /// ```
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
     ///         .with_value(&"value")
-    ///         .and(expect::field("another_field").with_value(&42))
-    ///         .only(),
+    ///         .and(expect::field("another_field").with_value(&42)),
     /// );
     ///
     /// let (subscriber, handle) = subscriber::mock()
@@ -420,16 +424,18 @@ impl ExpectedFields {
     ///     tracing::info!(
     ///         field = "value",
     ///         another_field = 42,
+    ///         a_third_field = true,
     ///     );
     /// });
     ///
     /// handle.assert_finished();
     /// ```
     ///
-    /// The following example fails because a third field is recorded.
+    /// If we include `only` on the `ExpectedFields` then the test
+    /// will fail:
     ///
     /// ```should_panic
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event().with_fields(
     ///     expect::field("field")
@@ -558,7 +564,7 @@ impl<'a> Visit for CheckVisitor<'a> {
 }
 
 impl<'a> CheckVisitor<'a> {
-    pub fn finish(self) {
+    pub(crate) fn finish(self) {
         assert!(
             self.expect.fields.is_empty(),
             "[{}] {}missing {}",
