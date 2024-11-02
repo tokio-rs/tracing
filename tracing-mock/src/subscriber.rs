@@ -260,6 +260,7 @@ pub fn named(name: impl std::fmt::Display) -> MockSubscriberBuilder {
 ///
 /// [`subscriber`]: mod@crate::subscriber
 
+#[derive(Debug)]
 pub struct MockSubscriberBuilder {
     expected: VecDeque<Expect>,
     name: String,

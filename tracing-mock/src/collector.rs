@@ -190,6 +190,7 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
 /// for the methods and the [`collector`] module.
 ///
 /// [`collector`]: mod@crate::collector
+#[derive(Debug)]
 pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
     max_level: Option<LevelFilter>,
@@ -206,6 +207,7 @@ pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
 /// module documentation.
 ///
 /// [`collector`]: mod@crate::collector
+#[derive(Debug)]
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
 /// Create a new [`MockCollector`].

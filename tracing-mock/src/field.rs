@@ -558,7 +558,7 @@ impl<'a> Visit for CheckVisitor<'a> {
 }
 
 impl<'a> CheckVisitor<'a> {
-    pub fn finish(self) {
+    pub(crate) fn finish(self) {
         assert!(
             self.expect.fields.is_empty(),
             "[{}] {}missing {}",
