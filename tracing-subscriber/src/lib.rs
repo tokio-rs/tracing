@@ -214,7 +214,7 @@ feature! {
     /// implementation which tracks per-span data and exposes it to
     /// [`Subscribe`]s.
     ///
-    /// For more information see [`Registry`].
+    /// Returns a default [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }

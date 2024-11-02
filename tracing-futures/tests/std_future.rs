@@ -55,7 +55,7 @@ fn span_on_drop() {
         }
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Field unused, but logs on `Drop`
     struct Fut(Option<AssertSpanOnDrop>);
 
     impl Future for Fut {

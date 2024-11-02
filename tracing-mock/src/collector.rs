@@ -38,11 +38,11 @@
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
 //!     // Enter a matching span
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     // Record an event with message "collect parting message"
 //!     .event(expect::event().with_fields(expect::message("collect parting message")))
 //!     // Record a value for the field `parting` on a matching span
-//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
 //!     .exit(span)
 //!     // Expect no further messages to be recorded
@@ -80,9 +80,9 @@
 //! let span = expect::span()
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
-//!     .enter(span.clone())
+//!     .enter(&span)
 //!     .event(expect::event().with_fields(expect::message("collect parting message")))
-//!     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+//!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
 //!     .run_with_handle();
@@ -142,7 +142,7 @@ use crate::{
     event::ExpectedEvent,
     expect::Expect,
     field::ExpectedFields,
-    span::{ExpectedSpan, NewSpan},
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -160,19 +160,15 @@ use tracing::{
 };
 
 pub(crate) struct SpanState {
-    id: u64,
+    id: Id,
     name: &'static str,
     refs: usize,
     meta: &'static Metadata<'static>,
 }
 
-impl SpanState {
-    pub(crate) fn id(&self) -> u64 {
-        self.id
-    }
-
-    pub(crate) fn metadata(&self) -> &'static Metadata<'static> {
-        self.meta
+impl From<&SpanState> for ActualSpan {
+    fn from(span_state: &SpanState) -> Self {
+        Self::new(span_state.id.clone(), Some(span_state.meta))
     }
 }
 
@@ -225,11 +221,11 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     .named("my_span");
 /// let (collector, handle) = collector::mock()
 ///     // Enter a matching span
-///     .enter(span.clone())
+///     .enter(&span)
 ///     // Record an event with message "collect parting message"
 ///     .event(expect::event().with_fields(expect::message("collect parting message")))
 ///     // Record a value for the field `parting` on a matching span
-///     .record(span.clone(), expect::field("parting").with_value(&"goodbye world!"))
+///     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span
 ///     .exit(span)
 ///     // Expect no further messages to be recorded
@@ -472,8 +468,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -495,8 +491,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .only()
     ///     .run_with_handle();
     ///
@@ -511,8 +507,11 @@ where
     ///
     /// [`exit`]: fn@Self::exit
     /// [`only`]: fn@Self::only
-    pub fn enter(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Enter(span));
+    pub fn enter<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Enter(span.into()));
         self
     }
 
@@ -536,8 +535,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -558,8 +557,8 @@ where
     ///     .at_level(tracing::Level::INFO)
     ///     .named("the span we're testing");
     /// let (collector, handle) = collector::mock()
-    ///     .enter(span.clone())
-    ///     .exit(span)
+    ///     .enter(&span)
+    ///     .exit(&span)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -572,8 +571,11 @@ where
     /// ```
     ///
     /// [`enter`]: fn@Self::enter
-    pub fn exit(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::Exit(span));
+    pub fn exit<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::Exit(span.into()));
         self
     }
 
@@ -627,8 +629,11 @@ where
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn clone_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::CloneSpan(span));
+    pub fn clone_span<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::CloneSpan(span.into()));
         self
     }
 
@@ -644,8 +649,11 @@ where
     ///
     /// [`Collect::drop_span`]: fn@tracing::Collect::drop_span
     #[allow(deprecated)]
-    pub fn drop_span(mut self, span: ExpectedSpan) -> Self {
-        self.expected.push_back(Expect::DropSpan(span));
+    pub fn drop_span<S>(mut self, span: S) -> Self
+    where
+        S: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::DropSpan(span.into()));
         self
     }
 
@@ -710,9 +718,15 @@ where
     /// ```
     ///
     /// [`Span::follows_from`]: fn@tracing::Span::follows_from
-    pub fn follows_from(mut self, consequence: ExpectedSpan, cause: ExpectedSpan) -> Self {
-        self.expected
-            .push_back(Expect::FollowsFrom { consequence, cause });
+    pub fn follows_from<S1, S2>(mut self, consequence: S1, cause: S2) -> Self
+    where
+        S1: Into<ExpectedSpan>,
+        S2: Into<ExpectedSpan>,
+    {
+        self.expected.push_back(Expect::FollowsFrom {
+            consequence: consequence.into(),
+            cause: cause.into(),
+        });
         self
     }
 
@@ -775,11 +789,13 @@ where
     /// ```
     ///
     /// [`field`]: mod@crate::field
-    pub fn record<I>(mut self, span: ExpectedSpan, fields: I) -> Self
+    pub fn record<S, I>(mut self, span: S, fields: I) -> Self
     where
+        S: Into<ExpectedSpan>,
         I: Into<ExpectedFields>,
     {
-        self.expected.push_back(Expect::Visit(span, fields.into()));
+        self.expected
+            .push_back(Expect::Visit(span.into(), fields.into()));
         self
     }
 
@@ -1049,7 +1065,7 @@ where
                                 .lock()
                                 .unwrap()
                                 .get(span_id)
-                                .map(|span| span.name)
+                                .map(|span| span.into())
                         },
                     )
                 };
@@ -1120,7 +1136,7 @@ where
                         get_ancestry(
                             span,
                             || self.lookup_current(),
-                            |span_id| spans.get(span_id).map(|span| span.name),
+                            |span_id| spans.get(span_id).map(|span| span.into()),
                         )
                     },
                     &self.name,
@@ -1130,7 +1146,7 @@ where
         spans.insert(
             id.clone(),
             SpanState {
-                id: id.into_u64(),
+                id: id.clone(),
                 name: meta.name(),
                 refs: 1,
                 meta,
@@ -1146,7 +1162,7 @@ where
             match self.expected.lock().unwrap().pop_front() {
                 None => {}
                 Some(Expect::Enter(ref expected_span)) => {
-                    expected_span.check(span, &self.name);
+                    expected_span.check(&span.into(), "to enter a span", &self.name);
                 }
                 Some(ex) => ex.bad(&self.name, format_args!("entered span {:?}", span.name)),
             }
@@ -1169,7 +1185,7 @@ where
         match self.expected.lock().unwrap().pop_front() {
             None => {}
             Some(Expect::Exit(ref expected_span)) => {
-                expected_span.check(span, &self.name);
+                expected_span.check(&span.into(), "to exit a span", &self.name);
                 let curr = self.current.lock().unwrap().pop();
                 assert_eq!(
                     Some(id),
@@ -1185,27 +1201,34 @@ where
     }
 
     fn clone_span(&self, id: &Id) -> Id {
-        let name = self.spans.lock().unwrap().get_mut(id).map(|span| {
-            let name = span.name;
-            println!(
-                "[{}] clone_span: {}; id={:?}; refs={:?};",
-                self.name, name, id, span.refs
-            );
-            span.refs += 1;
-            name
-        });
-        if name.is_none() {
-            println!("[{}] clone_span: id={:?};", self.name, id);
+        let mut spans = self.spans.lock().unwrap();
+        let mut span = spans.get_mut(id);
+        match span.as_deref_mut() {
+            Some(span) => {
+                println!(
+                    "[{}] clone_span: {}; id={:?}; refs={:?};",
+                    self.name, span.name, id, span.refs,
+                );
+                span.refs += 1;
+            }
+            None => {
+                println!(
+                    "[{}] clone_span: id={:?} (not found in span list);",
+                    self.name, id
+                );
+            }
         }
+
         let mut expected = self.expected.lock().unwrap();
-        let was_expected = if let Some(Expect::CloneSpan(ref span)) = expected.front() {
-            assert_eq!(
-                name,
-                span.name(),
-                "[{}] expected to clone a span named {:?}",
-                self.name,
-                span.name()
-            );
+        let was_expected = if let Some(Expect::CloneSpan(ref expected_span)) = expected.front() {
+            match span {
+                Some(actual_span) => {
+                    let actual_span: &_ = actual_span;
+                    expected_span.check(&actual_span.into(), "to clone a span", &self.name);
+                }
+                // Check only by Id
+                None => expected_span.check(&id.into(), "to clone a span", &self.name),
+            }
             true
         } else {
             false
