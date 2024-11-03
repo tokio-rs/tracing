@@ -514,7 +514,7 @@ fn keyword_ident_in_field_name() {
 #[test]
 fn raw_ident_in_field_name() {
     let (collector, handle) = collector::mock()
-        .event(expect::event().with_fields(expect::field("this.r#type").with_value(&"Value")))
+        .event(expect::event().with_fields(expect::field("this.type").with_value(&"Value")))
         .only()
         .run_with_handle();
 
