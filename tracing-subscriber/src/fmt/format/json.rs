@@ -95,7 +95,7 @@ impl Json {
 }
 
 struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::subscribe::Context<'a, Span>,
+    &'b crate::registry::SpanRef<'a, Span>,
     std::marker::PhantomData<N>,
 )
 where
@@ -114,10 +114,8 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        if let Some(leaf_span) = self.0.lookup_current() {
-            for span in leaf_span.scope().from_root() {
-                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
-            }
+        for span in self.0.scope().from_root() {
+            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
         }
 
         serializer.end()
@@ -233,7 +231,9 @@ where
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
-            let current_span = if self.format.display_current_span || self.format.display_span_list
+            let current_span = if (self.format.display_current_span
+                || self.format.display_span_list)
+                && !event.is_root()
             {
                 event
                     .parent()
@@ -277,11 +277,13 @@ where
                 }
             }
 
-            if self.format.display_span_list && current_span.is_some() {
-                serializer.serialize_entry(
-                    "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
-                )?;
+            if self.format.display_span_list {
+                if let Some(ref span) = current_span {
+                    serializer.serialize_entry(
+                        "spans",
+                        &SerializableContext(span, format_field_marker),
+                    )?;
+                }
             }
 
             if self.display_thread_name {
@@ -660,6 +662,50 @@ mod test {
             );
             let _guard = span.enter();
             tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_explicit_span() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4},\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3},{\"answer\":43,\"name\":\"nested_json_span\",\"number\":4}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let span = tracing::span!(
+                parent: &span,
+                tracing::Level::INFO,
+                "nested_json_span",
+                answer = 43,
+                number = 4
+            );
+            // No enter
+            tracing::info!(parent: &span, "some json test");
+        });
+    }
+
+    #[test]
+    fn json_explicit_no_span() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            let span = tracing::span!(
+                tracing::Level::INFO,
+                "nested_json_span",
+                answer = 43,
+                number = 4
+            );
+            let _guard = span.enter();
+            tracing::info!(parent: None, "some json test");
         });
     }
 
