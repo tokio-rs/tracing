@@ -60,3 +60,6 @@ rustversion = "1.0.9"
 
 [badges]
 maintenance = { status = "experimental" }
+
+[lints]
+workspace = true

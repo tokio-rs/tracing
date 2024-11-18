@@ -4,7 +4,7 @@
 
 # tracing-mock
 
-Utilities for testing [`tracing`][tracing] and crates that uses it.
+Utilities for testing [`tracing`] and crates that uses it.
 
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
@@ -78,7 +78,7 @@ fn yak_shaving() {
 }
 
 let (collector, handle) = collector::mock()
-    .event(expect::event().with_fields(expect::message("preparing to shave yaks")))
+    .event(expect::event().with_fields(expect::msg("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
@@ -128,7 +128,7 @@ let (collector, handle) = collector::mock()
         expect::event().with_fields(
             expect::field("number_of_yaks")
                 .with_value(&yak_count)
-                .and(expect::message("preparing to shave yaks"))
+                .and(expect::msg("preparing to shave yaks"))
                 .only(),
         ),
     )
@@ -136,7 +136,7 @@ let (collector, handle) = collector::mock()
         expect::event().with_fields(
             expect::field("all_yaks_shaved")
                 .with_value(&true)
-                .and(expect::message("yak shaving completed."))
+                .and(expect::msg("yak shaving completed."))
                 .only(),
         ),
     )

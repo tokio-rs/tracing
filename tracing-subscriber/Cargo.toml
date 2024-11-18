@@ -36,6 +36,7 @@ json = ["tracing-serde", "serde", "serde_json"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
 local-time = ["time/local-offset"]
+nu-ansi-term = ["dep:nu-ansi-term"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
@@ -103,6 +104,5 @@ harness = false
 name = "enter"
 harness = false
 
-[[bench]]
-name = "reload"
-harness = false
+[lints]
+workspace = true

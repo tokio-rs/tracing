@@ -7,6 +7,7 @@ use std::thread;
 
 use tracing::{
     collect::with_default,
+    error_span,
     field::{debug, display},
     Level, Span,
 };
@@ -635,7 +636,11 @@ fn new_span_with_target_and_log_level() {
 #[test]
 fn explicit_root_span_is_root() {
     let (collector, handle) = collector::mock()
-        .new_span(expect::span().named("foo").with_explicit_parent(None))
+        .new_span(
+            expect::span()
+                .named("foo")
+                .with_ancestry(expect::is_explicit_root()),
+        )
         .only()
         .run_with_handle();
 
@@ -652,7 +657,11 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
     let (collector, handle) = collector::mock()
         .new_span(expect::span().named("foo"))
         .enter(expect::span().named("foo"))
-        .new_span(expect::span().named("bar").with_explicit_parent(None))
+        .new_span(
+            expect::span()
+                .named("bar")
+                .with_ancestry(expect::is_explicit_root()),
+        )
         .exit(expect::span().named("foo"))
         .only()
         .run_with_handle();
@@ -674,7 +683,7 @@ fn explicit_child() {
         .new_span(
             expect::span()
                 .named("bar")
-                .with_explicit_parent(Some("foo")),
+                .with_ancestry(expect::has_explicit_parent("foo")),
         )
         .only()
         .run_with_handle();
@@ -692,11 +701,31 @@ fn explicit_child() {
 fn explicit_child_at_levels() {
     let (collector, handle) = collector::mock()
         .new_span(expect::span().named("foo"))
-        .new_span(expect::span().named("a").with_explicit_parent(Some("foo")))
-        .new_span(expect::span().named("b").with_explicit_parent(Some("foo")))
-        .new_span(expect::span().named("c").with_explicit_parent(Some("foo")))
-        .new_span(expect::span().named("d").with_explicit_parent(Some("foo")))
-        .new_span(expect::span().named("e").with_explicit_parent(Some("foo")))
+        .new_span(
+            expect::span()
+                .named("a")
+                .with_ancestry(expect::has_explicit_parent("foo")),
+        )
+        .new_span(
+            expect::span()
+                .named("b")
+                .with_ancestry(expect::has_explicit_parent("foo")),
+        )
+        .new_span(
+            expect::span()
+                .named("c")
+                .with_ancestry(expect::has_explicit_parent("foo")),
+        )
+        .new_span(
+            expect::span()
+                .named("d")
+                .with_ancestry(expect::has_explicit_parent("foo")),
+        )
+        .new_span(
+            expect::span()
+                .named("e")
+                .with_ancestry(expect::has_explicit_parent("foo")),
+        )
         .only()
         .run_with_handle();
 
@@ -722,7 +751,7 @@ fn explicit_child_regardless_of_ctx() {
         .new_span(
             expect::span()
                 .named("baz")
-                .with_explicit_parent(Some("foo")),
+                .with_ancestry(expect::has_explicit_parent("foo")),
         )
         .exit(expect::span().named("bar"))
         .only()
@@ -741,7 +770,11 @@ fn explicit_child_regardless_of_ctx() {
 #[test]
 fn contextual_root() {
     let (collector, handle) = collector::mock()
-        .new_span(expect::span().named("foo").with_contextual_parent(None))
+        .new_span(
+            expect::span()
+                .named("foo")
+                .with_ancestry(expect::is_contextual_root()),
+        )
         .only()
         .run_with_handle();
 
@@ -761,7 +794,7 @@ fn contextual_child() {
         .new_span(
             expect::span()
                 .named("bar")
-                .with_contextual_parent(Some("foo")),
+                .with_ancestry(expect::has_contextual_parent("foo")),
         )
         .exit(expect::span().named("foo"))
         .only()
@@ -864,5 +897,22 @@ fn constant_field_name() {
         );
     });
 
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn keyword_ident_in_field_name_span_macro() {
+    #[derive(Debug)]
+    struct Foo;
+
+    let (collector, handle) = collector::mock()
+        .new_span(expect::span().with_fields(expect::field("self").with_value(&debug(Foo)).only()))
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || {
+        error_span!("span", self = ?Foo);
+    });
     handle.assert_finished();
 }

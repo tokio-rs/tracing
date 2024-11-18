@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! This example demonstrates overriding the way `tracing-subscriber`'s
 //! `FmtSubscriber` formats fields on spans and events, using a closure.
 //!

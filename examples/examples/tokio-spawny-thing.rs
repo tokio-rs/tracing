@@ -1,12 +1,15 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
+//! This is a example showing how information is scoped with tokio's
+//! `task::spawn`.
+//!
+//! You can run this example by running the following command in a terminal
+//!
+//! ```
+//! cargo run --example tokio-spawny-thing
+//! ```
 #![deny(rust_2018_idioms)]
-/// This is a example showing how information is scoped with tokio's
-/// `task::spawn`.
-///
-/// You can run this example by running the following command in a terminal
-///
-/// ```
-/// cargo run --example tokio-spawny-thing
-/// ```
 use futures::future::try_join_all;
 use tracing::{debug, info, instrument, span, Instrument as _, Level};
 
