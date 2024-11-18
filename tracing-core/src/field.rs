@@ -804,6 +804,11 @@ impl Field {
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
     }
+
+    /// Returns the index of this field in its [`FieldSet`].
+    pub fn index(&self) -> usize {
+        self.i
+    }
 }
 
 impl fmt::Display for Field {
@@ -1172,6 +1177,17 @@ mod test {
         ];
         let valueset = fields.value_set(values);
         assert!(valueset.is_empty());
+    }
+
+    #[test]
+    fn index_of_field_in_fieldset_is_correct() {
+        let fields = TEST_META_1.fields();
+        let foo = fields.field("foo").unwrap();
+        assert_eq!(foo.index(), 0);
+        let bar = fields.field("bar").unwrap();
+        assert_eq!(bar.index(), 1);
+        let baz = fields.field("baz").unwrap();
+        assert_eq!(baz.index(), 2);
     }
 
     #[test]
