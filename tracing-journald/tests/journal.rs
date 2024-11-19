@@ -35,8 +35,7 @@ fn with_journald_subscriber(subscriber: Subscriber, f: impl FnOnce()) {
             tracing::collect::with_default(sub, f);
         }
         Err(error) => eprintln!(
-            "SKIPPING TEST: journalctl --version failed with error: {}",
-            error
+            "SKIPPING TEST: journalctl --version failed with error: {error}"
         ),
     }
 }
@@ -133,7 +132,7 @@ fn read_from_journal(test_name: &str) -> Vec<HashMap<String, Field>> {
             .args(["--user", "--output=json", "--all"])
             // Filter by the PID of the current test process
             .arg(format!("_PID={}", std::process::id()))
-            .arg(format!("TEST_NAME={}", test_name))
+            .arg(format!("TEST_NAME={test_name}"))
             .output()
             .unwrap()
             .stdout,
@@ -179,8 +178,8 @@ fn simple_message() {
 #[test]
 fn custom_priorities() {
     fn check_message(level: &str, priority: &str) {
-        let entry = retry_read_one_line_from_journal(&format!("custom_priority.{}", level));
-        assert_eq!(entry["MESSAGE"], format!("hello {}", level).as_str());
+        let entry = retry_read_one_line_from_journal(&format!("custom_priority.{level}"));
+        assert_eq!(entry["MESSAGE"], format!("hello {level}").as_str());
         assert_eq!(entry["PRIORITY"], priority);
     }
 
@@ -256,7 +255,7 @@ fn large_message() {
         let message = retry_read_one_line_from_journal("large_message");
         assert_eq!(
             message["MESSAGE"],
-            format!("Message: {}", large_string).as_str()
+            format!("Message: {large_string}").as_str()
         );
         assert_eq!(message["PRIORITY"], "6");
     });

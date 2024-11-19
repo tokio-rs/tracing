@@ -836,7 +836,7 @@ impl fmt::Debug for ExpectedSpan {
         }
 
         if let Some(level) = self.level() {
-            s.field("level", &format_args!("{:?}", level));
+            s.field("level", &format_args!("{level:?}"));
         }
 
         if let Some(target) = self.target() {
@@ -916,7 +916,7 @@ impl NewSpan {
             let actual_ancestry = get_ancestry();
             expected_ancestry.check(
                 &actual_ancestry,
-                format_args!("span `{}`", name),
+                format_args!("span `{name}`"),
                 collector_name,
             );
         }
@@ -942,7 +942,7 @@ impl fmt::Debug for NewSpan {
         }
 
         if let Some(level) = self.span.level() {
-            s.field("level", &format_args!("{:?}", level));
+            s.field("level", &format_args!("{level:?}"));
         }
 
         if let Some(target) = self.span.target() {
@@ -950,7 +950,7 @@ impl fmt::Debug for NewSpan {
         }
 
         if let Some(ref parent) = self.ancestry {
-            s.field("parent", &format_args!("{:?}", parent));
+            s.field("parent", &format_args!("{parent:?}"));
         }
 
         if !self.fields.is_empty() {

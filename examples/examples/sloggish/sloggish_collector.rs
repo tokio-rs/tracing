@@ -105,7 +105,7 @@ impl Span {
 
 impl Visit for Span {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        self.kvs.push((field.name(), format!("{:?}", value)))
+        self.kvs.push((field.name(), format!("{value:?}")))
     }
 }
 
@@ -123,7 +123,7 @@ impl<'a> Visit for Event<'a> {
                 &mut self.stderr,
                 "{}",
                 // Have to alloc here due to `nu_ansi_term`'s API...
-                Style::new().bold().paint(format!("{:?}", value))
+                Style::new().bold().paint(format!("{value:?}"))
             )
             .unwrap();
         } else {

@@ -68,8 +68,7 @@ fn vec_subscriber_filter_interests_are_cached() {
             }
             assert_eq!(
                 count, 1,
-                "level {:?} should have been seen 1 time by the INFO subscriber (after first set of events)",
-                level
+                "level {level:?} should have been seen 1 time by the INFO subscriber (after first set of events)"
             );
         }
 
@@ -80,8 +79,7 @@ fn vec_subscriber_filter_interests_are_cached() {
             }
             assert_eq!(
                 count, 1,
-                "level {:?} should have been seen 1 time by the WARN subscriber (after first set of events)",
-                level
+                "level {level:?} should have been seen 1 time by the WARN subscriber (after first set of events)"
             );
         }
     }
@@ -95,8 +93,7 @@ fn vec_subscriber_filter_interests_are_cached() {
             }
             assert_eq!(
                 count, 1,
-                "level {:?} should have been seen 1 time by the INFO subscriber (after second set of events)",
-                level
+                "level {level:?} should have been seen 1 time by the INFO subscriber (after second set of events)"
             );
         }
 
@@ -107,8 +104,7 @@ fn vec_subscriber_filter_interests_are_cached() {
             }
             assert_eq!(
                 count, 1,
-                "level {:?} should have been seen 1 time by the WARN subscriber (after second set of events)",
-                level
+                "level {level:?} should have been seen 1 time by the WARN subscriber (after second set of events)"
             );
         }
     }
