@@ -918,6 +918,27 @@ impl<T> Format<Json, T> {
         self.format.with_span_list(display_span_list);
         self
     }
+
+    /// Formats all fields of the current span at root level.
+    ///
+    /// See [`Json`]
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn flatten_current_span(mut self, flatten_current_span: bool) -> Format<Json, T> {
+        self.format.flatten_current_span(flatten_current_span);
+        self
+    }
+
+    /// Formats all fields of the span list at root level, overwritting
+    /// colliding fields from root to leaf.
+    ///
+    /// See [`Json`]
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn flatten_span_list(mut self, flatten_span_list: bool) -> Format<Json, T> {
+        self.format.flatten_span_list(flatten_span_list);
+        self
+    }
 }
 
 impl<C, N, T> FormatEvent<C, N> for Format<Full, T>

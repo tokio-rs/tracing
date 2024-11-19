@@ -63,10 +63,14 @@ use tracing_log::NormalizeEvent;
 ///   the root
 /// - [`Json::with_current_span`] can be used to control logging of the current
 ///   span
+/// - [`Json::flatten_current_span`] can be used to enable flattening fields of
+///   the current span into the root
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 ///   object.
+/// - [`Json::flatten_span_list`] can be used to enable flattening all fields of
+///   the span list into the root
 ///
-/// By default, event fields are not flattened, and both current span and span
+/// By default, event and span fields are not flattened, and both current span and span
 /// list are logged.
 ///
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -74,6 +78,8 @@ pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) flatten_current_span: bool,
+    pub(crate) flatten_span_list: bool,
 }
 
 impl Json {
@@ -91,6 +97,16 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    /// If set to `true`, the current span will be flattened into the root object.
+    pub fn flatten_current_span(&mut self, flatten_current_span: bool) {
+        self.flatten_current_span = flatten_current_span;
+    }
+
+    /// If set to `true`, the span list will be flattened into the root object.
+    pub fn flatten_span_list(&mut self, flatten_span_list: bool) {
+        self.flatten_span_list = flatten_span_list;
     }
 }
 
@@ -132,17 +148,15 @@ where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+impl<'a, 'b, Span, N> SerializableSpan<'a, 'b, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    fn serialize_fields<Ser>(&self, serializer: &mut Ser) -> Result<(), Ser::Error>
     where
-        Ser: serde::ser::Serializer,
+        Ser: serde::ser::SerializeMap,
     {
-        let mut serializer = serializer.serialize_map(None)?;
-
         let ext = self.0.extensions();
         let data = ext
             .get::<FormattedFields<N>>()
@@ -188,6 +202,25 @@ where
             // that the fields are not supposed to be missing.
             Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
         };
+
+        Ok(())
+    }
+}
+
+impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        let mut serializer = serializer.serialize_map(None)?;
+        self.serialize_fields(&mut serializer)?;
+        // The span name is not a field and will only
+        // be provided if the span is not flattened
+        // at root level.
         serializer.serialize_entry("name", self.0.metadata().name())?;
         serializer.end()
     }
@@ -271,17 +304,31 @@ where
 
             if self.format.display_current_span {
                 if let Some(ref span) = current_span {
-                    serializer
-                        .serialize_entry("span", &SerializableSpan(span, format_field_marker))
-                        .unwrap_or(());
+                    let serializable_span = SerializableSpan(span, format_field_marker);
+                    if self.format.flatten_current_span {
+                        serializable_span.serialize_fields(&mut serializer)?;
+                    } else {
+                        serializer
+                            .serialize_entry("span", &serializable_span)
+                            .unwrap_or(());
+                    }
                 }
             }
 
             if self.format.display_span_list && current_span.is_some() {
-                serializer.serialize_entry(
-                    "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
-                )?;
+                if self.format.flatten_span_list {
+                    if let Some(leaf_span) = ctx.ctx.lookup_current() {
+                        for span in leaf_span.scope().from_root() {
+                            SerializableSpan(&span, format_field_marker)
+                                .serialize_fields(&mut serializer)?;
+                        }
+                    }
+                } else {
+                    serializer.serialize_entry(
+                        "spans",
+                        &SerializableContext(&ctx.ctx, format_field_marker),
+                    )?;
+                }
             }
 
             if self.display_thread_name {
@@ -318,6 +365,8 @@ impl Default for Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            flatten_current_span: false,
+            flatten_span_list: false,
         }
     }
 }
@@ -786,6 +835,66 @@ mod test {
 
             drop(span);
             assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
+        });
+    }
+
+    #[test]
+    fn json_flatten_current_span() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"answer\":42,\"number\":3,\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .flatten_current_span(true)
+            .with_span_list(false);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_flatten_span_list() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"outer\":\"outer\",\"inner\":\"inner\",\"number\":3,\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(true)
+            .flatten_span_list(true);
+        test_json(expected, collector, || {
+            let outer_span = tracing::span!(
+                tracing::Level::INFO,
+                "json_outer_span",
+                outer = "outer",
+                number = 0
+            );
+            let _outer_guard = outer_span.enter();
+            let inner_span = tracing::span!(
+                tracing::Level::INFO,
+                "json_inner_span",
+                inner = "inner",
+                number = 3
+            );
+            let _inner_guard = inner_span.enter();
+            tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_flatten_current_span_with_list() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"answer\":42,\"number\":3,\"spans\":[{\"answer\":42,\"name\":\"json_span\",\"number\":3}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let collector = collector()
+            .flatten_event(false)
+            .with_current_span(true)
+            .flatten_current_span(true)
+            .with_span_list(true);
+        test_json(expected, collector, || {
+            let span = tracing::span!(tracing::Level::INFO, "json_span", answer = 42, number = 3);
+            let _guard = span.enter();
+            tracing::info!("some json test");
         });
     }
 
