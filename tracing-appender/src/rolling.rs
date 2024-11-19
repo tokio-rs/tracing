@@ -38,7 +38,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration as StdDuration,
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -107,7 +107,7 @@ struct Inner {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
     log_filename_suffix: Option<String>,
-    date_format: Vec<format_description::FormatItem<'static>>,
+    date_infix: Vec<format_description::FormatItem<'static>>,
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
@@ -491,26 +491,17 @@ pub fn custom(
 /// # }
 /// ```
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Rotation(RotationKind);
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-enum RotationKind {
-    Minutely,
-    Hourly,
-    Daily,
-    Never,
-    Custom(Duration),
-}
+pub struct Rotation(Option<Duration>);
 
 impl Rotation {
     /// Provides an minutely rotation
-    pub const MINUTELY: Self = Self(RotationKind::Minutely);
+    pub const MINUTELY: Self = Self(Some(Duration::MINUTE));
     /// Provides an hourly rotation
-    pub const HOURLY: Self = Self(RotationKind::Hourly);
+    pub const HOURLY: Self = Self(Some(Duration::HOUR));
     /// Provides a daily rotation
-    pub const DAILY: Self = Self(RotationKind::Daily);
+    pub const DAILY: Self = Self(Some(Duration::DAY));
     /// Provides a rotation that never rotates.
-    pub const NEVER: Self = Self(RotationKind::Never);
+    pub const NEVER: Self = Self(None);
     /// Custom duration overflow limit, should be approximately 10 years
     const MAX_CUSTOM_DURATION: u64 = 3600 * 24 * 365 * 10;
 
@@ -530,75 +521,46 @@ impl Rotation {
             duration.subsec_nanos() as i32,
         );
 
-        Ok(Self(RotationKind::Custom(duration)))
+        Ok(Self(Some(duration)))
     }
 
-    pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
-        let unrounded_next_date = match *self {
-            Rotation::MINUTELY => *current_date + Duration::minutes(1),
-            Rotation::HOURLY => *current_date + Duration::hours(1),
-            Rotation::DAILY => *current_date + Duration::days(1),
-            Rotation::NEVER => return None,
-            // This is safe from overflow because we only create a `Rotation::Custom` if the
-            // duration is positive and less than 10 years.
-            Self(RotationKind::Custom(duration)) => *current_date + duration,
-        };
-        Some(self.round_date(&unrounded_next_date))
+    pub(crate) fn next_date(&self, now: &OffsetDateTime) -> Option<OffsetDateTime> {
+        self.0
+            .map(|rotation_duration| {
+                // This is safe from overflow because we only create a `Rotation::Custom` if the
+                // duration is positive and less than 10 years.
+                *now + rotation_duration
+            })
+            .and_then(|unrounded_next_date| self.round_date(&unrounded_next_date))
     }
 
-    // note that this method will panic if passed a `Rotation::NEVER`.
-    pub(crate) fn round_date(&self, date: &OffsetDateTime) -> OffsetDateTime {
-        match *self {
-            Rotation::MINUTELY => {
-                let time = Time::from_hms(date.hour(), date.minute(), 0)
-                    .expect("Invalid time; this is a bug in tracing-appender");
-                date.replace_time(time)
-            }
-            Rotation::HOURLY => {
-                let time = Time::from_hms(date.hour(), 0, 0)
-                    .expect("Invalid time; this is a bug in tracing-appender");
-                date.replace_time(time)
-            }
-            Rotation::DAILY => {
-                let time = Time::from_hms(0, 0, 0)
-                    .expect("Invalid time; this is a bug in tracing-appender");
-                date.replace_time(time)
-            }
-            Self(RotationKind::Custom(duration)) => {
-                let date_nanos = date.unix_timestamp_nanos();
-                let duration_nanos = duration.whole_nanoseconds();
-                debug_assert!(duration_nanos > 0);
+    pub(crate) fn round_date(&self, date: &OffsetDateTime) -> Option<OffsetDateTime> {
+        self.0.map(|rotation_duration| {
+            let date_nanos = date.unix_timestamp_nanos();
+            let duration_nanos = rotation_duration.whole_nanoseconds();
+            debug_assert!(duration_nanos > 0);
 
-                // find how many nanoseconds after the next rotation time we are.
-                // Use Euclidean division to properly handle negative date values.
-                // This is safe because `Duration` is always positive.
-                let nanos_above = date_nanos.rem_euclid(duration_nanos);
-                let round_nanos = date_nanos - nanos_above;
+            // find how many nanoseconds after the next rotation time we are.
+            // Use Euclidean division to properly handle negative date values.
+            // This is safe because `Duration` is always positive.
+            let nanos_above = date_nanos.rem_euclid(duration_nanos);
+            let round_nanos = date_nanos - nanos_above;
 
-                // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
-                // `date_nanos - 0 >= date_nanos - nanos_above > date_nanos - duration_nanos` (by algebra)
-                // thus, `date_nanos >= round_nanos > date_nanos - duration_nanos`
-                // `date_nanos` is already a valid `OffsetDateTime`, and
-                // `date_nanos - duration_nanos` equals the `current_date` from `Rotation::next_date`.
-                // Since `round_nanos` is between these two valid values, it must also be a valid
-                // input to `OffsetDateTime::from_unix_timestamp_nanos`.
-                OffsetDateTime::from_unix_timestamp_nanos(round_nanos)
-                    .expect("Invalid time; this is a bug in tracing-appender")
-            }
-            // Rotation::NEVER is impossible to round.
-            Rotation::NEVER => {
-                unreachable!("Rotation::NEVER is impossible to round.")
-            }
-        }
+            // `0 <= nanos_above < duration_nanos` (by euclidean division definition)
+            // `date_nanos - 0 >= date_nanos - nanos_above > date_nanos - duration_nanos` (by algebra)
+            // thus, `date_nanos >= round_nanos > date_nanos - duration_nanos`
+            // `date_nanos` is already a valid `OffsetDateTime`, and
+            // `date_nanos - duration_nanos` equals the `current_date` from `Rotation::next_date`.
+            // Since `round_nanos` is between these two valid values, it must also be a valid
+            // input to `OffsetDateTime::from_unix_timestamp_nanos`.
+            OffsetDateTime::from_unix_timestamp_nanos(round_nanos)
+                .expect("Invalid time; this is a bug in tracing-appender")
+        })
     }
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
-        match *self {
-            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
-            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
-            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
-            Self(RotationKind::Custom(duration)) => {
+        match self.0 {
+            Some(duration) => {
                 if duration >= Duration::DAY {
                     format_description::parse("[year]-[month]-[day]")
                 } else if duration >= Duration::HOUR {
@@ -613,6 +575,7 @@ impl Rotation {
                     )
                 }
             }
+            None => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
     }
@@ -649,7 +612,7 @@ impl Inner {
             log_directory,
             log_filename_prefix,
             log_filename_suffix,
-            date_format,
+            date_infix: date_format,
             next_date: AtomicUsize::new(
                 next_date
                     .map(|date| date.unix_timestamp() as usize)
@@ -665,7 +628,7 @@ impl Inner {
 
     pub(crate) fn join_date(&self, date: &OffsetDateTime) -> String {
         let date = date
-            .format(&self.date_format)
+            .format(&self.date_infix)
             .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
 
         match (
@@ -712,7 +675,7 @@ impl Inner {
 
                 if self.log_filename_prefix.is_none()
                     && self.log_filename_suffix.is_none()
-                    && Date::parse(filename, &self.date_format).is_err()
+                    && Date::parse(filename, &self.date_infix).is_err()
                 {
                     return None;
                 }
@@ -825,6 +788,7 @@ mod test {
     use std::fs;
     use std::io::Write;
     use time::ext::NumericalDuration;
+    use time::Time;
 
     fn find_str_in_log(dir_path: &Path, expected_value: &str) -> bool {
         let dir_contents = fs::read_dir(dir_path).expect("Failed to read directory");
@@ -944,12 +908,9 @@ mod test {
     }
 
     #[test]
-    #[should_panic(
-        expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
-    )]
     fn test_never_date_rounding() {
         let now = OffsetDateTime::now_utc();
-        let _ = Rotation::NEVER.round_date(&now);
+        assert!(Rotation::NEVER.round_date(&now).is_none())
     }
 
     #[test]
