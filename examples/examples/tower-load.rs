@@ -72,6 +72,7 @@ async fn main() -> Result<(), Err> {
     let svc = Server::bind(&addr).serve(svc);
     let admin = Server::bind(&admin_addr).serve(admin);
 
+    #[allow(clippy::incompatible_msrv)]
     let res = try_join!(
         tokio::spawn(load_gen(addr)),
         tokio::spawn(load_gen(addr)),
