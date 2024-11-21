@@ -379,6 +379,7 @@ maintained by the `tokio` project. These include:
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
+- [`json-subscriber`] provides a layer for emitting JSON logs. The output can be customized much more than with [`FmtSubscriber`]'s JSON output.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -410,6 +411,7 @@ please let us know! We'd love to add your project to the list!
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
 [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
+[`json-subscriber`]: https://crates.io/crates/json-subscriber
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

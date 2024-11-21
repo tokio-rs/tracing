@@ -37,8 +37,8 @@ tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional
 pin-project-lite = "0.2.9"
 
 [dev-dependencies]
-criterion = { version = "0.3.6", default_features = false }
-futures = { version = "0.3.21", default_features = false }
+criterion = { version = "0.3.6", default-features = false }
+futures = { version = "0.3.21", default-features = false }
 log = "0.4.17"
 tracing-mock = { path = "../tracing-mock" }
 
@@ -108,4 +108,11 @@ maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+# enable unstable features in the documentation
+rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
+# it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
+# dependencies will not be enabled, and the docs build will fail.
+rustc-args = ["--cfg", "tracing_unstable"]
+
+[lints]
+workspace = true

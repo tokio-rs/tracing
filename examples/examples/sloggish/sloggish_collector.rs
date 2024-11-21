@@ -1,3 +1,5 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
 use nu_ansi_term::{Color, Style};
 use tracing::{
     field::{Field, Visit},
@@ -27,7 +29,7 @@ pub struct CurrentSpanPerThread {
 impl CurrentSpanPerThread {
     pub fn new() -> Self {
         thread_local! {
-            static CURRENT: RefCell<Vec<Id>> = RefCell::new(vec![]);
+            static CURRENT: RefCell<Vec<Id>> = const { RefCell::new(Vec::new()) };
         };
         Self { current: &CURRENT }
     }
