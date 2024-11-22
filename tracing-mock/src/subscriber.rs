@@ -12,7 +12,7 @@
 //!
 //! let (subscriber, handle) = subscriber::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(expect::message("droids")))
+//!     .event(expect::event().with_fields(expect::msg("droids")))
 //!     .run_with_handle();
 //!
 //! // Use `set_default` to apply the `MockSubscriber` until the end
@@ -42,7 +42,7 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("say hello")))
+//!     .event(expect::event().with_fields(expect::msg("say hello")))
 //!     // Exit a matching span
 //!     .exit(&span)
 //!     // Expect no further messages to be recorded
@@ -84,7 +84,7 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("say hello")))
+//!     .event(expect::event().with_fields(expect::msg("say hello")))
 //!     // Exit a matching span
 //!     .exit(&span)
 //!     // Expect no further messages to be recorded
@@ -115,13 +115,12 @@
 //! ```
 //!
 //! [`Subscribe`]: trait@tracing_subscriber::subscribe::Subscribe
-use crate::{
-    ancestry::{get_ancestry, ActualAncestry, HasAncestry},
-    collector::MockHandle,
-    event::ExpectedEvent,
-    expect::Expect,
-    span::{ActualSpan, ExpectedSpan, NewSpan},
+use std::{
+    collections::VecDeque,
+    fmt,
+    sync::{Arc, Mutex},
 };
+
 use tracing_core::{
     span::{Attributes, Id, Record},
     Collect, Event,
@@ -131,10 +130,12 @@ use tracing_subscriber::{
     subscribe::{Context, Subscribe},
 };
 
-use std::{
-    collections::VecDeque,
-    fmt,
-    sync::{Arc, Mutex},
+use crate::{
+    ancestry::{get_ancestry, ActualAncestry, HasAncestry},
+    collector::MockHandle,
+    event::ExpectedEvent,
+    expect::Expect,
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 
 /// Create a [`MockSubscriberBuilder`] used to construct a
@@ -155,7 +156,7 @@ use std::{
 ///     // Enter a matching span
 ///     .enter(&span)
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(expect::message("say hello")))
+///     .event(expect::event().with_fields(expect::msg("say hello")))
 ///     // Exit a matching span
 ///     .exit(&span)
 ///     // Expect no further messages to be recorded
@@ -259,6 +260,7 @@ pub fn named(name: impl std::fmt::Display) -> MockSubscriberBuilder {
 ///
 /// [`subscriber`]: mod@crate::subscriber
 
+#[derive(Debug)]
 pub struct MockSubscriberBuilder {
     expected: VecDeque<Expect>,
     name: String,

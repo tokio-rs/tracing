@@ -12,7 +12,7 @@
 //!
 //! let (collector, handle) = collector::mock()
 //!     // Expect a single event with a specified message
-//!     .event(expect::event().with_fields(expect::message("droids")))
+//!     .event(expect::event().with_fields(expect::msg("droids")))
 //!     .only()
 //!     .run_with_handle();
 //!
@@ -40,7 +40,7 @@
 //!     // Enter a matching span
 //!     .enter(&span)
 //!     // Record an event with message "collect parting message"
-//!     .event(expect::event().with_fields(expect::message("collect parting message")))
+//!     .event(expect::event().with_fields(expect::msg("collect parting message")))
 //!     // Record a value for the field `parting` on a matching span
 //!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     // Exit a matching span
@@ -81,7 +81,7 @@
 //!     .named("my_span");
 //! let (collector, handle) = collector::mock()
 //!     .enter(&span)
-//!     .event(expect::event().with_fields(expect::message("collect parting message")))
+//!     .event(expect::event().with_fields(expect::msg("collect parting message")))
 //!     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 //!     .exit(span)
 //!     .only()
@@ -137,13 +137,6 @@
 //!
 //! [`Collect`]: trait@tracing::Collect
 //! [`MockCollector`]: struct@crate::collector::MockCollector
-use crate::{
-    ancestry::get_ancestry,
-    event::ExpectedEvent,
-    expect::Expect,
-    field::ExpectedFields,
-    span::{ActualSpan, ExpectedSpan, NewSpan},
-};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
@@ -152,11 +145,20 @@ use std::{
     },
     thread,
 };
+
 use tracing::{
     collect::Interest,
     level_filters::LevelFilter,
     span::{self, Attributes, Id},
     Collect, Event, Metadata,
+};
+
+use crate::{
+    ancestry::get_ancestry,
+    event::ExpectedEvent,
+    expect::Expect,
+    field::ExpectedFields,
+    span::{ActualSpan, ExpectedSpan, NewSpan},
 };
 
 pub(crate) struct SpanState {
@@ -188,6 +190,7 @@ struct Running<F: Fn(&Metadata<'_>) -> bool> {
 /// for the methods and the [`collector`] module.
 ///
 /// [`collector`]: mod@crate::collector
+#[derive(Debug)]
 pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
     expected: VecDeque<Expect>,
     max_level: Option<LevelFilter>,
@@ -204,6 +207,7 @@ pub struct MockCollector<F: Fn(&Metadata<'_>) -> bool> {
 /// module documentation.
 ///
 /// [`collector`]: mod@crate::collector
+#[derive(Debug)]
 pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 
 /// Create a new [`MockCollector`].
@@ -223,7 +227,7 @@ pub struct MockHandle(Arc<Mutex<VecDeque<Expect>>>, String);
 ///     // Enter a matching span
 ///     .enter(&span)
 ///     // Record an event with message "collect parting message"
-///     .event(expect::event().with_fields(expect::message("collect parting message")))
+///     .event(expect::event().with_fields(expect::msg("collect parting message")))
 ///     // Record a value for the field `parting` on a matching span
 ///     .record(&span, expect::field("parting").with_value(&"goodbye world!"))
 ///     // Exit a matching span

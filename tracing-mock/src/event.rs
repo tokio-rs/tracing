@@ -28,15 +28,14 @@
 //!
 //! [`collector`]: mod@crate::collector
 //! [`expect::event`]: fn@crate::expect::event
-#![allow(missing_docs)]
+use std::fmt;
+
 use crate::{
     ancestry::{ActualAncestry, ExpectedAncestry},
-    expect, field,
+    field,
     metadata::ExpectedMetadata,
     span,
 };
-
-use std::fmt;
 
 /// An expected event.
 ///
@@ -50,10 +49,6 @@ pub struct ExpectedEvent {
     pub(super) ancestry: Option<ExpectedAncestry>,
     pub(super) in_spans: Option<Vec<span::ExpectedSpan>>,
     pub(super) metadata: ExpectedMetadata,
-}
-
-pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect::event().with_fields(expect::message(message))
 }
 
 impl ExpectedEvent {
