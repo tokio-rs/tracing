@@ -11,7 +11,7 @@ fn destructure_tuples() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("1"))
                     .and(expect::field("arg2").with_value(&format_args!("2")))
@@ -40,7 +40,7 @@ fn destructure_nested_tuples() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("1"))
                     .and(expect::field("arg2").with_value(&format_args!("2")))
@@ -72,7 +72,7 @@ fn destructure_refs() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(expect::field("arg1").with_value(&1usize).only()),
+                .with_fields(expect::field("arg1").with_value(&1usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -98,7 +98,7 @@ fn destructure_tuple_structs() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("1"))
                     .and(expect::field("arg2").with_value(&format_args!("2")))
@@ -139,7 +139,7 @@ fn destructure_structs() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("1"))
                     .and(expect::field("arg2").with_value(&format_args!("2")))
@@ -184,7 +184,7 @@ fn destructure_everything() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("1"))
                     .and(expect::field("arg2").with_value(&format_args!("2")))

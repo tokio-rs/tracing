@@ -436,7 +436,7 @@ please let us know!)
 [Tracy]: https://github.com/wolfpld/tracy
 [`tracing-elastic-apm`]: https://crates.io/crates/tracing-elastic-apm
 [Elastic APM]: https://www.elastic.co/apm
-[`tracing-etw`]: https://github.com/microsoft/tracing-etw
+[`tracing-etw`]: https://github.com/microsoft/rust_win_etw/tree/main/win_etw_tracing
 [ETW]: https://docs.microsoft.com/en-us/windows/win32/etw/about-event-tracing
 [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 [Sentry]: https://sentry.io/welcome/

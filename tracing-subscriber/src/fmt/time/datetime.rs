@@ -387,7 +387,7 @@ mod tests {
         case("1901-12-13T20:45:52.000000Z", i32::MIN as i64, 0);
         case("1901-12-13T20:45:51.000000Z", i32::MIN as i64 - 1, 0);
 
-        // Skipping these tests on windows as std::time::SysteTime range is low
+        // Skipping these tests on windows as std::time::SystemTime range is low
         // on Windows compared with that of Unix which can cause the following
         // high date value tests to panic
         #[cfg(not(target_os = "windows"))]

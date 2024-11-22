@@ -295,7 +295,7 @@ where
         metadata: &'static Metadata<'static>,
     ) -> Interest {
         // Because `self.enabled` takes a `Metadata` only (and no `Context`
-        // parameter), we can reasonably assume its results are cachable, and
+        // parameter), we can reasonably assume its results are cacheable, and
         // just return `Interest::always`/`Interest::never`.
         if (self.enabled)(metadata) {
             debug_assert!(

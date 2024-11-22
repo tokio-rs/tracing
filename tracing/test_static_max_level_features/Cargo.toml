@@ -19,4 +19,4 @@ features = ["max_level_debug", "release_max_level_info"]
 
 [dev-dependencies]
 tokio-test = "0.2.0"
-tracing-mock = { path = "../../tracing-mock", features = ["tokio-test"] }
+tracing-test = { path = "../../tracing-test" }

@@ -1,5 +1,5 @@
 use super::*;
-use tracing_mock::{event, expect, layer::MockLayer};
+use tracing_mock::{expect, layer::MockLayer};
 
 #[test]
 fn basic_trees() {
@@ -70,9 +70,13 @@ fn filter_span_scopes() {
     fn target_layer(target: &'static str) -> (MockLayer, subscriber::MockHandle) {
         layer::named(format!("target_{}", target))
             .enter(expect::span().with_target(target).at_level(Level::INFO))
-            .event(event::msg("hello world").in_scope(vec![
-                expect::span().with_target(target).at_level(Level::INFO),
-            ]))
+            .event(
+                expect::event()
+                    .with_fields(expect::msg("hello world"))
+                    .in_scope(vec![expect::span()
+                        .with_target(target)
+                        .at_level(Level::INFO)]),
+            )
             .exit(expect::span().with_target(target).at_level(Level::INFO))
             .only()
             .run_with_handle()
@@ -83,10 +87,14 @@ fn filter_span_scopes() {
     let (info_layer, info_handle) = layer::named("info")
         .enter(expect::span().with_target("b").at_level(Level::INFO))
         .enter(expect::span().with_target("a").at_level(Level::INFO))
-        .event(event::msg("hello world").in_scope(vec![
-            expect::span().with_target("a").at_level(Level::INFO),
-            expect::span().with_target("b").at_level(Level::INFO),
-        ]))
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(vec![
+                    expect::span().with_target("a").at_level(Level::INFO),
+                    expect::span().with_target("b").at_level(Level::INFO),
+                ]),
+        )
         .exit(expect::span().with_target("a").at_level(Level::INFO))
         .exit(expect::span().with_target("b").at_level(Level::INFO))
         .only()
@@ -103,14 +111,20 @@ fn filter_span_scopes() {
         .enter(expect::span().with_target("b").at_level(Level::INFO))
         .enter(expect::span().with_target("a").at_level(Level::INFO))
         .enter(expect::span().with_target("b").at_level(Level::TRACE))
-        .event(event::msg("hello world").in_scope(full_scope.clone()))
         .event(
-            event::msg("hello to my target")
+            expect::event()
+                .with_fields(expect::msg("hello world"))
+                .in_scope(full_scope.clone()),
+        )
+        .event(
+            expect::event()
+                .with_fields(expect::msg("hello to my target"))
                 .with_target("a")
                 .in_scope(full_scope.clone()),
         )
         .event(
-            event::msg("hello to my target")
+            expect::event()
+                .with_fields(expect::msg("hello to my target"))
                 .with_target("b")
                 .in_scope(full_scope),
         )

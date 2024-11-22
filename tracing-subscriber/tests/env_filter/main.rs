@@ -3,7 +3,7 @@
 mod per_layer;
 
 use tracing::{self, subscriber::with_default, Level};
-use tracing_mock::{expect, layer, span, subscriber};
+use tracing_mock::{expect, layer, subscriber};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
@@ -42,13 +42,13 @@ fn same_name_spans() {
             expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("bar")),
+                .with_fields(expect::field("bar")),
         )
         .new_span(
             expect::span()
                 .named("foo")
                 .at_level(Level::TRACE)
-                .with_field(expect::field("baz")),
+                .with_fields(expect::field("baz")),
         )
         .only()
         .run_with_handle();
@@ -94,18 +94,17 @@ fn level_filter_event_with_target_and_span_global() {
         .parse()
         .expect("filter should parse");
 
-    let cool_span = span::named("cool_span");
-    let uncool_span = span::named("uncool_span");
+    let cool_span = expect::span().named("cool_span");
     let (layer, handle) = layer::mock()
-        .enter(cool_span.clone())
+        .enter(&cool_span)
         .event(
             expect::event()
                 .at_level(Level::DEBUG)
                 .in_scope(vec![cool_span.clone()]),
         )
         .exit(cool_span)
-        .enter(uncool_span.clone())
-        .exit(uncool_span)
+        .enter("uncool_span")
+        .exit("uncool_span")
         .only()
         .run_with_handle();
 
@@ -275,13 +274,13 @@ mod per_layer_filter {
                 expect::span()
                     .named("foo")
                     .at_level(Level::TRACE)
-                    .with_field(expect::field("bar")),
+                    .with_fields(expect::field("bar")),
             )
             .new_span(
                 expect::span()
                     .named("foo")
                     .at_level(Level::TRACE)
-                    .with_field(expect::field("baz")),
+                    .with_fields(expect::field("baz")),
             )
             .only()
             .run_with_handle();
@@ -330,7 +329,7 @@ mod per_layer_filter {
             .parse()
             .expect("filter should parse");
 
-        let cool_span = span::named("cool_span");
+        let cool_span = expect::span().named("cool_span");
         let (layer, handle) = layer::mock()
             .enter(cool_span.clone())
             .event(
@@ -422,8 +421,8 @@ mod per_layer_filter {
         let filter: EnvFilter = "info,[cool_span]=debug"
             .parse()
             .expect("filter should parse");
-        let cool_span = span::named("cool_span");
-        let uncool_span = span::named("uncool_span");
+        let cool_span = expect::span().named("cool_span");
+        let uncool_span = expect::span().named("uncool_span");
         let (layer, finished) = layer::mock()
             .event(expect::event().at_level(Level::INFO))
             .enter(cool_span.clone())
@@ -493,7 +492,7 @@ mod per_layer_filter {
         // Test that multiple dynamic (span) filters only apply to the layers
         // they're attached to.
         let (layer1, handle1) = {
-            let span = span::named("span1");
+            let span = expect::span().named("span1");
             let filter: EnvFilter = "[span1]=debug".parse().expect("filter 1 should parse");
             let (layer, handle) = layer::named("layer1")
                 .enter(span.clone())
@@ -509,7 +508,7 @@ mod per_layer_filter {
         };
 
         let (layer2, handle2) = {
-            let span = span::named("span2");
+            let span = expect::span().named("span2");
             let filter: EnvFilter = "[span2]=info".parse().expect("filter 2 should parse");
             let (layer, handle) = layer::named("layer2")
                 .enter(span.clone())

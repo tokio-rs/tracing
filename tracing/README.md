@@ -145,7 +145,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Paramaters passed to the function are recorded as fields.
+// the function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -185,7 +185,7 @@ pub fn shave_all(yaks: usize) -> usize {
 
         if let Err(ref error) = res {
             // Like spans, events can also use the field initialization shorthand.
-            // In this instance, `yak` is the field being initalized.
+            // In this instance, `yak` is the field being initialized.
             error!(yak, error = error.as_ref(), "failed to shave yak!");
         } else {
             yaks_shaved += 1;
@@ -397,6 +397,7 @@ maintained by the `tokio` project. These include:
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
+- [`json-subscriber`] provides a layer for emitting JSON logs. The output can be customized much more than with [`FmtSubscriber`]'s JSON output.
 
 If you're the maintainer of a `tracing` ecosystem crate not listed above,
 please let us know! We'd love to add your project to the list!
@@ -428,6 +429,7 @@ please let us know! We'd love to add your project to the list!
 [`tracing-loki`]: https://crates.io/crates/tracing-loki
 [Grafana Loki]: https://grafana.com/oss/loki/
 [`tracing-logfmt`]: https://crates.io/crates/tracing-logfmt
+[`json-subscriber`]: https://crates.io/crates/json-subscriber
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and

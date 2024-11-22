@@ -4,7 +4,7 @@
 
 # tracing-mock
 
-Utilities for testing [`tracing`][tracing] and crates that uses it.
+Utilities for testing [`tracing`] and crates that uses it.
 
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
@@ -71,14 +71,14 @@ Below is an example that checks that an event contains a message:
 
 ```rust
 use tracing::subscriber::with_default;
-use tracing_mock::{subscriber, expect, field};
+use tracing_mock::{expect, subscriber};
 
 fn yak_shaving() {
     tracing::info!("preparing to shave yaks");
 }
 
 let (subscriber, handle) = subscriber::mock()
-    .event(expect::event().with_fields(field::msg("preparing to shave yaks")))
+    .event(expect::event().with_fields(expect::msg("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
@@ -102,7 +102,7 @@ Below is a slightly more complex example. `tracing-mock` asserts that, in order:
 
 ```rust
 use tracing::subscriber::with_default;
-use tracing_mock::{subscriber, expect, field};
+use tracing_mock::{expect, subscriber};
 
 #[tracing::instrument]
 fn yak_shaving(number_of_yaks: u32) {
@@ -121,14 +121,14 @@ let span = expect::span().named("yak_shaving");
 let (subscriber, handle) = subscriber::mock()
     .new_span(
         span.clone()
-            .with_field(expect::field("number_of_yaks").with_value(&yak_count).only()),
+            .with_fields(expect::field("number_of_yaks").with_value(&yak_count).only()),
     )
     .enter(span.clone())
     .event(
         expect::event().with_fields(
             expect::field("number_of_yaks")
                 .with_value(&yak_count)
-                .and(field::msg("preparing to shave yaks"))
+                .and(expect::msg("preparing to shave yaks"))
                 .only(),
         ),
     )
@@ -136,7 +136,7 @@ let (subscriber, handle) = subscriber::mock()
         expect::event().with_fields(
             expect::field("all_yaks_shaved")
                 .with_value(&true)
-                .and(field::msg("yak shaving completed."))
+                .and(expect::msg("yak shaving completed."))
                 .only(),
         ),
     )

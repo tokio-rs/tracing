@@ -38,7 +38,7 @@ pub struct CurrentSpanPerThread {
 impl CurrentSpanPerThread {
     pub fn new() -> Self {
         thread_local! {
-            static CURRENT: RefCell<Vec<Id>> = const { RefCell::new(vec![]) };
+            static CURRENT: RefCell<Vec<Id>> = const { RefCell::new(Vec::new()) };
         };
         Self { current: &CURRENT }
     }
@@ -239,6 +239,7 @@ impl Subscriber for SloggishSubscriber {
             self.print_indent(&mut stderr, indent).unwrap();
             stack.push(span_id.clone());
             if let Some(data) = data {
+                #[allow(clippy::map_identity)] // TODO remove in Rust 1.77
                 self.print_kvs(&mut stderr, data.kvs.iter().map(|(k, v)| (k, v)), "")
                     .unwrap();
             }

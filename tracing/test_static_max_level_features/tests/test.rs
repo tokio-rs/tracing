@@ -5,7 +5,8 @@ use tracing::span::{Attributes, Record};
 use tracing::{
     debug, error, info, instrument, span, trace, warn, Subscriber, Event, Id, Level, Metadata,
 };
-use tracing_mock::*;
+use tracing_core::span::Current;
+use tracing_test::block_on_future;
 
 struct State {
     last_level: Mutex<Option<Level>>,

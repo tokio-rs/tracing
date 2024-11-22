@@ -28,10 +28,14 @@
 //!
 //! [`subscriber`]: mod@crate::subscriber
 //! [`expect::event`]: fn@crate::expect::event
-#![allow(missing_docs)]
-use super::{expect, field, metadata::ExpectedMetadata, span, Parent};
-
 use std::fmt;
+
+use crate::{
+    ancestry::{ActualAncestry, ExpectedAncestry},
+    field,
+    metadata::ExpectedMetadata,
+    span,
+};
 
 /// An expected event.
 ///
@@ -42,13 +46,9 @@ use std::fmt;
 #[derive(Default, Eq, PartialEq)]
 pub struct ExpectedEvent {
     pub(super) fields: Option<field::ExpectedFields>,
-    pub(super) parent: Option<Parent>,
+    pub(super) ancestry: Option<ExpectedAncestry>,
     pub(super) in_spans: Option<Vec<span::ExpectedSpan>>,
     pub(super) metadata: ExpectedMetadata,
-}
-
-pub fn msg(message: impl fmt::Display) -> ExpectedEvent {
-    expect::event().with_fields(field::msg(message))
 }
 
 impl ExpectedEvent {
@@ -95,7 +95,7 @@ impl ExpectedEvent {
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_fields(expect::field("field.name").with_value(&"field_value"));
@@ -115,7 +115,7 @@ impl ExpectedEvent {
     ///
     /// ```should_panic
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_fields(expect::field("field.name").with_value(&"field_value"));
@@ -151,7 +151,7 @@ impl ExpectedEvent {
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .at_level(tracing::Level::WARN);
@@ -172,7 +172,7 @@ impl ExpectedEvent {
     ///
     /// ```should_panic
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .at_level(tracing::Level::INFO);
@@ -205,7 +205,7 @@ impl ExpectedEvent {
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_target("some_target");
@@ -225,7 +225,7 @@ impl ExpectedEvent {
     ///
     /// ```should_panic
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
     ///     .with_target("some_target");
@@ -253,32 +253,56 @@ impl ExpectedEvent {
         }
     }
 
-    /// Configures this `ExpectedEvent` to expect an explicit parent span
-    /// when matching events or to be an explicit root.
+    /// Configures this `ExpectedEvent` to expect the specified
+    /// [`ExpectedAncestry`]. An event's ancestry indicates whether is has a
+    /// parent or is a root, and whether the parent is explicitly or
+    /// contextually assigned.
     ///
-    /// An _explicit_ parent span is one passed to the `span!` macro in the
-    /// `parent:` field.
+    /// An _explicit_ parent span is one passed to the `event!` macro in the
+    /// `parent:` field. If no `parent:` field is specified, then the event
+    /// will have a contextually determined parent or be a contextual root if
+    /// there is no parent.
     ///
-    /// If `Some("parent_name")` is passed to `with_explicit_parent` then
-    /// the provided string is the name of the parent span to expect.
-    ///
-    /// To expect that an event is recorded with `parent: None`, `None`
-    /// can be passed to `with_explicit_parent` instead.
-    ///
-    /// If an event is recorded without an explicit parent, or if the
-    /// explicit parent has a different name, this expectation will
-    /// fail.
+    /// If the parent is different from the provided one, this expectation
+    /// will fail.
     ///
     /// # Examples
     ///
-    /// The explicit parent is matched by name:
+    /// An explicit or contextual can be matched on an `ExpectedSpan`.
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
+    ///
+    /// let parent = expect::span()
+    ///     .named("parent_span")
+    ///     .with_target("custom-target")
+    ///     .at_level(tracing::Level::INFO);
+    /// let event = expect::event()
+    ///     .with_ancestry(expect::has_explicit_parent(parent));
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .event(event)
+    ///     .run_with_handle();
+    ///
+    /// with_default(subscriber, || {
+    ///     let parent = tracing::info_span!(target: "custom-target", "parent_span");
+    ///     tracing::info!(parent: parent.id(), field = &"value");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    /// The functions `expect::has_explicit_parent` and
+    /// `expect::has_contextual_parent` take `Into<ExpectedSpan>`, so a string
+    /// passed directly will match on a span with that name, or an
+    /// [`ExpectedId`] can be passed to match a span with that Id.
+    ///
+    /// ```
+    /// use tracing::subscriber::with_default;
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_explicit_parent(Some("parent_span"));
+    ///     .with_ancestry(expect::has_explicit_parent("parent_span"));
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(event)
@@ -297,81 +321,34 @@ impl ExpectedEvent {
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_explicit_parent(None);
+    ///     .with_ancestry(expect::is_explicit_root());
     ///
     /// let (subscriber, handle) = subscriber::mock()
+    ///     .enter(expect::span())
     ///     .event(event)
     ///     .run_with_handle();
     ///
     /// with_default(subscriber, || {
+    ///     let _guard = tracing::info_span!("contextual parent").entered();
     ///     tracing::info!(parent: None, field = &"value");
     /// });
     ///
     /// handle.assert_finished();
     /// ```
     ///
-    /// In the example below, the expectation fails because the
-    /// event is contextually (rather than explicitly) within the span
-    /// `parent_span`:
-    ///
-    /// ```should_panic
-    /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
-    ///
-    /// let event = expect::event()
-    ///     .with_explicit_parent(Some("parent_span"));
-    ///
-    /// let (subscriber, handle) = subscriber::mock()
-    ///     .enter(expect::span())
-    ///     .event(event)
-    ///     .run_with_handle();
-    ///
-    /// with_default(subscriber, || {
-    ///     let parent = tracing::info_span!("parent_span");
-    ///     let _guard = parent.enter();
-    ///     tracing::info!(field = &"value");
-    /// });
-    ///
-    /// handle.assert_finished();
-    /// ```
-    pub fn with_explicit_parent(self, parent: Option<&str>) -> ExpectedEvent {
-        let parent = match parent {
-            Some(name) => Parent::Explicit(name.into()),
-            None => Parent::ExplicitRoot,
-        };
-        Self {
-            parent: Some(parent),
-            ..self
-        }
-    }
-
-    /// Configures this `ExpectedEvent` to match an event with a
-    /// contextually-determined parent span.
-    ///
-    /// The provided string is the name of the parent span to expect.
-    /// To expect that the event is a contextually-determined root, pass
-    /// `None` instead.
-    ///
-    /// To expect an event with an explicit parent span, use
-    /// [`ExpectedEvent::with_explicit_parent`].
-    ///
-    /// If an event is recorded which is not inside a span, has an explicitly
-    /// overridden parent span, or with a differently-named span as its
-    /// parent, this expectation will fail.
-    ///
-    /// # Examples
-    ///
-    /// The explicit parent is matched by name:
+    /// When `expect::has_contextual_parent("parent_name")` is passed to
+    /// `with_ancestry` then the provided string is the name of the contextual
+    /// parent span to expect.
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_contextual_parent(Some("parent_span"));
+    ///     .with_ancestry(expect::has_contextual_parent("parent_span"));
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .enter(expect::span())
@@ -387,14 +364,15 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// Matching an event recorded outside of a span:
+    /// Matching an event recorded outside of a span, a contextual
+    /// root:
     ///
     /// ```
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_contextual_parent(None);
+    ///     .with_ancestry(expect::is_contextual_root());
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .event(event)
@@ -407,15 +385,16 @@ impl ExpectedEvent {
     /// handle.assert_finished();
     /// ```
     ///
-    /// In the example below, the expectation fails because the
-    /// event is recorded with an explicit parent:
+    /// In the example below, the expectation fails because the event is
+    /// recorded with an explicit parent, however a contextual parent is
+    /// expected.
     ///
     /// ```should_panic
     /// use tracing::subscriber::with_default;
-    /// use tracing_mock::{subscriber, expect};
+    /// use tracing_mock::{expect, subscriber};
     ///
     /// let event = expect::event()
-    ///     .with_contextual_parent(Some("parent_span"));
+    ///     .with_ancestry(expect::has_contextual_parent("parent_span"));
     ///
     /// let (subscriber, handle) = subscriber::mock()
     ///     .enter(expect::span())
@@ -429,13 +408,11 @@ impl ExpectedEvent {
     ///
     /// handle.assert_finished();
     /// ```
-    pub fn with_contextual_parent(self, parent: Option<&str>) -> ExpectedEvent {
-        let parent = match parent {
-            Some(name) => Parent::Contextual(name.into()),
-            None => Parent::ContextualRoot,
-        };
+    ///
+    /// [`ExpectedId`]: struct@crate::span::ExpectedId
+    pub fn with_ancestry(self, ancenstry: ExpectedAncestry) -> ExpectedEvent {
         Self {
-            parent: Some(parent),
+            ancestry: Some(ancenstry),
             ..self
         }
     }
@@ -557,7 +534,7 @@ impl ExpectedEvent {
     pub(crate) fn check(
         &mut self,
         event: &tracing::Event<'_>,
-        get_parent_name: impl FnOnce() -> Option<String>,
+        get_ancestry: impl FnOnce() -> ActualAncestry,
         subscriber_name: &str,
     ) {
         let meta = event.metadata();
@@ -577,14 +554,9 @@ impl ExpectedEvent {
             checker.finish();
         }
 
-        if let Some(ref expected_parent) = self.parent {
-            let actual_parent = get_parent_name();
-            expected_parent.check_parent_name(
-                actual_parent.as_deref(),
-                event.parent().cloned(),
-                event.metadata().name(),
-                subscriber_name,
-            )
+        if let Some(ref expected_ancestry) = self.ancestry {
+            let actual_ancestry = get_ancestry();
+            expected_ancestry.check(&actual_ancestry, event.metadata().name(), subscriber_name);
         }
     }
 }
@@ -615,7 +587,7 @@ impl fmt::Debug for ExpectedEvent {
             s.field("fields", fields);
         }
 
-        if let Some(ref parent) = self.parent {
+        if let Some(ref parent) = self.ancestry {
             s.field("parent", &format_args!("{:?}", parent));
         }
 

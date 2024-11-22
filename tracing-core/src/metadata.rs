@@ -377,7 +377,7 @@ impl Kind {
     pub const SPAN: Kind = Kind(Self::SPAN_BIT);
 
     /// `enabled!` callsite. [`Subscriber`][`crate::subscriber::Subscriber`]s can assume
-    /// this `Kind` means they will never recieve a
+    /// this `Kind` means they will never receive a
     /// full event with this [`Metadata`].
     pub const HINT: Kind = Kind(Self::HINT_BIT);
 

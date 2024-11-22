@@ -64,7 +64,7 @@ fn fields() {
         .with_target("my_target");
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&2usize)
                     .and(expect::field("arg2").with_value(&false))
@@ -76,7 +76,7 @@ fn fields() {
         .exit(span.clone())
         .drop_span(span)
         .new_span(
-            span2.clone().with_field(
+            span2.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&3usize)
                     .and(expect::field("arg2").with_value(&true))
@@ -126,7 +126,7 @@ fn skip() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(expect::field("arg1").with_value(&2usize).only()),
+                .with_fields(expect::field("arg1").with_value(&2usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -134,7 +134,7 @@ fn skip() {
         .new_span(
             span2
                 .clone()
-                .with_field(expect::field("arg1").with_value(&3usize).only()),
+                .with_fields(expect::field("arg1").with_value(&3usize).only()),
         )
         .enter(span2.clone())
         .exit(span2.clone())
@@ -171,7 +171,7 @@ fn generics() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("arg1")
                     .with_value(&format_args!("Foo"))
                     .and(expect::field("arg2").with_value(&format_args!("false"))),
@@ -204,7 +204,7 @@ fn methods() {
 
     let (subscriber, handle) = subscriber::mock()
         .new_span(
-            span.clone().with_field(
+            span.clone().with_fields(
                 expect::field("self")
                     .with_value(&format_args!("Foo"))
                     .and(expect::field("arg1").with_value(&42usize)),
@@ -236,7 +236,7 @@ fn impl_trait_return_type() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             span.clone()
-                .with_field(expect::field("x").with_value(&10usize).only()),
+                .with_fields(expect::field("x").with_value(&10usize).only()),
         )
         .enter(span.clone())
         .exit(span.clone())
@@ -248,6 +248,78 @@ fn impl_trait_return_type() {
         for _ in returns_impl_trait(10) {
             // nop
         }
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn name_ident() {
+    const MY_NAME: &str = "my_name";
+    #[instrument(name = MY_NAME)]
+    fn name() {}
+
+    let span_name = expect::span().named(MY_NAME);
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span_name.clone())
+        .enter(span_name.clone())
+        .exit(span_name.clone())
+        .drop_span(span_name)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        name();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_ident() {
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET)]
+    fn target() {}
+
+    let span_target = expect::span().named("target").with_target(MY_TARGET);
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span_target.clone())
+        .enter(span_target.clone())
+        .exit(span_target.clone())
+        .drop_span(span_target)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        target();
+    });
+
+    handle.assert_finished();
+}
+
+#[test]
+fn target_name_ident() {
+    const MY_NAME: &str = "my_name";
+    const MY_TARGET: &str = "my_target";
+
+    #[instrument(target = MY_TARGET, name = MY_NAME)]
+    fn name_target() {}
+
+    let span_name_target = expect::span().named(MY_NAME).with_target(MY_TARGET);
+
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span_name_target.clone())
+        .enter(span_name_target.clone())
+        .exit(span_name_target.clone())
+        .drop_span(span_name_target)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, || {
+        name_target();
     });
 
     handle.assert_finished();

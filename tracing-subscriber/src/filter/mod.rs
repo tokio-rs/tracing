@@ -39,7 +39,7 @@ feature! {
     pub use self::directive::ParseError;
 }
 
-/// Stub implementations of the per-layer-fitler detection functions for when the
+/// Stub implementations of the per-layer-filter detection functions for when the
 /// `registry` feature is disabled.
 #[cfg(not(all(feature = "registry", feature = "std")))]
 mod has_plf_stubs {
