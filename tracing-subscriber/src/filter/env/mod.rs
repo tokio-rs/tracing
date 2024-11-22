@@ -481,7 +481,7 @@ impl EnvFilter {
         // is it possible for a dynamic filter directive to enable this event?
         // if not, we can avoid the thread local access + iterating over the
         // spans in the current scope.
-        if self.has_dynamics && self.dynamics.max_level >= *level {
+        if self.has_dynamics {
             if metadata.is_span() {
                 // If the metadata is a span, see if we care about its callsite.
                 let enabled_by_cs = self
@@ -501,6 +501,10 @@ impl EnvFilter {
                     if filter >= level {
                         return true;
                     }
+                }
+                if !scope.is_empty() {
+                    // at least one dynamic filter disabled this
+                    return false;
                 }
                 false
             };
@@ -619,14 +623,23 @@ impl EnvFilter {
     }
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.has_dynamics && metadata.is_span() {
-            // If this metadata describes a span, first, check if there is a
-            // dynamic filter that should be constructed for it. If so, it
-            // should always be enabled, since it influences filtering.
-            if let Some(matcher) = self.dynamics.matcher(metadata) {
-                let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
-                by_cs.insert(metadata.callsite(), matcher);
-                return Interest::always();
+        if self.has_dynamics {
+            if metadata.is_span() {
+                // If this metadata describes a span, first, check if there is a
+                // dynamic filter that should be constructed for it. If so, it
+                // should always be enabled, since it influences filtering.
+                if let Some(matcher) = self.dynamics.matcher(metadata) {
+                    let mut by_cs = try_lock!(self.by_cs.write(), else return self.base_interest());
+                    by_cs.insert(metadata.callsite(), matcher);
+                    return Interest::always();
+                }
+            } else if self
+                .dynamics
+                .directives()
+                .any(|directive| directive.level < *metadata.level())
+            {
+                // Any dynamic could turn this metadata off
+                return Interest::sometimes();
             }
         }
 
