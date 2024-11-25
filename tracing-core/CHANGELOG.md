@@ -1,3 +1,36 @@
+# 0.1.33 (November 25, 2024)
+
+### Added
+
+- Add index API for `Field` ([#2820])
+- allow `&[u8]` to be recorded as event/span field ([#2954])
+
+### Changed
+
+- Bump MSRV to 1.63 ([#2793])
+- Use const `thread_local`s when possible ([#2838])
+
+### Fixed
+
+- Fix missed `register_callsite` error ([#2938])
+- Do not add `valuable/std` feature as dependency unless `valuable` is used ([#3002])
+- prefix macro calls with ::core to avoid clashing with local macros ([#3024])
+
+### Documented
+
+- Fix incorrect (incorrectly updated) docs for LevelFilter ([#2767])
+
+Thanks to new contributor @maddiemort for contributing to this release!
+
+[#2767]: https://github.com/tokio-rs/tracing/pull/2767
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2820]: https://github.com/tokio-rs/tracing/pull/2820
+[#2838]: https://github.com/tokio-rs/tracing/pull/2838
+[#2938]: https://github.com/tokio-rs/tracing/pull/2938
+[#2954]: https://github.com/tokio-rs/tracing/pull/2954
+[#3002]: https://github.com/tokio-rs/tracing/pull/3002
+[#3024]: https://github.com/tokio-rs/tracing/pull/3024
+
 # 0.1.32 (October 13, 2023)
 
 ### Documented
