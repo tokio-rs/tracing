@@ -208,17 +208,18 @@ mod expand;
 ///
 /// Additional fields (key-value pairs with arbitrary data) can be passed to
 /// to the generated span through the `fields` argument on the
-/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
+/// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported. Any
+/// identifier, or a constant expression that evaluates to one enclosed in curly
+/// braces, and nested (dotted) field names are also supported. Any
 /// Rust expression can be used as a field value in this manner. These
 /// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
 /// also be specified *without* values. Doing so will result in an [empty field]
 /// whose value may be recorded later within the function body.
 ///
-/// Note that overlap between the names of fields and (non-skipped) arguments
-/// will result in a compile error.
+/// Note that defining a field with the same name as a (non-explicitly-skipped)
+/// argument will implicitly skip the argument.
 ///
 /// ## Examples
 ///
@@ -409,8 +410,16 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(fields(foo="bar", id=1, show=true))]
-/// fn my_function(arg: usize) {
+/// #[derive(Debug)]
+/// struct Argument;
+/// impl Argument {
+///     fn bar() -> &'static str {
+///         "bar"
+///     }
+/// }
+/// const FOOBAR: &'static str = "foo.bar";
+/// #[instrument(fields(foo="bar", id=1, show=true, {FOOBAR}=%arg.bar()))]
+/// fn my_function(arg: Argument) {
 ///     // ...
 /// }
 /// ```
