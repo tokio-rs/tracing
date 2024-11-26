@@ -10,6 +10,7 @@ use syn::{
     Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
+use crate::attr::FieldName;
 use crate::{
     attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
@@ -211,8 +212,16 @@ fn gen_block<B: ToTokens>(
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
                     fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
+                        match name {
+                            // TODO(#3158): Implement this variant when the compiler supports const
+                            //     evaluation (https://rustc-dev-guide.rust-lang.org/const-eval).
+                            FieldName::Expr(_) => true,
+                            FieldName::Punctuated(punctuated) => {
+                                let first = punctuated.first();
+                                first != punctuated.last()
+                                    || !first.iter().any(|name| name == &param)
+                            }
+                        }
                     })
                 } else {
                     true
