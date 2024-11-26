@@ -1,3 +1,29 @@
+# 0.1.28 (November 26, 2024)
+
+### Changed
+
+- Bump MSRV to 1.63 ([#2793])
+
+### Fixed
+
+- Added missing RecordTypes for instrument ([#2781])
+- Change order of async and unsafe modifier ([#2864])
+- Extract match scrutinee ([#2880])
+- Allow field path segments to be keywords ([#2925])
+- Support const values for `target` and `name` ([#2941])
+
+### Documented
+
+- Fix backporting error in attributes ([#2780])
+
+[#2780]: https://github.com/tokio-rs/tracing/pull/2780
+[#2781]: https://github.com/tokio-rs/tracing/pull/2781
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2864]: https://github.com/tokio-rs/tracing/pull/2864
+[#2880]: https://github.com/tokio-rs/tracing/pull/2880
+[#2925]: https://github.com/tokio-rs/tracing/pull/2925
+[#2941]: https://github.com/tokio-rs/tracing/pull/2941
+
 # 0.1.27 (October 13, 2023)
 
 ### Changed
