@@ -1,3 +1,5 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
 use http::{Method, Request, Uri};
 use hyper::{client::Client, Body};
 use std::time::Duration;
