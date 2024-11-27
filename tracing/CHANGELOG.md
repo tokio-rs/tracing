@@ -1,4 +1,57 @@
-# 0.1.40
+# 0.1.41 (November 27, 2024)
+
+[ [crates.io][crate-0.1.41] ] | [ [docs.rs][docs-0.1.41] ]
+
+This release updates the `tracing-core` dependency to [v0.1.33][core-0.1.33] and
+the `tracing-attributes` dependency to [v0.1.28][attrs-0.1.28].
+
+### Added
+
+- **core**: Add index API for `Field` ([#2820])
+- **core**: Allow `&[u8]` to be recorded as event/span field ([#2954])
+
+### Changed
+
+- Bump MSRV to 1.63 ([#2793])
+- **core**: Use const `thread_local`s when possible ([#2838])
+
+### Fixed
+
+- Removed core imports in macros ([#2762])
+- **attributes**: Added missing RecordTypes for instrument ([#2781])
+- **attributes**: Change order of async and unsafe modifier ([#2864])
+- Fix missing field prefixes ([#2878])
+- **attributes**: Extract match scrutinee ([#2880])
+- Fix non-simple macro usage without message ([#2879])
+- Fix event macros with constant field names in the first position ([#2883])
+- Allow field path segments to be keywords ([#2925])
+- **core**: Fix missed `register_callsite` error ([#2938])
+- **attributes**: Support const values for `target` and `name` ([#2941])
+- Prefix macro calls with ::core to avoid clashing with local macros ([#3024])
+
+[#2762]: https://github.com/tokio-rs/tracing/pull/2762
+[#2781]: https://github.com/tokio-rs/tracing/pull/2781
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2820]: https://github.com/tokio-rs/tracing/pull/2820
+[#2838]: https://github.com/tokio-rs/tracing/pull/2838
+[#2864]: https://github.com/tokio-rs/tracing/pull/2864
+[#2878]: https://github.com/tokio-rs/tracing/pull/2878
+[#2879]: https://github.com/tokio-rs/tracing/pull/2879
+[#2880]: https://github.com/tokio-rs/tracing/pull/2880
+[#2883]: https://github.com/tokio-rs/tracing/pull/2883
+[#2925]: https://github.com/tokio-rs/tracing/pull/2925
+[#2938]: https://github.com/tokio-rs/tracing/pull/2938
+[#2941]: https://github.com/tokio-rs/tracing/pull/2941
+[#2954]: https://github.com/tokio-rs/tracing/pull/2954
+[#3024]: https://github.com/tokio-rs/tracing/pull/3024
+[attrs-0.1.28]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-attributes-0.1.28
+[core-0.1.33]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-core-0.1.33
+[docs-0.1.41]: https://docs.rs/tracing/0.1.41/tracing/
+[crate-0.1.41]: https://crates.io/crates/tracing/0.1.41
+
+# 0.1.40 (October 19, 2023)
 
 This release fixes a potential stack use-after-free in the
 `Instrument::into_inner` method. Only uses of this method are affected by this
