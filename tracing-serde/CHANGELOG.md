@@ -1,3 +1,27 @@
+# 0.2.0 (November 27, 2024)
+
+[ [crates.io][crate-0.2.0] ] | [ [docs.rs][docs-0.2.0] ]
+
+<a id = "0.2.0-breaking"></a>
+### Breaking Changes 
+
+- Correct SerializeField definition and doc formatting ([#3040])
+  `SerializeField` has gained a generic lifetime parameter.
+
+### Fixed
+
+- Implement `AsSerde` for `FieldSet` ([#2241])
+- [**breaking**](#0.2.0-breaking) Correct SerializeField definition and doc formatting ([#3040])
+
+### Changed
+
+- Bump MSRV to 1.63 ([#2793])
+
+[#2241]: https://github.com/tokio-rs/tracing/pull/2241
+[#3040]: https://github.com/tokio-rs/tracing/pull/3040
+[docs-0.2.0]: https://docs.rs/tracing-serde/0.2.0/tracing-serde/
+[crate-0.2.0]: https://crates.io/crates/tracing-serde/0.2.0
+
 # 0.1.3 (February 4, 2022)
 
 This release adds *experimental* support for recording structured field
