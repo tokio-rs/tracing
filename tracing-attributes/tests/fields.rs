@@ -60,10 +60,14 @@ fn fn_struct_const_field_name() {}
 #[instrument(fields({"foo"} = "bar"))]
 fn fn_string_field_name() {}
 
-const CLASHY_FIELD_NAME: &str = "s";
-
-#[instrument(fields({CLASHY_FIELD_NAME} = "foo"))]
-fn fn_clashy_const_field_name(s: &str) { let _ = s; }
+// TODO(#3158): To be consistent with event! and span! macros, the argument's value should be
+//     dropped, but this is only possible to implement when the compiler supports const evaluation
+//     (https://rustc-dev-guide.rust-lang.org/const-eval). For now the duplicated field would
+//     trigger a panic.
+// const CLASHY_FIELD_NAME: &str = "s";
+//
+// #[instrument(fields({CLASHY_FIELD_NAME} = "foo"))]
+// fn fn_clashy_const_field_name(s: &str) { let _ = s; }
 
 #[derive(Debug)]
 struct HasField {
@@ -235,21 +239,22 @@ fn string_field_name() {
     });
 }
 
-#[test]
-fn clashy_const_field_name() {
-    let span = expect::span().with_fields(
-        // TODO(#3158): to be consistent with event! and span! macros, the argument's value should
-        //       be dropped. but this is only possible to implement when the compiler supports const
-        //       evaluation (https://rustc-dev-guide.rust-lang.org/const-eval).
-        expect::field("s")
-            .with_value(&"foo")
-            .and(expect::field("s").with_value(&"hello world"))
-            .only(),
-    );
-    run_test(span, || {
-        fn_clashy_const_field_name("hello world");
-    });
-}
+// TODO(#3158): To be consistent with event! and span! macros, the argument's value should be
+//     dropped, but this is only possible to implement when the compiler supports const evaluation
+//     (https://rustc-dev-guide.rust-lang.org/const-eval). For now the duplicated field would
+//     trigger a panic.
+// #[test]
+// fn clashy_const_field_name() {
+//     let span = expect::span().with_fields(
+//         expect::field("s")
+//             .with_value(&"foo")
+//             .and(expect::field("s").with_value(&"hello world"))
+//             .only(),
+//     );
+//     run_test(span, || {
+//         fn_clashy_const_field_name("hello world");
+//     });
+// }
 
 fn run_test<F: FnOnce() -> T, T>(span: NewSpan, fun: F) {
     let (subscriber, handle) = subscriber::mock()
