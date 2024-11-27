@@ -18,7 +18,7 @@ rust-version = "1.63.0"
 publish = false
 
 [dependencies]
-tracing = { path = "../tracing", version = "0.1.35", features = ["std", "attributes"], default-features = false }
+tracing = { path = "../tracing", version = "0.1.41", features = ["std", "attributes"], default-features = false }
 tracing-core = { path = "../tracing-core", version = "0.1.28", default-features = false }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", default-features = false, features = ["registry"], optional = true }
 
