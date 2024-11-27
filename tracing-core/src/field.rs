@@ -854,11 +854,46 @@ impl Clone for Field {
     }
 }
 
+// Compares two strings for equality in a constant context.
+const fn str_eq(left: &str, right: &str) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+
+    let left_bytes = left.as_bytes();
+    let right_bytes = right.as_bytes();
+    let mut i = left_bytes.len();
+    while i > 0 {
+        if left_bytes[i - 1] != right_bytes[i - 1] {
+            return false;
+        }
+        i = i - 1;
+    }
+
+    true
+}
+
+// Asserts field names are distinct.
+const fn assert_distinct(names: &[&str]) {
+    let mut i = names.len();
+    while i > 0 {
+        let mut j = i - 1;
+        while j > 0 {
+            if str_eq(names[i - 1], names[j - 1]) {
+                panic!("duplicated field name");
+            }
+            j = j - 1;
+        }
+        i = i - 1;
+    }
+}
+
 // ===== impl FieldSet =====
 
 impl FieldSet {
     /// Constructs a new `FieldSet` with the given array of field names and callsite.
     pub const fn new(names: &'static [&'static str], callsite: callsite::Identifier) -> Self {
+        assert_distinct(names);
         Self { names, callsite }
     }
 

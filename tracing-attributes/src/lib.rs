@@ -210,16 +210,17 @@ mod expand;
 /// to the generated span through the `fields` argument on the
 /// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, or a constant expression that evaluates to one enclosed in curly
-/// braces, and nested (dotted) field names are also supported. Any
+/// identifier, or a constant expression that evaluates to one, enclosed in curly
+/// braces. Note that nested (dotted) field names are also supported. Any
 /// Rust expression can be used as a field value in this manner. These
 /// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
 /// also be specified *without* values. Doing so will result in an [empty field]
 /// whose value may be recorded later within the function body.
 ///
-/// Note that defining a field with the same name as a (non-explicitly-skipped)
-/// argument will implicitly skip the argument.
+/// Note that defining a field with the same name as a (non-skipped)
+/// argument will implicitly skip the argument, or even panic if using
+/// constants as field names.
 ///
 /// ## Examples
 ///
