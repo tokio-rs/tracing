@@ -1,3 +1,37 @@
+# 0.3.19 (November 29, 2024)
+
+[ [crates.io][crate-0.3.19] ] | [ [docs.rs][docs-0.3.19] ]
+
+This release updates the `tracing` dependency to [v0.1.41][tracing-0.1.41] and
+the `tracing-serde` dependency to [v0.2.0][tracing-serde-0.2.0].
+
+### Added
+
+- Add `set_span_events` to `fmt::Subscriber` ([#2962])
+- **tracing**: Allow `&[u8]` to be recorded as event/span field ([#2954])
+
+### Changed
+
+- Set `log` max level when reloading ([#1270])
+- Bump MSRV to 1.63 ([#2793])
+- Use const `thread_local`s when possible ([#2838])
+- Don't gate `with_ansi()` on the "ansi" feature ([#3020])
+- Updated tracing-serde to 0.2.0 ([#3160])
+
+[#1270]: https://github.com/tokio-rs/tracing/pull/1270
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2838]: https://github.com/tokio-rs/tracing/pull/2838
+[#2954]: https://github.com/tokio-rs/tracing/pull/2954
+[#2962]: https://github.com/tokio-rs/tracing/pull/2962
+[#3020]: https://github.com/tokio-rs/tracing/pull/3020
+[#3160]: https://github.com/tokio-rs/tracing/pull/3160
+[tracing-0.1.41]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-0.1.41
+[tracing-serde-0.2.0]:
+    https://github.com/tokio-rs/tracing/releases/tag/tracing-serde-0.2.0
+[docs-0.3.19]: https://docs.rs/tracing-subscriber/0.3.19/tracing_subscriber/
+[crate-0.3.19]: https://crates.io/crates/tracing-subscriber/0.3.19
+
 # 0.3.18 (November 13, 2023)
 
 This release of `tracing-subscriber` adds support for the [`NO_COLOR`] environment
