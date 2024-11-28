@@ -879,7 +879,7 @@ impl<'a> Entered<'a> {
 }
 
 #[cfg(feature = "std")]
-impl<'a> Drop for Entered<'a> {
+impl Drop for Entered<'_> {
     #[inline]
     fn drop(&mut self) {
         self.0.can_enter.set(true);

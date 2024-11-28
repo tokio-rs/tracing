@@ -772,7 +772,7 @@ struct IdentAndTypesRenamer<'a> {
     idents: Vec<(Ident, Ident)>,
 }
 
-impl<'a> VisitMut for IdentAndTypesRenamer<'a> {
+impl VisitMut for IdentAndTypesRenamer<'_> {
     // we deliberately compare strings because we want to ignore the spans
     // If we apply clippy's lint, the behavior changes
     #[allow(clippy::cmp_owned)]
@@ -801,7 +801,7 @@ struct AsyncTraitBlockReplacer<'a> {
     patched_block: Block,
 }
 
-impl<'a> VisitMut for AsyncTraitBlockReplacer<'a> {
+impl VisitMut for AsyncTraitBlockReplacer<'_> {
     fn visit_block_mut(&mut self, i: &mut Block) {
         if i == self.block {
             *i = self.patched_block.clone();

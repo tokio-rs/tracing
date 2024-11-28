@@ -147,7 +147,7 @@ impl AsField for Field {
     }
 }
 
-impl<'a> AsField for &'a Field {
+impl AsField for &Field {
     #[inline]
     fn as_field(&self, metadata: &Metadata<'_>) -> Option<Field> {
         if self.callsite() == metadata.callsite() {
@@ -166,5 +166,5 @@ impl AsField for str {
 }
 
 impl crate::sealed::Sealed for Field {}
-impl<'a> crate::sealed::Sealed for &'a Field {}
+impl crate::sealed::Sealed for &Field {}
 impl crate::sealed::Sealed for str {}

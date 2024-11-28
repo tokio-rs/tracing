@@ -437,7 +437,7 @@ impl<'a> PrettyVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for PrettyVisitor<'a> {
+impl field::Visit for PrettyVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;
@@ -497,14 +497,14 @@ impl<'a> field::Visit for PrettyVisitor<'a> {
     }
 }
 
-impl<'a> VisitOutput<fmt::Result> for PrettyVisitor<'a> {
+impl VisitOutput<fmt::Result> for PrettyVisitor<'_> {
     fn finish(mut self) -> fmt::Result {
         write!(&mut self.writer, "{}", self.style.suffix())?;
         self.result
     }
 }
 
-impl<'a> VisitFmt for PrettyVisitor<'a> {
+impl VisitFmt for PrettyVisitor<'_> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut self.writer
     }

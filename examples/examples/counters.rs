@@ -28,7 +28,7 @@ struct Count<'a> {
     counters: RwLockReadGuard<'a, HashMap<String, AtomicUsize>>,
 }
 
-impl<'a> Visit for Count<'a> {
+impl Visit for Count<'_> {
     fn record_i64(&mut self, field: &Field, value: i64) {
         if let Some(counter) = self.counters.get(field.name()) {
             if value > 0 {

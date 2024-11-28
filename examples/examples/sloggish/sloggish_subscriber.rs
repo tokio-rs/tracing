@@ -86,7 +86,7 @@ struct Event<'a> {
 
 struct ColorLevel<'a>(&'a Level);
 
-impl<'a> fmt::Display for ColorLevel<'a> {
+impl fmt::Display for ColorLevel<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Level::TRACE => Color::Purple.paint("TRACE"),
@@ -116,7 +116,7 @@ impl Visit for Span {
     }
 }
 
-impl<'a> Visit for Event<'a> {
+impl Visit for Event<'_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         write!(
             &mut self.stderr,

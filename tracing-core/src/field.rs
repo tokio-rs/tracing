@@ -387,7 +387,7 @@ where
 
 struct HexBytes<'a>(&'a [u8]);
 
-impl<'a> fmt::Debug for HexBytes<'a> {
+impl fmt::Debug for HexBytes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_char('[')?;
 
@@ -407,13 +407,13 @@ impl<'a> fmt::Debug for HexBytes<'a> {
 
 // ===== impl Visit =====
 
-impl<'a, 'b> Visit for fmt::DebugStruct<'a, 'b> {
+impl Visit for fmt::DebugStruct<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.field(field.name(), value);
     }
 }
 
-impl<'a, 'b> Visit for fmt::DebugMap<'a, 'b> {
+impl Visit for fmt::DebugMap<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.entry(&format_args!("{}", field), value);
     }
@@ -641,9 +641,9 @@ where
     }
 }
 
-impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
+impl crate::sealed::Sealed for fmt::Arguments<'_> {}
 
-impl<'a> Value for fmt::Arguments<'a> {
+impl Value for fmt::Arguments<'_> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
     }
@@ -938,7 +938,7 @@ impl FieldSet {
     }
 }
 
-impl<'a> IntoIterator for &'a FieldSet {
+impl IntoIterator for &FieldSet {
     type IntoIter = Iter;
     type Item = Field;
     #[inline]
@@ -1017,7 +1017,7 @@ impl Iterator for Iter {
 
 // ===== impl ValueSet =====
 
-impl<'a> ValueSet<'a> {
+impl ValueSet<'_> {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// defining the fields this `ValueSet` refers to.
     ///
@@ -1078,7 +1078,7 @@ impl<'a> ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ValueSet<'a> {
+impl fmt::Debug for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
@@ -1093,7 +1093,7 @@ impl<'a> fmt::Debug for ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Display for ValueSet<'a> {
+impl fmt::Display for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()

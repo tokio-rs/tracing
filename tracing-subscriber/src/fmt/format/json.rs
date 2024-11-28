@@ -119,7 +119,7 @@ where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
+impl<Span, N> serde::ser::Serialize for SerializableContext<'_, '_, Span, N>
 where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -149,7 +149,7 @@ where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+impl<Span, N> serde::ser::Serialize for SerializableSpan<'_, '_, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -426,7 +426,7 @@ pub struct JsonVisitor<'a> {
     writer: &'a mut dyn Write,
 }
 
-impl<'a> fmt::Debug for JsonVisitor<'a> {
+impl fmt::Debug for JsonVisitor<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("JsonVisitor {{ values: {:?} }}", self.values))
     }
@@ -447,13 +447,13 @@ impl<'a> JsonVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitFmt for JsonVisitor<'a> {
+impl crate::field::VisitFmt for JsonVisitor<'_> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
+impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
     fn finish(self) -> fmt::Result {
         let inner = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(self.writer));
@@ -474,7 +474,7 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for JsonVisitor<'a> {
+impl field::Visit for JsonVisitor<'_> {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
     fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
         let value = match serde_json::to_value(valuable_serde::Serializable::new(value)) {

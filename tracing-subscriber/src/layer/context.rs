@@ -408,7 +408,7 @@ where
     }
 }
 
-impl<'a, S> Context<'a, S> {
+impl<S> Context<'_, S> {
     pub(crate) fn none() -> Self {
         Self {
             subscriber: None,
@@ -419,7 +419,7 @@ impl<'a, S> Context<'a, S> {
     }
 }
 
-impl<'a, S> Clone for Context<'a, S> {
+impl<S> Clone for Context<'_, S> {
     #[inline]
     fn clone(&self) -> Self {
         let subscriber = self.subscriber.as_ref().copied();
