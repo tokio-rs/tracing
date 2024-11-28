@@ -414,7 +414,7 @@ mod expand;
 /// #[derive(Debug)]
 /// struct Argument;
 /// impl Argument {
-///     fn bar() -> &'static str {
+///     fn bar(&self) -> &'static str {
 ///         "bar"
 ///     }
 /// }

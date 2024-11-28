@@ -867,7 +867,7 @@ const fn str_eq(left: &str, right: &str) -> bool {
         if left_bytes[i - 1] != right_bytes[i - 1] {
             return false;
         }
-        i = i - 1;
+        i -= 1;
     }
 
     true
@@ -882,9 +882,9 @@ const fn assert_distinct(names: &[&str]) {
             if str_eq(names[i - 1], names[j - 1]) {
                 panic!("duplicated field name");
             }
-            j = j - 1;
+            j -= 1;
         }
-        i = i - 1;
+        i -= 1;
     }
 }
 
