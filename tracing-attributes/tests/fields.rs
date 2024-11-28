@@ -193,11 +193,7 @@ fn keyword_ident_in_field_name() {
 
 #[test]
 fn expr_const_field_name() {
-    let span = expect::span().with_fields(
-        expect::field("foo.bar")
-            .with_value(&"baz")
-            .only(),
-    );
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
     run_test(span, || {
         fn_const_field_name();
     });
@@ -205,11 +201,7 @@ fn expr_const_field_name() {
 
 #[test]
 fn expr_const_fn_field_name() {
-    let span = expect::span().with_fields(
-        expect::field("foo.bar")
-            .with_value(&"baz")
-            .only(),
-    );
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
     run_test(span, || {
         fn_const_fn_field_name();
     });
@@ -217,11 +209,7 @@ fn expr_const_fn_field_name() {
 
 #[test]
 fn struct_const_field_name() {
-    let span = expect::span().with_fields(
-        expect::field("foo.bar")
-            .with_value(&"baz")
-            .only(),
-    );
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
     run_test(span, || {
         fn_struct_const_field_name();
     });
@@ -229,11 +217,7 @@ fn struct_const_field_name() {
 
 #[test]
 fn string_field_name() {
-    let span = expect::span().with_fields(
-        expect::field("foo")
-            .with_value(&"bar")
-            .only(),
-    );
+    let span = expect::span().with_fields(expect::field("foo").with_value(&"bar").only());
     run_test(span, || {
         fn_string_field_name();
     });
