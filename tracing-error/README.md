@@ -18,9 +18,9 @@ information.
 [Documentation (release)][docs-url] | [Documentation (master)][docs-master-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-error.svg
-[crates-url]: https://crates.io/crates/tracing-error/0.2.0
+[crates-url]: https://crates.io/crates/tracing-error/0.2.1
 [docs-badge]: https://docs.rs/tracing-error/badge.svg
-[docs-url]: https://docs.rs/tracing-error/0.2.0/tracing_error
+[docs-url]: https://docs.rs/tracing-error/0.2.1/tracing_error
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_error
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -234,5 +234,5 @@ terms or conditions.
 [subscriber layer]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/layer/trait.Layer.html
 [`tracing`]: https://docs.rs/tracing
 [`std::error::Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
-[`SpanTrace`]: https://docs.rs/tracing-error/0.2.0/tracing_error/struct.SpanTrace.html
-[`ErrorLayer`]: https://docs.rs/tracing-error/0.2.0/tracing_error/struct.ErrorLayer.html
+[`SpanTrace`]: https://docs.rs/tracing-error/0.2.1/tracing_error/struct.SpanTrace.html
+[`ErrorLayer`]: https://docs.rs/tracing-error/0.2.1/tracing_error/struct.ErrorLayer.html

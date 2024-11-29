@@ -1,3 +1,24 @@
+# 0.2.1 (November 29, 2024)
+
+[ [crates.io][crate-0.2.1] ] | [ [docs.rs][docs-0.2.1] ]
+
+### Changed
+
+- Bump MSRV to 1.63 ([#2793])
+
+### Documented
+
+- Use intra-doc links instead of relative file paths ([#2068])
+- More intra-doc links ([#2077])
+- Add missing backtick to `prelude` docs ([#2120])
+
+[#2068]: https://github.com/tokio-rs/tracing/pull/2068
+[#2077]: https://github.com/tokio-rs/tracing/pull/2077
+[#2120]: https://github.com/tokio-rs/tracing/pull/2120
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[docs-0.2.1]: https://docs.rs/tracing-error/0.2.1/tracing_error/
+[crate-0.2.1]: https://crates.io/crates/tracing-error/0.2.1
+
 # 0.2.0 (October 23, 2021)
 
 This is a breaking change release in order to update the `tracing-subscriber`
