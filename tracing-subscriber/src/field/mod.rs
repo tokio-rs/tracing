@@ -157,29 +157,29 @@ where
 
 // === impl RecordFields ===
 
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Event<'a> {}
-impl<'a> RecordFields for Event<'a> {
+impl crate::sealed::Sealed<RecordFieldsMarker> for Event<'_> {}
+impl RecordFields for Event<'_> {
     fn record(&self, visitor: &mut dyn Visit) {
         Event::record(self, visitor)
     }
 }
 
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'a> {}
-impl<'a> RecordFields for Attributes<'a> {
+impl crate::sealed::Sealed<RecordFieldsMarker> for Attributes<'_> {}
+impl RecordFields for Attributes<'_> {
     fn record(&self, visitor: &mut dyn Visit) {
         Attributes::record(self, visitor)
     }
 }
 
-impl<'a> crate::sealed::Sealed<RecordFieldsMarker> for Record<'a> {}
-impl<'a> RecordFields for Record<'a> {
+impl crate::sealed::Sealed<RecordFieldsMarker> for Record<'_> {}
+impl RecordFields for Record<'_> {
     fn record(&self, visitor: &mut dyn Visit) {
         Record::record(self, visitor)
     }
 }
 
-impl<'a, F> crate::sealed::Sealed<RecordFieldsMarker> for &'a F where F: RecordFields {}
-impl<'a, F> RecordFields for &'a F
+impl<F> crate::sealed::Sealed<RecordFieldsMarker> for &F where F: RecordFields {}
+impl<F> RecordFields for &F
 where
     F: RecordFields,
 {
@@ -338,19 +338,19 @@ pub(in crate::field) mod test_util {
         }
     }
 
-    impl<'a> Visit for DebugVisitor<'a> {
+    impl Visit for DebugVisitor<'_> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
             write!(self.writer, "{}={:?}", field, value).unwrap();
         }
     }
 
-    impl<'a> VisitOutput<fmt::Result> for DebugVisitor<'a> {
+    impl VisitOutput<fmt::Result> for DebugVisitor<'_> {
         fn finish(self) -> fmt::Result {
             self.err
         }
     }
 
-    impl<'a> VisitFmt for DebugVisitor<'a> {
+    impl VisitFmt for DebugVisitor<'_> {
         fn writer(&mut self) -> &mut dyn fmt::Write {
             self.writer
         }

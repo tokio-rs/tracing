@@ -888,7 +888,6 @@ impl Span {
     /// span.record("some_field", &"hello world!");
     /// ```
     ///
-
     /// [`Subscriber::enter`]: super::subscriber::Subscriber::enter()
     /// [`Subscriber::exit`]: super::subscriber::Subscriber::exit()
     /// [`Id`]: super::Id
@@ -1556,7 +1555,7 @@ impl Deref for EnteredSpan {
     }
 }
 
-impl<'a> Drop for Entered<'a> {
+impl Drop for Entered<'_> {
     #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()

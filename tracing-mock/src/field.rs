@@ -527,7 +527,7 @@ pub(crate) struct CheckVisitor<'a> {
     subscriber_name: &'a str,
 }
 
-impl<'a> Visit for CheckVisitor<'a> {
+impl Visit for CheckVisitor<'_> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.expect
             .compare_or_panic(field.name(), &value, self.ctx, self.subscriber_name)
@@ -563,7 +563,7 @@ impl<'a> Visit for CheckVisitor<'a> {
     }
 }
 
-impl<'a> CheckVisitor<'a> {
+impl CheckVisitor<'_> {
     pub(crate) fn finish(self) {
         assert!(
             self.expect.fields.is_empty(),
