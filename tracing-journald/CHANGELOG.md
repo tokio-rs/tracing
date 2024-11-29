@@ -1,3 +1,21 @@
+# 0.3.1 (November 29, 2024)
+
+[ [crates.io][crate-0.3.1] ] | [ [docs.rs][docs-0.3.1] ]
+
+### Changed
+
+- disable default features of tracing-subscriber ([#1476])
+- allow custom journal fields ([#2708])
+- Bump MSRV to 1.63 ([#2793])
+- make level mappings configurable ([#2824])
+
+[#1476]: https://github.com/tokio-rs/tracing/pull/1476
+[#2708]: https://github.com/tokio-rs/tracing/pull/2708
+[#2793]: https://github.com/tokio-rs/tracing/pull/2793
+[#2824]: https://github.com/tokio-rs/tracing/pull/2824
+[docs-0.3.1]: https://docs.rs/tracing-journald/0.3.1
+[crate-0.3.1]: https://crates.io/crates/tracing-journald/0.3.1
+
 # 0.3.0 (April 21, 2022)
 
 This is a breaking release which changes the format in which span fields
