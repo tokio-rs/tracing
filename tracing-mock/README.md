@@ -6,6 +6,8 @@
 
 Utilities for testing [`tracing`] and crates that uses it.
 
+[![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
@@ -13,8 +15,12 @@ Utilities for testing [`tracing`] and crates that uses it.
 
 [Documentation][docs-master-url] | [Chat][discord-url]
 
+[crates-badge]: https://img.shields.io/crates/v/tracing-mock.svg
+[crates-url]: https://crates.io/crates/tracing-mock
+[docs-badge]: https://docs.rs/tracing-mock/badge.svg
+[docs-url]: https://docs.rs/tracing-mock/latest
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_mock
+[docs-master-url]: https://tracing.rs/tracing_mock
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/tokio-rs/tracing/blob/master/tracing-mock/LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -32,40 +38,35 @@ by code under test.
 *Compiler support: [requires `rustc` 1.63+][msrv]*
 
 [msrv]: #supported-rust-versions
+[`tracing`]: https://github.com/tokio-rs/tracing
 
 ## Usage
 
-`tracing-mock` crate provides a mock
-[`Collector`](https://tracing-rs.netlify.app/tracing/#collectors)
-that allows asserting on the order and contents of
-[spans](https://tracing-rs.netlify.app/tracing/#spans) and
-[events](https://tracing-rs.netlify.app/tracing/#events).
+The `tracing-mock` crate provides a mock [`Subscriber`][tracing-subscriber] that
+allows asserting on the order and contents of [spans][tracing-spans] and
+[events][tracing-events].
 
-As `tracing-mock` isn't available on [crates.io](https://crates.io/)
-yet, you must import it via git. When using `tracing-mock` with the
-`tracing` `0.1` ecosystem, it is important that you also override the
-source of any `tracing` crates that are transient dependencies. For
-example, the `Cargo.toml` for your test crate could contain:
+To get started with `tracing-mock`, check the documentation in the
+[`subscriber`][mock-subscriber-mod] module and [`MockSubscriber`] struct.
+
+While `tracing-mock` is in beta, it is recommended that an exact version is
+specified in the cargo manifest. Otherwise, `cargo update` will take the latest
+beta version, which may contain breaking changes compared to previous betas.
+
+To do so, add the following to `Cargo.toml`:
 
 ```toml
 [dependencies]
-lib-under-test = "1.0" # depends on `tracing`
-
-[dev-dependencies]
-tracing-mock = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", version = "0.1" }
-tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x", version = "0.1" }
-
-[patch.crates-io]
-tracing = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
-tracing-core = { git = "https://github.com/tokio-rs/tracing", branch = "v0.1.x" }
+tracing-mock = "= 0.1.0-beta.1"
 ```
 
-## Examples
+[tracing-spans]: https://docs.rs/tracing/0.1/tracing/#spans
+[tracing-events]: https://docs.rs/tracing/0.1/tracing/#events
+[tracing-subscriber]: https://docs.rs/tracing/0.1/tracing/trait.Subscriber.html
+[mock-subscriber-mod]: https://docs.rs/tracing-mock/0.1.0-beta.1/tracing_mock/subscriber/index.html
+[`MockSubscriber`]: https://docs.rs/tracing-mock/0.1.0-beta.1/tracing_mock/subscriber/struct.MockSubscriber.html
 
-The following examples are for the `master` branch. For examples that
-will work with `tracing` from [crates.io], please check the
-[v0.1.x](https://github.com/tokio-rs/tracing/tree/v0.1.x/tracing-mock)
-branch.
+## Examples
 
 Below is an example that checks that an event contains a message:
 
@@ -87,7 +88,6 @@ with_default(subscriber, || {
 });
 
 handle.assert_finished();
-
 ```
 
 Below is a slightly more complex example. `tracing-mock` asserts that, in order:

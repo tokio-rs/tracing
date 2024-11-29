@@ -4,18 +4,29 @@
 
 [package]
 name = "tracing-mock"
-version = "0.1.0"
+version = "0.1.0-beta.1"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
+    "Hayden Stainsby <hds@caffeineconcepts.com>",
     "Tokio Contributors <team@tokio.rs>",
 ]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
+description = """
+Utilities for testing `tracing` and crates that uses it.
+"""
+categories = [
+    "development-tools::testing"
+]
+keywords = [
+    "tracing",
+    "mock",
+    "testing"
+]
 edition = "2018"
 rust-version = "1.63.0"
-publish = false
 
 [dependencies]
 tracing = { path = "../tracing", version = "0.1.41", features = ["std", "attributes"], default-features = false }
