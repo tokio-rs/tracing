@@ -1,6 +1,6 @@
 [package]
 name = "tracing-journald"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Benjamin Saunders <ben.e.saunders@gmail.com>"]
 edition = "2018"
 license = "MIT"
