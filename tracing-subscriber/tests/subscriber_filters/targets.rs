@@ -38,7 +38,7 @@ fn inner_subscriber_short_circuits() {
     // evaluation, we aren't left with a "dirty" per-subscriber filter state.
 
     let (subscriber, handle) = subscriber::mock()
-        .event(event::msg("hello world"))
+        .event(expect::event().with_fields(expect::msg("hello world")))
         .only()
         .run_with_handle();
 

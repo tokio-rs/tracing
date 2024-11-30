@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! An example demonstrating how `fmt::Subcriber` can write to multiple
 //! destinations (in this instance, `stdout` and a file) simultaneously.
 
