@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! This example demonstrates how `tracing` events can be recorded from within a
 //! panic hook, capturing the span context in which the program panicked.
 //!

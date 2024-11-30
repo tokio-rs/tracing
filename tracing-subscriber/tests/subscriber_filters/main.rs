@@ -7,7 +7,7 @@ mod trees;
 mod vec;
 
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_mock::{collector, event, expect, subscriber};
+use tracing_mock::{collector, expect, subscriber};
 use tracing_subscriber::{filter, prelude::*, Subscribe};
 
 #[test]
@@ -157,18 +157,18 @@ fn global_filters_affect_subscriber_filters() {
 #[test]
 fn filter_fn() {
     let (all, all_handle) = subscriber::named("all_targets")
-        .event(event::msg("hello foo"))
-        .event(event::msg("hello bar"))
+        .event(expect::event().with_fields(expect::msg("hello foo")))
+        .event(expect::event().with_fields(expect::msg("hello bar")))
         .only()
         .run_with_handle();
 
     let (foo, foo_handle) = subscriber::named("foo_target")
-        .event(event::msg("hello foo"))
+        .event(expect::event().with_fields(expect::msg("hello foo")))
         .only()
         .run_with_handle();
 
     let (bar, bar_handle) = subscriber::named("bar_target")
-        .event(event::msg("hello bar"))
+        .event(expect::event().with_fields(expect::msg("hello bar")))
         .only()
         .run_with_handle();
 

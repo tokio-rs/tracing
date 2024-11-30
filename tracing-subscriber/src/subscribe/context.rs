@@ -315,15 +315,14 @@ where
 
     /// Returns an iterator over the [stored data] for all the spans in the
     /// current context, starting with the specified span and ending with the
-    /// root of the trace tree and ending with the current span.
+    /// root of the trace tree.
     ///
     /// <div class="information">
     ///     <div class="tooltip ignore" style="">ⓘ<span class="tooltiptext">Note</span></div>
     /// </div>
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: Compared to <a href="#method.scope"><code>scope</code></a> this
-    /// returns the spans in reverse order (from leaf to root). Use
+    /// <strong>Note</strong>: This returns the spans in reverse order (from leaf to root). Use
     /// <a href="../registry/struct.Scope.html#method.from_root"><code>Scope::from_root</code></a>
     /// in case root-to-leaf ordering is desired.
     /// </pre></div>
@@ -416,7 +415,7 @@ where
     }
 }
 
-impl<'a, S> Context<'a, S> {
+impl<S> Context<'_, S> {
     pub(crate) fn none() -> Self {
         Self {
             subscriber: None,
@@ -427,7 +426,7 @@ impl<'a, S> Context<'a, S> {
     }
 }
 
-impl<'a, S> Clone for Context<'a, S> {
+impl<S> Clone for Context<'_, S> {
     #[inline]
     fn clone(&self) -> Self {
         let subscriber = self.subscriber.as_ref().copied();

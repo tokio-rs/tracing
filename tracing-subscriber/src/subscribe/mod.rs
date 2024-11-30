@@ -573,6 +573,7 @@
 //!    the [`INFO`] [level] and above.
 //! - A third subscriber, `subscriber_c`, which should receive spans and events at
 //!    the [`DEBUG`] [level] as well.
+//!
 //! The subscribers and filters would be composed thusly:
 //!
 //! ```

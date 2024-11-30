@@ -60,11 +60,11 @@ use tracing_log::NormalizeEvent;
 /// output JSON objects:
 ///
 /// - [`Json::flatten_event`] can be used to enable flattening event fields into
-/// the root
+///   the root
 /// - [`Json::with_current_span`] can be used to control logging of the current
-/// span
+///   span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
-/// object.
+///   object.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -102,7 +102,7 @@ where
     Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableContext<'a, 'b, Span, N>
+impl<Span, N> serde::ser::Serialize for SerializableContext<'_, '_, Span, N>
 where
     Span: Collect + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -132,7 +132,7 @@ where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<'a, 'b, Span, N> serde::ser::Serialize for SerializableSpan<'a, 'b, Span, N>
+impl<Span, N> serde::ser::Serialize for SerializableSpan<'_, '_, Span, N>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
@@ -409,7 +409,7 @@ pub struct JsonVisitor<'a> {
     writer: &'a mut dyn Write,
 }
 
-impl<'a> fmt::Debug for JsonVisitor<'a> {
+impl fmt::Debug for JsonVisitor<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("JsonVisitor {{ values: {:?} }}", self.values))
     }
@@ -430,13 +430,13 @@ impl<'a> JsonVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitFmt for JsonVisitor<'a> {
+impl crate::field::VisitFmt for JsonVisitor<'_> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         self.writer
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
+impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
     fn finish(self) -> fmt::Result {
         let inner = || {
             let mut serializer = Serializer::new(WriteAdaptor::new(self.writer));
@@ -457,7 +457,7 @@ impl<'a> crate::field::VisitOutput<fmt::Result> for JsonVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for JsonVisitor<'a> {
+impl field::Visit for JsonVisitor<'_> {
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values

@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! An example on composing errors inside of a `TracedError`, such that the
 //! SpanTrace captured is captured when creating the inner error, but still wraps
 //! the outer error.
