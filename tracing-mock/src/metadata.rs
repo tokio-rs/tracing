@@ -1,4 +1,5 @@
 use std::fmt;
+
 use tracing_core::Metadata;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
