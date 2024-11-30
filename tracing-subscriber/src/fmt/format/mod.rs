@@ -679,7 +679,6 @@ impl<F, T> Format<F, T> {
     ///
     /// - [`Format::flatten_event`] can be used to enable flattening event fields into the root
     ///   object.
-    ///
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json(self) -> Format<Json, T> {
@@ -1202,7 +1201,7 @@ impl<'a> DefaultVisitor<'a> {
     }
 }
 
-impl<'a> field::Visit for DefaultVisitor<'a> {
+impl field::Visit for DefaultVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         if self.result.is_err() {
             return;
@@ -1263,13 +1262,13 @@ impl<'a> field::Visit for DefaultVisitor<'a> {
     }
 }
 
-impl<'a> crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'a> {
+impl crate::field::VisitOutput<fmt::Result> for DefaultVisitor<'_> {
     fn finish(self) -> fmt::Result {
         self.result
     }
 }
 
-impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
+impl crate::field::VisitFmt for DefaultVisitor<'_> {
     fn writer(&mut self) -> &mut dyn fmt::Write {
         &mut self.writer
     }
@@ -1278,7 +1277,7 @@ impl<'a> crate::field::VisitFmt for DefaultVisitor<'a> {
 /// Renders an error into a list of sources, *including* the error
 struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
 
-impl<'a> Display for ErrorSourceList<'a> {
+impl Display for ErrorSourceList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut list = f.debug_list();
         let mut curr = Some(self.0);
@@ -1322,7 +1321,7 @@ impl<'a> FmtThreadName<'a> {
     }
 }
 
-impl<'a> fmt::Display for FmtThreadName<'a> {
+impl fmt::Display for FmtThreadName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use std::sync::atomic::{
             AtomicUsize,
@@ -1482,7 +1481,7 @@ where
     }
 }
 
-impl<'a, F> fmt::Debug for FieldFnVisitor<'a, F> {
+impl<F> fmt::Debug for FieldFnVisitor<'_, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FieldFnVisitor")
             .field("f", &format_args!("{}", std::any::type_name::<F>()))

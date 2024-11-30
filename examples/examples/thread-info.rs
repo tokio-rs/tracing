@@ -1,22 +1,25 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
+//! This is a example showing how thread info can be displayed when
+//! formatting events with `tracing_subscriber::fmt`. This is useful
+//! as `tracing` spans can be entered by multiple threads concurrently,
+//! or move across threads freely.
+//!
+//! You can run this example by running the following command in a terminal
+//!
+//! ```
+//! cargo run --example thread-info
+//! ```
+//!
+//! Example output:
+//!
+//! ```not_rust
+//! Jul 17 00:38:07.177  INFO ThreadId(02) thread_info: i=9
+//! Jul 17 00:38:07.177  INFO            thread 1 ThreadId(03) thread_info: i=9
+//! Jul 17 00:38:07.177  INFO large name thread 2 ThreadId(04) thread_info: i=9
+//! ```
 #![deny(rust_2018_idioms)]
-/// This is a example showing how thread info can be displayed when
-/// formatting events with `tracing_subscriber::fmt`. This is useful
-/// as `tracing` spans can be entered by multiple threads concurrently,
-/// or move across threads freely.
-///
-/// You can run this example by running the following command in a terminal
-///
-/// ```
-/// cargo run --example thread-info
-/// ```
-///
-/// Example output:
-///
-/// ```not_rust
-/// Jul 17 00:38:07.177  INFO ThreadId(02) thread_info: i=9
-/// Jul 17 00:38:07.177  INFO            thread 1 ThreadId(03) thread_info: i=9
-/// Jul 17 00:38:07.177  INFO large name thread 2 ThreadId(04) thread_info: i=9
-/// ```
 use std::thread;
 use std::time::Duration;
 use tracing::info;

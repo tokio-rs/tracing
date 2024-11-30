@@ -379,13 +379,13 @@ impl<'a> LookupSpan<'a> for Registry {
 
 // === impl CloseGuard ===
 
-impl<'a> CloseGuard<'a> {
+impl CloseGuard<'_> {
     pub(crate) fn set_closing(&mut self) {
         self.is_closing = true;
     }
 }
 
-impl<'a> Drop for CloseGuard<'a> {
+impl Drop for CloseGuard<'_> {
     fn drop(&mut self) {
         // If this returns with an error, we are already panicking. At
         // this point, there's nothing we can really do to recover
@@ -588,7 +588,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Field is exercised via checking `Arc::downgrade()`
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber
