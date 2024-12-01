@@ -2,9 +2,7 @@
 name = "tracing-attributes"
 # When releasing to crates.io:
 # - Remove path dependencies
-# - Update doc url
-#   - Cargo.toml
-#   - README.md
+# - Update doc url in README.md.
 # - Update CHANGELOG.md.
 # - Create "v0.2.x" git tag.
 version = "0.2.0"
