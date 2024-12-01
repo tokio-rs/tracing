@@ -392,7 +392,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &format_args!("{:?}", value))
+                .serialize_entry(field.name(), &format_args!("{value:?}"))
         }
     }
 
@@ -444,7 +444,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_field(field.name(), &format_args!("{:?}", value))
+                .serialize_field(field.name(), &format_args!("{value:?}"))
         }
     }
 

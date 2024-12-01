@@ -540,7 +540,7 @@ impl ExpectedEvent {
         let meta = event.metadata();
         let name = meta.name();
         self.metadata
-            .check(meta, format_args!("event \"{}\"", name), collector_name);
+            .check(meta, format_args!("event \"{name}\""), collector_name);
         assert!(
             meta.is_event(),
             "[{}] expected {}, but got {:?}",
@@ -580,7 +580,7 @@ impl fmt::Debug for ExpectedEvent {
         }
 
         if let Some(ref level) = self.metadata.level {
-            s.field("level", &format_args!("{:?}", level));
+            s.field("level", &format_args!("{level:?}"));
         }
 
         if let Some(ref fields) = self.fields {
@@ -588,7 +588,7 @@ impl fmt::Debug for ExpectedEvent {
         }
 
         if let Some(ref parent) = self.ancestry {
-            s.field("parent", &format_args!("{:?}", parent));
+            s.field("parent", &format_args!("{parent:?}"));
         }
 
         if let Some(in_spans) = &self.in_spans {

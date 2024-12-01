@@ -318,7 +318,7 @@ impl Visit for fmt::DebugStruct<'_, '_> {
 
 impl Visit for fmt::DebugMap<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        self.entry(&format_args!("{}", field), value);
+        self.entry(&format_args!("{field}"), value);
     }
 }
 
@@ -602,7 +602,7 @@ impl fmt::Debug for dyn Value {
 
         let mut res = Ok(());
         self.record(&FIELD, &mut |_: &Field, val: &dyn fmt::Debug| {
-            res = write!(f, "{:?}", val);
+            res = write!(f, "{val:?}");
         });
         res
     }
@@ -1154,7 +1154,7 @@ mod test {
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
             use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
+            write!(&mut result, "{value:?}").unwrap();
         });
         assert_eq!(result, String::from("123"));
     }
@@ -1174,9 +1174,9 @@ mod test {
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
             use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
+            write!(&mut result, "{value:?}").unwrap();
         });
-        assert_eq!(result, format!("{}", err));
+        assert_eq!(result, format!("{err}"));
     }
 
     #[test]
@@ -1193,7 +1193,7 @@ mod test {
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
             use core::fmt::Write;
-            write!(&mut result, "{:?}", value).unwrap();
+            write!(&mut result, "{value:?}").unwrap();
         });
         assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
     }

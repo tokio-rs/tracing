@@ -78,15 +78,15 @@ impl ExpectedMetadata {
 impl fmt::Display for ExpectedMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref name) = self.name {
-            write!(f, " named `{}`", name)?;
+            write!(f, " named `{name}`")?;
         }
 
         if let Some(ref level) = self.level {
-            write!(f, " at the `{:?}` level", level)?;
+            write!(f, " at the `{level:?}` level")?;
         }
 
         if let Some(ref target) = self.target {
-            write!(f, " with target `{}`", target)?;
+            write!(f, " with target `{target}`")?;
         }
 
         Ok(())
