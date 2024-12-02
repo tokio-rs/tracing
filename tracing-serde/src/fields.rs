@@ -10,13 +10,13 @@ pub trait AsMap: Sized + sealed::Sealed {
     }
 }
 
-impl<'a> AsMap for Event<'a> {}
-impl<'a> AsMap for Attributes<'a> {}
-impl<'a> AsMap for Record<'a> {}
+impl AsMap for Event<'_> {}
+impl AsMap for Attributes<'_> {}
+impl AsMap for Record<'_> {}
 
 // === impl SerializeFieldMap ===
 
-impl<'a> Serialize for SerializeFieldMap<'a, Event<'_>> {
+impl Serialize for SerializeFieldMap<'_, Event<'_>> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -29,7 +29,7 @@ impl<'a> Serialize for SerializeFieldMap<'a, Event<'_>> {
     }
 }
 
-impl<'a> Serialize for SerializeFieldMap<'a, Attributes<'_>> {
+impl Serialize for SerializeFieldMap<'_, Attributes<'_>> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -42,7 +42,7 @@ impl<'a> Serialize for SerializeFieldMap<'a, Attributes<'_>> {
     }
 }
 
-impl<'a> Serialize for SerializeFieldMap<'a, Record<'_>> {
+impl Serialize for SerializeFieldMap<'_, Record<'_>> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

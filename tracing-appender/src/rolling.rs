@@ -70,7 +70,7 @@ pub use builder::{Builder, InitError};
 ///
 /// // Log all events to a rolling log file.
 /// let logfile = tracing_appender::rolling::hourly("/logs", "myapp-logs");
-
+///
 /// // Log `INFO` and above to stdout.
 /// let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
 ///

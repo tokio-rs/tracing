@@ -196,7 +196,7 @@ pub mod fields;
 #[derive(Debug)]
 pub struct SerializeField<'a>(&'a Field);
 
-impl<'a> Serialize for SerializeField<'a> {
+impl Serialize for SerializeField<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -208,7 +208,7 @@ impl<'a> Serialize for SerializeField<'a> {
 #[derive(Debug)]
 pub struct SerializeFieldSet<'a>(&'a FieldSet);
 
-impl<'a> Serialize for SerializeFieldSet<'a> {
+impl Serialize for SerializeFieldSet<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -224,7 +224,7 @@ impl<'a> Serialize for SerializeFieldSet<'a> {
 #[derive(Debug)]
 pub struct SerializeLevel<'a>(&'a Level);
 
-impl<'a> Serialize for SerializeLevel<'a> {
+impl Serialize for SerializeLevel<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -248,7 +248,7 @@ impl<'a> Serialize for SerializeLevel<'a> {
 #[derive(Debug)]
 pub struct SerializeId<'a>(&'a Id);
 
-impl<'a> Serialize for SerializeId<'a> {
+impl Serialize for SerializeId<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -262,7 +262,7 @@ impl<'a> Serialize for SerializeId<'a> {
 #[derive(Debug)]
 pub struct SerializeMetadata<'a>(&'a Metadata<'a>);
 
-impl<'a> Serialize for SerializeMetadata<'a> {
+impl Serialize for SerializeMetadata<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -285,7 +285,7 @@ impl<'a> Serialize for SerializeMetadata<'a> {
 #[derive(Debug)]
 pub struct SerializeEvent<'a>(&'a Event<'a>);
 
-impl<'a> Serialize for SerializeEvent<'a> {
+impl Serialize for SerializeEvent<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -305,7 +305,7 @@ impl<'a> Serialize for SerializeEvent<'a> {
 #[derive(Debug)]
 pub struct SerializeAttributes<'a>(&'a Attributes<'a>);
 
-impl<'a> Serialize for SerializeAttributes<'a> {
+impl Serialize for SerializeAttributes<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -328,7 +328,7 @@ impl<'a> Serialize for SerializeAttributes<'a> {
 #[derive(Debug)]
 pub struct SerializeRecord<'a>(&'a Record<'a>);
 
-impl<'a> Serialize for SerializeRecord<'a> {
+impl Serialize for SerializeRecord<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -554,17 +554,17 @@ impl<'a> AsSerde<'a> for FieldSet {
     }
 }
 
-impl<'a> self::sealed::Sealed for Event<'a> {}
+impl self::sealed::Sealed for Event<'_> {}
 
-impl<'a> self::sealed::Sealed for Attributes<'a> {}
+impl self::sealed::Sealed for Attributes<'_> {}
 
 impl self::sealed::Sealed for Id {}
 
 impl self::sealed::Sealed for Level {}
 
-impl<'a> self::sealed::Sealed for Record<'a> {}
+impl self::sealed::Sealed for Record<'_> {}
 
-impl<'a> self::sealed::Sealed for Metadata<'a> {}
+impl self::sealed::Sealed for Metadata<'_> {}
 
 impl self::sealed::Sealed for Field {}
 

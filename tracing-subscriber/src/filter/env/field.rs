@@ -500,7 +500,7 @@ impl SpanMatch {
     }
 }
 
-impl<'a> Visit for MatchVisitor<'a> {
+impl Visit for MatchVisitor<'_> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {

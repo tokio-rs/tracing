@@ -82,7 +82,7 @@ pub fn uptime() -> Uptime {
     Uptime::default()
 }
 
-impl<'a, F> FormatTime for &'a F
+impl<F> FormatTime for &F
 where
     F: FormatTime,
 {

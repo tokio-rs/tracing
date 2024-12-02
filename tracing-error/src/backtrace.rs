@@ -227,7 +227,7 @@ impl fmt::Debug for SpanTrace {
             fields: &'a str,
         }
 
-        impl<'a> fmt::Debug for DebugSpan<'a> {
+        impl fmt::Debug for DebugSpan<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(
                     f,
