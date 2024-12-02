@@ -567,6 +567,18 @@ where
     }
 }
 
+impl<'a, T: 'a + ToOwned + ?Sized> crate::sealed::Sealed for std::borrow::Cow<'a, T> where T: Value {}
+
+impl<'a, T: 'a + ToOwned + ?Sized> Value for std::borrow::Cow<'a, T>
+where
+    T: Value,
+{
+    #[inline]
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        self.as_ref().record(key, visitor)
+    }
+}
+
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl crate::sealed::Sealed for alloc::string::String {}
