@@ -296,6 +296,17 @@ mod expand;
 /// }
 /// ```
 ///
+/// Also, an error that implements `std::error::Error` can be recorded in a way that preserves
+/// the chain of causes by writing `err(StdError)`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(err(StdError))]
+/// fn my_function(arg: usize) -> Result<(), std::io::Error> {
+///     Ok(())
+/// }
+/// ```
+///
 /// If a `target` is specified, both the `ret` and `err` arguments will emit outputs to
 /// the declared target (or the default channel if `target` is not specified).
 ///
