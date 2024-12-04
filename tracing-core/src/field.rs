@@ -44,6 +44,9 @@ use core::{
     ops::Range,
 };
 
+#[cfg(feature = "std")]
+use std::error;
+
 use self::private::ValidLen;
 
 /// An opaque key allowing _O_(1) access to a field in a `Span`'s key-value
@@ -270,6 +273,12 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
+/// A 'Value' which serializes error and it's sources.
+#[cfg(feature = "std")]
+#[derive(Clone, Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub struct ErrorValue<'a, T: error::Error + 'static>(&'a T);
+
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
 /// recorded using its `Display` implementation.
 pub fn display<T>(t: T) -> DisplayValue<T>
@@ -286,6 +295,17 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+/// Wraps a reference to a type implementing `error::Error` as a `Value`
+/// that records the error's message and sources.
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub fn error<'a, T>(t: &'a T) -> ErrorValue<'a, T>
+where
+    T: error::Error + 'static,
+{
+    ErrorValue(t)
 }
 
 struct HexBytes<'a>(&'a [u8]);
@@ -655,6 +675,20 @@ where
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+// ===== impl ErrorValue =====
+#[cfg(feature = "std")]
+impl<T: error::Error + 'static> crate::sealed::Sealed for ErrorValue<'_, T> {}
+
+#[cfg(feature = "std")]
+impl<'a, T> Value for ErrorValue<'a, T>
+where
+    T: error::Error + 'static,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_error(key, self.0)
     }
 }
 
