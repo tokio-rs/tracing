@@ -549,6 +549,22 @@ where
         }
     }
 
+    /// Sets whether or not the length of the [name] of the current thread is
+    /// tracked for padding.
+    ///
+    /// [name]: std::thread#naming-threads
+    pub fn with_thread_names_length_tracking(
+        self,
+        track_thread_name_length: bool,
+    ) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self
+                .fmt_event
+                .with_thread_names_length_tracking(track_thread_name_length),
+            ..self
+        }
+    }
+
     /// Sets the layer being built to use a [less verbose formatter][super::format::Compact].
     pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where
