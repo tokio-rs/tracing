@@ -109,19 +109,18 @@
 //! [`MockCollector`]: struct@crate::collector::MockCollector
 //! [`collector`]: mod@crate::collector
 //! [`expect::span`]: fn@crate::expect::span
-#![allow(missing_docs)]
-use crate::{
-    ancestry::{ActualAncestry, ExpectedAncestry},
-    expect,
-    field::ExpectedFields,
-    metadata::ExpectedMetadata,
-};
 use std::{
     error, fmt,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
+};
+
+use crate::{
+    ancestry::{ActualAncestry, ExpectedAncestry},
+    field::ExpectedFields,
+    metadata::ExpectedMetadata,
 };
 
 /// A mock span.
@@ -178,13 +177,6 @@ pub struct NewSpan {
     pub(crate) span: ExpectedSpan,
     pub(crate) fields: ExpectedFields,
     pub(crate) ancestry: Option<ExpectedAncestry>,
-}
-
-pub fn named<I>(name: I) -> ExpectedSpan
-where
-    I: Into<String>,
-{
-    expect::span().named(name)
 }
 
 pub(crate) struct ActualSpan {

@@ -82,7 +82,7 @@ fn none_max_level_hint() {
         .run_with_handle();
     let max_level = Level::INFO;
     let subscribe_filter_fn = subscribe_filter_fn.with_filter(
-        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &max_level)
+        filter::dynamic_filter_fn(move |meta, _| meta.level() <= &max_level)
             .with_max_level_hint(max_level),
     );
     assert_eq!(
@@ -115,7 +115,7 @@ fn some_max_level_hint() {
         .only()
         .run_with_handle();
     let subscribe_some = subscribe_some.with_filter(Some(
-        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &Level::DEBUG)
+        filter::dynamic_filter_fn(move |meta, _| meta.level() <= &Level::DEBUG)
             .with_max_level_hint(Level::DEBUG),
     ));
     assert_eq!(subscribe_some.max_level_hint(), Some(LevelFilter::DEBUG));
@@ -125,7 +125,7 @@ fn some_max_level_hint() {
         .only()
         .run_with_handle();
     let subscribe_filter_fn = subscribe_filter_fn.with_filter(
-        filter::dynamic_filter_fn(move |meta, _| return meta.level() <= &Level::INFO)
+        filter::dynamic_filter_fn(move |meta, _| meta.level() <= &Level::INFO)
             .with_max_level_hint(Level::INFO),
     );
     assert_eq!(
