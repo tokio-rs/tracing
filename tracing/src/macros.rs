@@ -3069,9 +3069,12 @@ macro_rules! level_to_log {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
-    ($($t:tt)*) => {
-        stringify!($($t)*)
-    };
+    ($($k:ident).+) => {{
+        const NAME: $crate::__macro_support::FieldName<{
+            $crate::__macro_support::FieldName::len($crate::__macro_support::stringify!($($k).+))
+        }> = $crate::__macro_support::FieldName::new($crate::__macro_support::stringify!($($k).+));
+        NAME.as_str()
+    }};
 }
 
 #[cfg(not(feature = "log"))]
