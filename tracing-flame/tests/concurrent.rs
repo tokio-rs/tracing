@@ -37,7 +37,7 @@ fn capture_supported() {
     flame_guard.flush().unwrap();
 
     let traces = std::fs::read_to_string(&path).unwrap();
-    println!("{}", traces);
+    println!("{traces}");
     assert_eq!(5, traces.lines().count());
 
     tmp_dir.close().expect("failed to delete tempdir");

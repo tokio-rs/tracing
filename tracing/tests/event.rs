@@ -180,7 +180,7 @@ fn moved_field() {
         .run_with_handle();
     with_default(collector, || {
         let from = "my event";
-        tracing::event!(Level::INFO, foo = display(format!("hello from {}", from)))
+        tracing::event!(Level::INFO, foo = display(format!("hello from {from}")))
     });
 
     handle.assert_finished();
@@ -222,7 +222,7 @@ fn borrowed_field() {
         .run_with_handle();
     with_default(collector, || {
         let from = "my event";
-        let mut message = format!("hello from {}", from);
+        let mut message = format!("hello from {from}");
         tracing::event!(Level::INFO, foo = display(&message));
         message.push_str(", which happened!");
     });

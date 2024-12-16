@@ -365,9 +365,9 @@ impl fmt::Display for Directive {
 
             let mut fields = self.fields.iter();
             if let Some(field) = fields.next() {
-                write!(f, "{{{}", field)?;
+                write!(f, "{{{field}")?;
                 for field in fields {
-                    write!(f, ",{}", field)?;
+                    write!(f, ",{field}")?;
                 }
                 f.write_str("}")?;
             }
@@ -589,7 +589,7 @@ mod test {
     #[test]
     fn parse_directives_ralith() {
         let dirs = parse_directives("common=trace,server=trace");
-        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 2, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
         assert_eq!(dirs[0].in_span, None);
@@ -602,7 +602,7 @@ mod test {
     #[test]
     fn parse_directives_ralith_uc() {
         let dirs = parse_directives("common=INFO,server=DEBUG");
-        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 2, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
@@ -615,7 +615,7 @@ mod test {
     #[test]
     fn parse_directives_ralith_mixed() {
         let dirs = parse_directives("common=iNfo,server=dEbUg");
-        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 2, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("common".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
@@ -628,7 +628,7 @@ mod test {
     #[test]
     fn parse_directives_valid() {
         let dirs = parse_directives("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off");
-        assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 4, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -653,7 +653,7 @@ mod test {
             "crate1::mod1=error,crate1::mod2=warn,crate1::mod2::mod3=info,\
              crate2=debug,crate3=trace,crate3::mod2::mod1=off",
         );
-        assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 6, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -685,7 +685,7 @@ mod test {
             "crate1::mod1=ERROR,crate1::mod2=WARN,crate1::mod2::mod3=INFO,\
              crate2=DEBUG,crate3=TRACE,crate3::mod2::mod1=OFF",
         );
-        assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 6, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -717,7 +717,7 @@ mod test {
             "crate1::mod1=1,crate1::mod2=2,crate1::mod2::mod3=3,crate2=4,\
              crate3=5,crate3::mod2::mod1=0",
         );
-        assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 6, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
         assert_eq!(dirs[0].in_span, None);
@@ -747,7 +747,7 @@ mod test {
     fn parse_directives_invalid_crate() {
         // test parse_directives with multiple = in specification
         let dirs = parse_directives("crate1::mod1=warn=info,crate2=debug");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
         assert_eq!(dirs[0].in_span, None);
@@ -757,7 +757,7 @@ mod test {
     fn parse_directives_invalid_level() {
         // test parse_directives with 'noNumber' as log level
         let dirs = parse_directives("crate1::mod1=noNumber,crate2=debug");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
         assert_eq!(dirs[0].in_span, None);
@@ -767,7 +767,7 @@ mod test {
     fn parse_directives_string_level() {
         // test parse_directives with 'warn' as log level
         let dirs = parse_directives("crate1::mod1=wrong,crate2=warn");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::WARN);
         assert_eq!(dirs[0].in_span, None);
@@ -777,7 +777,7 @@ mod test {
     fn parse_directives_empty_level() {
         // test parse_directives with '' as log level
         let dirs = parse_directives("crate1::mod1=wrong,crate2=");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
         assert_eq!(dirs[0].in_span, None);
@@ -787,7 +787,7 @@ mod test {
     fn parse_directives_global() {
         // test parse_directives with no crate
         let dirs = parse_directives("warn,crate2=debug");
-        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 2, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, None);
         assert_eq!(dirs[0].level, LevelFilter::WARN);
         assert_eq!(dirs[1].in_span, None);
@@ -803,9 +803,7 @@ mod test {
         assert_eq!(
             dirs.len(),
             1,
-            "\ninput: \"{}\"; parsed: {:#?}",
-            directive_to_test,
-            dirs
+            "\ninput: \"{directive_to_test}\"; parsed: {dirs:#?}"
         );
         assert_eq!(dirs[0].target, None);
         assert_eq!(dirs[0].level, level_expected);
@@ -833,7 +831,7 @@ mod test {
     #[test]
     fn parse_directives_valid_with_spans() {
         let dirs = parse_directives("crate1::mod1[foo]=error,crate1::mod2[bar],crate2[baz]=debug");
-        assert_eq!(dirs.len(), 3, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 3, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::ERROR);
         assert_eq!(dirs[0].in_span, Some("foo".to_string()));
@@ -850,7 +848,7 @@ mod test {
     #[test]
     fn parse_directives_with_dash_in_target_name() {
         let dirs = parse_directives("target-name=info");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("target-name".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, None);
@@ -861,7 +859,7 @@ mod test {
         // Reproduces https://github.com/tokio-rs/tracing/issues/1367
 
         let dirs = parse_directives("target[span-name]=info");
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, Some("span-name".to_string()));
@@ -871,8 +869,8 @@ mod test {
     fn parse_directives_with_special_characters_in_span_name() {
         let span_name = "!\"#$%&'()*+-./:;<=>?@^_`|~[}";
 
-        let dirs = parse_directives(format!("target[{}]=info", span_name));
-        assert_eq!(dirs.len(), 1, "\nparsed: {:#?}", dirs);
+        let dirs = parse_directives(format!("target[{span_name}]=info"));
+        assert_eq!(dirs.len(), 1, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("target".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::INFO);
         assert_eq!(dirs[0].in_span, Some(span_name.to_string()));
@@ -882,7 +880,7 @@ mod test {
     fn parse_directives_with_invalid_span_chars() {
         let invalid_span_name = "]{";
 
-        let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
-        assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+        let dirs = parse_directives(format!("target[{invalid_span_name}]=info"));
+        assert_eq!(dirs.len(), 0, "\nparsed: {dirs:#?}");
     }
 }

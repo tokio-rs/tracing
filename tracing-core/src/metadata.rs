@@ -348,10 +348,10 @@ impl fmt::Debug for Metadata<'_> {
 
         match (self.file(), self.line()) {
             (Some(file), Some(line)) => {
-                meta.field("location", &format_args!("{}:{}", file, line));
+                meta.field("location", &format_args!("{file}:{line}"));
             }
             (Some(file), None) => {
-                meta.field("file", &format_args!("{}", file));
+                meta.field("file", &format_args!("{file}"));
             }
 
             // Note: a line num with no file is a kind of weird case that _probably_ never occurs...
@@ -1112,7 +1112,7 @@ mod tests {
                 // We're not going to do anything with it that might be unsound.
                 mem::transmute::<LevelFilter, usize>(filter)
             };
-            assert_eq!(expected, repr, "repr changed for {:?}", filter)
+            assert_eq!(expected, repr, "repr changed for {filter:?}")
         }
     }
 }

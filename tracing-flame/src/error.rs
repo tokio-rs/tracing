@@ -14,7 +14,7 @@ impl Error {
         eprintln!("Error:");
 
         while let Some(error) = current_error {
-            eprintln!("    {}: {}", ind, error);
+            eprintln!("    {ind}: {error}");
             ind += 1;
             current_error = error.source();
         }

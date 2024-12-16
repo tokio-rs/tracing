@@ -81,7 +81,7 @@ fn filters_span_scopes() {
 #[test]
 fn filters_interleaved_span_scopes() {
     fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
-        subscriber::named(format!("target_{}", target))
+        subscriber::named(format!("target_{target}"))
             .enter(expect::span().with_target(target))
             .enter(expect::span().with_target(target))
             .event(

@@ -67,12 +67,12 @@ fn reload_handle() {
 
     impl<S: Collect> tracing_subscriber::Subscribe<S> for Filter {
         fn register_callsite(&self, m: &Metadata<'_>) -> Interest {
-            println!("REGISTER: {:?}", m);
+            println!("REGISTER: {m:?}");
             Interest::sometimes()
         }
 
         fn enabled(&self, m: &Metadata<'_>, _: subscribe::Context<'_, S>) -> bool {
-            println!("ENABLED: {:?}", m);
+            println!("ENABLED: {m:?}");
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
                 Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::SeqCst),
@@ -123,7 +123,7 @@ fn reload_filter() {
 
     impl<S: Collect> tracing_subscriber::subscribe::Filter<S> for Filter {
         fn enabled(&self, m: &Metadata<'_>, _: &subscribe::Context<'_, S>) -> bool {
-            println!("ENABLED: {:?}", m);
+            println!("ENABLED: {m:?}");
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
                 Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::SeqCst),

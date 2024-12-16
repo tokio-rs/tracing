@@ -317,8 +317,7 @@ impl Collect for Registry {
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
         assert_ne!(
             refs, 0,
-            "tried to clone a span ({:?}) that already closed",
-            id
+            "tried to clone a span ({id:?}) that already closed"
         );
         id.clone()
     }
@@ -614,13 +613,12 @@ mod tests {
                 span
             } else {
                 println!(
-                    "span {:?} did not exist in `on_close`, are we panicking?",
-                    id
+                    "span {id:?} did not exist in `on_close`, are we panicking?"
                 );
                 return;
             };
             let name = span.name();
-            println!("close {} ({:?})", name, id);
+            println!("close {name} ({id:?})");
             if let Ok(mut lock) = self.inner.lock() {
                 if let Some(is_removed) = lock.open.remove(name) {
                     assert!(is_removed.upgrade().is_some());
@@ -723,8 +721,7 @@ mod tests {
             assert_eq!(
                 last,
                 span.as_ref(),
-                "expected {:?} to have closed last",
-                span
+                "expected {span:?} to have closed last"
             );
         }
 

@@ -359,7 +359,7 @@ fn moved_field() {
         let span = tracing::span!(
             Level::TRACE,
             "foo",
-            bar = display(format!("hello from {}", from))
+            bar = display(format!("hello from {from}"))
         );
         span.in_scope(|| {});
     });
@@ -404,7 +404,7 @@ fn borrowed_field() {
 
     with_default(collector, || {
         let from = "my span";
-        let mut message = format!("hello from {}", from);
+        let mut message = format!("hello from {from}");
         let span = tracing::span!(Level::TRACE, "foo", bar = display(&message));
         span.in_scope(|| {
             message.insert_str(10, " inside");

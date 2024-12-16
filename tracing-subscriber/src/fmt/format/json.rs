@@ -186,7 +186,7 @@ where
             // If we *aren't* in debug mode, it's probably best not
             // crash the program, but let's at least make sure it's clear
             // that the fields are not supposed to be missing.
-            Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
+            Err(e) => serializer.serialize_entry("field_error", &format!("{e}"))?,
         };
         serializer.serialize_entry("name", self.0.metadata().name())?;
         serializer.end()
@@ -500,11 +500,11 @@ impl field::Visit for JsonVisitor<'_> {
             name if name.starts_with("log.") => (),
             name if name.starts_with("r#") => {
                 self.values
-                    .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
+                    .insert(&name[2..], serde_json::Value::from(format!("{value:?}")));
             }
             name => {
                 self.values
-                    .insert(name, serde_json::Value::from(format!("{:?}", value)));
+                    .insert(name, serde_json::Value::from(format!("{value:?}")));
             }
         };
     }

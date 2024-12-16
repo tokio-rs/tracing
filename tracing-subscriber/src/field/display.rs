@@ -63,7 +63,7 @@ where
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         if field.name() == "message" {
-            self.0.record_debug(field, &format_args!("{}", value))
+            self.0.record_debug(field, &format_args!("{value}"))
         } else {
             self.0.record_str(field, value)
         }

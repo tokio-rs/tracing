@@ -66,8 +66,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         None,
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The `None`-returning layer still wins
@@ -77,8 +76,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::ERROR),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Check that we aren't doing anything truly wrong
@@ -88,8 +86,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Test that per-subscriber filters aren't affected
@@ -101,8 +98,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         None,
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The max-levels wins
@@ -112,8 +108,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Test filter on the other layer
@@ -123,8 +118,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
     let subscriber = tracing_subscriber::registry()
         .with(BasicLayer(None).with_filter(LevelFilter::DEBUG))
@@ -132,8 +126,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The `OFF` from `None` over overridden.
@@ -143,8 +136,7 @@ fn none_outside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::INFO),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 }
 
@@ -158,8 +150,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         None,
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The `None`-returning layer still wins
@@ -169,8 +160,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::ERROR),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Check that we aren't doing anything truly wrong
@@ -180,8 +170,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Test that per-subscriber filters aren't affected
@@ -193,8 +182,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         None,
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The max-levels wins
@@ -204,8 +192,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // Test filter on the other layer
@@ -215,8 +202,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
     let subscriber = tracing_subscriber::registry()
         .with(None::<LevelFilter>)
@@ -224,8 +210,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::DEBUG),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 
     // The `OFF` from `None` over overridden.
@@ -235,8 +220,7 @@ fn none_inside_doesnt_override_max_level() {
     assert_eq!(
         subscriber.max_level_hint(),
         Some(LevelFilter::INFO),
-        "\n stack: {:#?}",
-        subscriber
+        "\n stack: {subscriber:#?}"
     );
 }
 
