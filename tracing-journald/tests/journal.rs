@@ -34,9 +34,7 @@ fn with_journald_subscriber(subscriber: Subscriber, f: impl FnOnce()) {
             let sub = Registry::default().with(subscriber);
             tracing::collect::with_default(sub, f);
         }
-        Err(error) => eprintln!(
-            "SKIPPING TEST: journalctl --version failed with error: {error}"
-        ),
+        Err(error) => eprintln!("SKIPPING TEST: journalctl --version failed with error: {error}"),
     }
 }
 
