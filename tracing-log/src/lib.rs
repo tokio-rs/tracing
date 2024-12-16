@@ -564,9 +564,7 @@ mod test {
         assert_eq!(
             meta.callsite(),
             cs_meta.callsite(),
-            "actual: {:#?}\nexpected: {:#?}",
-            meta,
-            cs_meta
+            "actual: {meta:#?}\nexpected: {cs_meta:#?}"
         );
         assert_eq!(meta.level(), &level.as_trace());
     }
