@@ -1,16 +1,37 @@
 use super::{RollingFileAppender, Rotation};
-use std::{io, path::Path};
+use crate::BuilderFn;
+use std::io::{self, Write};
+use std::path::Path;
 use thiserror::Error;
 
 /// A [builder] for configuring [`RollingFileAppender`]s.
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) writer_builder: Option<BuilderFn>,
+}
+
+impl std::fmt::Debug for Builder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("rotation", &self.rotation)
+            .field("prefix", &self.prefix)
+            .field("suffix", &self.suffix)
+            .field("max_files", &self.max_files)
+            .field(
+                "custom writer builder",
+                &self
+                    .writer_builder
+                    .as_ref()
+                    .map(|_| "custom writer function present"),
+            )
+            .finish()
+    }
 }
 
 /// Errors returned by [`Builder::build`].
@@ -54,6 +75,7 @@ impl Builder {
             prefix: None,
             suffix: None,
             max_files: None,
+            writer_builder: None,
         }
     }
 
@@ -229,6 +251,39 @@ impl Builder {
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
             max_files: Some(n),
+            ..self
+        }
+    }
+
+    /// Wraps the current file writer with the provided writer
+    ///
+    /// With this approach, compression can be enabled if a compression writer builder is provided
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::{RollingFileAppender};
+    /// use snap::write::FrameEncoder;
+    ///
+    /// let appender = RollingFileAppender::builder()
+    ///     .writer_builder(FrameEncoder::new) // snappy encoder will wrap the default file writer
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    pub fn writer_builder<F, O>(self, builder: F) -> Self
+    where
+        F: (Fn(Box<dyn Write + Send>) -> O) + Send + Sync + 'static,
+        O: Write + Send + 'static,
+    {
+        let builder_fn: BuilderFn = std::sync::Arc::new(move |writer| -> Box<dyn Write + Send> {
+            Box::new(builder(writer))
+        });
+
+        Self {
+            writer_builder: Some(builder_fn),
             ..self
         }
     }
