@@ -1,6 +1,7 @@
 use std::iter;
 
 use proc_macro2::TokenStream;
+use quote::TokenStreamExt;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::visit_mut::VisitMut;
 use syn::{
@@ -29,6 +30,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         inner_attrs,
         vis,
         sig,
+        brace_token,
         block,
     } = input;
 
@@ -44,9 +46,12 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
             syn::Generics {
                 params: gen_params,
                 where_clause,
-                ..
+                lt_token,
+                gt_token,
             },
-        ..
+        fn_token,
+        paren_token,
+        variadic,
     } = sig;
 
     let warnings = args.warnings();
@@ -65,9 +70,14 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     // exactly that way for it to do its magic.
     let fake_return_edge = quote_spanned! {return_span=>
         #[allow(
-            unknown_lints, unreachable_code, clippy::diverging_sub_expression,
-            clippy::let_unit_value, clippy::unreachable, clippy::let_with_type_underscore,
-            clippy::empty_loop
+            unknown_lints,
+            unreachable_code,
+            clippy::diverging_sub_expression,
+            clippy::empty_loop,
+            clippy::let_unit_value,
+            clippy::let_with_type_underscore,
+            clippy::needless_return,
+            clippy::unreachable
         )]
         if false {
             let __tracing_attr_fake_return: #return_type = loop {};
@@ -90,16 +100,27 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         self_type,
     );
 
-    quote!(
+    let mut result = quote!(
         #(#outer_attrs) *
-        #vis #constness #asyncness #unsafety #abi fn #ident<#gen_params>(#params) #output
-        #where_clause
-        {
-            #(#inner_attrs) *
-            #warnings
-            #body
-        }
-    )
+        #vis #constness #asyncness #unsafety #abi #fn_token #ident
+        #lt_token #gen_params #gt_token
+    );
+
+    paren_token.surround(&mut result, |tokens| {
+        params.to_tokens(tokens);
+        variadic.to_tokens(tokens);
+    });
+
+    output.to_tokens(&mut result);
+    where_clause.to_tokens(&mut result);
+
+    brace_token.surround(&mut result, |tokens| {
+        tokens.append_all(inner_attrs);
+        warnings.to_tokens(tokens);
+        body.to_tokens(tokens);
+    });
+
+    result
 }
 
 /// Instrument a block
