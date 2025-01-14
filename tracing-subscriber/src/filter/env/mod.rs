@@ -111,7 +111,7 @@ use tracing_core::{
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
-/// - `[span_b{name=\"bob\"}]` will enable all spans or event that:
+/// - `[span_b{name="bob"}]` will enable all spans or event that:
 ///    - have _any_ target,
 ///    - are inside a span named `span_b`,
 ///    - which has a field named `name` with value `bob`,
