@@ -30,7 +30,7 @@
 //! ```rust
 //! # use std::error::Error;
 //! use tracing_log::LogTracer;
-//! use log;
+//! use tracing_log::log;
 //!
 //! # fn main() -> Result<(), Box<dyn Error>> {
 //! LogTracer::init()?;
