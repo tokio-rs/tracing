@@ -27,7 +27,7 @@ rust-version = "1.63.0"
 [features]
 default = ["std"]
 alloc = ["portable-atomic-util?/alloc"]
-std = ["once_cell", "alloc"]
+std = ["once_cell", "alloc", "portable-atomic-util?/std"]
 portable-atomic = ["dep:portable-atomic-util", "once_cell?/portable-atomic"]
 
 [badges]
