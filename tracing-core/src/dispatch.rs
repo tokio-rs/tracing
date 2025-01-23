@@ -152,8 +152,11 @@ use std::{
     error,
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "portable-atomic")))]
 use alloc::sync::{Arc, Weak};
+
+#[cfg(all(feature = "alloc", feature = "portable-atomic"))]
+use portable_atomic_util::{Arc, Weak};
 
 #[cfg(feature = "alloc")]
 use core::ops::Deref;
@@ -539,8 +542,22 @@ impl Dispatch {
     where
         C: Collect + Send + Sync + 'static,
     {
+        #[cfg(not(feature = "portable-atomic"))]
+        let arc = Arc::new(collector);
+
+        #[cfg(feature = "portable-atomic")]
+        let arc = {
+            use alloc::boxed::Box;
+
+            // Workaround for a lack of support for unsized coercion in non-first-party types.
+            // See https://github.com/rust-lang/rust/issues/18598
+            let boxed: Box<dyn Collect + Send + Sync> = Box::<C>::new(collector);
+            
+            Arc::from(boxed)
+        };
+
         let me = Dispatch {
-            collector: Kind::Scoped(Arc::new(collector)),
+            collector: Kind::Scoped(arc),
         };
         crate::callsite::register_dispatch(&me);
         me
