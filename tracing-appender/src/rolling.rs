@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -602,7 +602,19 @@ impl Inner {
                     return None;
                 }
 
-                let created = metadata.created().ok()?;
+                let created = metadata.created().ok().or_else(|| {
+                    let mut datetime = filename;
+                    if let Some(prefix) = &self.log_filename_prefix {
+                        datetime = datetime.strip_prefix(&format!("{prefix}."))?;
+                    }
+                    if let Some(suffix) = &self.log_filename_suffix {
+                        datetime = datetime.strip_suffix(&format!(".{suffix}"))?;
+                    }
+
+                    Some(PrimitiveDateTime::parse(datetime, &self.date_format)
+                        .ok()?
+                        .assume_utc().into())
+                })?;
                 Some((entry, created))
             })
             .collect::<Vec<_>>()
