@@ -409,6 +409,9 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
     pub(crate) display_level: bool,
+    pub(crate) display_executable_name: bool,
+    pub(crate) executable_name: Option<String>,
+    pub(crate) display_process_id: bool,
     pub(crate) display_thread_id: bool,
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
@@ -599,6 +602,9 @@ impl Default for Format<Full, SystemTime> {
             display_timestamp: true,
             display_target: true,
             display_level: true,
+            display_executable_name: false,
+            executable_name: None,
+            display_process_id: false,
             display_thread_id: false,
             display_thread_name: false,
             display_filename: false,
@@ -619,6 +625,9 @@ impl<F, T> Format<F, T> {
             display_target: false,
             display_timestamp: self.display_timestamp,
             display_level: self.display_level,
+            display_executable_name: self.display_executable_name,
+            executable_name: self.executable_name,
+            display_process_id: self.display_process_id,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
@@ -658,6 +667,9 @@ impl<F, T> Format<F, T> {
             display_target: self.display_target,
             display_timestamp: self.display_timestamp,
             display_level: self.display_level,
+            display_executable_name: self.display_executable_name,
+            executable_name: self.executable_name,
+            display_process_id: self.display_process_id,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: true,
@@ -689,6 +701,9 @@ impl<F, T> Format<F, T> {
             display_target: self.display_target,
             display_timestamp: self.display_timestamp,
             display_level: self.display_level,
+            display_executable_name: self.display_executable_name,
+            executable_name: self.executable_name,
+            display_process_id: self.display_process_id,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
@@ -718,6 +733,9 @@ impl<F, T> Format<F, T> {
             display_target: self.display_target,
             display_timestamp: self.display_timestamp,
             display_level: self.display_level,
+            display_executable_name: self.display_executable_name,
+            executable_name: self.executable_name,
+            display_process_id: self.display_process_id,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
@@ -734,6 +752,9 @@ impl<F, T> Format<F, T> {
             display_timestamp: false,
             display_target: self.display_target,
             display_level: self.display_level,
+            display_executable_name: self.display_executable_name,
+            executable_name: self.executable_name,
+            display_process_id: self.display_process_id,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
@@ -761,6 +782,34 @@ impl<F, T> Format<F, T> {
     pub fn with_level(self, display_level: bool) -> Format<F, T> {
         Format {
             display_level,
+            ..self
+        }
+    }
+
+    /// Sets whether or not the binary name of the process is displayed when
+    /// formatting events. If executable_name is None, argv\[0\] will be used,
+    /// otherwise the spcified string will be used.
+    ///
+    /// [argv\[0\]]: std::env::args
+    pub fn with_executable_name(
+        self,
+        display_executable_name: bool,
+        executable_name: Option<impl Into<String>>,
+    ) -> Format<F, T> {
+        Format {
+            display_executable_name,
+            executable_name: executable_name.map(Into::into),
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [process ID] of the current thread is displayed
+    /// when formatting events.
+    ///
+    /// [process ID]: std::process::id
+    pub fn with_process_id(self, display_process_id: bool) -> Format<F, T> {
+        Format {
+            display_process_id,
             ..self
         }
     }
@@ -949,6 +998,20 @@ where
 
         self.format_timestamp(&mut writer)?;
         self.format_level(*meta.level(), &mut writer)?;
+
+        if self.display_executable_name {
+            if let Some(executable_name) = &self.executable_name {
+                write!(writer, "{} ", executable_name)?;
+            } else if let Some(argv0) = std::env::args().next() {
+                write!(writer, "{} ", argv0)?;
+            } else {
+                write!(writer, "<missing_argv[0]> ")?;
+            }
+        }
+
+        if self.display_process_id {
+            write!(writer, "PID({}) ", std::process::id())?;
+        }
 
         if self.display_thread_name {
             let current_thread = std::thread::current();
@@ -1685,6 +1748,8 @@ pub(super) mod test {
             .without_time()
             .with_level(false)
             .with_target(false)
+            .with_executable_name(false, None::<&str>)
+            .with_process_id(false)
             .with_thread_ids(false)
             .with_thread_names(false);
         #[cfg(feature = "ansi")]
@@ -1798,6 +1863,50 @@ pub(super) mod test {
             current_path(),
         );
         assert_info_hello(subscriber, make_writer, expected);
+    }
+
+    #[test]
+    fn with_automatic_executable_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_executable_name(true, None::<&str>)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let expected = format!(
+            "fake time  INFO {} tracing_subscriber::fmt::format::test: hello\n",
+            std::env::args().next().unwrap()
+        );
+
+        assert_info_hello(subscriber, make_writer, &expected);
+    }
+
+    #[test]
+    fn with_manual_executable_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_executable_name(true, Some("a_nice_rust_binary"))
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let expected =
+            "fake time  INFO a_nice_rust_binary tracing_subscriber::fmt::format::test: hello\n";
+
+        assert_info_hello(subscriber, make_writer, expected);
+    }
+
+    #[test]
+    fn with_process_id() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Collector::builder()
+            .with_writer(make_writer.clone())
+            .with_process_id(true)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let expected =
+            "fake time  INFO PID(NUMERIC) tracing_subscriber::fmt::format::test: hello\n";
+
+        assert_info_hello_ignore_numeric(subscriber, make_writer, expected);
     }
 
     #[test]
