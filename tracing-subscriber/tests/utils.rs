@@ -34,6 +34,6 @@ fn builders_are_init_ext() {
 fn layered_is_init_ext() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::subscriber())
-        .with(tracing_subscriber::EnvFilter::new("foo=info"))
+        .with(tracing_subscriber::EnvFilter::try_new("foo=info").unwrap())
         .set_default();
 }
