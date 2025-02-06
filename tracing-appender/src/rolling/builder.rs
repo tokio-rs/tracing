@@ -248,7 +248,7 @@ impl Builder {
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
     ///     .rotation(Rotation::SIZE) // rotate log files when they reach a certain size
-    ///     .max_file_size(1024) // only the most recent 5 log files will be kept
+    ///     .max_file_size(1024) // will roll over once file reaches 1024 bytes
     ///     // ...
     ///     .build("/var/log")
     ///     .expect("failed to initialize rolling file appender");
