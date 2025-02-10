@@ -158,6 +158,7 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
+    clippy::uninlined_format_args,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -392,7 +393,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_entry(field.name(), &format_args!("{:?}", value))
+                .serialize_entry(field.name(), &format_args!("{value:?}"))
         }
     }
 
@@ -444,7 +445,7 @@ where
         if self.state.is_ok() {
             self.state = self
                 .serializer
-                .serialize_field(field.name(), &format_args!("{:?}", value))
+                .serialize_field(field.name(), &format_args!("{value:?}"))
         }
     }
 

@@ -1,3 +1,4 @@
+#![warn(clippy::uninlined_format_args)]
 #[doc(hidden)]
 pub use tracing;
 
