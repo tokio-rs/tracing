@@ -3160,3 +3160,19 @@ macro_rules! if_log_enabled {
         }
     };
 }
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! record {
+    ($field:expr, %$value:expr) => {
+        $crate::record!($field, ::tracing::field::display(&$value))
+    };
+    ($field:expr, ?$value:expr) => {
+        $crate::record!($field, ::tracing::field::debug(&$value))
+    };
+    ($field:expr, $value:expr) => {{
+        #[allow(unused)]
+        use ::tracing::field::{debug, display};
+        ::tracing::Span::current().record($field, $value);
+    }};
+}
