@@ -9,7 +9,7 @@
 
 #[allow(unused_imports)] // may be used later;
 #[cfg(feature = "parking_lot")]
-pub(crate) use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub(crate) use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[cfg(not(feature = "parking_lot"))]
 pub(crate) use self::std_impl::*;
@@ -17,7 +17,7 @@ pub(crate) use self::std_impl::*;
 #[cfg(not(feature = "parking_lot"))]
 mod std_impl {
     use std::sync::{self, PoisonError, TryLockError};
-    pub(crate) use std::sync::{RwLockReadGuard, RwLockWriteGuard};
+    pub(crate) use std::sync::{MutexGuard, RwLockReadGuard, RwLockWriteGuard};
 
     #[derive(Debug)]
     pub(crate) struct RwLock<T> {
@@ -25,6 +25,7 @@ mod std_impl {
     }
 
     impl<T> RwLock<T> {
+        #[allow(dead_code)] // may be used later;
         pub(crate) fn new(val: T) -> Self {
             Self {
                 inner: sync::RwLock::new(val),
@@ -32,11 +33,13 @@ mod std_impl {
         }
 
         #[inline]
+        #[allow(dead_code)] // may be used later;
         pub(crate) fn get_mut(&mut self) -> &mut T {
             self.inner.get_mut().unwrap_or_else(PoisonError::into_inner)
         }
 
         #[inline]
+        #[allow(dead_code)] // may be used later;
         pub(crate) fn read(&self) -> RwLockReadGuard<'_, T> {
             self.inner.read().unwrap_or_else(PoisonError::into_inner)
         }
@@ -52,6 +55,7 @@ mod std_impl {
         }
 
         #[inline]
+        #[allow(dead_code)] // may be used later;
         pub(crate) fn write(&self) -> RwLockWriteGuard<'_, T> {
             self.inner.write().unwrap_or_else(PoisonError::into_inner)
         }
@@ -60,6 +64,40 @@ mod std_impl {
         #[allow(dead_code)] // may be used later;
         pub(crate) fn try_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
             match self.inner.try_write() {
+                Ok(guard) => Some(guard),
+                Err(TryLockError::Poisoned(e)) => Some(e.into_inner()),
+                Err(TryLockError::WouldBlock) => None,
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub(crate) struct Mutex<T> {
+        inner: sync::Mutex<T>,
+    }
+
+    impl<T> Mutex<T> {
+        pub(crate) fn new(val: T) -> Self {
+            Self {
+                inner: sync::Mutex::new(val),
+            }
+        }
+
+        #[inline]
+        pub(crate) fn get_mut(&mut self) -> &mut T {
+            self.inner.get_mut().unwrap_or_else(PoisonError::into_inner)
+        }
+
+        #[inline]
+        #[allow(dead_code)] // may be used later;
+        pub(crate) fn lock(&self) -> MutexGuard<'_, T> {
+            self.inner.lock().unwrap_or_else(PoisonError::into_inner)
+        }
+
+        #[inline]
+        #[allow(dead_code)] // may be used later;
+        pub(crate) fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
+            match self.inner.try_lock() {
                 Ok(guard) => Some(guard),
                 Err(TryLockError::Poisoned(e)) => Some(e.into_inner()),
                 Err(TryLockError::WouldBlock) => None,
