@@ -748,7 +748,7 @@ mod test {
 
     #[test]
     fn write_minutely_log() {
-        test_appender(Rotation::HOURLY, "minutely.log");
+        test_appender(Rotation::MINUTELY, "minutely.log");
     }
 
     #[test]
