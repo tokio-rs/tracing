@@ -304,3 +304,30 @@ fn multiple_dynamic_filters() {
     handle1.assert_finished();
     handle2.assert_finished();
 }
+
+#[test]
+fn more_specific_dynamic_directives_override_static_directives() {
+    let filter: EnvFilter = "info,my_target[my_span]=warn".parse().unwrap();
+    let (layer, handle) = layer::mock()
+        .enter(span::mock().at_level(Level::INFO))
+        .event(
+            event::mock()
+                .at_level(Level::WARN)
+                .in_scope(vec![span::named("my_span")]),
+        )
+        .exit(span::mock().at_level(Level::INFO))
+        .done()
+        .run_with_handle();
+
+    let _subscriber = tracing_subscriber::registry()
+        .with(layer.with_filter(filter))
+        .set_default();
+
+    {
+        let _info = tracing::info_span!(target: "my_target", "my_span").entered();
+        tracing::info!(target: "my_target", "should be ignored");
+        tracing::warn!(target: "my_target", "should be logged");
+    }
+
+    handle.assert_finished();
+}
