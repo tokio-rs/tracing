@@ -370,6 +370,42 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
+/// Creates a weekly-rotating file appender.
+///
+/// The appender returned by `rolling::weekly` can be used with `non_blocking` to create
+/// a non-blocking, weekly file appender.
+///
+/// A `RollingFileAppender` has a fixed rotation whose frequency is
+/// defined by [`Rotation`][self::Rotation]. The `directory` and
+/// `file_name_prefix` arguments determine the location and file name's _prefix_
+/// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
+///
+/// # Examples
+///
+/// ``` rust
+/// # #[clippy::allow(needless_doctest_main)]
+/// fn main () {
+/// # fn doc() {
+///     let appender = tracing_appender::rolling::weekly("/some/path", "rolling.log");
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///
+///     tracing::subscriber::with_default(subscriber.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// # }
+/// }
+/// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
+pub fn weekly(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::WEEKLY, directory, file_name_prefix)
+}
+
 /// Creates a non-rolling file appender.
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
@@ -444,6 +480,7 @@ enum RotationKind {
     Minutely,
     Hourly,
     Daily,
+    Weekly,
     Never,
 }
 
@@ -454,21 +491,29 @@ impl Rotation {
     pub const HOURLY: Self = Self(RotationKind::Hourly);
     /// Provides a daily rotation
     pub const DAILY: Self = Self(RotationKind::Daily);
+    /// Provides a weekly rotation
+    pub const WEEKLY: Self = Self(RotationKind::Weekly);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
+    /// Determines the next date that we should round to or `None` if `self` uses [`Rotation::NEVER`].
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
             Rotation::MINUTELY => *current_date + Duration::minutes(1),
             Rotation::HOURLY => *current_date + Duration::hours(1),
             Rotation::DAILY => *current_date + Duration::days(1),
+            Rotation::WEEKLY => *current_date + Duration::weeks(1),
             Rotation::NEVER => return None,
         };
-        Some(self.round_date(&unrounded_next_date))
+        Some(self.round_date(unrounded_next_date))
     }
 
-    // note that this method will panic if passed a `Rotation::NEVER`.
-    pub(crate) fn round_date(&self, date: &OffsetDateTime) -> OffsetDateTime {
+    /// Rounds the date towards the past using the [`Rotation`] interval.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if `self`` uses [`Rotation::NEVER`].
+    pub(crate) fn round_date(&self, date: OffsetDateTime) -> OffsetDateTime {
         match *self {
             Rotation::MINUTELY => {
                 let time = Time::from_hms(date.hour(), date.minute(), 0)
@@ -485,6 +530,18 @@ impl Rotation {
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
+            Rotation::WEEKLY => {
+                let time = Time::from_hms(0, 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                let date = date.replace_time(time);
+                let rounded_ordinal = Rotation::round_ordinal_to_week(date.date());
+
+                date.replace_date(
+                    Date::from_ordinal_date(date.year(), rounded_ordinal).expect(
+                        "ordinal should never be out of range; this is a bug in tracing-appender",
+                    ),
+                )
+            }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
                 unreachable!("Rotation::NEVER is impossible to round.")
@@ -497,9 +554,19 @@ impl Rotation {
             Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::WEEKLY => format_description::parse("[year]-[month]-[day]"),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
+    }
+
+    fn round_ordinal_to_week(date: Date) -> u16 {
+        let ordinal = date.ordinal();
+        if ordinal <= 7 {
+            1
+        } else {
+            ordinal - (ordinal % 7)
+        }
     }
 }
 
@@ -548,10 +615,17 @@ impl Inner {
         Ok((inner, writer))
     }
 
+    /// Returns the full filename for the provided date, using [`Rotation`] to round accordingly.
     pub(crate) fn join_date(&self, date: &OffsetDateTime) -> String {
-        let date = date
-            .format(&self.date_format)
-            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+        let date = if let Rotation::NEVER = self.rotation {
+            date.format(&self.date_format)
+                .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
+        } else {
+            self.rotation
+                .round_date(*date)
+                .format(&self.date_format)
+                .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender")
+        };
 
         match (
             &self.rotation,
@@ -748,7 +822,7 @@ mod test {
 
     #[test]
     fn write_minutely_log() {
-        test_appender(Rotation::HOURLY, "minutely.log");
+        test_appender(Rotation::MINUTELY, "minutely.log");
     }
 
     #[test]
@@ -759,6 +833,11 @@ mod test {
     #[test]
     fn write_daily_log() {
         test_appender(Rotation::DAILY, "daily.log");
+    }
+
+    #[test]
+    fn write_weekly_log() {
+        test_appender(Rotation::WEEKLY, "weekly.log");
     }
 
     #[test]
@@ -778,10 +857,16 @@ mod test {
         let next = Rotation::HOURLY.next_date(&now).unwrap();
         assert_eq!((now + Duration::HOUR).hour(), next.hour());
 
-        // daily-basis
+        // per-day basis
         let now = OffsetDateTime::now_utc();
         let next = Rotation::DAILY.next_date(&now).unwrap();
         assert_eq!((now + Duration::DAY).day(), next.day());
+
+        // per-week basis
+        let now = OffsetDateTime::now_utc();
+        let now_rounded = Rotation::WEEKLY.round_date(now);
+        let next = Rotation::WEEKLY.next_date(&now).unwrap();
+        assert!(now_rounded < next);
 
         // never
         let now = OffsetDateTime::now_utc();
@@ -790,12 +875,98 @@ mod test {
     }
 
     #[test]
+    fn test_join_date() {
+        struct TestCase {
+            expected: &'static str,
+            rotation: Rotation,
+            prefix: Option<&'static str>,
+            suffix: Option<&'static str>,
+            now: OffsetDateTime,
+        }
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+
+        let test_cases = vec![
+            TestCase {
+                expected: "my_prefix.2025-02-11.log",
+                rotation: Rotation::WEEKLY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+            TestCase {
+                expected: "my_prefix.2025-02-17.log",
+                rotation: Rotation::DAILY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+            TestCase {
+                expected: "my_prefix.2025-02-17-10.log",
+                rotation: Rotation::HOURLY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+            TestCase {
+                expected: "my_prefix.2025-02-17-10-01.log",
+                rotation: Rotation::MINUTELY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+            TestCase {
+                expected: "my_prefix.log",
+                rotation: Rotation::NEVER,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let (inner, _) = Inner::new(
+                test_case.now,
+                test_case.rotation.clone(),
+                directory.path(),
+                test_case.prefix.map(ToString::to_string),
+                test_case.suffix.map(ToString::to_string),
+                None,
+            )
+            .unwrap();
+            let path = inner.join_date(&test_case.now);
+
+            assert_eq!(path, test_case.expected);
+        }
+    }
+
+    #[test]
     #[should_panic(
         expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
     )]
     fn test_never_date_rounding() {
         let now = OffsetDateTime::now_utc();
-        let _ = Rotation::NEVER.round_date(&now);
+        let _ = Rotation::NEVER.round_date(now);
+    }
+
+    #[test]
+    fn test_ordinal_rounding() {
+        let date = Date::from_ordinal_date(2025, 1).unwrap();
+        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
+
+        let date = Date::from_ordinal_date(2025, 2).unwrap();
+        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
+
+        let date = Date::from_ordinal_date(2025, 7).unwrap();
+        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
+
+        let date = Date::from_ordinal_date(2025, 8).unwrap();
+        assert_eq!(Rotation::round_ordinal_to_week(date), 7);
     }
 
     #[test]
