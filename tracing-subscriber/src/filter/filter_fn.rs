@@ -326,7 +326,7 @@ where
     F: Fn(&Metadata<'_>) -> bool + 'static,
     C: Collect,
 {
-    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, C>) -> bool {
         self.is_enabled(metadata)
     }
 
@@ -646,7 +646,7 @@ where
     R: Fn(&'static Metadata<'static>) -> Interest + 'static,
     C: Collect,
 {
-    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, cx: &Context<'_, C>) -> bool {
         self.is_enabled(metadata, &cx)
     }
 
