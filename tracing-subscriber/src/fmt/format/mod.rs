@@ -404,7 +404,7 @@ pub struct Full;
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
-    pub(crate) timer: T,
+    pub(crate) timer: Option<T>,
     pub(crate) ansi: Option<bool>,
     pub(crate) display_timestamp: bool,
     pub(crate) display_target: bool,
@@ -594,7 +594,7 @@ impl Default for Format<Full, SystemTime> {
     fn default() -> Self {
         Format {
             format: Full,
-            timer: SystemTime,
+            timer: Some(SystemTime),
             ansi: None,
             display_timestamp: true,
             display_target: true,
@@ -713,7 +713,7 @@ impl<F, T> Format<F, T> {
     pub fn with_timer<T2>(self, timer: T2) -> Format<F, T2> {
         Format {
             format: self.format,
-            timer,
+            timer: Some(timer),
             ansi: self.ansi,
             display_target: self.display_target,
             display_timestamp: self.display_timestamp,
@@ -729,15 +729,30 @@ impl<F, T> Format<F, T> {
     pub fn without_time(self) -> Format<F, ()> {
         Format {
             format: self.format,
-            timer: (),
-            ansi: self.ansi,
+            timer: Some(()),
             display_timestamp: false,
+            ansi: self.ansi,
             display_target: self.display_target,
             display_level: self.display_level,
             display_thread_id: self.display_thread_id,
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+        }
+    }
+
+    /// Enable timestamps for log messages using the [`timer`] field in [`Self`].
+    ///
+    /// [`timer`]: super::time::FormatTime
+    pub fn with_timestamp(self, display_timestamp: bool) -> Format<F, T> {
+        let timer = match display_timestamp {
+            true => self.timer,
+            false => None,
+        };
+        Format {
+            display_timestamp,
+            timer,
+            ..self
         }
     }
 
@@ -1596,10 +1611,10 @@ pub(super) struct FmtSpanConfig {
 }
 
 impl FmtSpanConfig {
-    pub(super) fn without_time(self) -> Self {
+    pub(super) fn with_timestamp(self, display_timestamp: bool) -> Self {
         Self {
             kind: self.kind,
-            fmt_timing: false,
+            fmt_timing: display_timestamp,
         }
     }
     pub(super) fn with_kind(self, kind: FmtSpan) -> Self {
