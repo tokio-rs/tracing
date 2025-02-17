@@ -17,11 +17,15 @@ keywords = ["logging", "tracing"]
 license = "MIT"
 rust-version = "1.63.0"
 
+[features]
+assert_matches = []
+
 [dependencies]
 tracing = { path = "../tracing", version = "0.2", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3" }
+tracing-attributes = { path = "../tracing-attributes", version = "0.2" }
 
 [badges]
 maintenance = { status = "experimental" }
