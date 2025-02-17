@@ -71,6 +71,7 @@ pub struct Layer<
     fmt_fields: N,
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
+    needs_span_fields: bool,
     is_ansi: bool,
     log_internal_errors: bool,
     _inner: PhantomData<fn(S)>,
@@ -120,6 +121,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_event: e,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -150,6 +152,7 @@ where
             fmt_fields: self.fmt_fields,
             fmt_event: f(self.fmt_event),
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -184,6 +187,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
             make_writer,
@@ -289,6 +293,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
             make_writer: TestWriter::default(),
@@ -385,6 +390,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
             make_writer: f(self.make_writer),
@@ -416,6 +422,7 @@ where
             fmt_event: self.fmt_event.with_timer(timer),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -429,6 +436,7 @@ where
             fmt_event: self.fmt_event.without_time(),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span.without_time(),
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -558,6 +566,7 @@ where
             fmt_event: self.fmt_event.compact(),
             fmt_fields: self.fmt_fields,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -573,6 +582,7 @@ where
             fmt_event: self.fmt_event.pretty(),
             fmt_fields: format::Pretty::default(),
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -603,6 +613,7 @@ where
             fmt_event: self.fmt_event.json(),
             fmt_fields: format::JsonFields::new(),
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             // always disable ANSI escapes in JSON mode!
             is_ansi: false,
@@ -622,8 +633,9 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         self,
         flatten_event: bool,
     ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        let fmt_event = self.fmt_event.flatten_event(flatten_event);
         Layer {
-            fmt_event: self.fmt_event.flatten_event(flatten_event),
+            fmt_event,
             fmt_fields: format::JsonFields::new(),
             ..self
         }
@@ -637,9 +649,13 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         self,
         display_current_span: bool,
     ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        let fmt_event = self.fmt_event.with_current_span(display_current_span);
+        let needs_span_fields =
+            fmt_event.format.display_current_span || fmt_event.format.display_span_list;
         Layer {
-            fmt_event: self.fmt_event.with_current_span(display_current_span),
+            fmt_event,
             fmt_fields: format::JsonFields::new(),
+            needs_span_fields,
             ..self
         }
     }
@@ -652,9 +668,13 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
         self,
         display_span_list: bool,
     ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        let fmt_event = self.fmt_event.with_span_list(display_span_list);
+        let needs_span_fields =
+            fmt_event.format.display_current_span || fmt_event.format.display_span_list;
         Layer {
-            fmt_event: self.fmt_event.with_span_list(display_span_list),
+            fmt_event,
             fmt_fields: format::JsonFields::new(),
+            needs_span_fields,
             ..self
         }
     }
@@ -671,6 +691,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_fields,
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -702,6 +723,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_fields: f(self.fmt_fields),
             fmt_span: self.fmt_span,
+            needs_span_fields: self.needs_span_fields,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
             log_internal_errors: self.log_internal_errors,
@@ -720,6 +742,7 @@ impl<S> Default for Layer<S> {
             fmt_fields: format::DefaultFields::default(),
             fmt_event: format::Format::default(),
             fmt_span: format::FmtSpanConfig::default(),
+            needs_span_fields: true,
             make_writer: io::stdout,
             is_ansi: ansi,
             log_internal_errors: false,
@@ -833,7 +856,7 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
+        if self.needs_span_fields && extensions.get_mut::<FormattedFields<N>>().is_none() {
             let mut fields = FormattedFields::<N>::new(String::new());
             if self
                 .fmt_fields
@@ -867,6 +890,10 @@ where
     }
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        if !self.needs_span_fields {
+            return;
+        }
+
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
         if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
