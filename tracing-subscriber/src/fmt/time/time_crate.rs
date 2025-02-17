@@ -312,6 +312,7 @@ where
 
 // === impl OffsetTime ===
 
+#[cfg_attr(docsrs, doc(cfg(feature = "local-time")))]
 #[cfg(feature = "local-time")]
 impl OffsetTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current time using the [local time offset] in the [RFC
