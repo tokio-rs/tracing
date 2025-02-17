@@ -160,8 +160,8 @@ where
     }
 
     fn exit(&self, span: &span::Id) {
-        self.inner.exit(span);
         self.subscriber.on_exit(span, self.ctx());
+        self.inner.exit(span);
     }
 
     fn clone_span(&self, old: &span::Id) -> span::Id {
