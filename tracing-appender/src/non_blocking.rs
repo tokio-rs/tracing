@@ -103,7 +103,7 @@ pub const DEFAULT_BUFFERED_LINES_LIMIT: usize = 128_000;
 #[must_use]
 #[derive(Debug)]
 pub struct WorkerGuard {
-    _guard: Option<JoinHandle<()>>,
+    handle: Option<JoinHandle<()>>,
     sender: Sender<Msg>,
     shutdown: Sender<()>,
 }
@@ -278,7 +278,7 @@ impl<'a> MakeWriter<'a> for NonBlocking {
 impl WorkerGuard {
     fn new(handle: JoinHandle<()>, sender: Sender<Msg>, shutdown: Sender<()>) -> Self {
         WorkerGuard {
-            _guard: Some(handle),
+            handle: Some(handle),
             sender,
             shutdown,
         }
@@ -287,21 +287,35 @@ impl WorkerGuard {
 
 impl Drop for WorkerGuard {
     fn drop(&mut self) {
-        match self
-            .sender
-            .send_timeout(Msg::Shutdown, Duration::from_millis(100))
-        {
+        let timeout = Duration::from_millis(100);
+        match self.sender.send_timeout(Msg::Shutdown, timeout) {
             Ok(_) => {
                 // Attempt to wait for `Worker` to flush all messages before dropping. This happens
                 // when the `Worker` calls `recv()` on a zero-capacity channel. Use `send_timeout`
                 // so that drop is not blocked indefinitely.
                 // TODO: Make timeout configurable.
-                let _ = self.shutdown.send_timeout((), Duration::from_millis(1000));
+                let timeout = Duration::from_millis(1000);
+                match self.shutdown.send_timeout((), timeout) {
+                    Err(SendTimeoutError::Timeout(_)) => {
+                        eprintln!(
+                            "Shutting down logging worker timed out after {:?}.",
+                            timeout
+                        );
+                    }
+                    _ => {
+                        // At this point it is safe to wait for `Worker` destruction without blocking
+                        if let Some(handle) = self.handle.take() {
+                            if handle.join().is_err() {
+                                eprintln!("Logging worker thread panicked");
+                            }
+                        };
+                    }
+                }
             }
             Err(SendTimeoutError::Disconnected(_)) => (),
-            Err(SendTimeoutError::Timeout(e)) => println!(
-                "Failed to send shutdown signal to logging worker. Error: {:?}",
-                e
+            Err(SendTimeoutError::Timeout(_)) => eprintln!(
+                "Sending shutdown signal to logging worker timed out after {:?}",
+                timeout
             ),
         }
     }
