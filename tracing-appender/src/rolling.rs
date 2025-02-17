@@ -496,6 +496,7 @@ impl Rotation {
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
+    /// Determines the next date that we should round to or `None` if `self` uses [`Rotation::NEVER`].
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
             Rotation::MINUTELY => *current_date + Duration::minutes(1),
@@ -507,7 +508,11 @@ impl Rotation {
         Some(self.round_date(unrounded_next_date))
     }
 
-    // note that this method will panic if passed a `Rotation::NEVER`.
+    /// Rounds the date towards the past using the [`Rotation`] interval.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if `self`` uses [`Rotation::NEVER`].
     pub(crate) fn round_date(&self, date: OffsetDateTime) -> OffsetDateTime {
         match *self {
             Rotation::MINUTELY => {
@@ -610,6 +615,7 @@ impl Inner {
         Ok((inner, writer))
     }
 
+    /// Returns the full filename for the provided date, using [`Rotation`] to round accordingly.
     pub(crate) fn join_date(&self, date: &OffsetDateTime) -> String {
         let date = if let Rotation::NEVER = self.rotation {
             date.format(&self.date_format)
