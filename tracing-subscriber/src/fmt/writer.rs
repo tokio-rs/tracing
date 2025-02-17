@@ -1113,7 +1113,7 @@ impl io::Write for WriteAdaptor<'_> {
             .write_str(s)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        Ok(s.as_bytes().len())
+        Ok(s.len())
     }
 
     fn flush(&mut self) -> io::Result<()> {

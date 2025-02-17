@@ -28,7 +28,10 @@ error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/async_instrument.rs:14:1
    |
 14 | #[tracing::instrument]
-   | ^^^^^^^^^^^^^^^^^^^^^^ `(&str,)` cannot be formatted with the default formatter
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `(&str,)` cannot be formatted with the default formatter
+   | return type was inferred to be `(&str,)` here
    |
    = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
