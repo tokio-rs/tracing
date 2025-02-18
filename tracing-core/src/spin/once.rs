@@ -51,7 +51,7 @@ impl<T> Once<T> {
     }
 
     fn force_get<'a>(&'a self) -> &'a T {
-        unsafe { self.data.get().assume_init_ref() }
+        unsafe { (*self.data.get()).assume_init_ref() }
     }
 
     /// Performs an initialization routine once and only once. The given closure
@@ -90,7 +90,7 @@ impl<T> Once<T> {
                         panicked: true,
                     };
                     unsafe {
-                        *self.data.get() = builder();
+                        *self.data.get() = MaybeUninit::new(builder());
                     };
                     finish.panicked = false;
 
