@@ -17,6 +17,7 @@
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! span {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, $name:expr) => {
         $crate::span!(target: $target, parent: $parent, $lvl, $name,)
@@ -562,8 +563,7 @@ macro_rules! error_span {
 ///     Level::WARN,
 ///     private_data,
 ///     ?data,
-///     "App warning: {}",
-///     error
+///     "App warning: {error}",
 /// );
 /// event!(name: "answer", Level::INFO, the_answer = data.0);
 /// event!(Level::INFO, the_answer = data.0);
@@ -583,6 +583,7 @@ macro_rules! error_span {
 // /// #}
 // /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! event {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
@@ -1298,6 +1299,7 @@ macro_rules! enabled {
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! trace {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
@@ -1574,6 +1576,7 @@ macro_rules! trace {
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! debug {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
@@ -1850,17 +1853,18 @@ macro_rules! debug {
 /// let addr = Ipv4Addr::new(127, 0, 0, 1);
 /// let conn = Connection { port: 40, speed: 3.20 };
 ///
-/// info!(conn.port, "connected to {:?}", addr);
+/// info!(conn.port, "connected to {addr:?}");
 /// info!(
 ///     target: "connection_events",
 ///     ip = ?addr,
 ///     conn.port,
 ///     ?conn.speed,
 /// );
-/// info!(name: "completed", "completed connection to {:?}", addr);
+/// info!(name: "completed", "completed connection to {addr:?}");
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! info {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
@@ -2135,12 +2139,13 @@ macro_rules! info {
 /// warn!(
 ///     target: "input_events",
 ///     warning = warn_description,
-///     "Received warning for input: {:?}", input,
+///     "Received warning for input: {input:?}",
 /// );
 /// warn!(name: "invalid", ?input);
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! warn {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
@@ -2411,12 +2416,13 @@ macro_rules! warn {
 /// let (err_info, port) = ("No connection", 22);
 ///
 /// error!(port, error = %err_info);
-/// error!(target: "app_events", "App Error: {}", err_info);
-/// error!({ info = err_info }, "error on port: {}", port);
-/// error!(name: "invalid_input", "Invalid input: {}", err_info);
+/// error!(target: "app_events", "App Error: {err_info}");
+/// error!({ info = err_info }, "error on port: {port}");
+/// error!(name: "invalid_input", "Invalid input: {err_info}");
 /// # }
 /// ```
 #[macro_export]
+#[clippy::format_args]
 macro_rules! error {
     // Name / target / parent.
     (name: $name:expr, target: $target:expr, parent: $parent:expr, { $($field:tt)* }, $($arg:tt)* ) => (
