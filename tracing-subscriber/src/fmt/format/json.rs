@@ -145,7 +145,7 @@ where
 
         let ext = self.0.extensions();
         let data = ext
-            .get::<FormattedFields<N>>()
+            .get::<FormattedFields<N, false>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
         // TODO: let's _not_ do this, but this resolves
@@ -358,9 +358,9 @@ impl<'a> FormatFields<'a> for JsonFields {
     /// By default, this appends a space to the current set of fields if it is
     /// non-empty, and then calls `self.format_fields`. If different behavior is
     /// required, the default implementation of this method can be overridden.
-    fn add_fields(
+    fn add_fields<const ANSI: bool>(
         &self,
-        current: &'a mut FormattedFields<Self>,
+        current: &'a mut FormattedFields<Self, ANSI>,
         fields: &Record<'_>,
     ) -> fmt::Result {
         if current.is_empty() {

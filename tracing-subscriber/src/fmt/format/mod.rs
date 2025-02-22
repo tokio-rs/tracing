@@ -152,7 +152,7 @@ use fmt::{Debug, Display};
 ///                 // formatter in the `FmtContext`.
 ///                 let ext = span.extensions();
 ///                 let fields = &ext
-///                     .get::<FormattedFields<N>>()
+///                     .get::<FormattedFields<N, true>>()
 ///                     .expect("will never be `None`");
 ///
 ///                 // Skip formatting the fields if the span had no fields.
@@ -240,9 +240,12 @@ pub trait FormatFields<'writer> {
     /// By default, this appends a space to the current set of fields if it is
     /// non-empty, and then calls `self.format_fields`. If different behavior is
     /// required, the default implementation of this method can be overridden.
-    fn add_fields(
+    ///
+    /// The `ANSI` const parameter determines whether ANSI escape codes should be used
+    /// for formatting the fields (i.e. colors and font styles).
+    fn add_fields<const ANSI: bool>(
         &self,
-        current: &'writer mut FormattedFields<Self>,
+        current: &'writer mut FormattedFields<Self, ANSI>,
         fields: &span::Record<'_>,
     ) -> fmt::Result {
         if !current.fields.is_empty() {
@@ -980,7 +983,13 @@ where
                 seen = true;
 
                 let ext = span.extensions();
-                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
+                if let Some(true) = self.ansi {
+                    if let Some(fields) = &ext.get::<FormattedFields<N, true>>() {
+                        if !fields.is_empty() {
+                            write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
+                        }
+                    }
+                }else if let Some(fields) = &ext.get::<FormattedFields<N, false>>() {
                     if !fields.is_empty() {
                         write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
@@ -1108,7 +1117,13 @@ where
 
         for span in ctx.event_scope().into_iter().flat_map(Scope::from_root) {
             let exts = span.extensions();
-            if let Some(fields) = exts.get::<FormattedFields<N>>() {
+            if let Some(true) = self.ansi {
+                if let Some(fields) = exts.get::<FormattedFields<N, true>>() {
+                    if !fields.is_empty() {
+                        write!(writer, " {}", dimmed.paint(&fields.fields))?;
+                    }
+                }
+            } else if let Some(fields) = exts.get::<FormattedFields<N, false>>() {
                 if !fields.is_empty() {
                     write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
