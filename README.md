@@ -14,7 +14,7 @@
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com
+[docs-master-url]: https://tracing.rs
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -479,6 +479,7 @@ Tracing.
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 * [Crabs with instruments!][tremorcon-2021-09], September 2021
+* [Decrusting the tracing crate by Jon Gjengset][decrusting-tracing-2024-02], February 2024
 
 [bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
@@ -489,6 +490,7 @@ Tracing.
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 [tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
+[decrusting-tracing-2024-02]: https://www.youtube.com/watch?v=21rtHinFA40
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

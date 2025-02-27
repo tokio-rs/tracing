@@ -24,10 +24,11 @@
 //! This crate provides a number of feature flags that enable compatibility
 //! features with other crates in the asynchronous ecosystem:
 //!
-//! - `tokio`: Enables compatibility with the `tokio` crate, including
+//! - `tokio`: Enables compatibility with the `tokio` 0.1 crate, including
 //!    [`Instrument`] and [`WithCollector`] implementations for
 //!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
-//!    `tokio::runtime::current_thread`. Enabled by default.
+//!    `tokio::runtime::current_thread`. This is not needed for compatibility
+//!    with `tokio` v1.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
 //!    crate, including [`Instrument`] and [`WithCollector`]
 //!    implementations for types implementing `tokio_executor::Executor`.
@@ -39,8 +40,6 @@
 //!   crate.
 //! - `futures-03`: Enables compatibility with version 0.3.x of the `futures`
 //!   crate's `Spawn` and `LocalSpawn` traits.
-//! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
-//!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
 //! - `std`: Depend on the Rust standard library.
 //!
 //!   `no_std` users may disable this feature with `default-features = false`:
@@ -50,7 +49,7 @@
 //!   tracing-futures = { version = "0.2.3", default-features = false }
 //!   ```
 //!
-//! The `tokio`, `std-future` and `std` features are enabled by default.
+//! The `std-future` and `std` features are enabled by default.
 //!
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: mod@tracing::span

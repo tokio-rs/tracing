@@ -14,7 +14,6 @@ use support::NoWriter;
 
 /// Prepare a real-world-inspired collector and use it to  measure the performance impact of
 /// reloadable collectors.
-
 fn mk_builder() -> CollectorBuilder<DefaultFields, Format<Full>, EnvFilter, fn() -> NoWriter> {
     let filter = EnvFilter::default()
         .add_directive("this=off".parse().unwrap())

@@ -436,7 +436,7 @@ where
     // the default dispatcher will not be able to access the dispatch context.
     // Dropping the guard will allow the dispatch context to be re-entered.
     struct Entered<'a>(&'a Cell<bool>);
-    impl<'a> Drop for Entered<'a> {
+    impl Drop for Entered<'_> {
         #[inline]
         fn drop(&mut self) {
             self.0.set(true);
@@ -1039,7 +1039,7 @@ impl<'a> Entered<'a> {
 }
 
 #[cfg(feature = "std")]
-impl<'a> Drop for Entered<'a> {
+impl Drop for Entered<'_> {
     #[inline]
     fn drop(&mut self) {
         self.0.can_enter.set(true);
