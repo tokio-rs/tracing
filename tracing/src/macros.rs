@@ -131,6 +131,53 @@ macro_rules! span {
     };
 }
 
+/// Records multiple values on a span in a single call. As with recording
+/// individual values, all fields must be declared when the span is created.
+///
+/// This macro supports two optional sigils:
+/// - `%` uses the Display implementation.
+/// - `?` uses the Debug implementation.
+/// For more details, see the [top-level documentation][lib].
+///
+/// [lib]: tracing/#recording-fields
+///
+/// # Example
+///
+/// ```
+/// # use tracing::{field, info_span, record_all, record_value};
+/// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty).entered();
+/// record_all!(span, field1 = ?"1", field2 = %"2");
+/// #
+/// ```
+#[macro_export]
+macro_rules! record_all {
+    ($span:expr, $($field:ident = $($prefix:tt)? $value:expr),* $(,)?) => {
+        if let Some(meta) = $span.metadata() {
+            $span.record_all(&$crate::valueset!(
+                meta.fields(),
+                $($field = record_value!($($prefix)? $value)),*
+            ));
+        }
+    };
+}
+
+/// Processes a value based on an optional sigil, allowing for different
+/// formatting options. This approach avoids the potentially less performant
+/// tt-muncher pattern while supporting mixing sigils in the same call.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! record_value {
+    (% $value:expr) => {
+        stringify!($value)
+    };
+    (? $value:expr) => {
+        &debug(&$value) as &dyn Value
+    };
+    ($value:expr) => {
+        $value
+    };
+}
+
 /// Constructs a span at the trace level.
 ///
 /// [Fields] and [attributes] are set using the same syntax as the [`span!`]
