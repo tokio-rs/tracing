@@ -27,14 +27,13 @@ parking_lot = { optional = true, version = "0.12.1" }
 thiserror = "1"
 
 [dependencies.tracing-subscriber]
-path = "../tracing-subscriber"
 version = "0.3.18"
 default-features = false
 features = ["fmt", "std"]
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default-features = false }
-tracing = { path = "../tracing", version = "0.1.35" }
+tracing = { version = "0.1.35" }
 tempfile = "3"
 
 [[bench]]
