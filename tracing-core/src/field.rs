@@ -1012,6 +1012,8 @@ mod private {
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
+
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
 
@@ -1199,6 +1201,28 @@ mod test {
         let values = &[
             (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
             (&fields.field("bar").unwrap(), Some(&" " as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use core::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
+    }
+
+    #[test]
+    fn record_cow() {
+        let fields = TEST_META_1.fields();
+        let first = Cow::Borrowed(&b"abc"[..]);
+        let second: Cow<'_, [u8]> = Cow::Owned(vec![192, 255, 238]);
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
+            (
+                &fields.field("bar").unwrap(),
+                Some(&Cow::Borrowed(&" ") as &dyn Value),
+            ),
             (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
         ];
         let valueset = fields.value_set(values);
