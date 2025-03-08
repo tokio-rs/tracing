@@ -1549,7 +1549,7 @@ impl Deref for EnteredSpan {
     }
 }
 
-impl<'a> Drop for Entered<'a> {
+impl Drop for Entered<'_> {
     #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()

@@ -1036,13 +1036,13 @@ pub struct FmtContext<'a, C, N> {
     pub(crate) event: &'a Event<'a>,
 }
 
-impl<'a, C, N> fmt::Debug for FmtContext<'a, C, N> {
+impl<C, N> fmt::Debug for FmtContext<'_, C, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FmtContext").finish()
     }
 }
 
-impl<'cx, 'writer, C, N> FormatFields<'writer> for FmtContext<'cx, C, N>
+impl<'writer, C, N> FormatFields<'writer> for FmtContext<'_, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: FormatFields<'writer> + 'static,
@@ -1056,7 +1056,7 @@ where
     }
 }
 
-impl<'a, C, N> FmtContext<'a, C, N>
+impl<C, N> FmtContext<'_, C, N>
 where
     C: Collect + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
