@@ -1217,13 +1217,13 @@ mod test {
         let fields = TEST_META_1.fields();
         let first = Cow::Borrowed(&b"abc"[..]);
         let second: Cow<'_, [u8]> = Cow::Owned(vec![192, 255, 238]);
+        let foo = fields.field("foo").unwrap();
+        let bar = fields.field("bar").unwrap();
+        let baz = fields.field("baz").unwrap();
         let values = &[
-            (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
-            (
-                &fields.field("bar").unwrap(),
-                Some(&Cow::Borrowed(&" ") as &dyn Value),
-            ),
-            (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
+            (&foo, Some(&first as &dyn Value)),
+            (&bar, Some(&Cow::Borrowed(&" ") as &dyn Value)),
+            (&baz, Some(&second as &dyn Value)),
         ];
         let valueset = fields.value_set(values);
         let mut result = String::new();
