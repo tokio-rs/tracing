@@ -345,6 +345,7 @@ pub trait AsId: crate::sealed::Sealed {
 /// span will silently do nothing. Thus, the handle can be used in the same
 /// manner regardless of whether or not the trace is currently being collected.
 #[derive(Clone)]
+#[must_use = "once a span has been created, it should be entered"]
 pub struct Span {
     /// A handle used to enter the span when it is not executing.
     ///
