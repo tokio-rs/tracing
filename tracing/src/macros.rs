@@ -141,7 +141,7 @@ macro_rules! span {
 ///
 /// [lib]: tracing/#recording-fields
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// # use tracing::{field, info_span, record_all, record_value};
