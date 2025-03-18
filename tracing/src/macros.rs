@@ -137,6 +137,7 @@ macro_rules! span {
 /// This macro supports two optional sigils:
 /// - `%` uses the Display implementation.
 /// - `?` uses the Debug implementation.
+///
 /// For more details, see the [top-level documentation][lib].
 ///
 /// [lib]: tracing/#recording-fields
