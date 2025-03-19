@@ -13,7 +13,7 @@ mod time_crate;
 pub use time_crate::UtcTime;
 
 #[cfg(feature = "local-time")]
-#[cfg_attr(docsrs, doc(cfg(all(unsound_local_offset, feature = "local-time"))))]
+#[cfg_attr(docsrs, doc(cfg(feature = "local-time")))]
 pub use time_crate::LocalTime;
 
 /// [`chrono`]-based implementation for [`FormatTime`].
