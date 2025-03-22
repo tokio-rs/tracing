@@ -145,37 +145,20 @@ macro_rules! span {
 /// # Examples
 ///
 /// ```
-/// # use tracing::{field, info_span, record_all, record_value};
-/// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty).entered();
-/// record_all!(span, field1 = ?"1", field2 = %"2");
+/// # use tracing::{field, info_span, record_all};
+/// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty, field3 = field::Empty).entered();
+/// record_all!(span, field1 = ?"1", field2 = %"2", field3 = 3);
 /// #
 /// ```
 #[macro_export]
 macro_rules! record_all {
-    ($span:expr, $($field:ident = $($prefix:tt)? $value:expr),* $(,)?) => {
+    ($span:expr, $($fields:tt)*) => {
         if let Some(meta) = $span.metadata() {
             $span.record_all(&$crate::valueset!(
                 meta.fields(),
-                $($field = record_value!($($prefix)? $value)),*
+                $($fields)*
             ));
         }
-    };
-}
-
-/// Processes a value based on an optional sigil, allowing for different
-/// formatting options. This approach avoids the potentially less performant
-/// tt-muncher pattern while supporting mixing sigils in the same call.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! record_value {
-    (% $value:expr) => {
-        stringify!($value)
-    };
-    (? $value:expr) => {
-        &debug(&$value) as &dyn Value
-    };
-    ($value:expr) => {
-        $value
     };
 }
 
