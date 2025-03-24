@@ -106,6 +106,7 @@ pub struct WorkerGuard {
     handle: Option<JoinHandle<()>>,
     sender: Sender<Msg>,
     shutdown: Sender<()>,
+    shutdown_timeout: Duration,
 }
 
 /// A non-blocking writer.
@@ -155,6 +156,7 @@ impl NonBlocking {
         buffered_lines_limit: usize,
         is_lossy: bool,
         thread_name: String,
+        shutdown_timeout: Duration,
     ) -> (NonBlocking, WorkerGuard) {
         let (sender, receiver) = bounded(buffered_lines_limit);
 
@@ -165,6 +167,7 @@ impl NonBlocking {
             worker.worker_thread(thread_name),
             sender.clone(),
             shutdown_sender,
+            shutdown_timeout,
         );
 
         (
@@ -192,6 +195,7 @@ pub struct NonBlockingBuilder {
     buffered_lines_limit: usize,
     is_lossy: bool,
     thread_name: String,
+    shutdown_timeout: Duration,
 }
 
 impl NonBlockingBuilder {
@@ -227,7 +231,19 @@ impl NonBlockingBuilder {
             self.buffered_lines_limit,
             self.is_lossy,
             self.thread_name,
+            self.shutdown_timeout,
         )
+    }
+
+    /// Sets the timeout for shutdown of the worker thread.
+    ///
+    /// This is the maximum amount of time the main thread will wait
+    /// for the worker thread to finish proccessing pending logs during shutdown
+    ///
+    /// The default timeout is 1 second.
+    pub fn shutdown_timeout(mut self, timeout: Duration) -> NonBlockingBuilder {
+        self.shutdown_timeout = timeout;
+        self
     }
 }
 
@@ -237,6 +253,7 @@ impl Default for NonBlockingBuilder {
             buffered_lines_limit: DEFAULT_BUFFERED_LINES_LIMIT,
             is_lossy: true,
             thread_name: "tracing-appender".to_string(),
+            shutdown_timeout: Duration::from_secs(1),
         }
     }
 }
@@ -276,11 +293,17 @@ impl<'a> MakeWriter<'a> for NonBlocking {
 }
 
 impl WorkerGuard {
-    fn new(handle: JoinHandle<()>, sender: Sender<Msg>, shutdown: Sender<()>) -> Self {
+    fn new(
+        handle: JoinHandle<()>,
+        sender: Sender<Msg>,
+        shutdown: Sender<()>,
+        shutdown_timeout: Duration,
+    ) -> Self {
         WorkerGuard {
             handle: Some(handle),
             sender,
             shutdown,
+            shutdown_timeout,
         }
     }
 }
@@ -294,12 +317,11 @@ impl Drop for WorkerGuard {
                 // when the `Worker` calls `recv()` on a zero-capacity channel. Use `send_timeout`
                 // so that drop is not blocked indefinitely.
                 // TODO: Make timeout configurable.
-                let timeout = Duration::from_millis(1000);
-                match self.shutdown.send_timeout((), timeout) {
+                match self.shutdown.send_timeout((), self.shutdown_timeout) {
                     Err(SendTimeoutError::Timeout(_)) => {
                         eprintln!(
                             "Shutting down logging worker timed out after {:?}.",
-                            timeout
+                            self.shutdown_timeout
                         );
                     }
                     _ => {
@@ -506,5 +528,136 @@ mod test {
 
         assert_eq!(10, hello_count);
         assert_eq!(0, error_count.dropped_lines());
+    }
+
+    use std::{
+        io::{self, Write},
+        sync::atomic::{AtomicUsize, Ordering},
+        sync::Arc,
+    };
+
+    struct ControlledWriter {
+        counter: Arc<AtomicUsize>,
+        ready_tx: mpsc::Sender<()>,
+        proceed_rx: mpsc::Receiver<()>,
+    }
+
+    impl ControlledWriter {
+        fn new() -> (Self, mpsc::Sender<()>, mpsc::Receiver<()>) {
+            let (ready_tx, ready_rx) = mpsc::channel();
+            let (proceed_tx, proceed_rx) = mpsc::channel();
+            let writer = ControlledWriter {
+                counter: Arc::new(AtomicUsize::new(0)),
+                ready_tx,
+                proceed_rx,
+            };
+            (writer, proceed_tx, ready_rx)
+        }
+    }
+
+    impl Write for ControlledWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.ready_tx.send(()).unwrap();
+            self.proceed_rx.recv().unwrap();
+            self.counter.fetch_add(1, Ordering::SeqCst);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_complete_message_processing() {
+        let (writer, proceed_tx, ready_rx) = ControlledWriter::new();
+        let counter = writer.counter.clone();
+
+        let (mut non_blocking, guard) = NonBlockingBuilder::default().finish(writer);
+
+        for i in 0..3 {
+            non_blocking
+                .write_all(format!("msg{}\n", i).as_bytes())
+                .unwrap();
+        }
+
+        for _ in 0..3 {
+            ready_rx.recv().unwrap();
+            proceed_tx.send(()).unwrap();
+        }
+
+        drop(guard);
+
+        assert_eq!(
+            counter.load(Ordering::SeqCst),
+            3,
+            "All messages should be processed"
+        );
+    }
+
+    #[test]
+    fn test_partial_message_processing() {
+        let (writer, proceed_tx, ready_rx) = ControlledWriter::new();
+        let counter = writer.counter.clone();
+
+        let (mut non_blocking, guard) = NonBlockingBuilder::default().finish(writer);
+
+        for i in 0..3 {
+            non_blocking
+                .write_all(format!("msg{}\n", i).as_bytes())
+                .unwrap();
+        }
+
+        ready_rx.recv().unwrap();
+        proceed_tx.send(()).unwrap();
+
+        drop(guard);
+
+        let processed = counter.load(Ordering::SeqCst);
+        assert!(processed >= 1, "At least one message should be processed");
+        assert!(processed < 3, "Not all messages should be processed");
+    }
+
+    #[test]
+    fn test_no_message_processing() {
+        let (writer, _proceed_tx, _ready_rx) = ControlledWriter::new();
+        let counter = writer.counter.clone();
+
+        let (mut non_blocking, guard) = NonBlockingBuilder::default().finish(writer);
+
+        for i in 0..3 {
+            non_blocking
+                .write_all(format!("msg{}\n", i).as_bytes())
+                .unwrap();
+        }
+
+        drop(guard);
+
+        assert_eq!(
+            counter.load(Ordering::SeqCst),
+            0,
+            "No messages should be processed"
+        );
+    }
+
+    #[test]
+    fn test_single_message_processing() {
+        let (writer, proceed_tx, ready_rx) = ControlledWriter::new();
+        let counter = writer.counter.clone();
+
+        let (mut non_blocking, guard) = NonBlockingBuilder::default().finish(writer);
+
+        non_blocking.write_all(b"single message\n").unwrap();
+
+        ready_rx.recv().unwrap();
+        proceed_tx.send(()).unwrap();
+
+        drop(guard);
+
+        assert_eq!(
+            counter.load(Ordering::SeqCst),
+            1,
+            "Single message should be processed"
+        );
     }
 }
