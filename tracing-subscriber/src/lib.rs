@@ -122,6 +122,7 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [collector]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
+//! [`tracing`]: https://crates.io/crates/tracing
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
