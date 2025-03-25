@@ -50,6 +50,23 @@ pub struct UtcTime<F> {
 #[cfg(feature = "local-time")]
 impl LocalTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current [local time] in the
+    /// [RFC 3339] format (a subset of the [ISO 8601] timestamp format),
+    /// but with a variable number of decimal digits.
+    ///
+    /// Use [`LocalTime::iso_8601`] instead.
+    ///
+    /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
+    /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
+    /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
+    #[deprecated(note = "this has a variable number of decimal digits, use `LocalTime::iso_8601()` instead")]
+    pub fn rfc_3339() -> Self {
+        Self::new(well_known::Rfc3339)
+    }
+}
+
+#[cfg(feature = "local-time")]
+impl LocalTime<well_known::Iso8601> {
+    /// Returns a formatter that formats the current [local time] in the
     /// [RFC 3339] format (a subset of the [ISO 8601] timestamp format).
     ///
     /// # Examples
@@ -58,15 +75,15 @@ impl LocalTime<well_known::Rfc3339> {
     /// use tracing_subscriber::fmt::{self, time};
     ///
     /// let collector = tracing_subscriber::fmt()
-    ///     .with_timer(time::LocalTime::rfc_3339());
+    ///     .with_timer(time::LocalTime::iso_8601());
     /// # drop(collector);
     /// ```
     ///
     /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn rfc_3339() -> Self {
-        Self::new(well_known::Rfc3339)
+    pub fn iso_8601() -> Self {
+        Self::new(well_known::Iso8601::DEFAULT)
     }
 }
 
@@ -133,12 +150,12 @@ impl<F: Formattable> LocalTime<F> {
     /// crate's "macros" feature flag.
     ///
     /// Using a [well-known format][well-known formats] (this is equivalent to
-    /// [`LocalTime::rfc_3339`]):
+    /// [`LocalTime::iso_8601`]):
     ///
     /// ```
     /// use tracing_subscriber::fmt::{self, time::LocalTime};
     ///
-    /// let timer = LocalTime::new(time::format_description::well_known::Rfc3339);
+    /// let timer = LocalTime::new(time::format_description::well_known::Iso8601::DEFAULT);
     /// let collector = tracing_subscriber::fmt()
     ///     .with_timer(timer);
     /// # drop(collector);
@@ -181,6 +198,22 @@ where
 
 impl UtcTime<well_known::Rfc3339> {
     /// Returns a formatter that formats the current [UTC time] in the
+    /// [RFC 3339] format, which is a subset of the [ISO 8601] timestamp format,
+    /// but with a variable number of decimal digits.
+    ///
+    /// Use [`UtcTime::iso_8601`] instead.
+    ///
+    /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
+    /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
+    /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
+    #[deprecated(note = "this has a variable number of decimal digits, use `UtcTime::iso_8601()` instead")]
+    pub fn rfc_3339() -> Self {
+        Self::new(well_known::Rfc3339)
+    }
+}
+
+impl UtcTime<well_known::Iso8601> {
+    /// Returns a formatter that formats the current [UTC time] in the
     /// [RFC 3339] format, which is a subset of the [ISO 8601] timestamp format.
     ///
     /// # Examples
@@ -189,15 +222,15 @@ impl UtcTime<well_known::Rfc3339> {
     /// use tracing_subscriber::fmt::{self, time};
     ///
     /// let collector = tracing_subscriber::fmt()
-    ///     .with_timer(time::UtcTime::rfc_3339());
+    ///     .with_timer(time::UtcTime::iso_8601());
     /// # drop(collector);
     /// ```
     ///
     /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
     /// [RFC 3339]: https://datatracker.ietf.org/doc/html/rfc3339
     /// [ISO 8601]: https://en.wikipedia.org/wiki/ISO_8601
-    pub fn rfc_3339() -> Self {
-        Self::new(well_known::Rfc3339)
+    pub fn iso_8601() -> Self {
+        Self::new(well_known::Iso8601::DEFAULT)
     }
 }
 
@@ -250,12 +283,12 @@ impl<F: Formattable> UtcTime<F> {
     /// ```
     ///
     /// Using a [well-known format][well-known formats] (this is equivalent to
-    /// [`UtcTime::rfc_3339`]):
+    /// [`UtcTime::iso_8601`]):
     ///
     /// ```
     /// use tracing_subscriber::fmt::{self, time::UtcTime};
     ///
-    /// let timer = UtcTime::new(time::format_description::well_known::Rfc3339);
+    /// let timer = UtcTime::new(time::format_description::well_known::Iso8601::DEFAULT);
     /// let collector = tracing_subscriber::fmt()
     ///     .with_timer(timer);
     /// # drop(collector);
