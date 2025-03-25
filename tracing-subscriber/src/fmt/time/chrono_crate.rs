@@ -1,14 +1,14 @@
+//! Formats [local time]s and [UTC time]s with `FormatTime` implementations
+//! that use the [`chrono` crate].
+//!
+//! [local time]: [`chrono::offset::Local`]
+//! [UTC time]: [`chrono::offset::Utc`]
+//! [`chrono` crate]: [`chrono`]
+
 use crate::fmt::format::Writer;
 use crate::fmt::time::FormatTime;
 
 use std::sync::Arc;
-
-/// Formats [local time]s and [UTC time]s with `FormatTime` implementations
-/// that use the [`chrono` crate].
-///
-/// [local time]: [`chrono::offset::Local`]
-/// [UTC time]: [`chrono::offset::Utc`]
-/// [`chrono` crate]: [`chrono`]
 
 /// Formats the current [local time] using a [formatter] from the [`chrono`] crate.
 ///

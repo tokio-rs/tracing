@@ -499,9 +499,9 @@ mod tests {
                 .target("dummy_2")
                 .build();
             try_cache(&metadata_1, || true);
-            assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
+            assert!(try_cache(&metadata_1, || { unreachable!() }));
             try_cache(&metadata_2, || false);
-            assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
+            assert!(!try_cache(&metadata_2, || { unreachable!() }));
         })
         .join()
         .unwrap();
@@ -521,7 +521,7 @@ mod tests {
                 .build();
 
             try_cache(&metadata_1, || true);
-            assert_eq!(try_cache(&metadata_1, || { unreachable!() }), true);
+            assert!(try_cache(&metadata_1, || { unreachable!() }));
 
             *target.last_mut().unwrap() = b'2';
             let metadata_2 = log::MetadataBuilder::new()
@@ -530,7 +530,7 @@ mod tests {
                 .build();
 
             try_cache(&metadata_2, || false);
-            assert_eq!(try_cache(&metadata_2, || { unreachable!() }), false);
+            assert!(!try_cache(&metadata_2, || { unreachable!() }));
         })
         .join()
         .unwrap();
