@@ -627,7 +627,12 @@ fn record_all_macro_records_new_values_for_fields() {
         )
         .record(
             expect::span().named("foo"),
-            expect::field("bar").with_value(&5).only(),
+            expect::field("bar")
+                .with_value(&5)
+                .and(expect::field("baz").with_value(&"BAZ"))
+                .and(expect::field("qux").with_value(&display("qux")))
+                .and(expect::field("quux").with_value(&debug("QuuX")))
+                .only(),
         )
         .enter(expect::span().named("foo"))
         .exit(expect::span().named("foo"))
@@ -636,8 +641,15 @@ fn record_all_macro_records_new_values_for_fields() {
         .run_with_handle();
 
     with_default(collector, || {
-        let span = tracing::span!(Level::TRACE, "foo", bar = 1);
-        record_all!(span, bar = 5);
+        let span = tracing::span!(
+            Level::TRACE,
+            "foo",
+            bar = 1,
+            baz = 2,
+            qux = Empty,
+            quux = Empty
+        );
+        record_all!(span, bar = 5, baz = "BAZ", qux = %"qux", quux = ?"QuuX");
         span.in_scope(|| {})
     });
 
