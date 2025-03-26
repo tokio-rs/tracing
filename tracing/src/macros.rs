@@ -148,7 +148,6 @@ macro_rules! span {
 /// # use tracing::{field, info_span, record_all};
 /// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty, field3 = field::Empty).entered();
 /// record_all!(span, field1 = ?"1", field2 = %"2", field3 = 3);
-/// #
 /// ```
 #[macro_export]
 macro_rules! record_all {
