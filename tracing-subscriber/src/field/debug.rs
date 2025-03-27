@@ -70,7 +70,7 @@ where
 
     #[inline]
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        self.0.record_debug(field, &format_args!("{:#?}", value))
+        self.0.record_debug(field, &format_args!("{value:#?}"))
     }
 }
 

@@ -350,7 +350,7 @@ impl MockSubscriberBuilder {
     pub fn named(mut self, name: impl fmt::Display) -> Self {
         use std::fmt::Write;
         if !self.name.is_empty() {
-            write!(&mut self.name, "::{}", name).unwrap();
+            write!(&mut self.name, "::{name}").unwrap();
         } else {
             self.name = name.to_string();
         }
@@ -811,7 +811,7 @@ impl MockSubscriber {
             );
             expected.check(
                 &(&actual).into(),
-                format_args!("the {}th span in the event's scope to be", i),
+                format_args!("the {i}th span in the event's scope to be"),
                 &self.name,
             );
             i += 1;
@@ -870,7 +870,7 @@ where
                     self.check_event_scope(cx.event_scope(event), expected_scope);
                 }
             }
-            Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
+            Some(ex) => ex.bad(&self.name, format_args!("observed event {event:#?}")),
         }
     }
 
