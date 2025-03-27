@@ -310,3 +310,21 @@ fn target_name_ident() {
 
     handle.assert_finished();
 }
+
+#[test]
+fn user_tracing_module() {
+    use ::tracing::field::Empty;
+
+    // Reproduces https://github.com/tokio-rs/tracing/issues/3119
+    #[instrument(fields(f = Empty))]
+    fn my_fn() {
+        assert_eq!("test", tracing::my_other_fn());
+    }
+
+    mod tracing {
+        #[allow(dead_code)]
+        pub fn my_other_fn() -> &'static str {
+            "test"
+        }
+    }
+}
