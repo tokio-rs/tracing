@@ -4,6 +4,12 @@ use crate::{span, Dispatch, Event, LevelFilter, Metadata};
 use core::any::{Any, TypeId};
 use core::ptr::NonNull;
 
+#[cfg(all(feature = "alloc", not(feature = "portable-atomic")))]
+use alloc::sync::Arc;
+
+#[cfg(all(feature = "alloc", feature = "portable-atomic"))]
+use portable_atomic_util::Arc;
+
 /// Trait representing the functions required to collect trace data.
 ///
 /// Crates that provide implementations of methods for collecting or recording
@@ -772,7 +778,7 @@ where
 }
 
 #[cfg(feature = "alloc")]
-impl<C> Collect for alloc::sync::Arc<C>
+impl<C> Collect for Arc<C>
 where
     C: Collect + ?Sized,
 {
