@@ -121,6 +121,10 @@
 //! # }
 //! ```
 //!
+//! ## Feature Flags
+//!
+//! - `local-time`: Enables support for rolling file using local time
+//!
 //! ## Supported Rust Versions
 //!
 //! `tracing-appender` is built against the latest stable release. The minimum supported
