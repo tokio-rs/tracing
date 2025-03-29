@@ -14,7 +14,8 @@ pub struct ParseError {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct StaticDirective {
     pub(in crate::filter) target: Option<String>,
-    pub(in crate::filter) field_names: Vec<String>,
+    span: Option<String>,
+    field_names: Vec<String>,
     pub(in crate::filter) level: LevelFilter,
 }
 
@@ -162,11 +163,13 @@ impl DirectiveSet<StaticDirective> {
 impl StaticDirective {
     pub(in crate::filter) fn new(
         target: Option<String>,
+        span: Option<String>,
         field_names: Vec<String>,
         level: LevelFilter,
     ) -> Self {
         Self {
             target,
+            span,
             field_names,
             level,
         }
@@ -249,6 +252,14 @@ impl Match for StaticDirective {
             }
         }
 
+        // Do we have a name filter, and does it match the metadata's name?
+        // TODO(eliza): put name globbing here?
+        if let Some(ref name) = self.span {
+            if name != meta.name() {
+                return false;
+            }
+        }
+
         if meta.is_event() && !self.field_names.is_empty() {
             let fields = meta.fields();
             for name in &self.field_names {
@@ -270,6 +281,7 @@ impl Default for StaticDirective {
     fn default() -> Self {
         StaticDirective {
             target: None,
+            span: None,
             field_names: Vec::new(),
             level: LevelFilter::ERROR,
         }
@@ -361,9 +373,10 @@ impl FromStr for StaticDirective {
             };
             let level = part1.parse()?;
             return Ok(Self {
-                level,
-                field_names,
                 target,
+                span: None,
+                field_names,
+                level,
             });
         }
 
@@ -373,14 +386,16 @@ impl FromStr for StaticDirective {
         // * `info`
         Ok(match part0.parse::<LevelFilter>() {
             Ok(level) => Self {
-                level,
                 target: None,
+                span: None,
                 field_names: Vec::new(),
+                level,
             },
             Err(_) => Self {
                 target: Some(String::from(part0)),
-                level: LevelFilter::TRACE,
+                span: None,
                 field_names: Vec::new(),
+                level: LevelFilter::TRACE,
             },
         })
     }
