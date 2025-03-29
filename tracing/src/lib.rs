@@ -818,6 +818,7 @@
 //!  - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
 //!  - [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
 //!  - [`json-subscriber`] provides a subscriber for emitting JSON logs. The output can be customized much more than with [`tracing-subscriber`]'s JSON output.
+//!  - [`Unbug`] provides helper macros for programmatically invoking debugger breakpoints
 //!
 //! If you're the maintainer of a `tracing` ecosystem crate not listed above,
 //! please let us know! We'd love to add your project to the list!
@@ -862,6 +863,7 @@
 //! [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
 //! [`clippy-tracing`]: https://crates.io/crates/clippy-tracing
 //! [`json-subscriber`]: https://crates.io/crates/json-subscriber
+//! [`Unbug`]: https://github.com/greymattergames/unbug/
 //!
 //! <div class="example-wrap" style="display:inline-block">
 //! <pre class="ignore" style="white-space:normal;font:inherit;">
