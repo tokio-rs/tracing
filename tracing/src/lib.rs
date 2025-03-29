@@ -1080,7 +1080,7 @@ pub mod log {
         pub(crate) is_first: bool,
     }
 
-    impl<'a> fmt::Display for LogValueSet<'a> {
+    impl fmt::Display for LogValueSet<'_> {
         #[inline]
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             struct LogVisitor<'a, 'b> {
