@@ -77,7 +77,7 @@ impl<'a> ExtensionsMut<'a> {
     /// Ideally, if one subscriber records a timestamp _x_, the other subscriber
     /// should be able to reuse timestamp _x_.
     ///
-    /// Therefore, extensions should generally be newtypes, rather than common
+    /// Therefore, extensions should generally be [newtypes], rather than common
     /// types like [`String`](std::string::String), to avoid accidental
     /// cross-`Subscriber` clobbering.
     ///
@@ -86,6 +86,7 @@ impl<'a> ExtensionsMut<'a> {
     /// If `T` is already present in `Extensions`, then this method will panic.
     ///
     /// [subscriber]: crate::subscribe::Subscribe
+    /// [newtypes]: https://doc.rust-lang.org/rust-by-example/generics/new_types.html
     pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) {
         assert!(self.replace(val).is_none())
     }
