@@ -59,7 +59,7 @@ fn main() {
         .with(ErrorSubscriber::default())
         .init();
     match do_something("hello world") {
-        Ok(result) => println!("did something successfully: {}", result),
-        Err(e) => eprintln!("error: {}", e),
+        Ok(result) => println!("did something successfully: {result}"),
+        Err(e) => eprintln!("error: {e}"),
     };
 }

@@ -117,6 +117,7 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
+    clippy::uninlined_format_args,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -414,7 +415,7 @@ where
         write!(&mut stack, " {}", samples.as_nanos())
             .expect("expected: write to String never fails");
 
-        let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
+        let _ = writeln!(*self.out.lock().unwrap(), "{stack}");
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, C>) {
@@ -459,7 +460,7 @@ where
             "expected: write to String never fails"
         );
 
-        let _ = writeln!(*expect!(self.out.lock()), "{}", stack);
+        let _ = writeln!(*expect!(self.out.lock()), "{stack}");
     }
 }
 
@@ -487,7 +488,7 @@ where
 {
     if config.module_path {
         if let Some(module_path) = span.metadata().module_path() {
-            write!(dest, "{}::", module_path)?;
+            write!(dest, "{module_path}::")?;
         }
     }
 
@@ -495,11 +496,11 @@ where
 
     if config.file_and_line {
         if let Some(file) = span.metadata().file() {
-            write!(dest, ":{}", file)?;
+            write!(dest, ":{file}")?;
         }
 
         if let Some(line) = span.metadata().line() {
-            write!(dest, ":{}", line)?;
+            write!(dest, ":{line}")?;
         }
     }
 
