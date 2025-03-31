@@ -26,14 +26,16 @@ rust-version = "1.63.0"
 
 [features]
 default = ["std"]
-alloc = []
-std = ["once_cell", "alloc"]
+alloc = ["portable-atomic-util?/alloc"]
+std = ["once_cell", "alloc", "portable-atomic-util?/std"]
+portable-atomic = ["dep:portable-atomic-util", "once_cell?/portable-atomic"]
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
 once_cell = { version = "1.13.0", optional = true }
+portable-atomic-util = { version = "0.2.4", default-features = false, optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
