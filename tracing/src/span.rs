@@ -1191,6 +1191,11 @@ impl Span {
     /// span.record("parting", "you will be remembered");
     /// ```
     ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// **Note**: To record several values in just one call, see the [`record_all!`](crate::record_all!) macro.
+    /// </pre></div>
+    ///
     /// [`field::Empty`]: super::field::Empty
     /// [`Metadata`]: super::Metadata
     pub fn record<Q, V>(&self, field: &Q, value: V) -> &Self
@@ -1212,6 +1217,7 @@ impl Span {
     }
 
     /// Records all the fields in the provided `ValueSet`.
+    #[doc(hidden)]
     pub fn record_all(&self, values: &field::ValueSet<'_>) -> &Self {
         let record = Record::new(values);
         if let Some(ref inner) = self.inner {

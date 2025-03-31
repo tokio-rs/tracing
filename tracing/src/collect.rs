@@ -30,8 +30,6 @@ where
 ///
 /// Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 /// executables try to set them later.
-///
-/// [span]: super::span
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
 pub fn set_global_default<C>(collector: C) -> Result<(), SetGlobalDefaultError>
