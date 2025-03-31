@@ -552,7 +552,6 @@ impl Dispatch {
             // Workaround for a lack of support for unsized coercion in non-first-party types.
             // See https://github.com/rust-lang/rust/issues/18598
             let boxed: Box<dyn Collect + Send + Sync> = Box::<C>::new(collector);
-            
             Arc::from(boxed)
         };
 
