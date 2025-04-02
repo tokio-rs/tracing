@@ -10,7 +10,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
+    attr::{ErrFormatMode, Field, Fields, InstrumentArgs, Level, RetFormatMode},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -240,11 +240,14 @@ fn gen_block<B: ToTokens>(
         Some(event_args) => {
             let level_tokens = event_args.level(Level::Error);
             match event_args.mode {
-                FormatMode::Default | FormatMode::Display => Some(quote!(
+                ErrFormatMode::Default | ErrFormatMode::Display => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, error = %e)
                 )),
-                FormatMode::Debug => Some(quote!(
+                ErrFormatMode::Debug => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, error = ?e)
+                )),
+                ErrFormatMode::StdError => Some(quote!(
+                    tracing::event!(target: #target, #level_tokens, error = &e as &dyn ::std::error::Error)
                 )),
             }
         }
@@ -255,10 +258,10 @@ fn gen_block<B: ToTokens>(
         Some(event_args) => {
             let level_tokens = event_args.level(args_level);
             match event_args.mode {
-                FormatMode::Display => Some(quote!(
+                RetFormatMode::Display => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, return = %x)
                 )),
-                FormatMode::Default | FormatMode::Debug => Some(quote!(
+                RetFormatMode::Default | RetFormatMode::Debug => Some(quote!(
                     tracing::event!(target: #target, #level_tokens, return = ?x)
                 )),
             }
