@@ -17,7 +17,7 @@ Application-level tracing for Rust.
 
 [crates-badge]: https://img.shields.io/crates/v/tracing.svg
 [crates-url]: https://crates.io/crates/tracing
-[docs-badge]: https://docs.rs/tracing/badge.svg
+[docs-badge]: https://img.shields.io/docsrs/tracing/latest
 [docs-url]: https://docs.rs/tracing
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing
