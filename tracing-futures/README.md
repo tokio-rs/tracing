@@ -18,7 +18,7 @@ Utilities for instrumenting futures-based code with [`tracing`].
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-futures.svg
 [crates-url]: https://crates.io/crates/tracing-futures/0.2.3
-[docs-badge]: https://docs.rs/tracing-futures/badge.svg
+[docs-badge]: https://img.shields.io/docsrs/tracing-futures/latest
 [docs-url]: https://docs.rs/tracing-futures/0.2.3/tracing_futures
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
 [docs-master-url]: https://tracing-rs.netlify.com/tracing_futures
