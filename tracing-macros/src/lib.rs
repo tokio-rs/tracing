@@ -1,3 +1,5 @@
+#![no_std]
+
 #[doc(hidden)]
 pub use tracing;
 

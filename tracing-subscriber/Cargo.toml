@@ -25,13 +25,15 @@ rust-version = "1.63.0"
 [features]
 
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
-alloc = ["tracing-core/alloc"]
+alloc = ["tracing-core/alloc", "portable-atomic-util?/alloc"]
 std = ["alloc", "tracing-core/std"]
 env-filter = ["matchers", "regex", "once_cell", "tracing", "std", "thread_local"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
 json = ["tracing-serde", "serde", "serde_json"]
+portable-atomic = ["dep:portable-atomic-util", "tracing-core/portable-atomic", "tracing?/portable-atomic", "tracing-serde?/portable-atomic"]
+critical-section = ["tracing-core/critical-section", "tracing?/critical-section", "tracing-serde?/critical-section"]
 
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
@@ -65,6 +67,9 @@ chrono = { version = "0.4.26", default-features = false, features = ["clock", "s
 # registry
 sharded-slab = { version = "0.1.4", optional = true }
 thread_local = { version = "1.1.4", optional = true }
+
+# portable-atomic
+portable-atomic-util = { version = "0.2.4", default-features = false, optional = true }
 
 [dev-dependencies]
 tracing = { path = "../tracing", version = "0.2" }

@@ -89,8 +89,14 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     ptr,
-    sync::atomic::{AtomicPtr, Ordering},
+    sync::atomic::Ordering,
 };
+
+#[cfg(feature = "portable-atomic")]
+use portable_atomic::AtomicPtr;
+
+#[cfg(not(feature = "portable-atomic"))]
+use core::sync::atomic::AtomicPtr;
 
 type Callsites = LinkedList;
 

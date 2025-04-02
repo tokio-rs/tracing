@@ -233,10 +233,13 @@ pub struct Scope<'a, R> {
 feature! {
     #![any(feature = "alloc", feature = "std")]
 
-    use alloc::{
-        boxed::Box,
-        sync::Arc
-    };
+    use alloc::boxed::Box;
+
+    #[cfg(feature = "portable-atomic")]
+    use portable_atomic_util::Arc;
+
+    #[cfg(not(feature = "portable-atomic"))]
+    use alloc::sync::Arc;
 
     #[cfg(not(feature = "smallvec"))]
     use alloc::vec::{self, Vec};
