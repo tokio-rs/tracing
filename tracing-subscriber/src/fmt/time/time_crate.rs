@@ -1,31 +1,17 @@
 use crate::fmt::{format::Writer, time::FormatTime, writer::WriteAdaptor};
 use std::fmt;
-use time::{format_description::well_known, formatting::Formattable, OffsetDateTime};
+use time::{format_description::well_known, formatting::Formattable, OffsetDateTime, UtcDateTime};
 
 /// Formats the current [local time] using a [formatter] from the [`time` crate].
 ///
 /// To format the current [UTC time] instead, use the [`UtcTime`] type.
-///
-/// <div class="example-wrap" style="display:inline-block">
-/// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/"><code>time</code>
-///     crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
-///     local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
-///     events will be logged without timestamps.
-///
-///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
-///    documentation</a> for more details.
-/// </pre></div>
 ///
 /// [local time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_local
 /// [UTC time]: https://docs.rs/time/0.3/time/struct.OffsetDateTime.html#method.now_utc
 /// [formatter]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
 /// [`time` crate]: https://docs.rs/time/0.3/time/
 #[derive(Clone, Debug)]
-#[cfg_attr(
-    docsrs,
-    doc(cfg(all(unsound_local_offset, feature = "time", feature = "local-time")))
-)]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "time", feature = "local-time"))))]
 #[cfg(feature = "local-time")]
 pub struct LocalTime<F> {
     format: F,
@@ -75,19 +61,6 @@ impl<F: Formattable> LocalTime<F> {
     /// Returns a formatter that formats the current [local time] using the
     /// [`time` crate] with the provided provided format. The format may be any
     /// type that implements the [`Formattable`] trait.
-    ///
-    ///
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-    ///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/">
-    ///     <code>time</code> crate</a> must be compiled with <code>--cfg
-    ///     unsound_local_offset</code> in order to use local timestamps. When this
-    ///     cfg is not enabled, local timestamps cannot be recorded, and
-    ///     events will be logged without timestamps.
-    ///
-    ///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags">
-    ///    <code>time</code> documentation</a> for more details.
-    /// </pre></div>
     ///
     /// Typically, the format will be a format description string, or one of the
     /// `time` crate's [well-known formats].
@@ -163,7 +136,7 @@ where
 {
     fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
         let now = OffsetDateTime::now_local().map_err(|_| fmt::Error)?;
-        format_datetime(now, w, &self.format)
+        format_offsetdatetime(now, w, &self.format)
     }
 }
 
@@ -261,7 +234,7 @@ impl<F: Formattable> UtcTime<F> {
     /// # drop(collector);
     /// ```
     ///
-    /// [UTC time]: https://docs.rs/time/latest/time/struct.OffsetDateTime.html#method.now_utc
+    /// [UTC time]: https://docs.rs/time/latest/time/struct.UtcDateTime.html#method.now
     /// [`time` crate]: https://docs.rs/time/0.3/time/
     /// [`Formattable`]: https://docs.rs/time/0.3/time/formatting/trait.Formattable.html
     /// [well-known formats]: https://docs.rs/time/0.3/time/format_description/well_known/index.html
@@ -278,7 +251,7 @@ where
     F: Formattable,
 {
     fn format_time(&self, w: &mut Writer<'_>) -> fmt::Result {
-        format_datetime(OffsetDateTime::now_utc(), w, &self.format)
+        format_utcdatetime(UtcDateTime::now(), w, &self.format)
     }
 }
 
@@ -291,8 +264,19 @@ where
     }
 }
 
-fn format_datetime(
+fn format_offsetdatetime(
     now: OffsetDateTime,
+    into: &mut Writer<'_>,
+    fmt: &impl Formattable,
+) -> fmt::Result {
+    let mut into = WriteAdaptor::new(into);
+    now.format_into(&mut into, fmt)
+        .map_err(|_| fmt::Error)
+        .map(|_| ())
+}
+
+fn format_utcdatetime(
+    now: UtcDateTime,
     into: &mut Writer<'_>,
     fmt: &impl Formattable,
 ) -> fmt::Result {
