@@ -31,7 +31,7 @@
 //! Unintentional drops of `WorkerGuard` remove the guarantee that logs will be flushed
 //! during a program's termination, in a panic or otherwise.
 //!
-//! See [`WorkerGuard`][worker_guard] for examples of using the guard.
+//! See [`WorkerGuard`] for examples of using the guard.
 //!
 //! [worker_guard]: WorkerGuard
 //!
@@ -60,8 +60,8 @@ use tracing_subscriber::fmt::MakeWriter;
 
 /// The default maximum number of buffered log lines.
 ///
-/// If [`NonBlocking`][non-blocking] is lossy, it will drop spans/events at capacity.
-/// If [`NonBlocking`][non-blocking] is _not_ lossy,
+/// If [`NonBlocking`] is lossy, it will drop spans/events at capacity.
+/// If [`NonBlocking`] is _not_ lossy,
 /// backpressure will be exerted on senders, causing them to block their
 /// respective threads until there is available capacity.
 ///
@@ -117,12 +117,10 @@ pub struct WorkerGuard {
 /// `NonBlocking` moves the writing out of an application's data path by sending spans and events
 /// to a dedicated logging thread.
 ///
-/// This struct implements [`MakeWriter`][make_writer] from the `tracing-subscriber`
-/// crate. Therefore, it can be used with the [`tracing_subscriber::fmt`][fmt] module
+/// This struct implements `MakeWriter` from the `tracing-subscriber`
+/// crate. Therefore, it can be used with the [`tracing_subscriber::fmt()`] module
 /// or with any other collector/subscriber implementation that uses the `MakeWriter` trait.
 ///
-/// [make_writer]: tracing_subscriber::fmt::MakeWriter
-/// [fmt]: mod@tracing_subscriber::fmt
 #[derive(Clone, Debug)]
 pub struct NonBlocking {
     error_counter: ErrorCounter,
@@ -187,7 +185,7 @@ impl NonBlocking {
     }
 }
 
-/// A builder for [`NonBlocking`][non-blocking].
+/// A builder for [`NonBlocking`].
 ///
 /// [non-blocking]: NonBlocking
 #[derive(Debug)]
