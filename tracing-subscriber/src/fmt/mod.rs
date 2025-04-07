@@ -202,6 +202,7 @@ pub mod time;
 #[cfg_attr(docsrs, doc(cfg(all(feature = "fmt", feature = "std"))))]
 pub mod writer;
 pub use fmt_subscriber::{FmtContext, FormattedFields, Subscriber};
+pub mod timing;
 
 use crate::subscribe::Subscribe as _;
 use crate::{
