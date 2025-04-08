@@ -25,15 +25,15 @@
 //! features with other crates in the asynchronous ecosystem:
 //!
 //! - `tokio`: Enables compatibility with the `tokio` crate, including
-//!    [`Instrument`] and [`WithSubscriber`] implementations for
-//!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
-//!    `tokio::runtime::current_thread`. Enabled by default.
+//!   [`Instrument`] and [`WithSubscriber`] implementations for
+//!   `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
+//!   `tokio::runtime::current_thread`. Enabled by default.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
-//!    crate, including [`Instrument`] and [`WithSubscriber`]
-//!    implementations for types implementing `tokio_executor::Executor`.
-//!    This is intended primarily for use in crates which depend on
-//!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
-//!    should be used instead.
+//!   crate, including [`Instrument`] and [`WithSubscriber`]
+//!   implementations for types implementing `tokio_executor::Executor`.
+//!   This is intended primarily for use in crates which depend on
+//!   `tokio-executor` rather than `tokio`; in general the `tokio` feature
+//!   should be used instead.
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
