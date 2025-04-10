@@ -135,7 +135,7 @@ impl FilterMap {
 /// 2. If all the bits are set, then every per-layer filter has decided it
 ///    doesn't want to enable that span or event. In that case, the
 ///    `Registry`'s `enabled` method will return `false`, so that
-///     recording a span or event can be skipped entirely.
+///    recording a span or event can be skipped entirely.
 #[derive(Debug)]
 pub(crate) struct FilterState {
     enabled: Cell<FilterMap>,
