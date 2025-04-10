@@ -61,7 +61,7 @@ use tracing_core::{
 ///    the `span` directive will match on spans _within_ the `target`.
 /// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
 ///    and will match on any [`Span`] or [`Event`] that has a field with that name.
-///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
+///    For example: `[span{field=value}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
 ///    it will match _only_ on that value. Otherwise, this filter matches the
 ///    [`std::fmt::Debug`] output from the value.
@@ -111,7 +111,7 @@ use tracing_core::{
 /// - `my_crate[span_a]=trace` will enable all spans and events that:
 ///    - are within the `span_a` span or named `span_a` _if_ `span_a` has the target `my_crate`,
 ///    - at the level `trace` or above.
-/// - `[span_b{name=\"bob\"}]` will enable all spans or event that:
+/// - `[span_b{name="bob"}]` will enable all spans or event that:
 ///    - have _any_ target,
 ///    - are inside a span named `span_b`,
 ///    - which has a field named `name` with value `bob`,
