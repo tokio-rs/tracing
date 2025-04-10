@@ -453,7 +453,7 @@ impl RecordType {
                 if path
                     .segments
                     .iter()
-                    .last()
+                    .next_back()
                     .map(|path_segment| {
                         let ident = path_segment.ident.to_string();
                         Self::TYPES_FOR_VALUE.iter().any(|&t| t == ident)
