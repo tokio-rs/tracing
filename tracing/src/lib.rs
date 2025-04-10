@@ -771,7 +771,7 @@
 //!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
 //!    `tracing-log` directly.
 //!  - [`tracing-appender`] provides utilities for outputting tracing data,
-//!     including a file appender and non blocking writer.
+//!    including a file appender and non blocking writer.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
