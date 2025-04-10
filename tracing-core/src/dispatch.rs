@@ -140,11 +140,13 @@ use crate::{
     span, Event, LevelFilter, Metadata,
 };
 
-use core::{
-    any::Any,
-    fmt,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use core::{any::Any, fmt, sync::atomic::Ordering};
+
+#[cfg(feature = "portable-atomic")]
+use portable_atomic::{AtomicBool, AtomicUsize};
+
+#[cfg(not(feature = "portable-atomic"))]
+use core::sync::atomic::{AtomicBool, AtomicUsize};
 
 #[cfg(feature = "std")]
 use std::{
