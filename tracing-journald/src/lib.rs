@@ -515,11 +515,17 @@ pub struct PriorityMappings {
 impl PriorityMappings {
     /// Returns the default priority mappings:
     ///
-    /// - [`tracing::Level::ERROR`][]: [`Priority::Error`] (3)
-    /// - [`tracing::Level::WARN`][]: [`Priority::Warning`] (4)
-    /// - [`tracing::Level::INFO`][]: [`Priority::Notice`] (5)
-    /// - [`tracing::Level::DEBUG`][]: [`Priority::Informational`] (6)
-    /// - [`tracing::Level::TRACE`][]: [`Priority::Debug`] (7)
+    /// - [`Level::ERROR`][]: [`Priority::Error`] (3)
+    /// - [`Level::WARN`][]: [`Priority::Warning`] (4)
+    /// - [`Level::INFO`][]: [`Priority::Notice`] (5)
+    /// - [`Level::DEBUG`][]: [`Priority::Informational`] (6)
+    /// - [`Level::TRACE`][]: [`Priority::Debug`] (7)
+    ///
+    /// [`Level::ERROR`]: tracing_core::Level::ERROR
+    /// [`Level::WARN`]: tracing_core::Level::WARN
+    /// [`Level::INFO`]: tracing_core::Level::INFO
+    /// [`Level::DEBUG`]: tracing_core::Level::DEBUG
+    /// [`Level::TRACE`]: tracing_core::Level::TRACE
     pub fn new() -> PriorityMappings {
         Self {
             error: Priority::Error,
