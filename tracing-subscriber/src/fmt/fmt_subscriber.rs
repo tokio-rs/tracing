@@ -753,22 +753,22 @@ where
 /// the [`Extensions`][extensions] type-map. This means that when multiple
 /// formatters are in use, each can store its own formatted representation
 /// without conflicting.
+/// The `ANSI` const parameter determines whether ANSI escape codes should be used
+/// for formatting the fields (i.e. colors, font styles).
 ///
 /// [extensions]: crate::registry::Extensions
 #[derive(Default)]
-pub struct FormattedFields<E: ?Sized> {
+pub struct FormattedFields<E: ?Sized, const ANSI: bool = false> {
     _format_fields: PhantomData<fn(E)>,
-    was_ansi: bool,
     /// The formatted fields of a span.
     pub fields: String,
 }
 
-impl<E: ?Sized> FormattedFields<E> {
+impl<E: ?Sized, const ANSI: bool> FormattedFields<E, ANSI> {
     /// Returns a new `FormattedFields`.
     pub fn new(fields: String) -> Self {
         Self {
             fields,
-            was_ansi: false,
             _format_fields: PhantomData,
         }
     }
@@ -778,27 +778,27 @@ impl<E: ?Sized> FormattedFields<E> {
     /// The returned [`format::Writer`] can be used with the
     /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
-        format::Writer::new(&mut self.fields).with_ansi(self.was_ansi)
+        format::Writer::new(&mut self.fields).with_ansi(ANSI)
     }
 }
 
-impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
+impl<E: ?Sized, const ANSI: bool> fmt::Debug for FormattedFields<E, ANSI> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormattedFields")
             .field("fields", &self.fields)
             .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
-            .field("was_ansi", &self.was_ansi)
+            .field("is_ansi", &format_args!("{}", ANSI))
             .finish()
     }
 }
 
-impl<E: ?Sized> fmt::Display for FormattedFields<E> {
+impl<E: ?Sized, const ANSI: bool> fmt::Display for FormattedFields<E, ANSI> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.fields, f)
     }
 }
 
-impl<E: ?Sized> Deref for FormattedFields<E> {
+impl<E: ?Sized, const ANSI: bool> Deref for FormattedFields<E, ANSI> {
     type Target = String;
     fn deref(&self) -> &Self::Target {
         &self.fields
@@ -834,14 +834,29 @@ where
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
 
-        if extensions.get_mut::<FormattedFields<N>>().is_none() {
-            let mut fields = FormattedFields::<N>::new(String::new());
+        if self.is_ansi {
+            if extensions.get_mut::<FormattedFields<N, true>>().is_none() {
+                let mut fields = FormattedFields::<N, true>::new(String::new());
+                if self
+                    .fmt_fields
+                    .format_fields(fields.as_writer().with_ansi(true), attrs)
+                    .is_ok()
+                {
+                    extensions.insert(fields);
+                } else {
+                    eprintln!(
+                        "[tracing-subscriber] Unable to format the following event, ignoring: {:?}",
+                        attrs
+                    );
+                }
+            }
+        } else if extensions.get_mut::<FormattedFields<N, false>>().is_none() {
+            let mut fields = FormattedFields::<N, false>::new(String::new());
             if self
                 .fmt_fields
-                .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
+                .format_fields(fields.as_writer().with_ansi(false), attrs)
                 .is_ok()
             {
-                fields.was_ansi = self.is_ansi;
                 extensions.insert(fields);
             } else {
                 eprintln!(
@@ -870,19 +885,35 @@ where
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
         let mut extensions = span.extensions_mut();
-        if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
-            let _ = self.fmt_fields.add_fields(fields, values);
-            return;
-        }
 
-        let mut fields = FormattedFields::<N>::new(String::new());
-        if self
-            .fmt_fields
-            .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
-            .is_ok()
-        {
-            fields.was_ansi = self.is_ansi;
-            extensions.insert(fields);
+        if self.is_ansi {
+            if let Some(fields) = extensions.get_mut::<FormattedFields<N, true>>() {
+                let _ = self.fmt_fields.add_fields::<true>(fields, values);
+                return;
+            }
+
+            let mut fields = FormattedFields::<N, true>::new(String::new());
+            if self
+                .fmt_fields
+                .format_fields(fields.as_writer().with_ansi(true), values)
+                .is_ok()
+            {
+                extensions.insert(fields);
+            }
+        } else {
+            if let Some(fields) = extensions.get_mut::<FormattedFields<N, false>>() {
+                let _ = self.fmt_fields.add_fields::<false>(fields, values);
+                return;
+            }
+
+            let mut fields = FormattedFields::<N, false>::new(String::new());
+            if self
+                .fmt_fields
+                .format_fields(fields.as_writer().with_ansi(false), values)
+                .is_ok()
+            {
+                extensions.insert(fields);
+            }
         }
     }
 
