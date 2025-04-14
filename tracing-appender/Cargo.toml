@@ -37,6 +37,7 @@ criterion = { version = "0.3.6", default-features = false }
 tracing = { path = "../tracing", version = "0.2" }
 time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 tempfile = "3.3.0"
+snap = "1.1.1"
 
 [[bench]]
 name = "bench"
