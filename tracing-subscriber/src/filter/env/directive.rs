@@ -1,16 +1,38 @@
+pub(super) mod builder;
+
 pub(crate) use crate::filter::directive::{FilterVec, ParseError, StaticDirective};
 use crate::filter::{
     directive::{DirectiveSet, Match},
     env::{field, FieldMap},
     level::LevelFilter,
 };
+use builder::Builder;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
-// TODO(eliza): add a builder for programmatically constructing directives?
+///
+/// Directives apply a [`LevelFilter`] to any matching [span].
+///
+/// A span matches if all of following applies:
+///
+/// - the [target] must start with the directives target prefix, or no target prefix is configured
+/// - the [name] of the [span] must match exactly the configured name, or no name is configured
+/// - all configured [field]s must appear in the [span], it can contain additional [field]s
+/// - if for a [field] a [value] matcher is configured it must match too
+///   - be aware that value matchers for primitives (`bool`, `f64`, `u64`, `i64`) doesn't match primitives recorded
+///     using a debug or display recording (`?` and `%` in [span macros] or [event macros])
+///
+/// [span]: mod@tracing::span
+/// [target]: fn@tracing::Metadata::target
+/// [name]: fn@tracing::Metadata::name
+/// [field]: fn@tracing::Metadata::fields
+/// [value]: tracing#recording-fields
+/// [span macros]: macro@tracing::span
+/// [event macros]: macro@tracing::event
+///
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[cfg_attr(docsrs, doc(cfg(feature = "env-filter")))]
 pub struct Directive {
@@ -36,6 +58,22 @@ pub(crate) struct MatchSet<T> {
 }
 
 impl Directive {
+    /// Returns a [builder] that can be used to configure a new [`Directive`]
+    /// instance.
+    ///
+    /// The [`Builder`] type is used programmatically create a [`Directive`]
+    /// instead of parsing it from a string or the environment. It allows
+    /// creating directives which due to limitations of the syntax for
+    /// environment variables can not be created using the parser.
+    ///
+    /// Conceptually the builder starts with a [`Directive`] equivalent parsing
+    /// `[{}]` as directive, i.e. enable everything at a tracing level.
+    ///
+    /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
+    pub fn builder() -> Builder {
+        Builder::default()
+    }
+
     pub(super) fn has_name(&self) -> bool {
         self.in_span.is_some()
     }
@@ -110,12 +148,7 @@ impl Directive {
 
     pub(super) fn deregexify(&mut self) {
         for field in &mut self.fields {
-            field.value = match field.value.take() {
-                Some(field::ValueMatch::Pat(pat)) => {
-                    Some(field::ValueMatch::Debug(pat.into_debug_match()))
-                }
-                x => x,
-            }
+            field.value = field.value.take().map(field::ValueMatch::deregexify);
         }
     }
 
