@@ -5,7 +5,7 @@ use tracing_subscriber::{filter::EnvFilter, fmt::Collector};
 #[test]
 fn duplicate_spans() {
     let collector = Collector::builder()
-        .with_env_filter(EnvFilter::new("[root]=debug"))
+        .with_env_filter(EnvFilter::try_new("[root]=debug").unwrap())
         .finish();
 
     with_default(collector, || {
