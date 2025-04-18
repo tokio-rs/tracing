@@ -9,7 +9,7 @@
 use tracing::{
     collect::with_default,
     debug, error,
-    field::{debug, display},
+    field::{debug, display, display_alt},
     info, trace, warn, Level,
 };
 use tracing_mock::*;
@@ -286,6 +286,38 @@ fn display_shorthand() {
         .run_with_handle();
     with_default(collector, || {
         tracing::event!(Level::TRACE, my_field = %"hello world");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn display_alt_shorthand() {
+    struct AlternateString<'a>(&'a str);
+
+    impl std::fmt::Display for AlternateString<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            if f.alternate() {
+                write!(f, "{} with alternate", self.0)
+            } else {
+                self.0.fmt(f)
+            }
+        }
+    }
+
+    let (collector, handle) = collector::mock()
+        .event(
+            expect::event().with_fields(
+                expect::field("my_field")
+                    .with_value(&display_alt(AlternateString("hello world")))
+                    .only(),
+            ),
+        )
+        .only()
+        .run_with_handle();
+    with_default(collector, || {
+        tracing::event!(Level::TRACE, my_field = %%AlternateString("hello world"));
     });
 
     handle.assert_finished();
