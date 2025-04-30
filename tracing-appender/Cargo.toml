@@ -21,7 +21,7 @@ edition = "2018"
 rust-version = "1.63.0"
 
 [dependencies]
-crossbeam-channel = "0.5.6"
+crossbeam-channel = "0.5.15"
 time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 parking_lot = { optional = true, version = "0.12.1" }
 thiserror = "1"
