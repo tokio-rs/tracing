@@ -66,6 +66,7 @@ where
     /// above a certain level:
     ///
     /// ```ignore
+    /// # // Ignored because this uses a private API
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator::And},
     ///     prelude::*,
@@ -216,6 +217,7 @@ where
     /// and events with a particular target:
     ///
     /// ```ignore
+    /// # // Ignored because this uses a private API
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator::Or},
     ///     prelude::*,
@@ -255,6 +257,7 @@ where
     /// conjunction with the [`And`] combinator:
     ///
     /// ```ignore
+    /// # // Ignored because this uses a private API
     /// use tracing_subscriber::{
     ///     filter::{filter_fn, LevelFilter, combinator},
     ///     prelude::*,

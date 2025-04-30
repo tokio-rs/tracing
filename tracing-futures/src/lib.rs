@@ -134,8 +134,7 @@ pub trait Instrument: Sized {
     ///
     /// Instrumenting a future:
     ///
-    // TODO: ignored until async-await is stable...
-    /// ```rust,ignore
+    /// ```rust
     /// use tracing_futures::Instrument;
     ///
     /// # async fn doc() {
@@ -170,8 +169,7 @@ pub trait Instrument: Sized {
     ///
     /// # Examples
     ///
-    // TODO: ignored until async-await is stable...
-    /// ```rust,ignore
+    /// ```rust
     /// use tracing_futures::Instrument;
     ///
     /// # async fn doc() {
@@ -184,7 +182,8 @@ pub trait Instrument: Sized {
     ///     tracing::debug!("this event will occur inside `my_span`");
     ///     // ...
     /// };
-    /// tokio::spawn(future.in_current_span());
+    ///
+    /// future.in_current_span().await;
     /// # }
     /// ```
     ///

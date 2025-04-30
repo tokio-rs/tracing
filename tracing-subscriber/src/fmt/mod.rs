@@ -134,9 +134,12 @@
 //! variables, you can use the [`EnvFilter`] as follows:
 //!
 //! ```rust
+//! # #[cfg(feature = "env-filter")]
+//! # {
 //! use tracing_subscriber::EnvFilter;
 //!
 //! let filter = EnvFilter::from_default_env();
+//! # }
 //! ```
 //!
 //! As mentioned above, the [`EnvFilter`] allows `Span`s and `Event`s to
@@ -167,6 +170,8 @@
 //! Composing an [`EnvFilter`] `Subscribe` and a [format `Subscribe`](super::fmt::Subscriber):
 //!
 //! ```rust
+//! # #[cfg(feature = "env-filter")]
+//! # {
 //! use tracing_subscriber::{fmt, EnvFilter};
 //! use tracing_subscriber::subscribe::CollectExt;
 //! use tracing_subscriber::util::SubscriberInitExt;
@@ -181,6 +186,7 @@
 //!     .with(filter_subscriber)
 //!     .with(fmt_subscriber)
 //!     .init();
+//! # }
 //! ```
 //!
 //! [`EnvFilter`]: super::filter::EnvFilter

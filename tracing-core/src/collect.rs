@@ -284,9 +284,10 @@ pub trait Collect: 'static {
     /// but values for them won't be recorded at this time.
     ///
     /// ```rust,ignore
-    /// # use tracing::span;
+    /// # // This is ignored because we cannot depend on `tracing::span`
+    /// use tracing::{field::Empty, info_span};
     ///
-    /// let mut span = span!("my_span", foo = 3, bar, baz);
+    /// let mut span = info_span!("my_span", foo = 3, bar = Empty, baz = Empty);
     ///
     /// // `Collector::record` will be called with a `Record`
     /// // containing "bar = false"
