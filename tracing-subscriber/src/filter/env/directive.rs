@@ -152,7 +152,7 @@ impl Directive {
                     # field name
                     [[:word:]][[[:word:]]\.]*
                     # value part (optional)
-                    (?:=[^,]+)?
+                    (?:=[^,]*)?
                 )
                 # trailing comma or EOS
                 (?:,\s?|$)
@@ -863,5 +863,19 @@ mod test {
 
         let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
         assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+    }
+
+    #[test]
+    fn should_parse_field_match_with_empty_value() {
+        let directive = "a[b{field=}]";
+        let expected_match = field::Match {
+            name: "field".to_string(),
+            value: Some(field::ValueMatch::Pat(Box::new("".parse().unwrap()))),
+        };
+
+        let mut dir = Directive::parse(&directive, true).unwrap();
+        let field_match = dir.fields.pop().unwrap();
+
+        assert_eq!(field_match, expected_match, "got {:?}", field_match);
     }
 }
