@@ -204,6 +204,22 @@ pub struct EnvFilter {
     regex: bool,
 }
 
+/// Creates an [`EnvFilter`] with the same directives as `self`. This does *not* clone any of the
+/// dynamic state that [`EnvFilter`] acquires while attached to a subscriber.
+impl Clone for EnvFilter {
+    fn clone(&self) -> EnvFilter {
+        EnvFilter {
+            statics: self.statics.clone(),
+            dynamics: self.dynamics.clone(),
+            has_dynamics: self.has_dynamics,
+            by_id: RwLock::new(Default::default()),
+            by_cs: RwLock::new(Default::default()),
+            scope: ThreadLocal::new(),
+            regex: self.regex,
+        }
+    }
+}
+
 type FieldMap<T> = HashMap<Field, T>;
 
 /// Indicates that an error occurred while parsing a `EnvFilter` from an
