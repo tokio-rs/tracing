@@ -36,6 +36,7 @@ use crate::{
     registry::Scope,
 };
 
+use core::time::Duration;
 use std::{fmt, marker::PhantomData};
 use tracing_core::{
     field::{self, Field, Visit},
@@ -1637,10 +1638,12 @@ impl Default for FmtSpanConfig {
     }
 }
 
-pub(super) struct TimingDisplay(pub(super) u64);
-impl Display for TimingDisplay {
+/// A display implementation for [`Duration`] that formats the duration in a human-readable format.
+pub(super) struct HumanReadableDuration(pub(super) Duration);
+
+impl Display for HumanReadableDuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut t = self.0 as f64;
+        let mut t = self.0.as_nanos() as f64;
         for unit in ["ns", "µs", "ms", "s"].iter() {
             if t < 10.0 {
                 return write!(f, "{:.2}{}", t, unit);
@@ -1664,7 +1667,7 @@ pub(super) mod test {
         dispatch::{set_default, Dispatch},
     };
 
-    use super::{FmtSpan, TimingDisplay, Writer};
+    use super::{FmtSpan, HumanReadableDuration, Writer};
     use regex::Regex;
     use std::fmt;
     use std::path::Path;
@@ -1912,7 +1915,8 @@ pub(super) mod test {
     #[test]
     fn format_nanos() {
         fn fmt(t: u64) -> String {
-            TimingDisplay(t).to_string()
+            let t = std::time::Duration::from_nanos(t);
+            HumanReadableDuration(t).to_string()
         }
 
         assert_eq!(fmt(1), "1.00ns");
