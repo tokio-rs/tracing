@@ -92,9 +92,9 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`tracing::Collector`]: tracing::Collect
+//! [`tracing::Collector`]: tracing_core::Collect
 //! [`tracing::Event`]: tracing_core::Event
-//! [`Collect`]: tracing::Collect
+//! [`Collect`]: tracing_core::Collect
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

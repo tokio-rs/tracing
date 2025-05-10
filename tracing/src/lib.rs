@@ -771,7 +771,7 @@
 //!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
 //!    `tracing-log` directly.
 //!  - [`tracing-appender`] provides utilities for outputting tracing data,
-//!     including a file appender and non blocking writer.
+//!    including a file appender and non blocking writer.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
@@ -1003,7 +1003,14 @@ pub mod __macro_support {
     pub use crate::callsite::{Callsite, Registration};
     use crate::{collect::Interest, Metadata};
     use core::fmt;
-    use core::sync::atomic::{AtomicU8, Ordering};
+    use core::sync::atomic::Ordering;
+
+    #[cfg(feature = "portable-atomic")]
+    use portable_atomic::AtomicU8;
+
+    #[cfg(not(feature = "portable-atomic"))]
+    use core::sync::atomic::AtomicU8;
+
     // Re-export the `core` functions that are used in macros. This allows
     // a crate to be named `core` and avoid name clashes.
     // See here: https://github.com/tokio-rs/tracing/issues/2761
