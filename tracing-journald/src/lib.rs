@@ -37,6 +37,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![warn(clippy::uninlined_format_args)]
 
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
