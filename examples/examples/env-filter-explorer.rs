@@ -1,5 +1,4 @@
 use std::{
-    fmt,
     io::{self},
     sync::{Arc, Mutex},
 };
@@ -7,21 +6,18 @@ use std::{
 use ansi_to_tui::IntoText;
 use crossterm::event;
 use ratatui::{
-    layout::{Constraint, Layout},
-    text::Text,
-    widgets::Block,
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
+    style::Stylize,
+    widgets::{Block, Widget},
     DefaultTerminal, Frame,
 };
-use tracing_subscriber::fmt::MakeWriter;
+use tracing_subscriber::{filter::ParseError, fmt::MakeWriter, EnvFilter};
 use tui_textarea::{Input, Key, TextArea};
 
-fn main() -> io::Result<()> {
-    let terminal = ratatui::init();
-    let result = run(terminal);
-    ratatui::restore();
-    result
-}
-
+/// A list of preset filters to make it easier to explore the filter syntax.
+///
+/// The UI allows you to select a preset filter with the up/down arrow keys.
 const PRESET_FILTERS: &[&str] = &[
     "trace",
     "debug",
@@ -42,60 +38,149 @@ const PRESET_FILTERS: &[&str] = &[
     "warn,other_crate=info",
 ];
 
-fn run(mut terminal: DefaultTerminal) -> io::Result<()> {
-    let mut textarea = TextArea::new(vec!["trace".to_string()]);
-    let title = "Env Filter Explorer. <Esc> to quit, <Up>/<Down> to select preset";
-    textarea.set_block(Block::bordered().title(title));
-    let mut preset_index: usize = 0;
-    loop {
-        terminal.draw(|frame| render(frame, &textarea))?;
-        match event::read()?.into() {
-            Input {
-                key: Key::Enter, ..
-            } => {}
-            Input { key: Key::Esc, .. } => break Ok(()),
-            Input { key: Key::Up, .. } => reset_preset(&mut textarea, &mut preset_index, -1),
-            Input { key: Key::Down, .. } => reset_preset(&mut textarea, &mut preset_index, 1),
-            input => {
-                textarea.input(input);
-            }
+fn main() -> io::Result<()> {
+    let terminal = ratatui::init();
+    let result = App::new().run(terminal);
+    ratatui::restore();
+    result
+}
+
+struct App {
+    filter: TextArea<'static>,
+    preset_index: usize,
+    exit: bool,
+    log_widget: Result<LogWidget, ParseError>,
+}
+
+impl App {
+    /// Creates a new instance of the application, ready to run
+    fn new() -> Self {
+        let mut filter = TextArea::new(vec![PRESET_FILTERS[0].to_string()]);
+        let title = "Env Filter Explorer. <Esc> to quit, <Up>/<Down> to select preset";
+        filter.set_block(Block::bordered().title(title));
+        Self {
+            filter,
+            preset_index: 0,
+            exit: false,
+            log_widget: Ok(LogWidget::default()),
         }
+    }
+
+    /// The application's main loop until the user exits.
+    fn run(mut self, mut terminal: DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            self.log_widget = self.evaluate_filter();
+            terminal.draw(|frame| self.render(frame))?;
+            self.handle_event()?;
+        }
+        Ok(())
+    }
+
+    /// Render the application with a filter input area and a log output area.
+    fn render(&self, frame: &mut Frame) {
+        let layout = Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]);
+        let [filter_area, main_area] = layout.areas(frame.area());
+        frame.render_widget(&self.filter, filter_area);
+        match &self.log_widget {
+            Ok(log_widget) => frame.render_widget(log_widget, main_area),
+            Err(error) => frame.render_widget(error.to_string().red(), main_area),
+        }
+    }
+
+    /// Handles a single terminal event (e.g. mouse, keyboard, resize).
+    fn handle_event(&mut self) -> io::Result<()> {
+        let event = event::read()?;
+        let input = Input::from(event);
+        match input.key {
+            Key::Enter => return Ok(()), // ignore new lines
+            Key::Esc => self.exit = true,
+            Key::Up => self.select_previous_preset(),
+            Key::Down => self.select_next_preset(),
+            _ => self.add_input(input),
+        }
+        Ok(())
+    }
+
+    /// Selects the previous preset filter in the list.
+    fn select_previous_preset(&mut self) {
+        self.select_preset(self.preset_index.saturating_sub(1));
+    }
+
+    /// Selects the next preset filter in the list.
+    fn select_next_preset(&mut self) {
+        self.select_preset((self.preset_index + 1).min(PRESET_FILTERS.len() - 1));
+    }
+
+    /// Selects a preset filter by index and updates the filter text area.
+    fn select_preset(&mut self, index: usize) {
+        self.preset_index = index;
+        self.filter.select_all();
+        self.filter.delete_line_by_head();
+        self.filter.insert_str(PRESET_FILTERS[self.preset_index]);
+    }
+
+    /// Handles normal keyboard input by adding it to the filter text area.
+    fn add_input(&mut self, input: Input) {
+        self.filter.input(input);
+    }
+
+    /// Evaluates the current filter and returns a log widget with the filtered logs or an error.
+    fn evaluate_filter(&mut self) -> Result<LogWidget, ParseError> {
+        let filter = self.filter.lines()[0].to_string();
+        let env_filter = EnvFilter::builder().parse(filter)?;
+        let log_widget = LogWidget::default();
+        let collector = tracing_subscriber::fmt()
+            .with_env_filter(env_filter)
+            .with_writer(log_widget.clone())
+            .finish();
+        tracing::collect::with_default(collector, || {
+            simulate_logging();
+            other_crate_span();
+        });
+        Ok(log_widget)
     }
 }
 
-fn reset_preset(textarea: &mut TextArea<'_>, preset_index: &mut usize, offset: isize) {
-    *preset_index = preset_index
-        .saturating_add_signed(offset)
-        .min(PRESET_FILTERS.len() - 1);
-    let input = PRESET_FILTERS[*preset_index];
-    textarea.select_all();
-    textarea.delete_line_by_head();
-    textarea.insert_str(input);
+/// A writer that collects logs into a buffer and can be displayed as a widget.
+#[derive(Clone, Default, Debug)]
+struct LogWidget {
+    buffer: Arc<Mutex<Vec<u8>>>,
 }
 
-fn render(frame: &mut Frame, textarea: &TextArea) {
-    let layout = Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]);
-    let [top, body] = layout.areas(frame.area());
-    frame.render_widget(textarea, top);
-    let filter = textarea.lines()[0].to_string();
+impl io::Write for LogWidget {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buffer.lock().unwrap().write(buf)
+    }
 
-    let Ok(env_filter) = tracing_subscriber::EnvFilter::builder().parse(filter) else {
-        let text = Text::from("Error parsing filter");
-        frame.render_widget(text, body);
-        return;
-    };
-    let writer = StringWriter::default();
-    let collector = tracing_subscriber::fmt()
-        .with_env_filter(env_filter)
-        .with_writer(writer.clone())
-        .finish();
+    fn flush(&mut self) -> io::Result<()> {
+        self.buffer.lock().unwrap().flush()
+    }
+}
 
-    tracing::collect::with_default(collector, simulate_logging);
-    let output = writer.to_string();
-    let text = output
-        .into_text()
-        .unwrap_or(Text::from("Error parsing output"));
-    frame.render_widget(text, body);
+impl<'a> MakeWriter<'a> for LogWidget {
+    type Writer = Self;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        self.clone()
+    }
+}
+
+impl Widget for &LogWidget {
+    /// Displays the logs that have been collected in the buffer.
+    ///
+    /// If the buffer is empty, it displays "No matching logs".
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let buffer = self.buffer.lock().unwrap();
+        let string = String::from_utf8_lossy(&buffer).to_string();
+        if string.is_empty() {
+            "No matching logs".render(area, buf);
+            return;
+        }
+        string
+            .into_text() // convert a string with ANSI escape codes into ratatui Text
+            .unwrap_or_else(|err| format!("Error parsing output: {err}").into())
+            .render(area, buf);
+    }
 }
 
 #[tracing::instrument]
@@ -106,34 +191,14 @@ fn simulate_logging() {
     tracing::debug!("This is a debug message");
     tracing::trace!("This is a trace message");
 
-    other_crate();
-    trace_span();
     with_fields(42, "bar");
     with_fields(99, "nope");
-}
 
-#[tracing::instrument(target = "other_crate")]
-fn other_crate() {
-    tracing::error!(
-        target: "other_crate",
-        "This is an error message from another crate"
-    );
-    tracing::warn!(
-        target: "other_crate",
-        "This is a warning message from another crate"
-    );
-    tracing::info!(
-        target: "other_crate",
-        "This is an info message from another crate"
-    );
-    tracing::debug!(
-        target: "other_crate",
-        "This is a debug message from another crate"
-    );
-    tracing::trace!(
-        target: "other_crate",
-        "This is a trace message from another crate"
-    );
+    trace_span();
+    debug_span();
+    info_span();
+    warn_span();
+    error_span();
 }
 
 #[tracing::instrument]
@@ -148,33 +213,39 @@ fn trace_span() {
     tracing::trace!("Trace message inside a span with trace level");
 }
 
-#[derive(Clone, Default, Debug)]
-struct StringWriter {
-    buffer: Arc<Mutex<Vec<u8>>>,
+#[tracing::instrument]
+fn debug_span() {
+    tracing::error!("Error message inside a span with debug level");
+    tracing::info!("Info message inside a span with debug level");
+    tracing::debug!("Debug message inside a span with debug level");
 }
 
-impl fmt::Display for StringWriter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let buffer = self.buffer.lock().unwrap();
-        let string = String::from_utf8_lossy(&buffer);
-        write!(f, "{}", string)
-    }
+#[tracing::instrument]
+fn info_span() {
+    tracing::error!("Error message inside a span with info level");
+    tracing::info!("Info message inside a span with info level");
+    tracing::debug!("Debug message inside a span with info level");
 }
 
-impl io::Write for StringWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.buffer.lock().unwrap().write(buf)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.buffer.lock().unwrap().flush()
-    }
+#[tracing::instrument]
+fn warn_span() {
+    tracing::error!("Error message inside a span with warn level");
+    tracing::info!("Info message inside a span with warn level");
+    tracing::debug!("Debug message inside a span with warn level");
 }
 
-impl<'a> MakeWriter<'a> for StringWriter {
-    type Writer = Self;
+#[tracing::instrument]
+fn error_span() {
+    tracing::error!("Error message inside a span with error level");
+    tracing::info!("Info message inside a span with error level");
+    tracing::debug!("Debug message inside a span with error level");
+}
 
-    fn make_writer(&'a self) -> Self::Writer {
-        self.clone()
-    }
+#[tracing::instrument(target = "other_crate")]
+fn other_crate_span() {
+    tracing::error!(target: "other_crate", "An error message from another crate");
+    tracing::warn!(target: "other_crate", "A warning message from another crate");
+    tracing::info!(target: "other_crate", "An info message from another crate");
+    tracing::debug!(target: "other_crate", "A debug message from another crate");
+    tracing::trace!(target: "other_crate", "A trace message from another crate");
 }
