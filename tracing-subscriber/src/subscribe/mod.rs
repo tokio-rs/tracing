@@ -471,7 +471,7 @@
 //! trait may also be implemented for user-defined types.
 //!
 //! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
-//! filter. [`None`](Option::None) filters out _nothing_ (that is, allows
+//! filter. [`None`] filters out _nothing_ (that is, allows
 //! everything through). For example:
 //!
 //! ```rust
