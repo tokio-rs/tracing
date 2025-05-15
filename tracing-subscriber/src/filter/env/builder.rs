@@ -146,7 +146,7 @@ impl Builder {
             .filter_map(|s| match Directive::parse(s, self.regex) {
                 Ok(d) => Some(d),
                 Err(err) => {
-                    eprintln!("ignoring `{}`: {}", s, err);
+                    eprintln!("ignoring `{s}`: {err}");
                     None
                 }
             });
@@ -250,7 +250,7 @@ impl Builder {
                     warning.style_ref_mut().is_bold = true;
                     format!("{}{} {}", warning, bold.paint(":"), bold.paint(msg))
                 };
-                eprintln!("{}", msg);
+                eprintln!("{msg}");
             };
             let ctx_prefixed = |prefix: &str, msg: &str| {
                 #[cfg(not(feature = "nu-ansi-term"))]
@@ -261,7 +261,7 @@ impl Builder {
                     equal.style_ref_mut().is_bold = true;
                     format!(" {} {} {}", equal, Style::new().bold().paint(prefix), msg)
                 };
-                eprintln!("{}", msg);
+                eprintln!("{msg}");
             };
             let ctx_help = |msg| ctx_prefixed("help:", msg);
             let ctx_note = |msg| ctx_prefixed("note:", msg);
@@ -272,14 +272,14 @@ impl Builder {
                 let msg = {
                     let mut pipe = Color::Fixed(21).paint("|");
                     pipe.style_ref_mut().is_bold = true;
-                    format!(" {} {}", pipe, msg)
+                    format!(" {pipe} {msg}")
                 };
-                eprintln!("{}", msg);
+                eprintln!("{msg}");
             };
             warn("some trace filter directives would enable traces that are disabled statically");
             for directive in disabled {
                 let target = if let Some(target) = &directive.target {
-                    format!("the `{}` target", target)
+                    format!("the `{target}` target")
                 } else {
                     "all targets".into()
                 };
@@ -288,11 +288,10 @@ impl Builder {
                     .into_level()
                     .expect("=off would not have enabled any filters");
                 ctx(&format!(
-                    "`{}` would enable the {} level for {}",
-                    directive, level, target
+                    "`{directive}` would enable the {level} level for {target}"
                 ));
             }
-            ctx_note(&format!("the static max level is `{}`", STATIC_MAX_LEVEL));
+            ctx_note(&format!("the static max level is `{STATIC_MAX_LEVEL}`"));
             let help_msg = || {
                 let (feature, filter) = match STATIC_MAX_LEVEL.into_level() {
                     Some(Level::TRACE) => unreachable!(
@@ -304,12 +303,11 @@ impl Builder {
                     Some(Level::ERROR) => ("max_level_error", Level::WARN),
                     None => return ("max_level_off", String::new()),
                 };
-                (feature, format!("{} ", filter))
+                (feature, format!("{filter} "))
             };
             let (feature, earlier_level) = help_msg();
             ctx_help(&format!(
-                "to enable {}logging, remove the `{}` feature from the `tracing` crate",
-                earlier_level, feature
+                "to enable {earlier_level}logging, remove the `{feature}` feature from the `tracing` crate"
             ));
         }
 

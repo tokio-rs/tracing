@@ -834,7 +834,7 @@ impl<F, T> Format<F, T> {
                     F::format_level(level)
                 }
             };
-            return write!(writer, "{} ", fmt_level);
+            return write!(writer, "{fmt_level} ");
         }
 
         Ok(())
@@ -1208,7 +1208,7 @@ impl field::Visit for DefaultVisitor<'_> {
         }
 
         if field.name() == "message" {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug(field, &format_args!("{value}"))
         } else {
             self.record_debug(field, &value)
         }
@@ -1229,7 +1229,7 @@ impl field::Visit for DefaultVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug(field, &format_args!("{value}"))
         }
     }
 
@@ -1251,7 +1251,7 @@ impl field::Visit for DefaultVisitor<'_> {
         self.maybe_pad();
 
         self.result = match name {
-            "message" => write!(self.writer, "{:?}", value),
+            "message" => write!(self.writer, "{value:?}"),
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
@@ -1290,7 +1290,7 @@ impl Display for ErrorSourceList<'_> {
         let mut list = f.debug_list();
         let mut curr = Some(self.0);
         while let Some(curr_err) = curr {
-            list.entry(&format_args!("{}", curr_err));
+            list.entry(&format_args!("{curr_err}"));
             curr = curr_err.source();
         }
         list.finish()
@@ -1643,11 +1643,11 @@ impl Display for TimingDisplay {
         let mut t = self.0 as f64;
         for unit in ["ns", "µs", "ms", "s"].iter() {
             if t < 10.0 {
-                return write!(f, "{:.2}{}", t, unit);
+                return write!(f, "{t:.2}{unit}");
             } else if t < 100.0 {
-                return write!(f, "{:.1}{}", t, unit);
+                return write!(f, "{t:.1}{unit}");
             } else if t < 1000.0 {
-                return write!(f, "{:.0}{}", t, unit);
+                return write!(f, "{t:.0}{unit}");
             }
             t /= 1000.0;
         }

@@ -1075,7 +1075,7 @@ where
                 };
                 expected.check(event, event_get_ancestry, &self.name);
             }
-            Some(ex) => ex.bad(&self.name, format_args!("observed event {:#?}", event)),
+            Some(ex) => ex.bad(&self.name, format_args!("observed event {event:#?}")),
         }
     }
 

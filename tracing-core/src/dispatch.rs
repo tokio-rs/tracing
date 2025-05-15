@@ -905,13 +905,13 @@ impl fmt::Debug for Dispatch {
             #[cfg(feature = "alloc")]
             Kind::Global(collector) => f
                 .debug_tuple("Dispatch::Global")
-                .field(&format_args!("{:p}", collector))
+                .field(&format_args!("{collector:p}"))
                 .finish(),
 
             #[cfg(feature = "alloc")]
             Kind::Scoped(collector) => f
                 .debug_tuple("Dispatch::Scoped")
-                .field(&format_args!("{:p}", collector))
+                .field(&format_args!("{collector:p}"))
                 .finish(),
 
             #[cfg(not(feature = "alloc"))]
@@ -973,13 +973,13 @@ impl fmt::Debug for WeakDispatch {
             #[cfg(feature = "alloc")]
             Kind::Global(collector) => f
                 .debug_tuple("WeakDispatch::Global")
-                .field(&format_args!("{:p}", collector))
+                .field(&format_args!("{collector:p}"))
                 .finish(),
 
             #[cfg(feature = "alloc")]
             Kind::Scoped(collector) => f
                 .debug_tuple("WeakDispatch::Scoped")
-                .field(&format_args!("{:p}", collector))
+                .field(&format_args!("{collector:p}"))
                 .finish(),
 
             #[cfg(not(feature = "alloc"))]
