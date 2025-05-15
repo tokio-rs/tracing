@@ -50,6 +50,12 @@ tempfile = "3"
 snafu = "0.6.10"
 thiserror = "1.0.31"
 
+# env-filter-explorer example
+ansi-to-tui = "7.0.0"
+ratatui = "0.29.0"
+crossterm = "0.28.1"
+tui-textarea = "0.7.0"
+
 # valuable examples
 valuable = { version = "0.1.0", features = ["derive"] }
 
