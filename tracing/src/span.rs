@@ -328,6 +328,7 @@ pub trait AsId: crate::sealed::Sealed {
 /// span will silently do nothing. Thus, the handle can be used in the same
 /// manner regardless of whether or not the trace is currently being collected.
 #[derive(Clone)]
+#[must_use = "Once a span has been created, it should be entered."]
 pub struct Span {
     /// A handle used to enter the span when it is not executing.
     ///
@@ -1408,6 +1409,10 @@ impl fmt::Debug for Span {
 
             if let Some(ref line) = meta.line() {
                 span.field("line", &line);
+            }
+
+            if let Some(ref column) = meta.column() {
+                span.field("column", &column);
             }
 
             if let Some(ref file) = meta.file() {
