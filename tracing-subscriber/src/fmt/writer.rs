@@ -495,11 +495,18 @@ pub struct MutexGuardWriter<'a, W>(MutexGuard<'a, W>);
 ///
 /// `TestWriter` is used by [`fmt::Collector`] or [`fmt::Subscriber`] to enable capturing support.
 ///
-/// `cargo test` can only capture output from the standard library's [`print!`] macro. See
-/// [`libtest`'s output capturing][capturing] for more details about output capturing.
+/// `cargo test` can only capture output from the standard library's [`print!`] macro,
+/// so TestWriter routes all writer output through the [`print!`] macro.
+/// See [`libtest`'s output capturing][capturing] for more details about output capturing.
 ///
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
+///
+/// ## Limitations
+/// For libtest output capturing to work, the [`print!`] must occur on the main thread or a thread that was spawned by [`std::thread::spawn`].
+/// So for example if the [`print!`] occurs on a thread created using pthread_create via the libc crate or in a C/C++ dependency, capturing will not occur.
+///
+/// There is no way for `TestWriter` to work around this, so output in those cases is not captured.
 ///
 /// [`fmt::Collector`]: super::Collector
 /// [`fmt::Subscriber`]: super::Subscriber
