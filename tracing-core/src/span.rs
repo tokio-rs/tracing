@@ -13,7 +13,7 @@ use crate::{field, Metadata};
 ///
 /// [collector]: super::collect::Collect
 /// [`new_span`]: super::collect::Collect::new_span
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Id(NonZeroU64);
 
 /// Attributes provided to a collector describing a new span when it is
