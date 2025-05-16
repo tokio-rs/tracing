@@ -4,7 +4,8 @@ use crate::{
     registry::{self, LookupSpan, SpanRef},
     subscribe::{self, Context},
 };
-use format::{FmtSpan, TimingDisplay};
+use core::time::Duration;
+use format::{FmtSpan, HumanReadableDuration};
 use std::{
     any::TypeId, cell::RefCell, env, fmt, io, marker::PhantomData, ops::Deref, ptr::NonNull,
     time::Instant,
@@ -891,9 +892,7 @@ where
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.idle += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
+                timings.enter();
             }
 
             if self.fmt_span.trace_enter() {
@@ -911,9 +910,7 @@ where
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
-                let now = Instant::now();
-                timings.busy += (now - timings.last).as_nanos() as u64;
-                timings.last = now;
+                timings.exit();
             }
 
             if self.fmt_span.trace_exit() {
@@ -931,22 +928,16 @@ where
             let span = ctx.span(&id).expect("Span not found, this is a bug");
             let extensions = span.extensions();
             if let Some(timing) = extensions.get::<Timings>() {
-                let Timings {
-                    busy,
-                    mut idle,
-                    last,
-                } = *timing;
-                idle += (Instant::now() - last).as_nanos() as u64;
-
-                let t_idle = field::display(TimingDisplay(idle));
-                let t_busy = field::display(TimingDisplay(busy));
+                let (idle, busy) = timing.display();
+                let idle = field::display(idle);
+                let busy = field::display(busy);
 
                 with_event_from_span!(
                     id,
                     span,
                     "message" = "close",
-                    "time.busy" = t_busy,
-                    "time.idle" = t_idle,
+                    "time.busy" = busy,
+                    "time.idle" = idle,
                     |event| {
                         drop(extensions);
                         drop(span);
@@ -1221,19 +1212,86 @@ where
     }
 }
 
+/// Tracks the idle and busy times of a span.
+///
+/// The number of times the span has been entered is tracked to determine the current state. This
+/// ensures that entering and exiting the span multiple times out of order does not affect the
+/// timings.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Timings {
-    idle: u64,
-    busy: u64,
+    idle: Duration,
+    busy: Duration,
     last: Instant,
+    entered_count: u64,
 }
 
 impl Timings {
     fn new() -> Self {
         Self {
-            idle: 0,
-            busy: 0,
+            // The total time spent in the idle state not including the current idle time.
+            idle: Duration::ZERO,
+            // The total time spent in the busy state not including the current busy time.
+            busy: Duration::ZERO,
+            // The last time the state was changed.
             last: Instant::now(),
+            // The number of times the busy state has been entered. This is used to track the
+            // current state.
+            entered_count: 0,
         }
+    }
+
+    /// Enters the busy state.
+    fn enter(&mut self) {
+        if self.entered_count == 0 {
+            // manually calculate the time spent in the state instead of using `Instant::elapsed`,
+            // otherwise there is a small amount of unaccounted time between the statements
+            let now = Instant::now();
+            self.idle += now - self.last;
+            self.last = now;
+        }
+        self.entered_count = self.entered_count.saturating_add(1);
+    }
+
+    /// Exits the busy state.
+    ///
+    /// If this is the last time exiting the busy state, the busy time is updated and the last time
+    /// is set to the current time.
+    fn exit(&mut self) {
+        self.entered_count = self.entered_count.saturating_sub(1);
+        if self.entered_count == 0 {
+            // manually calculate the time spent in the state instead of using `Instant::elapsed`,
+            // otherwise there is a small amount of unaccounted time between the statements
+            let now = Instant::now();
+            self.busy += now - self.last;
+            self.last = now;
+        }
+    }
+
+    /// Returns the total time spent in the idle state including the current idle time.
+    fn idle_with_current(&self) -> Duration {
+        if self.entered_count == 0 {
+            self.idle + self.last.elapsed()
+        } else {
+            self.idle
+        }
+    }
+
+    /// Returns the total time spent in the busy state including the current busy time.
+    fn busy_with_current(&self) -> Duration {
+        if self.entered_count == 0 {
+            self.busy
+        } else {
+            self.busy + self.last.elapsed()
+        }
+    }
+
+    /// Returns displayable durations for the idle and busy times including the current idle and
+    /// busy times.
+    fn display(&self) -> (HumanReadableDuration, HumanReadableDuration) {
+        (
+            HumanReadableDuration(self.idle_with_current()),
+            HumanReadableDuration(self.busy_with_current()),
+        )
     }
 }
 
@@ -1658,5 +1716,116 @@ mod test {
              fake time span3{x=42}: tracing_subscriber::fmt::fmt_subscriber::test: exit\n",
             actual.as_str()
         );
+    }
+
+    mod timings {
+        use super::*;
+        use std::{thread::sleep, time::Duration};
+
+        #[test]
+        fn new() {
+            let timings = Timings::new();
+            assert_eq!(timings.idle, Duration::ZERO);
+            assert_eq!(timings.busy, Duration::ZERO);
+            assert_eq!(timings.entered_count, 0);
+            assert!(timings.last.elapsed() < Duration::from_millis(10));
+        }
+
+        #[test]
+        fn entered_count() {
+            let mut timings = Timings::new();
+            timings.enter();
+            assert_eq!(timings.entered_count, 1);
+            timings.enter();
+            assert_eq!(timings.entered_count, 2);
+            timings.exit();
+            assert_eq!(timings.entered_count, 1);
+            timings.exit();
+            assert_eq!(timings.entered_count, 0);
+            timings.exit();
+            assert_eq!(timings.entered_count, 0, "should not go negative");
+        }
+
+        #[test]
+        fn timings() {
+            let mut timings = Timings::new();
+            let before_enter_duration = Duration::from_millis(20);
+            sleep(before_enter_duration);
+
+            // should be 0, ~20ms, 0, 0
+            assert_eq!(timings.idle, Duration::ZERO);
+            assert!(timings.idle_with_current() >= before_enter_duration);
+            assert_eq!(timings.busy, Duration::ZERO);
+            assert_eq!(timings.busy_with_current(), Duration::ZERO);
+
+            timings.enter();
+            let busy_duration = Duration::from_millis(30);
+            sleep(busy_duration);
+
+            // should be ~20ms, ~20ms, 0, ~30ms
+            assert!(timings.idle >= before_enter_duration);
+            assert_eq!(timings.idle, timings.idle_with_current());
+            assert_eq!(timings.busy, Duration::ZERO);
+            assert!(timings.busy_with_current() >= busy_duration);
+
+            timings.exit();
+            let after_busy_duration = Duration::from_millis(40);
+            sleep(after_busy_duration);
+
+            // should be ~20ms, ~60ms, ~30ms, ~30ms
+            assert!(timings.idle >= before_enter_duration);
+            assert!(timings.idle_with_current() >= timings.idle + after_busy_duration);
+            assert!(timings.busy >= busy_duration);
+            assert_eq!(timings.busy, timings.busy_with_current());
+
+            timings.enter();
+            let second_busy_duration = Duration::from_millis(50);
+            sleep(second_busy_duration);
+
+            // should be ~60ms, ~60ms, ~30ms, ~80ms
+            assert!(timings.idle >= before_enter_duration + after_busy_duration);
+            assert_eq!(timings.idle, timings.idle_with_current());
+            assert!(timings.busy >= busy_duration);
+            assert!(timings.busy_with_current() >= busy_duration + second_busy_duration);
+
+            timings.exit();
+            sleep(Duration::from_millis(60));
+
+            // should be ~60ms, ~120ms, ~80ms, ~80ms
+            assert!(timings.idle >= before_enter_duration + after_busy_duration);
+            assert!(timings.idle_with_current() >= timings.idle);
+            assert!(timings.busy >= busy_duration + second_busy_duration);
+            assert_eq!(timings.busy, timings.busy_with_current());
+        }
+
+        #[test]
+        fn display() {
+            let mut timings = Timings::new();
+            sleep(Duration::from_millis(10));
+
+            let (idle, busy) = timings.display();
+            assert!(idle.0 >= Duration::from_millis(10));
+            assert_eq!(
+                busy.0,
+                Duration::ZERO,
+                "busy time does not start before enter"
+            );
+
+            timings.enter();
+            let stopped_idle = timings.idle;
+            sleep(Duration::from_millis(10));
+
+            let (idle, busy) = timings.display();
+            assert_eq!(idle.0, stopped_idle, "idle time does not change while busy");
+            assert!(busy.0 >= Duration::from_millis(10));
+
+            timings.exit(); // stops the busy timer
+            let stopped_busy = timings.busy;
+            sleep(Duration::from_millis(10));
+
+            let (idle, busy) = timings.display();
+            assert!(idle.0 > stopped_idle);
+            assert_eq!(busy.0, stopped_busy, "busy time does not change while idle");
+        }
     }
 }
