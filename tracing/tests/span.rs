@@ -379,7 +379,7 @@ fn dotted_field_name() {
         .only()
         .run_with_handle();
     with_default(collector, || {
-        tracing::span!(Level::TRACE, "foo", fields.bar = true);
+        let _ = tracing::span!(Level::TRACE, "foo", fields.bar = true);
     });
 
     handle.assert_finished();
@@ -670,7 +670,7 @@ fn new_span_with_target_and_log_level() {
         .run_with_handle();
 
     with_default(collector, || {
-        tracing::span!(target: "app_span", Level::DEBUG, "foo");
+        let _ = tracing::span!(target: "app_span", Level::DEBUG, "foo");
     });
 
     handle.assert_finished();
@@ -689,7 +689,7 @@ fn explicit_root_span_is_root() {
         .run_with_handle();
 
     with_default(collector, || {
-        tracing::span!(parent: None, Level::TRACE, "foo");
+        let _ = tracing::span!(parent: None, Level::TRACE, "foo");
     });
 
     handle.assert_finished();
@@ -712,7 +712,7 @@ fn explicit_root_span_is_root_regardless_of_ctx() {
 
     with_default(collector, || {
         tracing::span!(Level::TRACE, "foo").in_scope(|| {
-            tracing::span!(parent: None, Level::TRACE, "bar");
+            let _ = tracing::span!(parent: None, Level::TRACE, "bar");
         })
     });
 
@@ -734,7 +734,7 @@ fn explicit_child() {
 
     with_default(collector, || {
         let foo = tracing::span!(Level::TRACE, "foo");
-        tracing::span!(parent: foo.id(), Level::TRACE, "bar");
+        let _ = tracing::span!(parent: foo.id(), Level::TRACE, "bar");
     });
 
     handle.assert_finished();
@@ -775,11 +775,11 @@ fn explicit_child_at_levels() {
 
     with_default(collector, || {
         let foo = tracing::span!(Level::TRACE, "foo");
-        tracing::trace_span!(parent: foo.id(), "a");
-        tracing::debug_span!(parent: foo.id(), "b");
-        tracing::info_span!(parent: foo.id(), "c");
-        tracing::warn_span!(parent: foo.id(), "d");
-        tracing::error_span!(parent: foo.id(), "e");
+        let _ = tracing::trace_span!(parent: foo.id(), "a");
+        let _ = tracing::debug_span!(parent: foo.id(), "b");
+        let _ = tracing::info_span!(parent: foo.id(), "c");
+        let _ = tracing::warn_span!(parent: foo.id(), "d");
+        let _ = tracing::error_span!(parent: foo.id(), "e");
     });
 
     handle.assert_finished();
@@ -803,8 +803,8 @@ fn explicit_child_regardless_of_ctx() {
 
     with_default(collector, || {
         let foo = tracing::span!(Level::TRACE, "foo");
-        tracing::span!(Level::TRACE, "bar")
-            .in_scope(|| tracing::span!(parent: foo.id(), Level::TRACE, "baz"))
+        let _ = tracing::span!(Level::TRACE, "bar")
+            .in_scope(|| tracing::span!(parent: foo.id(), Level::TRACE, "baz"));
     });
 
     handle.assert_finished();
@@ -823,7 +823,7 @@ fn contextual_root() {
         .run_with_handle();
 
     with_default(collector, || {
-        tracing::span!(Level::TRACE, "foo");
+        let _ = tracing::span!(Level::TRACE, "foo");
     });
 
     handle.assert_finished();
@@ -846,7 +846,7 @@ fn contextual_child() {
 
     with_default(collector, || {
         tracing::span!(Level::TRACE, "foo").in_scope(|| {
-            tracing::span!(Level::TRACE, "bar");
+            let _ = tracing::span!(Level::TRACE, "bar");
         })
     });
 
@@ -867,7 +867,7 @@ fn display_shorthand() {
         .only()
         .run_with_handle();
     with_default(collector, || {
-        tracing::span!(Level::TRACE, "my_span", my_field = %"hello world");
+        let _ = tracing::span!(Level::TRACE, "my_span", my_field = %"hello world");
     });
 
     handle.assert_finished();
@@ -887,7 +887,7 @@ fn debug_shorthand() {
         .only()
         .run_with_handle();
     with_default(collector, || {
-        tracing::span!(Level::TRACE, "my_span", my_field = ?"hello world");
+        let _ = tracing::span!(Level::TRACE, "my_span", my_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -908,7 +908,7 @@ fn both_shorthands() {
         .only()
         .run_with_handle();
     with_default(collector, || {
-        tracing::span!(Level::TRACE, "my_span", display_field = %"hello world", debug_field = ?"hello world");
+        let _ = tracing::span!(Level::TRACE, "my_span", display_field = %"hello world", debug_field = ?"hello world");
     });
 
     handle.assert_finished();
@@ -932,7 +932,7 @@ fn constant_field_name() {
 
     with_default(collector, || {
         const FOO: &str = "foo";
-        tracing::span!(
+        let _ = tracing::span!(
             Level::TRACE,
             "my_span",
             { std::convert::identity(FOO) } = "bar",
@@ -956,7 +956,7 @@ fn keyword_ident_in_field_name_span_macro() {
         .run_with_handle();
 
     with_default(collector, || {
-        error_span!("span", self = ?Foo);
+        let _ = error_span!("span", self = ?Foo);
     });
     handle.assert_finished();
 }

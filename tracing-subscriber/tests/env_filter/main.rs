@@ -53,8 +53,8 @@ fn same_name_spans() {
         .run_with_handle();
     let subscriber = subscriber.with(filter);
     with_default(subscriber, || {
-        tracing::trace_span!("foo", bar = 1);
-        tracing::trace_span!("foo", baz = 1);
+        let _ = tracing::trace_span!("foo", bar = 1);
+        let _ = tracing::trace_span!("foo", baz = 1);
     });
 
     finished.assert_finished();
@@ -343,9 +343,9 @@ fn more_specific_dynamic_filter_more_verbose() {
     let subscriber = collector.with(filter);
 
     with_default(subscriber, || {
-        tracing::info_span!("enabled info");
-        tracing::debug_span!("disabled debug");
-        tracing::debug_span!("enabled debug", hello = &4_u64);
+        let _ = tracing::info_span!("enabled info");
+        let _ = tracing::debug_span!("disabled debug");
+        let _ = tracing::debug_span!("enabled debug", hello = &4_u64);
 
         // .only() doesn't work when we don't enter/exit spans
         tracing::info!("marker");
@@ -391,10 +391,10 @@ fn more_specific_dynamic_filter_less_verbose() {
     let subscriber = collector.with(filter);
 
     with_default(subscriber, || {
-        tracing::info_span!("enabled info");
-        tracing::warn_span!("enabled hello=100 warn", hello = &100_u64);
-        tracing::info_span!("disabled hello=4 info", hello = &4_u64);
-        tracing::warn_span!("enabled hello=4 warn", hello = &4_u64);
+        let _ = tracing::info_span!("enabled info");
+        let _ = tracing::warn_span!("enabled hello=100 warn", hello = &100_u64);
+        let _ = tracing::info_span!("disabled hello=4 info", hello = &4_u64);
+        let _ = tracing::warn_span!("enabled hello=4 warn", hello = &4_u64);
 
         // .only() doesn't work when we don't enter/exit spans
         tracing::info!("marker");

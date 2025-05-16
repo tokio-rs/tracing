@@ -71,9 +71,9 @@ fn basic_subscriber_filters_spans() {
         .with(info_subscriber.with_filter(LevelFilter::INFO))
         .set_default();
 
-    tracing::trace_span!("hello trace");
-    tracing::debug_span!("hello debug");
-    tracing::info_span!("hello info");
+    let _ = tracing::trace_span!("hello trace");
+    let _ = tracing::debug_span!("hello debug");
+    let _ = tracing::info_span!("hello info");
 
     trace_handle.assert_finished();
     debug_handle.assert_finished();

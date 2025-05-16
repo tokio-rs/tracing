@@ -22,7 +22,7 @@ fn contextual_parent() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -45,7 +45,7 @@ fn contextual_parent_wrong_name() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("another parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -70,7 +70,7 @@ fn contextual_parent_wrong_id() {
     with_default(collector, || {
         let _span = tracing::info_span!("contextual parent");
         let _guard = tracing::info_span!("another parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -94,7 +94,7 @@ fn contextual_parent_wrong_level() {
 
     with_default(collector, || {
         let _guard = tracing::debug_span!("contextual parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -111,7 +111,7 @@ fn expect_contextual_parent_actual_contextual_root() {
     let (collector, handle) = collector::mock().new_span(span).run_with_handle();
 
     with_default(collector, || {
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -132,7 +132,7 @@ fn expect_contextual_parent_actual_explicit_parent() {
 
     with_default(collector, || {
         let span = tracing::info_span!("explicit parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -153,7 +153,7 @@ fn expect_contextual_parent_actual_explicit_root() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!(parent: None, "span");
+        let _ = tracing::info_span!(parent: None, "span");
     });
 
     handle.assert_finished();
@@ -168,7 +168,7 @@ fn contextual_root() {
     let (collector, handle) = collector::mock().new_span(span).run_with_handle();
 
     with_default(collector, || {
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -188,7 +188,7 @@ fn expect_contextual_root_actual_contextual_parent() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -208,7 +208,7 @@ fn expect_contextual_root_actual_explicit_parent() {
 
     with_default(collector, || {
         let span = tracing::info_span!("explicit parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -228,7 +228,7 @@ fn expect_contextual_root_actual_explicit_root() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!(parent: None, "span");
+        let _ = tracing::info_span!(parent: None, "span");
     });
 
     handle.assert_finished();
@@ -247,7 +247,7 @@ fn explicit_parent() {
 
     with_default(collector, || {
         let span = tracing::info_span!("explicit parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -270,7 +270,7 @@ fn explicit_parent_wrong_name() {
 
     with_default(collector, || {
         let span = tracing::info_span!("another parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -294,7 +294,7 @@ fn explicit_parent_wrong_id() {
     with_default(collector, || {
         let _span = tracing::info_span!("explicit parent");
         let another_span = tracing::info_span!("another parent");
-        tracing::info_span!(parent: another_span.id(), "span");
+        let _ = tracing::info_span!(parent: another_span.id(), "span");
     });
 
     handle.assert_finished();
@@ -316,7 +316,7 @@ fn explicit_parent_wrong_level() {
 
     with_default(collector, || {
         let span = tracing::debug_span!("explicit parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -337,7 +337,7 @@ fn expect_explicit_parent_actual_contextual_parent() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -354,7 +354,7 @@ fn expect_explicit_parent_actual_contextual_root() {
     let (collector, handle) = collector::mock().new_span(span).run_with_handle();
 
     with_default(collector, || {
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -375,7 +375,7 @@ fn expect_explicit_parent_actual_explicit_root() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!(parent: None, "span");
+        let _ = tracing::info_span!(parent: None, "span");
     });
 
     handle.assert_finished();
@@ -395,7 +395,7 @@ fn explicit_root() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!(parent: None, "span");
+        let _ = tracing::info_span!(parent: None, "span");
     });
 
     handle.assert_finished();
@@ -415,7 +415,7 @@ fn expect_explicit_root_actual_contextual_parent() {
 
     with_default(collector, || {
         let _guard = tracing::info_span!("contextual parent").entered();
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -431,7 +431,7 @@ fn expect_explicit_root_actual_contextual_root() {
     let (collector, handle) = collector::mock().new_span(span).run_with_handle();
 
     with_default(collector, || {
-        tracing::info_span!("span");
+        let _ = tracing::info_span!("span");
     });
 
     handle.assert_finished();
@@ -451,7 +451,7 @@ fn expect_explicit_root_actual_explicit_parent() {
 
     with_default(collector, || {
         let span = tracing::info_span!("explicit parent");
-        tracing::info_span!(parent: span.id(), "span");
+        let _ = tracing::info_span!(parent: span.id(), "span");
     });
 
     handle.assert_finished();
@@ -466,7 +466,7 @@ fn explicit_and_contextual_root_is_explicit() {
     let (collector, handle) = collector::mock().new_span(span).run_with_handle();
 
     with_default(collector, || {
-        tracing::info_span!(parent: None, "span");
+        let _ = tracing::info_span!(parent: None, "span");
     });
 
     handle.assert_finished();
