@@ -240,7 +240,7 @@ pub trait Visit {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        self.record_debug(field, &DisplayValue(value))
+        self.record_debug(field, &DebugValue(value))
     }
 
     /// Visit a value implementing `fmt::Debug`.
@@ -1176,7 +1176,7 @@ mod test {
             use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
-        assert_eq!(result, format!("{}", err));
+        assert_eq!(result, format!("{:?}", err));
     }
 
     #[test]
