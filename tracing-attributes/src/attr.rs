@@ -6,12 +6,18 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 
-/// Arguments to `#[instrument(err(...))]` and `#[instrument(ret(...))]` which describe how the
-/// return value event should be emitted.
+/// Arguments to `#[instrument(ret(...))]` which describes how the return value event should be emitted.
 #[derive(Clone, Default, Debug)]
-pub(crate) struct EventArgs {
+pub(crate) struct RetArgs {
     level: Option<Level>,
-    pub(crate) mode: FormatMode,
+    pub(crate) mode: RetFormatMode,
+}
+
+/// Arguments to `#[instrument(err(...))]` which describes how the return value event should be emitted.
+#[derive(Clone, Default, Debug)]
+pub(crate) struct ErrArgs {
+    level: Option<Level>,
+    pub(crate) mode: ErrFormatMode,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -23,8 +29,8 @@ pub(crate) struct InstrumentArgs {
     pub(crate) follows_from: Option<Expr>,
     pub(crate) skips: HashSet<Ident>,
     pub(crate) fields: Option<Fields>,
-    pub(crate) err_args: Option<EventArgs>,
-    pub(crate) ret_args: Option<EventArgs>,
+    pub(crate) err_args: Option<ErrArgs>,
+    pub(crate) ret_args: Option<RetArgs>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -128,11 +134,11 @@ impl Parse for InstrumentArgs {
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>();
-                let err_args = EventArgs::parse(input)?;
+                let err_args = ErrArgs::parse(input)?;
                 args.err_args = Some(err_args);
             } else if lookahead.peek(kw::ret) {
                 let _ = input.parse::<kw::ret>()?;
-                let ret_args = EventArgs::parse(input)?;
+                let ret_args = RetArgs::parse(input)?;
                 args.ret_args = Some(ret_args);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
@@ -151,13 +157,13 @@ impl Parse for InstrumentArgs {
     }
 }
 
-impl EventArgs {
+impl RetArgs {
     pub(crate) fn level(&self, default: Level) -> Level {
         self.level.clone().unwrap_or(default)
     }
 }
 
-impl Parse for EventArgs {
+impl Parse for RetArgs {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         if !input.peek(syn::token::Paren) {
             return Ok(Self::default());
@@ -173,12 +179,12 @@ impl Parse for EventArgs {
                         return Err(content.error("expected only a single `level` argument"));
                     }
                     result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
+                } else if result.mode != RetFormatMode::default() {
                     return Err(content.error("expected only a single format argument"));
                 } else if let Some(ident) = content.parse::<Option<Ident>>()? {
                     match ident.to_string().as_str() {
-                        "Debug" => result.mode = FormatMode::Debug,
-                        "Display" => result.mode = FormatMode::Display,
+                        "Debug" => result.mode = RetFormatMode::Debug,
+                        "Display" => result.mode = RetFormatMode::Display,
                         _ => return Err(syn::Error::new(
                             ident.span(),
                             "unknown event formatting mode, expected either `Debug` or `Display`",
@@ -187,6 +193,55 @@ impl Parse for EventArgs {
                 }
                 Ok(())
             };
+        parse_one_arg()?;
+        if !content.is_empty() {
+            if content.lookahead1().peek(Token![,]) {
+                let _ = content.parse::<Token![,]>()?;
+                parse_one_arg()?;
+            } else {
+                return Err(content.error("expected `,` or `)`"));
+            }
+        }
+        Ok(result)
+    }
+}
+
+impl ErrArgs {
+    pub(crate) fn level(&self, default: Level) -> Level {
+        self.level.clone().unwrap_or(default)
+    }
+}
+
+impl Parse for ErrArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        if !input.peek(syn::token::Paren) {
+            return Ok(Self::default());
+        }
+        let content;
+        let _ = syn::parenthesized!(content in input);
+        let mut result = Self::default();
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
+                }
+                result.level = Some(content.parse()?);
+            } else if result.mode != ErrFormatMode::default() {
+                return Err(content.error("expected only a single format argument"));
+            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                match ident.to_string().as_str() {
+                    "Debug" => result.mode = ErrFormatMode::Debug,
+                    "Display" => result.mode = ErrFormatMode::Display,
+                    "StdError" => result.mode = ErrFormatMode::StdError,
+                    _ => return Err(syn::Error::new(
+                        ident.span(),
+                        "unknown event formatting mode, expected `Debug`, `Display`, or `StdError`",
+                    )),
+                }
+            }
+            Ok(())
+        };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -282,11 +337,20 @@ impl Parse for Skips {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
-pub(crate) enum FormatMode {
+pub(crate) enum RetFormatMode {
     #[default]
     Default,
     Display,
     Debug,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
+pub(crate) enum ErrFormatMode {
+    #[default]
+    Default,
+    Display,
+    Debug,
+    StdError,
 }
 
 #[derive(Clone, Debug)]
