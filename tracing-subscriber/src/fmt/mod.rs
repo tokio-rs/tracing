@@ -815,6 +815,23 @@ impl<T, F, W> CollectorBuilder<format::JsonFields, format::Format<format::Json, 
             inner: self.inner.with_span_list(display_span_list),
         }
     }
+
+    /// Sets whether or not the JSON subscriber being built will include
+    /// additional span fields dynamically added by
+    /// [`Subscribe`](crate::Subscribe) implementations in formatted events.
+    ///
+    /// See [`format::Json`] for details.
+    pub fn with_additional_span_fields(
+        self,
+        display_additional_span_fields: bool,
+    ) -> CollectorBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+        CollectorBuilder {
+            filter: self.filter,
+            inner: self
+                .inner
+                .with_additional_span_fields(display_additional_span_fields),
+        }
+    }
 }
 
 impl<N, E, F, W> CollectorBuilder<N, E, reload::Subscriber<F>, W>
