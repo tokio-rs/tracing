@@ -54,7 +54,7 @@ once_cell = { optional = true, version = "1.13.0" }
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2", optional = true, default-features = false, features = ["log-tracer", "std"] }
 nu-ansi-term = { version = "0.46.0", optional = true }
-time = { version = "0.3.2", features = ["formatting"], optional = true }
+time = { version = "0.3.10", features = ["formatting"], optional = true }
 
 # only required by the json feature
 serde_json = { version = "1.0.82", optional = true }
@@ -82,7 +82,7 @@ regex = { version = "1.6.0", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.3", default-features = false, features = ["std-future", "std"] }
 tokio = { version = "1.20.0", features = ["rt", "macros"] }
 # Enable the `time` crate's `macros` feature, for examples.
-time = { version = "0.3.2", features = ["formatting", "macros"] }
+time = { version = "0.3.10", features = ["formatting", "macros"] }
 
 [badges]
 maintenance = { status = "experimental" }
