@@ -362,7 +362,7 @@ pub fn hourly(
 /// }
 /// ```
 ///
-/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd`.
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -398,7 +398,7 @@ pub fn daily(
 /// }
 /// ```
 ///
-/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd`.
 pub fn weekly(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
