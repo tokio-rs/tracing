@@ -370,7 +370,7 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
-/// Creates a weekly-rotating file appender.
+/// Creates a weekly-rotating file appender. The logs will rotate at the start of every Sunday.
 ///
 /// The appender returned by `rolling::weekly` can be used with `non_blocking` to create
 /// a non-blocking, weekly file appender.
@@ -386,12 +386,12 @@ pub fn daily(
 /// # #[clippy::allow(needless_doctest_main)]
 /// fn main () {
 /// # fn doc() {
-///     let appender = tracing_appender::rolling::weekly("/some/path", "rolling.log");
+///     let appender = tracing_appender::rolling::never("/some/path", "non-rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::subscriber::with_default(subscriber.finish(), || {
+///     tracing::collect::with_default(collector.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -465,6 +465,14 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 /// # }
 /// ```
 ///
+/// ### Weekly Rotation
+/// ```rust
+/// # fn docs() {
+/// use tracing_appender::rolling::Rotation;
+/// let rotation = tracing_appender::rolling::Rotation::WEEKLY;
+/// # }
+/// ```
+///
 /// ### No Rotation
 /// ```rust
 /// # fn docs() {
@@ -485,13 +493,13 @@ enum RotationKind {
 }
 
 impl Rotation {
-    /// Provides an minutely rotation
+    /// Provides a minutely rotation.
     pub const MINUTELY: Self = Self(RotationKind::Minutely);
-    /// Provides an hourly rotation
+    /// Provides an hourly rotation.
     pub const HOURLY: Self = Self(RotationKind::Hourly);
-    /// Provides a daily rotation
+    /// Provides a daily rotation.
     pub const DAILY: Self = Self(RotationKind::Daily);
-    /// Provides a weekly rotation
+    /// Provides a weekly rotation that rotates at the start of every Sunday.
     pub const WEEKLY: Self = Self(RotationKind::Weekly);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
@@ -531,16 +539,12 @@ impl Rotation {
                 date.replace_time(time)
             }
             Rotation::WEEKLY => {
-                let time = Time::from_hms(0, 0, 0)
+                let zero_time = Time::from_hms(0, 0, 0)
                     .expect("Invalid time; this is a bug in tracing-appender");
-                let date = date.replace_time(time);
-                let rounded_ordinal = Rotation::round_ordinal_to_week(date.date());
 
-                date.replace_date(
-                    Date::from_ordinal_date(date.year(), rounded_ordinal).expect(
-                        "ordinal should never be out of range; this is a bug in tracing-appender",
-                    ),
-                )
+                let days_since_sunday = date.weekday().number_days_from_sunday();
+                let date = date - Duration::days(days_since_sunday.into());
+                date.replace_time(zero_time)
             }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
@@ -558,15 +562,6 @@ impl Rotation {
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
-    }
-
-    fn round_ordinal_to_week(date: Date) -> u16 {
-        let ordinal = date.ordinal();
-        if ordinal <= 7 {
-            1
-        } else {
-            ordinal - (ordinal % 7)
-        }
     }
 }
 
@@ -893,11 +888,19 @@ mod test {
 
         let test_cases = vec![
             TestCase {
-                expected: "my_prefix.2025-02-11.log",
+                expected: "my_prefix.2025-02-16.log",
                 rotation: Rotation::WEEKLY,
                 prefix: Some("my_prefix"),
                 suffix: Some("log"),
                 now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
+            // Make sure weekly rotation rounds to the preceding year when appropriate
+            TestCase {
+                expected: "my_prefix.2024-12-29.log",
+                rotation: Rotation::WEEKLY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-01-01 10:01:00 +00:00:00", &format).unwrap(),
             },
             TestCase {
                 expected: "my_prefix.2025-02-17.log",
@@ -952,21 +955,6 @@ mod test {
     fn test_never_date_rounding() {
         let now = OffsetDateTime::now_utc();
         let _ = Rotation::NEVER.round_date(now);
-    }
-
-    #[test]
-    fn test_ordinal_rounding() {
-        let date = Date::from_ordinal_date(2025, 1).unwrap();
-        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
-
-        let date = Date::from_ordinal_date(2025, 2).unwrap();
-        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
-
-        let date = Date::from_ordinal_date(2025, 7).unwrap();
-        assert_eq!(Rotation::round_ordinal_to_week(date), 1);
-
-        let date = Date::from_ordinal_date(2025, 8).unwrap();
-        assert_eq!(Rotation::round_ordinal_to_week(date), 7);
     }
 
     #[test]
