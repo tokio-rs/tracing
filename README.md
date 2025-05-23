@@ -372,7 +372,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
-- [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+- [`tracing-gelf`] implements a subscriber for exporting traces in Graylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
