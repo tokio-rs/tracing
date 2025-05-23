@@ -55,16 +55,16 @@ use tracing_core::{
 /// Each component (`target`, `span`, `field`, `value`, and `level`) will be covered in turn.
 ///
 /// - `target` matches the event or span's target. In general, this is the module path and/or crate name.
-///    Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
-///    please refer to [`Metadata`]'s documentation.
+///   Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
+///   please refer to [`Metadata`]'s documentation.
 /// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
-///    the `span` directive will match on spans _within_ the `target`.
+///   the `span` directive will match on spans _within_ the `target`.
 /// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
-///    and will match on any [`Span`] or [`Event`] that has a field with that name.
-///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
+///   and will match on any [`Span`] or [`Event`] that has a field with that name.
+///   For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
-///    it will match _only_ on that value. Otherwise, this filter matches the
-///    [`std::fmt::Debug`] output from the value.
+///   it will match _only_ on that value. Otherwise, this filter matches the
+///   [`std::fmt::Debug`] output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
 ///
 /// When a field value directive (`[{<FIELD NAME>=<FIELD_VALUE>}]=...`) matches a

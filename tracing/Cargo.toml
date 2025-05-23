@@ -32,6 +32,7 @@ tracing-core = { path = "../tracing-core", version = "0.2", default-features = f
 log = { version = "0.4.17", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
 pin-project-lite = "0.2.9"
+portable-atomic = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default-features = false }
@@ -60,9 +61,11 @@ release_max_level_debug = []
 release_max_level_trace = []
 
 alloc = ["tracing-core/alloc"]
-std = ["tracing-core/std", "alloc"]
+std = ["tracing-core/std", "alloc", "portable-atomic?/std"]
 log-always = ["log"]
 attributes = ["tracing-attributes"]
+portable-atomic = ["dep:portable-atomic", "tracing-core/portable-atomic"]
+critical-section = ["tracing-core/critical-section", "portable-atomic?/critical-section"]
 
 [[bench]]
 name = "baseline"

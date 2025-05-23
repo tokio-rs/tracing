@@ -133,6 +133,11 @@ impl Builder {
 
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// *ignoring* any that are invalid.
+    ///
+    /// If `parse_lossy` is called with an empty string, then the
+    /// [default directive] is used instead.
+    ///
+    /// [default directive]: Self::with_default_directive
     pub fn parse_lossy<S: AsRef<str>>(&self, dirs: S) -> EnvFilter {
         let directives = dirs
             .as_ref()
@@ -150,6 +155,11 @@ impl Builder {
 
     /// Returns a new [`EnvFilter`] from the directives in the given string,
     /// or an error if any are invalid.
+    ///
+    /// If `parse` is called with an empty string, then the [default directive]
+    /// is used instead.
+    ///
+    /// [default directive]: Self::with_default_directive
     pub fn parse<S: AsRef<str>>(&self, dirs: S) -> Result<EnvFilter, directive::ParseError> {
         let dirs = dirs.as_ref();
         if dirs.is_empty() {
@@ -165,6 +175,11 @@ impl Builder {
 
     /// Returns a new [`EnvFilter`] from the directives in the configured
     /// environment variable, ignoring any directives that are invalid.
+    ///
+    /// If the environment variable is empty, then the [default directive]
+    /// is used instead.
+    ///
+    /// [default directive]: Self::with_default_directive
     pub fn from_env_lossy(&self) -> EnvFilter {
         let var = env::var(self.env_var_name()).unwrap_or_default();
         self.parse_lossy(var)
@@ -174,6 +189,11 @@ impl Builder {
     /// environment variable. If the environment variable is unset, no directive is added.
     ///
     /// An error is returned if the environment contains invalid directives.
+    ///
+    /// If the environment variable is empty, then the [default directive]
+    /// is used instead.
+    ///
+    /// [default directive]: Self::with_default_directive
     pub fn from_env(&self) -> Result<EnvFilter, FromEnvError> {
         let var = env::var(self.env_var_name()).unwrap_or_default();
         self.parse(var).map_err(Into::into)
@@ -182,6 +202,11 @@ impl Builder {
     /// Returns a new [`EnvFilter`] from the directives in the configured
     /// environment variable, or an error if the environment variable is not set
     /// or contains invalid directives.
+    ///
+    /// If the environment variable is empty, then the [default directive]
+    /// is used instead.
+    ///
+    /// [default directive]: Self::with_default_directive
     pub fn try_from_env(&self) -> Result<EnvFilter, FromEnvError> {
         let var = env::var(self.env_var_name())?;
         self.parse(var).map_err(Into::into)

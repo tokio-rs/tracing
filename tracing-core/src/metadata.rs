@@ -1,10 +1,12 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use core::{
-    cmp, fmt,
-    str::FromStr,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use core::{cmp, fmt, str::FromStr, sync::atomic::Ordering};
+
+#[cfg(feature = "portable-atomic")]
+use portable_atomic::AtomicUsize;
+
+#[cfg(not(feature = "portable-atomic"))]
+use core::sync::atomic::AtomicUsize;
 
 /// Metadata describing a [span] or [event].
 ///

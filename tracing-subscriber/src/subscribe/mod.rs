@@ -570,9 +570,9 @@
 //!
 //! Consider the following:
 //! - `subscriber_a` and `subscriber_b`, which should only receive spans and events at
-//!    the [`INFO`] [level] and above.
+//!   the [`INFO`] [level] and above.
 //! - A third subscriber, `subscriber_c`, which should receive spans and events at
-//!    the [`DEBUG`] [level] as well.
+//!   the [`DEBUG`] [level] as well.
 //!
 //! The subscribers and filters would be composed thusly:
 //!
