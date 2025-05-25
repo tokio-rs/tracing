@@ -370,7 +370,7 @@ pub fn daily(
     RollingFileAppender::new(Rotation::DAILY, directory, file_name_prefix)
 }
 
-/// Creates a weekly-rotating file appender. The logs will rotate at the start of every Sunday.
+/// Creates a weekly-rotating file appender. The logs will rotate every Sunday at midnight UTC.
 ///
 /// The appender returned by `rolling::weekly` can be used with `non_blocking` to create
 /// a non-blocking, weekly file appender.
@@ -499,7 +499,7 @@ impl Rotation {
     pub const HOURLY: Self = Self(RotationKind::Hourly);
     /// Provides a daily rotation.
     pub const DAILY: Self = Self(RotationKind::Daily);
-    /// Provides a weekly rotation that rotates at the start of every Sunday.
+    /// Provides a weekly rotation that rotates every Sunday at midnight UTC.
     pub const WEEKLY: Self = Self(RotationKind::Weekly);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
