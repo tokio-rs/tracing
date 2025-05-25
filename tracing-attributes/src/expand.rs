@@ -10,9 +10,8 @@ use syn::{
     Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
-use crate::attr::FieldName;
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
