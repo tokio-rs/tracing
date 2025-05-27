@@ -602,8 +602,8 @@ impl Inner {
                     return None;
                 }
 
-                let created = metadata.created().ok()?;
-                Some((entry, created))
+                let modified = metadata.modified().ok()?;
+                Some((entry, modified))
             })
             .collect::<Vec<_>>()
         });
@@ -619,8 +619,8 @@ impl Inner {
             return;
         }
 
-        // sort the files by their creation timestamps.
-        files.sort_by_key(|(_, created_at)| *created_at);
+        // sort the files by their modification timestamps.
+        files.sort_by_key(|(_, modified_at)| *modified_at);
 
         // delete files, so that (n-1) files remain, because we will create another log file
         for (file, _) in files.iter().take(files.len() - (max_files - 1)) {
