@@ -20,14 +20,14 @@ categories = [
     "asynchronous",
 ]
 keywords = ["logging", "tracing", "metrics", "subscriber"]
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 
 [features]
 
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
 alloc = []
 std = ["alloc", "tracing-core/std"]
-env-filter = ["matchers", "once_cell", "tracing", "std", "thread_local"]
+env-filter = ["matchers", "once_cell", "tracing", "std", "thread_local", "dep:regex-automata"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
@@ -45,7 +45,9 @@ tracing-core = { path = "../tracing-core", version = "0.1.33", default-features 
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1.41", default-features = false }
-matchers = { optional = true, version = "0.1.0" }
+matchers = { optional = true, version = "0.2.0" }
+# required to have matchers::BuildError implement std::error::Error
+regex-automata = { optional = true, version = "0.4", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1.9.0" }
 once_cell = { optional = true, version = "1.13.0" }
 
