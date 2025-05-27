@@ -4,8 +4,6 @@ use crate::filter::{
     env::{field, FieldMap},
     level::LevelFilter,
 };
-use once_cell::sync::Lazy;
-use regex::Regex;
 use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
@@ -120,99 +118,122 @@ impl Directive {
     }
 
     pub(super) fn parse(from: &str, regex: bool) -> Result<Self, ParseError> {
-        static DIRECTIVE_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(
-                r"(?x)
-            ^(?P<global_level>(?i:trace|debug|info|warn|error|off|[0-5]))$ |
-                #                 ^^^.
-                #                     `note: we match log level names case-insensitively
-            ^
-            (?: # target name or span name
-                (?P<target>[\w:-]+)|(?P<span>\[[^\]]*\])
-            ){1,2}
-            (?: # level or nothing
-                =(?P<level>(?i:trace|debug|info|warn|error|off|[0-5]))?
-                    #          ^^^.
-                    #              `note: we match log level names case-insensitively
-            )?
-            $
-            ",
-            )
-            .unwrap()
-        });
-        static SPAN_PART_RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?P<name>[^\]\{]+)?(?:\{(?P<fields>[^\}]*)\})?").unwrap());
-        static FIELD_FILTER_RE: Lazy<Regex> =
-            // TODO(eliza): this doesn't _currently_ handle value matchers that include comma
-            // characters. We should fix that.
-            Lazy::new(|| {
-                Regex::new(
-                    r"(?x)
-                (
-                    # field name
-                    [[:word:]][[[:word:]]\.]*
-                    # value part (optional)
-                    (?:=[^,]+)?
-                )
-                # trailing comma or EOS
-                (?:,\s?|$)
-            ",
-                )
-                .unwrap()
-            });
+        let mut cur = Self {
+            level: LevelFilter::TRACE,
+            target: None,
+            in_span: None,
+            fields: Vec::new(),
+        };
 
-        let caps = DIRECTIVE_RE.captures(from).ok_or_else(ParseError::new)?;
-
-        if let Some(level) = caps
-            .name("global_level")
-            .and_then(|s| s.as_str().parse().ok())
-        {
-            return Ok(Directive {
-                level,
-                ..Default::default()
-            });
+        #[derive(Debug)]
+        enum ParseState {
+            Start,
+            LevelOrTarget { start: usize },
+            Span { span_start: usize },
+            Field { field_start: usize },
+            Fields,
+            Target,
+            Level { level_start: usize },
+            Complete,
         }
 
-        let target = caps.name("target").and_then(|c| {
-            let s = c.as_str();
-            if s.parse::<LevelFilter>().is_ok() {
-                None
-            } else {
-                Some(s.to_owned())
+        use ParseState::*;
+        let mut state = Start;
+        for (i, c) in from.trim().char_indices() {
+            state = match (state, c) {
+                (Start, '[') => Span { span_start: i + 1 },
+                (Start, c) if !['-', ':', '_'].contains(&c) && !c.is_alphanumeric() => {
+                    return Err(ParseError::new())
+                }
+                (Start, _) => LevelOrTarget { start: i },
+                (LevelOrTarget { start }, '=') => {
+                    cur.target = Some(from[start..i].to_owned());
+                    Level { level_start: i + 1 }
+                }
+                (LevelOrTarget { start }, '[') => {
+                    cur.target = Some(from[start..i].to_owned());
+                    Span { span_start: i + 1 }
+                }
+                (LevelOrTarget { start }, ',') => {
+                    let (level, target) = match &from[start..] {
+                        "" => (LevelFilter::TRACE, None),
+                        level_or_target => match LevelFilter::from_str(level_or_target) {
+                            Ok(level) => (level, None),
+                            Err(_) => (LevelFilter::TRACE, Some(level_or_target.to_owned())),
+                        },
+                    };
+
+                    cur.level = level;
+                    cur.target = target;
+                    Complete
+                }
+                (state @ LevelOrTarget { .. }, _) => state,
+                (Target, '=') => Level { level_start: i + 1 },
+                (Span { span_start }, ']') => {
+                    cur.in_span = Some(from[span_start..i].to_owned());
+                    Target
+                }
+                (Span { span_start }, '{') => {
+                    cur.in_span = match &from[span_start..i] {
+                        "" => None,
+                        _ => Some(from[span_start..i].to_owned()),
+                    };
+                    Field { field_start: i + 1 }
+                }
+                (state @ Span { .. }, _) => state,
+                (Field { field_start }, '}') => {
+                    cur.fields.push(match &from[field_start..i] {
+                        "" => return Err(ParseError::new()),
+                        field => field::Match::parse(field, regex)?,
+                    });
+                    Fields
+                }
+                (Field { field_start }, ',') => {
+                    cur.fields.push(match &from[field_start..i] {
+                        "" => return Err(ParseError::new()),
+                        field => field::Match::parse(field, regex)?,
+                    });
+                    Field { field_start: i + 1 }
+                }
+                (state @ Field { .. }, _) => state,
+                (Fields, ']') => Target,
+                (Level { level_start }, ',') => {
+                    cur.level = match &from[level_start..i] {
+                        "" => LevelFilter::TRACE,
+                        level => LevelFilter::from_str(level)?,
+                    };
+                    Complete
+                }
+                (state @ Level { .. }, _) => state,
+                _ => return Err(ParseError::new()),
+            };
+        }
+
+        match state {
+            LevelOrTarget { start } => {
+                let (level, target) = match &from[start..] {
+                    "" => (LevelFilter::TRACE, None),
+                    level_or_target => match LevelFilter::from_str(level_or_target) {
+                        Ok(level) => (level, None),
+                        // Setting the target without the level enables every level for that target
+                        Err(_) => (LevelFilter::TRACE, Some(level_or_target.to_owned())),
+                    },
+                };
+
+                cur.level = level;
+                cur.target = target;
             }
-        });
+            Level { level_start } => {
+                cur.level = match &from[level_start..] {
+                    "" => LevelFilter::TRACE,
+                    level => LevelFilter::from_str(level)?,
+                };
+            }
+            Target | Complete => {}
+            _ => return Err(ParseError::new()),
+        };
 
-        let (in_span, fields) = caps
-            .name("span")
-            .and_then(|cap| {
-                let cap = cap.as_str().trim_matches(|c| c == '[' || c == ']');
-                let caps = SPAN_PART_RE.captures(cap)?;
-                let span = caps.name("name").map(|c| c.as_str().to_owned());
-                let fields = caps
-                    .name("fields")
-                    .map(|c| {
-                        FIELD_FILTER_RE
-                            .find_iter(c.as_str())
-                            .map(|c| field::Match::parse(c.as_str(), regex))
-                            .collect::<Result<Vec<_>, _>>()
-                    })
-                    .unwrap_or_else(|| Ok(Vec::new()));
-                Some((span, fields))
-            })
-            .unwrap_or_else(|| (None, Ok(Vec::new())));
-
-        let level = caps
-            .name("level")
-            .and_then(|l| l.as_str().parse().ok())
-            // Setting the target without the level enables every level for that target
-            .unwrap_or(LevelFilter::TRACE);
-
-        Ok(Self {
-            level,
-            target,
-            in_span,
-            fields: fields?,
-        })
+        Ok(cur)
     }
 }
 

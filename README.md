@@ -254,7 +254,7 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -398,7 +398,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
-- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
