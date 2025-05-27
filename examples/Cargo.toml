@@ -3,7 +3,7 @@ name = "tracing-examples"
 version = "0.0.0"
 publish = false
 edition = "2018"
-rust-version = "1.63.0"
+rust-version = "1.64.0"
 
 [features]
 default = []
@@ -11,14 +11,14 @@ default = []
 [dev-dependencies]
 
 # tracing crates
-tracing = { path = "../tracing", version = "0.2"}
-tracing-core = { path = "../tracing-core", version = "0.2"}
+tracing = { path = "../tracing", version = "0.2" }
+tracing-core = { path = "../tracing-core", version = "0.2" }
 tracing-error = { path = "../tracing-error" }
 tracing-flame = { path = "../tracing-flame" }
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3", features = ["json", "env-filter"] }
 tracing-futures = { version = "0.3", path = "../tracing-futures", features = ["futures-01"] }
-tracing-attributes =  { path = "../tracing-attributes", version = "0.2"}
+tracing-attributes = { path = "../tracing-attributes", version = "0.2" }
 tracing-log = { path = "../tracing-log", version = "0.2", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
 tracing-appender = { path = "../tracing-appender" }
@@ -50,3 +50,12 @@ tempfile = "3.3.0"
 # fmt examples
 snafu = "0.6.10"
 thiserror = "1.0.31"
+
+# env-filter-explorer example
+ansi-to-tui = "7.0.0"
+ratatui = "0.29.0"
+crossterm = "0.28.1"
+tui-textarea = "0.7.0"
+
+[lints]
+workspace = true

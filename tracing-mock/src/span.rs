@@ -18,8 +18,8 @@
 //!     .at_level(tracing::Level::INFO);
 //!
 //! let (collector, handle) = collector::mock()
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::collect::with_default(collector, || {
@@ -30,6 +30,25 @@
 //! handle.assert_finished();
 //! ```
 //!
+//! Instead of passing an `ExpectedSpan`, the collector methods will also accept
+//! anything that implements `Into<String>` which is shorthand for
+//! `expect::span().named(name)`.
+//!
+//! ```
+//! use tracing_mock::collector;
+//!
+//! let (collector, handle) = collector::mock()
+//!     .enter("interesting_span")
+//!     .run_with_handle();
+//!
+//! tracing::collect::with_default(collector, || {
+//!    let span = tracing::info_span!("interesting_span");
+//!     let _guard = span.enter();
+//! });
+//!
+//! handle.assert_finished();
+//! ```
+//
 //! The following example asserts the name, level, parent, and fields of the span:
 //!
 //! ```
@@ -44,10 +63,10 @@
 //!     .with_ancestry(expect::has_explicit_parent("parent_span"));
 //!
 //! let (collector, handle) = collector::mock()
-//!     .new_span(expect::span().named("parent_span"))
+//!     .new_span("parent_span")
 //!     .new_span(new_span)
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::collect::with_default(collector, || {
@@ -75,8 +94,8 @@
 //!     .at_level(tracing::Level::INFO);
 //!
 //! let (collector, handle) = collector::mock()
-//!     .enter(span.clone())
-//!     .exit(span)
+//!     .enter(&span)
+//!     .exit(&span)
 //!     .run_with_handle();
 //!
 //! tracing::collect::with_default(collector, || {
@@ -90,17 +109,18 @@
 //! [`MockCollector`]: struct@crate::collector::MockCollector
 //! [`collector`]: mod@crate::collector
 //! [`expect::span`]: fn@crate::expect::span
-#![allow(missing_docs)]
-use crate::{
-    ancestry::Ancestry, collector::SpanState, expect, field::ExpectedFields,
-    metadata::ExpectedMetadata,
-};
 use std::{
     error, fmt,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
+};
+
+use crate::{
+    ancestry::{ActualAncestry, ExpectedAncestry},
+    field::ExpectedFields,
+    metadata::ExpectedMetadata,
 };
 
 /// A mock span.
@@ -113,6 +133,27 @@ use std::{
 pub struct ExpectedSpan {
     pub(crate) id: Option<ExpectedId>,
     pub(crate) metadata: ExpectedMetadata,
+}
+
+impl<I> From<I> for ExpectedSpan
+where
+    I: Into<String>,
+{
+    fn from(name: I) -> Self {
+        ExpectedSpan::default().named(name)
+    }
+}
+
+impl From<&ExpectedId> for ExpectedSpan {
+    fn from(id: &ExpectedId) -> Self {
+        ExpectedSpan::default().with_id(id.clone())
+    }
+}
+
+impl From<&ExpectedSpan> for ExpectedSpan {
+    fn from(span: &ExpectedSpan) -> Self {
+        span.clone()
+    }
 }
 
 /// A mock new span.
@@ -135,14 +176,37 @@ pub struct ExpectedSpan {
 pub struct NewSpan {
     pub(crate) span: ExpectedSpan,
     pub(crate) fields: ExpectedFields,
-    pub(crate) ancestry: Option<Ancestry>,
+    pub(crate) ancestry: Option<ExpectedAncestry>,
 }
 
-pub fn named<I>(name: I) -> ExpectedSpan
-where
-    I: Into<String>,
-{
-    expect::span().named(name)
+pub(crate) struct ActualSpan {
+    id: tracing_core::span::Id,
+    metadata: Option<&'static tracing_core::Metadata<'static>>,
+}
+
+impl ActualSpan {
+    pub(crate) fn new(
+        id: tracing_core::span::Id,
+        metadata: Option<&'static tracing_core::Metadata<'static>>,
+    ) -> Self {
+        Self { id, metadata }
+    }
+
+    /// The Id of the actual span.
+    pub(crate) fn id(&self) -> tracing_core::span::Id {
+        self.id.clone()
+    }
+
+    /// The metadata for the actual span if it is available.
+    pub(crate) fn metadata(&self) -> Option<&'static tracing_core::Metadata<'static>> {
+        self.metadata
+    }
+}
+
+impl From<&tracing_core::span::Id> for ActualSpan {
+    fn from(id: &tracing_core::span::Id) -> Self {
+        Self::new(id.clone(), None)
+    }
 }
 
 /// A mock span ID.
@@ -166,7 +230,8 @@ pub struct ExpectedId {
 impl ExpectedSpan {
     /// Sets a name to expect when matching a span.
     ///
-    /// If an event is recorded with a name that differs from the one provided to this method, the expectation will fail.
+    /// If an event is recorded with a name that differs from the one provided to this method, the
+    /// expectation will fail.
     ///
     /// # Examples
     ///
@@ -177,6 +242,25 @@ impl ExpectedSpan {
     ///
     /// let (collector, handle) = collector::mock()
     ///     .enter(span)
+    ///     .run_with_handle();
+    ///
+    /// tracing::collect::with_default(collector, || {
+    ///     let span = tracing::info_span!("span name");
+    ///     let _guard = span.enter();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// If only the name of the span needs to be validated, then
+    /// instead of using the `named` method, a string can be passed
+    /// to the [`MockCollector`] functions directly.
+    ///
+    /// ```
+    /// use tracing_mock::collector;
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .enter("span name")
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -205,6 +289,8 @@ impl ExpectedSpan {
     ///
     /// handle.assert_finished();
     /// ```
+    ///
+    /// [`MockCollector`]: struct@crate::collector::MockCollector
     pub fn named<I>(self, name: I) -> Self
     where
         I: Into<String>,
@@ -247,10 +333,41 @@ impl ExpectedSpan {
     /// let span2 = expect::span().named("span").with_id(id2.clone());
     ///
     /// let (collector, handle) = collector::mock()
-    ///     .new_span(span1.clone())
-    ///     .new_span(span2.clone())
-    ///     .enter(span2)
-    ///     .enter(span1)
+    ///     .new_span(&span1)
+    ///     .new_span(&span2)
+    ///     .enter(&span2)
+    ///     .enter(&span1)
+    ///     .run_with_handle();
+    ///
+    /// tracing::collect::with_default(collector, || {
+    ///     fn create_span() -> tracing::Span {
+    ///         tracing::info_span!("span")
+    ///     }
+    ///
+    ///     let span1 = create_span();
+    ///     let span2 = create_span();
+    ///
+    ///     let _guard2 = span2.enter();
+    ///     let _guard1 = span1.enter();
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// Since `ExpectedId` implements `Into<ExpectedSpan>`, in cases where
+    /// only checking on Id is desired, a shorthand version of the previous
+    /// example can be used.
+    ///
+    /// ```
+    /// use tracing_mock::{collector, expect};
+    /// let id1 = expect::id();
+    /// let id2 = expect::id();
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .new_span(&id1)
+    ///     .new_span(&id2)
+    ///     .enter(&id2)
+    ///     .enter(&id1)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -279,10 +396,10 @@ impl ExpectedSpan {
     /// let span2 = expect::span().named("span").with_id(id2.clone());
     ///
     /// let (collector, handle) = collector::mock()
-    ///     .new_span(span1.clone())
-    ///     .new_span(span2.clone())
-    ///     .enter(span2)
-    ///     .enter(span1)
+    ///     .new_span(&span1)
+    ///     .new_span(&span2)
+    ///     .enter(&span2)
+    ///     .enter(&span1)
     ///     .run_with_handle();
     ///
     /// tracing::collect::with_default(collector, || {
@@ -422,9 +539,10 @@ impl ExpectedSpan {
         }
     }
 
-    /// Configures this `ExpectedSpan` to expect the specified [`Ancestry`]. A
-    /// span's ancestry indicates whether it has a parent or is a root span
-    /// and whether the parent is explitly or contextually assigned.
+    /// Configures this `ExpectedSpan` to expect the specified
+    /// [`ExpectedAncestry`]. A span's ancestry indicates whether it has a
+    /// parent or is a root span and whether the parent is explitly or
+    /// contextually assigned.
     ///
     /// **Note**: This method returns a [`NewSpan`] and as such, this
     /// expectation can only be validated when expecting a new span via
@@ -442,9 +560,35 @@ impl ExpectedSpan {
     ///
     /// # Examples
     ///
-    /// If `expect::has_explicit_parent("parent_name")` is passed
-    /// `with_ancestry` then the provided string is the name of the explicit
-    /// parent span to expect.
+    /// An explicit or contextual parent can be matched on an `ExpectedSpan`.
+    ///
+    /// ```
+    /// use tracing_mock::{collector, expect};
+    ///
+    /// let parent = expect::span()
+    ///     .named("parent_span")
+    ///     .with_target("custom-target")
+    ///     .at_level(tracing::Level::INFO);
+    /// let span = expect::span()
+    ///     .with_ancestry(expect::has_explicit_parent(&parent));
+    ///
+    /// let (collector, handle) = collector::mock()
+    ///     .new_span(&parent)
+    ///     .new_span(span)
+    ///     .run_with_handle();
+    ///
+    /// tracing::collect::with_default(collector, || {
+    ///     let parent = tracing::info_span!(target: "custom-target", "parent_span");
+    ///     tracing::info_span!(parent: parent.id(), "span");
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// The functions `expect::has_explicit_parent` and
+    /// `expect::has_contextual_parent` take `Into<ExpectedSpan>`, so a string
+    /// passed directly will match on a span with that name, or an
+    /// [`ExpectedId`] can be passed to match a span with that Id.
     ///
     /// ```
     /// use tracing_mock::{collector, expect};
@@ -496,8 +640,8 @@ impl ExpectedSpan {
     ///     .with_ancestry(expect::has_contextual_parent("parent_span"));
     ///
     /// let (collector, handle) = collector::mock()
-    ///     .new_span(parent_span.clone())
-    ///     .enter(parent_span)
+    ///     .new_span(&parent_span)
+    ///     .enter(&parent_span)
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
@@ -542,8 +686,8 @@ impl ExpectedSpan {
     ///     .with_ancestry(expect::has_explicit_parent("parent_span"));
     ///
     /// let (collector, handle) = collector::mock()
-    ///     .new_span(parent_span.clone())
-    ///     .enter(parent_span)
+    ///     .new_span(&parent_span)
+    ///     .enter(&parent_span)
     ///     .new_span(span)
     ///     .run_with_handle();
     ///
@@ -560,7 +704,7 @@ impl ExpectedSpan {
     /// [`MockCollector::enter`]: fn@crate::collector::MockCollector::enter
     /// [`MockCollector::exit`]: fn@crate::collector::MockCollector::exit
     /// [`MockCollector::new_span`]: fn@crate::collector::MockCollector::new_span
-    pub fn with_ancestry(self, ancestry: Ancestry) -> NewSpan {
+    pub fn with_ancestry(self, ancestry: ExpectedAncestry) -> NewSpan {
         NewSpan {
             ancestry: Some(ancestry),
             span: self,
@@ -640,6 +784,10 @@ impl ExpectedSpan {
         }
     }
 
+    pub(crate) fn id(&self) -> Option<&ExpectedId> {
+        self.id.as_ref()
+    }
+
     pub(crate) fn name(&self) -> Option<&str> {
         self.metadata.name.as_ref().map(String::as_ref)
     }
@@ -652,22 +800,36 @@ impl ExpectedSpan {
         self.metadata.target.as_deref()
     }
 
-    pub(crate) fn check(&self, actual: &SpanState, collector_name: &str) {
-        let meta = actual.metadata();
-        let name = meta.name();
-
+    pub(crate) fn check(&self, actual: &ActualSpan, ctx: impl fmt::Display, collector_name: &str) {
         if let Some(expected_id) = &self.id {
-            expected_id.check(actual.id(), format_args!("span `{}`", name), collector_name);
+            expected_id.check(&actual.id(), format_args!("{ctx} a span"), collector_name);
         }
 
-        self.metadata
-            .check(meta, format_args!("span `{}`", name), collector_name);
+        match actual.metadata() {
+            Some(actual_metadata) => self.metadata.check(actual_metadata, ctx, collector_name),
+            None => {
+                if self.metadata.has_expectations() {
+                    panic!(
+                        "{}",
+                        format_args!(
+                            "[{collector_name}] expected {ctx} a span with valid metadata, \
+                            but got one with unknown Id={actual_id}",
+                            actual_id = actual.id().into_u64()
+                        )
+                    );
+                }
+            }
+        }
     }
 }
 
 impl fmt::Debug for ExpectedSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("MockSpan");
+
+        if let Some(id) = self.id() {
+            s.field("id", &id);
+        }
 
         if let Some(name) = self.name() {
             s.field("name", &name);
@@ -695,23 +857,26 @@ impl fmt::Display for ExpectedSpan {
     }
 }
 
-impl From<ExpectedSpan> for NewSpan {
-    fn from(span: ExpectedSpan) -> Self {
+impl<S> From<S> for NewSpan
+where
+    S: Into<ExpectedSpan>,
+{
+    fn from(span: S) -> Self {
         Self {
-            span,
+            span: span.into(),
             ..Default::default()
         }
     }
 }
 
 impl NewSpan {
-    /// Configures this `NewSpan` to expect the specified [`Ancestry`]. A
-    /// span's ancestry indicates whether it has a parent or is a root span
+    /// Configures this `NewSpan` to expect the specified [`ExpectedAncestry`].
+    /// A span's ancestry indicates whether it has a parent or is a root span
     /// and whether the parent is explitly or contextually assigned.
     ///
     /// For more information and examples, see the documentation on
     /// [`ExpectedSpan::with_ancestry`].
-    pub fn with_ancestry(self, ancestry: Ancestry) -> NewSpan {
+    pub fn with_ancestry(self, ancestry: ExpectedAncestry) -> NewSpan {
         NewSpan {
             ancestry: Some(ancestry),
             ..self
@@ -737,14 +902,12 @@ impl NewSpan {
     pub(crate) fn check(
         &mut self,
         span: &tracing_core::span::Attributes<'_>,
-        get_ancestry: impl FnOnce() -> Ancestry,
+        get_ancestry: impl FnOnce() -> ActualAncestry,
         collector_name: &str,
     ) {
         let meta = span.metadata();
         let name = meta.name();
-        self.span
-            .metadata
-            .check(meta, format_args!("span `{}`", name), collector_name);
+        self.span.metadata.check(meta, "a new span", collector_name);
         let mut checker = self.fields.checker(name, collector_name);
         span.record(&mut checker);
         checker.finish();
@@ -806,6 +969,12 @@ impl PartialEq for ExpectedId {
 
 impl Eq for ExpectedId {}
 
+impl fmt::Debug for ExpectedId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ExpectedId").field(&self.inner).finish()
+    }
+}
+
 impl ExpectedId {
     const UNSET: u64 = 0;
 
@@ -825,21 +994,33 @@ impl ExpectedId {
         Ok(())
     }
 
-    pub(crate) fn check(&self, actual: u64, ctx: fmt::Arguments<'_>, collector_name: &str) {
-        let id = self.inner.load(Ordering::Relaxed);
+    pub(crate) fn check(
+        &self,
+        actual: &tracing_core::span::Id,
+        ctx: fmt::Arguments<'_>,
+        collector_name: &str,
+    ) {
+        let expected_id = self.inner.load(Ordering::Relaxed);
+        let actual_id = actual.into_u64();
 
         assert!(
-            id != Self::UNSET,
-            "\n[{}] expected {} to have expected ID set, but it hasn't been, \
-            perhaps this `ExpectedId` wasn't used in a call to `MockCollector::new_span()`?",
-            collector_name,
-            ctx,
+            expected_id != Self::UNSET,
+            "{}",
+            format!(
+                "\n[{collector_name}] expected {ctx} with an expected Id set,\n\
+                [{collector_name}] but it hasn't been, perhaps this `ExpectedId` \
+                wasn't used in a call to `new_span()`?"
+            )
         );
 
         assert_eq!(
-            id, actual,
-            "\n[{}] expected {} to have ID `{}`, but it has `{}` instead",
-            collector_name, ctx, id, actual,
+            expected_id,
+            actual_id,
+            "{}",
+            format_args!(
+                "\n[{collector_name}] expected {ctx} with Id `{expected_id}`,\n\
+                [{collector_name}] but got one with Id `{actual_id}` instead",
+            )
         );
     }
 }

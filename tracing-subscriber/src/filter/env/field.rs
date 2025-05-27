@@ -234,7 +234,8 @@ impl ValueMatch {
     /// This returns an error if the string didn't contain a valid `bool`,
     /// `u64`, `i64`, or `f64` literal, and couldn't be parsed as a regular
     /// expression.
-    fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
+    #[allow(clippy::result_large_err)]
+    fn parse_regex(s: &str) -> Result<Self, matchers::BuildError> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
@@ -279,7 +280,7 @@ impl fmt::Display for ValueMatch {
 // === impl MatchPattern ===
 
 impl FromStr for MatchPattern {
-    type Err = matchers::Error;
+    type Err = matchers::BuildError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let matcher = Pattern::new_anchored(s)?;
         Ok(Self {
@@ -500,7 +501,7 @@ impl SpanMatch {
     }
 }
 
-impl<'a> Visit for MatchVisitor<'a> {
+impl Visit for MatchVisitor<'_> {
     fn record_f64(&mut self, field: &Field, value: f64) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {

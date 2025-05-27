@@ -85,7 +85,7 @@ fn message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(expect::message(format_args!(
+                    .and(expect::msg(format_args!(
                         "hello from my event! tricky? {:?}!",
                         true
                     )))
@@ -114,7 +114,7 @@ fn string_message_without_delims() {
                     .and(
                         expect::field("question").with_value(&"life, the universe, and everything"),
                     )
-                    .and(expect::message(format_args!("hello from my event")))
+                    .and(expect::msg(format_args!("hello from my event")))
                     .only(),
             ),
         )
@@ -507,5 +507,17 @@ fn keyword_ident_in_field_name() {
         .run_with_handle();
 
     with_default(collector, || error!(crate = "tracing", "message"));
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn raw_ident_in_field_name() {
+    let (collector, handle) = collector::mock()
+        .event(expect::event().with_fields(expect::field("this.type").with_value(&"Value")))
+        .only()
+        .run_with_handle();
+
+    with_default(collector, || error!(this.r#type = "Value"));
     handle.assert_finished();
 }
