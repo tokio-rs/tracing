@@ -494,8 +494,10 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
 ///
 /// `TestWriter` is used by [`fmt::Subscriber`] or [`fmt::Layer`] to enable capturing support.
 ///
-/// `cargo test` can only capture output from the standard library's [`print!`] macro. See
-/// [`libtest`'s output capturing][capturing] for more details about output capturing.
+/// `cargo test` can only capture output from the standard library's [`print!`] and [`eprint!`]
+/// macros. See [`libtest`'s output capturing][capturing] and
+/// [rust-lang/rust#90785](https://github.com/rust-lang/rust/issues/90785) for more details about
+/// output capturing.
 ///
 /// Writing to [`io::stdout`] and [`io::stderr`] produces the same results as using
 /// [`libtest`'s `--nocapture` option][nocapture] which may make the results look unreadable.
@@ -509,7 +511,9 @@ pub trait MakeWriterExt<'a>: MakeWriter<'a> {
 /// [`print!`]: std::print!
 #[derive(Default, Debug)]
 pub struct TestWriter {
-    _p: (),
+    /// Whether or not to use `stderr` instead of the default `stdout` as
+    /// the underlying stream to write to.
+    use_stderr: bool,
 }
 
 /// A writer that erases the specific [`io::Write`] and [`MakeWriter`] types being used.
@@ -708,12 +712,23 @@ impl TestWriter {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Returns a new `TestWriter` that writes to `stderr` instead of `stdout`.
+    pub fn with_stderr() -> Self {
+        Self {
+            use_stderr: true,
+        }
+    }
 }
 
 impl io::Write for TestWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let out_str = String::from_utf8_lossy(buf);
-        print!("{}", out_str);
+        if self.use_stderr {
+            eprint!("{}", out_str)
+        } else {
+            print!("{}", out_str)
+        }
         Ok(buf.len())
     }
 
