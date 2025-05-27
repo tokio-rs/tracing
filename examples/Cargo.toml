@@ -48,7 +48,7 @@ tempfile = "3"
 
 # fmt examples
 snafu = "0.6.10"
-thiserror = "1.0.31"
+thiserror = "2"
 
 # env-filter-explorer example
 ansi-to-tui = "7.0.0"
