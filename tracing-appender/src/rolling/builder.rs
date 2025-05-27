@@ -1,4 +1,4 @@
-use super::{RollingFileAppender, Rotation};
+use super::{Compression, RollingFileAppender, Rotation};
 use std::{io, path::Path};
 use thiserror::Error;
 
@@ -8,6 +8,7 @@ use thiserror::Error;
 #[derive(Debug)]
 pub struct Builder {
     pub(super) rotation: Rotation,
+    pub(super) compression: Compression,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
@@ -51,6 +52,7 @@ impl Builder {
     pub const fn new() -> Self {
         Self {
             rotation: Rotation::NEVER,
+            compression: Compression::None,
             prefix: None,
             suffix: None,
             max_files: None,
@@ -81,6 +83,35 @@ impl Builder {
     #[must_use]
     pub fn rotation(self, rotation: Rotation) -> Self {
         Self { rotation, ..self }
+    }
+
+    /// Sets the [compression strategy] for log files.
+    ///
+    /// By default, this is [`Compression::None`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn docs() {
+    /// use tracing_appender::rolling::{Compression, RollingFileAppender};
+    ///
+    /// let appender = RollingFileAppender::builder()
+    ///     .compression(Compression::default()) // enabled by `gzip` or `brotli` feature flag
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    ///
+    /// # drop(appender)
+    /// # }
+    /// ```
+    ///
+    /// [compression strategy]: Compression
+    #[must_use]
+    pub fn compression(self, compression: Compression) -> Self {
+        Self {
+            compression,
+            ..self
+        }
     }
 
     /// Sets the prefix for log filenames. The prefix is output before the
