@@ -317,9 +317,11 @@ fn gen_block<B: ToTokens>(
 
         return quote!(
             let __tracing_attr_span = #span;
-            let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
                 #follows_from
+            }
+            let __tracing_instrument_future = #mk_fut;
+            if !__tracing_attr_span.is_disabled() {
                 tracing::Instrument::instrument(
                     __tracing_instrument_future,
                     __tracing_attr_span
