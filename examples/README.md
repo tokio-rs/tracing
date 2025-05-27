@@ -46,11 +46,11 @@ This directory contains a collection of examples that demonstrate the use of the
   + `futures-proxy-server`: Demonstrates the use of `tracing-futures` by
     implementing a simple proxy server, based on [this example][tokio-proxy]
     from `tokio`.
-  + `async_fn`: Demonstrates how asynchronous functions can be
+  + `async-fn`: Demonstrates how asynchronous functions can be
      instrumented.
   + `echo`: Demonstrates a `tracing`-instrumented variant of Tokio's `echo` example.
 - **tracing-flame**:
-  + `infero-flame`: Demonstrates the use of `tracing-flame` to generate a flamegraph
+  + `inferno-flame`: Demonstrates the use of `tracing-flame` to generate a flamegraph
      from spans.
 - **tracing-tower**:
   + `tower-client`: Demonstrates the use of `tracing-tower` to instrument a

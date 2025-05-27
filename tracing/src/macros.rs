@@ -131,6 +131,36 @@ macro_rules! span {
     };
 }
 
+/// Records multiple values on a span in a single call. As with recording
+/// individual values, all fields must be declared when the span is created.
+///
+/// This macro supports two optional sigils:
+/// - `%` uses the Display implementation.
+/// - `?` uses the Debug implementation.
+///
+/// For more details, see the [top-level documentation][lib].
+///
+/// [lib]: tracing/#recording-fields
+///
+/// # Examples
+///
+/// ```
+/// # use tracing::{field, info_span, record_all};
+/// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty, field3 = field::Empty).entered();
+/// record_all!(span, field1 = ?"1", field2 = %"2", field3 = 3);
+/// ```
+#[macro_export]
+macro_rules! record_all {
+    ($span:expr, $($fields:tt)*) => {
+        if let Some(meta) = $span.metadata() {
+            $span.record_all(&$crate::valueset!(
+                meta.fields(),
+                $($fields)*
+            ));
+        }
+    };
+}
+
 /// Constructs a span at the trace level.
 ///
 /// [Fields] and [attributes] are set using the same syntax as the [`span!`]
@@ -693,11 +723,11 @@ macro_rules! event {
     (target: $target:expr, parent: $parent:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: $crate::__macro_support::concat!(
                 "event ",
-                file!(),
+                $crate::__macro_support::file!(),
                 ":",
-                line!()
+                $crate::__macro_support::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -854,11 +884,11 @@ macro_rules! event {
     (target: $target:expr, $lvl:expr, { $($fields:tt)* } )=> ({
         use $crate::__macro_support::Callsite as _;
         static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-            name: concat!(
+            name: $crate::__macro_support::concat!(
                 "event ",
-                file!(),
+                $crate::__macro_support::file!(),
                 ":",
-                line!()
+                $crate::__macro_support::line!()
             ),
             kind: $crate::metadata::Kind::EVENT,
             target: $target,
@@ -1115,15 +1145,15 @@ macro_rules! span_enabled {
 /// in false positives or false negatives include:
 ///
 /// - If a collector is using a filter which may enable a span or event based
-/// on field names, but `enabled!` is invoked without listing field names,
-/// `enabled!` may return a false negative if a specific field name would
-/// cause the collector to enable something that would otherwise be disabled.
+///   on field names, but `enabled!` is invoked without listing field names,
+///   `enabled!` may return a false negative if a specific field name would
+///   cause the collector to enable something that would otherwise be disabled.
 /// - If a collector is using a filter which enables or disables specific events by
-/// file path and line number,  a particular event may be enabled/disabled
-/// even if an `enabled!` invocation with the same level, target, and fields
-/// indicated otherwise.
+///   file path and line number,  a particular event may be enabled/disabled
+///   even if an `enabled!` invocation with the same level, target, and fields
+///   indicated otherwise.
 /// - The collector can choose to enable _only_ spans or _only_ events, which `enabled`
-/// will not reflect.
+///   will not reflect.
 ///
 /// `enabled!()` requires a [level](crate::Level) argument, an optional `target:`
 /// argument, and an optional set of field names. If the fields are not provided,
@@ -1184,11 +1214,11 @@ macro_rules! enabled {
         if $crate::level_enabled!($lvl) {
             use $crate::__macro_support::Callsite as _;
             static __CALLSITE: $crate::__macro_support::MacroCallsite = $crate::callsite2! {
-                name: concat!(
+                name: $crate::__macro_support::concat!(
                     "enabled ",
-                    file!(),
+                    $crate::__macro_support::file!(),
                     ":",
-                    line!()
+                    $crate::__macro_support::line!()
                 ),
                 kind: $kind.hint(),
                 target: $target,
@@ -3069,9 +3099,12 @@ macro_rules! level_to_log {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
-    ($s:expr) => {
-        stringify!($s)
-    };
+    ($($k:ident).+) => {{
+        const NAME: $crate::__macro_support::FieldName<{
+            $crate::__macro_support::FieldName::len($crate::__macro_support::stringify!($($k).+))
+        }> = $crate::__macro_support::FieldName::new($crate::__macro_support::stringify!($($k).+));
+        NAME.as_str()
+    }};
 }
 
 #[cfg(not(feature = "log"))]

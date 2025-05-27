@@ -120,7 +120,7 @@ pub trait LookupSpan<'a> {
     /// should only implement `span_data`.
     ///
     /// [`span_data`]: LookupSpan::span_data()
-    fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
+    fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
     where
         Self: Sized,
     {
@@ -233,10 +233,13 @@ pub struct Scope<'a, R> {
 feature! {
     #![any(feature = "alloc", feature = "std")]
 
-    use alloc::{
-        boxed::Box,
-        sync::Arc
-    };
+    use alloc::boxed::Box;
+
+    #[cfg(feature = "portable-atomic")]
+    use portable_atomic_util::Arc;
+
+    #[cfg(not(feature = "portable-atomic"))]
+    use alloc::sync::Arc;
 
     #[cfg(not(feature = "smallvec"))]
     use alloc::vec::{self, Vec};
@@ -268,7 +271,7 @@ feature! {
             self.as_ref().span_data(id)
         }
 
-        fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
+        fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
         where
             Self: Sized,
         {
@@ -298,7 +301,7 @@ feature! {
             self.as_ref().span_data(id)
         }
 
-        fn span(&'a self, id: &Id) -> Option<SpanRef<'_, Self>>
+        fn span(&'a self, id: &Id) -> Option<SpanRef<'a, Self>>
         where
             Self: Sized,
         {
@@ -466,7 +469,6 @@ where
 
     /// Returns a `SpanRef` describing this span's parent, or `None` if this
     /// span is the root of its trace tree.
-
     pub fn parent(&self) -> Option<Self> {
         let id = self.data.parent()?;
         let data = self.registry.span_data(id)?;

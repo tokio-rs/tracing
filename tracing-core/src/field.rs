@@ -290,7 +290,7 @@ where
 
 struct HexBytes<'a>(&'a [u8]);
 
-impl<'a> fmt::Debug for HexBytes<'a> {
+impl fmt::Debug for HexBytes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_char('[')?;
 
@@ -310,13 +310,13 @@ impl<'a> fmt::Debug for HexBytes<'a> {
 
 // ===== impl Visit =====
 
-impl<'a, 'b> Visit for fmt::DebugStruct<'a, 'b> {
+impl Visit for fmt::DebugStruct<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.field(field.name(), value);
     }
 }
 
-impl<'a, 'b> Visit for fmt::DebugMap<'a, 'b> {
+impl Visit for fmt::DebugMap<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.entry(&format_args!("{}", field), value);
     }
@@ -544,9 +544,9 @@ where
     }
 }
 
-impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
+impl crate::sealed::Sealed for fmt::Arguments<'_> {}
 
-impl<'a> Value for fmt::Arguments<'a> {
+impl Value for fmt::Arguments<'_> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
     }
@@ -681,6 +681,11 @@ impl Field {
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
     }
+
+    /// Returns the index of this field in its [`FieldSet`].
+    pub fn index(&self) -> usize {
+        self.i
+    }
 }
 
 impl fmt::Display for Field {
@@ -813,7 +818,7 @@ impl FieldSet {
     }
 }
 
-impl<'a> IntoIterator for &'a FieldSet {
+impl IntoIterator for &FieldSet {
     type IntoIter = Iter;
     type Item = Field;
     #[inline]
@@ -892,7 +897,7 @@ impl Iterator for Iter {
 
 // ===== impl ValueSet =====
 
-impl<'a> ValueSet<'a> {
+impl ValueSet<'_> {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// defining the fields this `ValueSet` refers to.
     ///
@@ -953,7 +958,7 @@ impl<'a> ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ValueSet<'a> {
+impl fmt::Debug for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
@@ -968,7 +973,7 @@ impl<'a> fmt::Debug for ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Display for ValueSet<'a> {
+impl fmt::Display for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
@@ -999,9 +1004,8 @@ mod test {
     use crate::metadata::{Kind, Level, Metadata};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
-    #[allow(dead_code)]
-    struct TestCallsite1(u8);
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1(0);
+    struct TestCallsite1();
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1();
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -1021,9 +1025,8 @@ mod test {
         }
     }
 
-    #[allow(dead_code)]
-    struct TestCallsite2(u8);
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2(0);
+    struct TestCallsite2();
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2();
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
@@ -1053,6 +1056,17 @@ mod test {
         ];
         let valueset = fields.value_set(values);
         assert!(valueset.is_empty());
+    }
+
+    #[test]
+    fn index_of_field_in_fieldset_is_correct() {
+        let fields = TEST_META_1.fields();
+        let foo = fields.field("foo").unwrap();
+        assert_eq!(foo.index(), 0);
+        let bar = fields.field("bar").unwrap();
+        assert_eq!(bar.index(), 1);
+        let baz = fields.field("baz").unwrap();
+        assert_eq!(baz.index(), 2);
     }
 
     #[test]

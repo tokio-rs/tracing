@@ -92,7 +92,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     quote!(
         #(#outer_attrs) *
-        #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #output
+        #vis #constness #asyncness #unsafety #abi fn #ident<#gen_params>(#params) #output
         #where_clause
         {
             #(#inner_attrs) *
@@ -277,7 +277,8 @@ fn gen_block<B: ToTokens>(
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    match async move #block.await {
+                    let __match_scrutinee = async move #block.await;
+                    match  __match_scrutinee {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
                             #ret_event;
@@ -452,7 +453,7 @@ impl RecordType {
                 if path
                     .segments
                     .iter()
-                    .last()
+                    .next_back()
                     .map(|path_segment| {
                         let ident = path_segment.ident.to_string();
                         Self::TYPES_FOR_VALUE.iter().any(|&t| t == ident)
@@ -771,7 +772,7 @@ struct IdentAndTypesRenamer<'a> {
     idents: Vec<(Ident, Ident)>,
 }
 
-impl<'a> VisitMut for IdentAndTypesRenamer<'a> {
+impl VisitMut for IdentAndTypesRenamer<'_> {
     // we deliberately compare strings because we want to ignore the spans
     // If we apply clippy's lint, the behavior changes
     #[allow(clippy::cmp_owned)]
@@ -801,7 +802,7 @@ struct AsyncTraitBlockReplacer<'a> {
     patched_block: Block,
 }
 
-impl<'a> VisitMut for AsyncTraitBlockReplacer<'a> {
+impl VisitMut for AsyncTraitBlockReplacer<'_> {
     fn visit_block_mut(&mut self, i: &mut Block) {
         if i == self.block {
             *i = self.patched_block.clone();

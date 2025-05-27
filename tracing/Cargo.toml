@@ -2,10 +2,7 @@
 name = "tracing"
 # When releasing to crates.io:
 # - Remove path dependencies
-# - Update html_root_url.
-# - Update doc url
-#   - Cargo.toml
-#   - README.md
+# - Update doc url in README.md.
 # - Update CHANGELOG.md.
 # - Create "v0.2.x" git tag
 version = "0.2.0"
@@ -28,13 +25,14 @@ categories = [
 ]
 keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.2", default-features = false }
 log = { version = "0.4.17", optional = true }
 tracing-attributes = { path = "../tracing-attributes", version = "0.2", optional = true }
 pin-project-lite = "0.2.9"
+portable-atomic = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default-features = false }
@@ -63,9 +61,11 @@ release_max_level_debug = []
 release_max_level_trace = []
 
 alloc = ["tracing-core/alloc"]
-std = ["tracing-core/std", "alloc"]
+std = ["tracing-core/std", "alloc", "portable-atomic?/std"]
 log-always = ["log"]
 attributes = ["tracing-attributes"]
+portable-atomic = ["dep:portable-atomic", "tracing-core/portable-atomic"]
+critical-section = ["tracing-core/critical-section", "portable-atomic?/critical-section"]
 
 [[bench]]
 name = "baseline"
@@ -108,4 +108,11 @@ maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+# enable unstable features in the documentation
+rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
+# it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
+# dependencies will not be enabled, and the docs build will fail.
+rustc-args = ["--cfg", "tracing_unstable"]
+
+[lints]
+workspace = true

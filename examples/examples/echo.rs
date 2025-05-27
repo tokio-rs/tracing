@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! A "hello world" echo server [from Tokio][echo-example]
 //!
 //! This server will create a TCP listener, accept connections in a loop, and
