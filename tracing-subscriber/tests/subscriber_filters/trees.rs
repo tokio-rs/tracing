@@ -68,7 +68,7 @@ fn basic_trees() {
 #[test]
 fn filter_span_scopes() {
     fn target_subscriber(target: &'static str) -> (MockSubscriber, collector::MockHandle) {
-        subscriber::named(format!("target_{}", target))
+        subscriber::named(format!("target_{target}"))
             .enter(expect::span().with_target(target).at_level(Level::INFO))
             .event(
                 expect::event()

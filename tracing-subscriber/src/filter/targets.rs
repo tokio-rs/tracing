@@ -493,9 +493,9 @@ impl fmt::Display for Targets {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut directives = self.0.directives();
         if let Some(directive) = directives.next() {
-            write!(f, "{}", directive)?;
+            write!(f, "{directive}")?;
             for directive in directives {
-                write!(f, ",{}", directive)?;
+                write!(f, ",{directive}")?;
             }
         }
 
@@ -617,7 +617,7 @@ mod tests {
 
     fn expect_parse_ralith(s: &str) {
         let dirs = expect_parse(s).0.into_vec();
-        assert_eq!(dirs.len(), 2, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 2, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("server".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::DEBUG);
         assert_eq!(dirs[0].field_names, Vec::<String>::new());
@@ -629,7 +629,7 @@ mod tests {
 
     fn expect_parse_level_directives(s: &str) {
         let dirs = expect_parse(s).0.into_vec();
-        assert_eq!(dirs.len(), 6, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 6, "\nparsed: {dirs:#?}");
 
         assert_eq!(dirs[0].target, Some("crate3::mod2::mod1".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::OFF);
@@ -676,7 +676,7 @@ mod tests {
         let dirs = expect_parse("crate1::mod1=error,crate1::mod2,crate2=debug,crate3=off")
             .0
             .into_vec();
-        assert_eq!(dirs.len(), 4, "\nparsed: {:#?}", dirs);
+        assert_eq!(dirs.len(), 4, "\nparsed: {dirs:#?}");
         assert_eq!(dirs[0].target, Some("crate1::mod2".to_string()));
         assert_eq!(dirs[0].level, LevelFilter::TRACE);
         assert_eq!(dirs[0].field_names, Vec::<String>::new());

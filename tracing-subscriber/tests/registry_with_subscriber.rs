@@ -13,7 +13,7 @@ async fn future_with_subscriber() {
         async {
             async {
                 let span = tracing::Span::current();
-                println!("{:?}", span);
+                println!("{span:?}");
             }
             .instrument(tracing::info_span!("hi"))
             .await

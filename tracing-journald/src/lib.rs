@@ -37,6 +37,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
+#![warn(clippy::uninlined_format_args)]
 
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
@@ -385,7 +386,7 @@ impl Visit for SpanVisitor<'_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.put_span_prefix();
         put_field_length_encoded(self.buf, field.name(), |buf| {
-            write!(buf, "{:?}", value).unwrap()
+            write!(buf, "{value:?}").unwrap()
         });
     }
 }
@@ -424,7 +425,7 @@ impl Visit for EventVisitor<'_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {
-            write!(buf, "{:?}", value).unwrap()
+            write!(buf, "{value:?}").unwrap()
         });
     }
 }
@@ -547,21 +548,21 @@ impl Default for PriorityMappings {
 
 fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, prefix: Option<&str>) {
     if let Some(prefix) = prefix {
-        write!(buf, "{}", prefix).unwrap();
+        write!(buf, "{prefix}").unwrap();
     }
     put_field_wellformed(buf, "TARGET", meta.target().as_bytes());
     if let Some(file) = meta.file() {
         if let Some(prefix) = prefix {
-            write!(buf, "{}", prefix).unwrap();
+            write!(buf, "{prefix}").unwrap();
         }
         put_field_wellformed(buf, "CODE_FILE", file.as_bytes());
     }
     if let Some(line) = meta.line() {
         if let Some(prefix) = prefix {
-            write!(buf, "{}", prefix).unwrap();
+            write!(buf, "{prefix}").unwrap();
         }
         // Text format is safe as a line number can't possibly contain anything funny
-        writeln!(buf, "CODE_LINE={}", line).unwrap();
+        writeln!(buf, "CODE_LINE={line}").unwrap();
     }
 }
 

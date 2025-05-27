@@ -289,9 +289,9 @@ impl fmt::Display for StaticDirective {
 
             let mut fields = self.field_names.iter();
             if let Some(field) = fields.next() {
-                write!(f, "{{{}", field)?;
+                write!(f, "{{{field}")?;
                 for field in fields {
-                    write!(f, ",{}", field)?;
+                    write!(f, ",{field}")?;
                 }
                 f.write_str("}")?;
             }
@@ -407,10 +407,10 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
-            ParseErrorKind::Other(Some(msg)) => write!(f, "invalid filter directive: {}", msg),
+            ParseErrorKind::Other(Some(msg)) => write!(f, "invalid filter directive: {msg}"),
             ParseErrorKind::Level(ref l) => l.fmt(f),
             #[cfg(feature = "std")]
-            ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
+            ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {e}"),
         }
     }
 }

@@ -30,9 +30,9 @@ fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
 
     while let Some(err) = error {
         if let Some(spantrace) = err.span_trace() {
-            eprintln!("Span Backtrace:\n{}", spantrace);
+            eprintln!("Span Backtrace:\n{spantrace}");
         } else {
-            eprintln!("Error {}: {}", ind, err);
+            eprintln!("Error {ind}: {err}");
         }
 
         error = err.source();

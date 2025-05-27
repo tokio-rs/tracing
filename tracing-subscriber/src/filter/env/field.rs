@@ -181,7 +181,7 @@ impl fmt::Display for Match {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, f)?;
         if let Some(ref value) = self.value {
-            write!(f, "={}", value)?;
+            write!(f, "={value}")?;
         }
         Ok(())
     }
@@ -400,7 +400,7 @@ impl MatchDebug {
         // Try to "write" the value's `fmt::Debug` output to a `Matcher`. This
         // returns an error if the `fmt::Debug` implementation wrote any
         // characters that did not match the expected pattern.
-        write!(matcher, "{:?}", d).is_ok()
+        write!(matcher, "{d:?}").is_ok()
     }
 }
 
@@ -593,7 +593,7 @@ mod tests {
         let pattern = "MyStruct { answer: 42, question: \"life, the universe, and everything\" }";
 
         assert_eq!(
-            format!("{:?}", my_struct),
+            format!("{my_struct:?}"),
             pattern,
             "`MyStruct`'s `Debug` impl doesn't output the expected string"
         );
@@ -614,7 +614,7 @@ mod tests {
         let pattern = "MyStruct { answer: 42, question: \"life, the universe, and everything\" }";
 
         assert_eq!(
-            format!("{:?}", my_struct),
+            format!("{my_struct:?}"),
             "MyStruct { answer: 42, question: \"what shall we have for lunch?\" }",
             "`MyStruct`'s `Debug` impl doesn't output the expected string"
         );

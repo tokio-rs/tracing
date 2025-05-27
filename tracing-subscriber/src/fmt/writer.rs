@@ -675,7 +675,7 @@ impl TestWriter {
 impl io::Write for TestWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let out_str = String::from_utf8_lossy(buf);
-        print!("{}", out_str);
+        print!("{out_str}");
         Ok(buf.len())
     }
 

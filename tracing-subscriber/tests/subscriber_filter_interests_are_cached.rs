@@ -45,8 +45,7 @@ fn subscriber_filter_interests_are_cached() {
         for (callsite, &count) in lock.iter() {
             assert_eq!(
                 count, 1,
-                "callsite {:?} should have been seen 1 time (after first set of events)",
-                callsite
+                "callsite {callsite:?} should have been seen 1 time (after first set of events)"
             );
         }
     }
@@ -57,8 +56,7 @@ fn subscriber_filter_interests_are_cached() {
         for (callsite, &count) in lock.iter() {
             assert_eq!(
                 count, 1,
-                "callsite {:?} should have been seen 1 time (after second set of events)",
-                callsite
+                "callsite {callsite:?} should have been seen 1 time (after second set of events)"
             );
         }
     }

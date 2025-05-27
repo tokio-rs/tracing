@@ -754,7 +754,7 @@ impl fmt::Display for EnvFilter {
         let wrote_statics = if let Some(next) = statics.next() {
             fmt::Display::fmt(next, f)?;
             for directive in statics {
-                write!(f, ",{}", directive)?;
+                write!(f, ",{directive}")?;
             }
             true
         } else {
@@ -768,7 +768,7 @@ impl fmt::Display for EnvFilter {
             }
             fmt::Display::fmt(next, f)?;
             for directive in dynamics {
-                write!(f, ",{}", directive)?;
+                write!(f, ",{directive}")?;
             }
         }
         Ok(())
@@ -947,7 +947,7 @@ mod tests {
             "[span1{foo=1}]=error,[span2{bar=2 baz=false}],crate2[{quux=\"quuux\"}]=debug"
                 .parse()
                 .unwrap();
-        let f2: EnvFilter = format!("{}", f1).parse().unwrap();
+        let f2: EnvFilter = format!("{f1}").parse().unwrap();
         assert_eq!(f1.statics, f2.statics);
         assert_eq!(f1.dynamics, f2.dynamics);
     }

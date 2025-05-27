@@ -53,7 +53,7 @@ fn main() {
         .init();
 
     match do_something("hello world") {
-        Ok(result) => println!("did something successfully: {}", result),
+        Ok(result) => println!("did something successfully: {result}"),
         Err(e) => {
             eprintln!("printing error chain naively");
             print_naive_spantraces(&e);
@@ -72,9 +72,9 @@ fn print_extracted_spantraces(error: &(dyn Error + 'static)) {
 
     while let Some(err) = error {
         if let Some(spantrace) = err.span_trace() {
-            eprintln!("Span Backtrace:\n{}", spantrace);
+            eprintln!("Span Backtrace:\n{spantrace}");
         } else {
-            eprintln!("Error {}: {}", ind, err);
+            eprintln!("Error {ind}: {err}");
         }
 
         error = err.source();
@@ -88,7 +88,7 @@ fn print_naive_spantraces(error: &(dyn Error + 'static)) {
     let mut error = Some(error);
     let mut ind = 0;
     while let Some(err) = error {
-        eprintln!("Error {}: {}", ind, err);
+        eprintln!("Error {ind}: {err}");
         error = err.source();
         ind += 1;
     }

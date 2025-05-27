@@ -257,7 +257,7 @@ where
             write!(writer, "    {} {}", dimmed.paint("at"), file,)?;
 
             if let Some(line) = line_number {
-                write!(writer, ":{}", line)?;
+                write!(writer, ":{line}")?;
             }
             writer.write_char(if thread { ' ' } else { '\n' })?;
         } else if thread {
@@ -269,7 +269,7 @@ where
             let thread = std::thread::current();
             if self.display_thread_name {
                 if let Some(name) = thread.name() {
-                    write!(writer, "{}", name)?;
+                    write!(writer, "{name}")?;
                     if self.display_thread_id {
                         writer.write_char(' ')?;
                     }
@@ -413,7 +413,7 @@ impl<'a> PrettyVisitor<'a> {
         } else {
             ", "
         };
-        self.result = write!(self.writer, "{}{:?}", padding, value);
+        self.result = write!(self.writer, "{padding}{value:?}");
     }
 
     fn bold(&self) -> Style {
@@ -432,7 +432,7 @@ impl field::Visit for PrettyVisitor<'_> {
         }
 
         if field.name() == "message" {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug(field, &format_args!("{value}"))
         } else {
             self.record_debug(field, &value)
         }
@@ -453,7 +453,7 @@ impl field::Visit for PrettyVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug(field, &format_args!("{value}"))
         }
     }
 

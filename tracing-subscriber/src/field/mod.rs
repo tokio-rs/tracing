@@ -340,7 +340,7 @@ pub(in crate::field) mod test_util {
 
     impl Visit for DebugVisitor<'_> {
         fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-            write!(self.writer, "{}={:?}", field, value).unwrap();
+            write!(self.writer, "{field}={value:?}").unwrap();
         }
     }
 

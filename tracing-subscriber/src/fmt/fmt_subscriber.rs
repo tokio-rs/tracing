@@ -845,8 +845,7 @@ where
                 extensions.insert(fields);
             } else {
                 eprintln!(
-                    "[tracing-subscriber] Unable to format the following event, ignoring: {:?}",
-                    attrs
+                    "[tracing-subscriber] Unable to format the following event, ignoring: {attrs:?}"
                 );
             }
         }
@@ -997,7 +996,7 @@ where
                 let res = io::Write::write_all(&mut writer, buf.as_bytes());
                 if self.log_internal_errors {
                     if let Err(e) = res {
-                        eprintln!("[tracing-subscriber] Unable to write an event to the Writer for this Subscriber! Error: {}\n", e);
+                        eprintln!("[tracing-subscriber] Unable to write an event to the Writer for this Subscriber! Error: {e}\n");
                     }
                 }
             } else if self.log_internal_errors {
@@ -1006,7 +1005,7 @@ where
                 let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let res = io::Write::write_all(&mut writer, err_msg.as_bytes());
                 if let Err(e) = res {
-                    eprintln!("[tracing-subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);
+                    eprintln!("[tracing-subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {e}\n");
                 }
             }
 
@@ -1586,8 +1585,7 @@ mod test {
             let subscriber: Subscriber<()> = fmt::Subscriber::default();
             assert_eq!(
                 subscriber.is_ansi, ansi,
-                "NO_COLOR={:?}; Subscriber::default().is_ansi should be {}",
-                var, ansi
+                "NO_COLOR={var:?}; Subscriber::default().is_ansi should be {ansi}"
             );
 
             // with_ansi should override any `NO_COLOR` value

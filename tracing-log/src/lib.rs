@@ -108,6 +108,7 @@
     rust_2018_idioms,
     unreachable_pub,
     bad_style,
+    clippy::uninlined_format_args,
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
@@ -564,9 +565,7 @@ mod test {
         assert_eq!(
             meta.callsite(),
             cs_meta.callsite(),
-            "actual: {:#?}\nexpected: {:#?}",
-            meta,
-            cs_meta
+            "actual: {meta:#?}\nexpected: {cs_meta:#?}"
         );
         assert_eq!(meta.level(), &level.as_trace());
     }

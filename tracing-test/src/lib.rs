@@ -1,3 +1,5 @@
+#![warn(clippy::uninlined_format_args)]
+
 use std::{
     pin::Pin,
     task::{Context, Poll},

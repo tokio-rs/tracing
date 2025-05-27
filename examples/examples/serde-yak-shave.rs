@@ -26,7 +26,7 @@ impl Collect for JsonCollector {
         "enabled": {
             "metadata": metadata.as_serde(),
         }});
-        println!("{}", json);
+        println!("{json}");
         true
     }
 
@@ -38,7 +38,7 @@ impl Collect for JsonCollector {
             "attributes": attrs.as_serde(),
             "id": id.as_serde(),
         }});
-        println!("{}", json);
+        println!("{json}");
         id
     }
 
@@ -48,7 +48,7 @@ impl Collect for JsonCollector {
             "span": span.as_serde(),
             "values": values.as_serde(),
         }});
-        println!("{}", json);
+        println!("{json}");
     }
 
     fn record_follows_from(&self, span: &Id, follows: &Id) {
@@ -57,28 +57,28 @@ impl Collect for JsonCollector {
             "span": span.as_serde(),
             "follows": follows.as_serde(),
         }});
-        println!("{}", json);
+        println!("{json}");
     }
 
     fn event(&self, event: &Event<'_>) {
         let json = json!({
             "event": event.as_serde(),
         });
-        println!("{}", json);
+        println!("{json}");
     }
 
     fn enter(&self, span: &Id) {
         let json = json!({
             "enter": span.as_serde(),
         });
-        println!("{}", json);
+        println!("{json}");
     }
 
     fn exit(&self, span: &Id) {
         let json = json!({
             "exit": span.as_serde(),
         });
-        println!("{}", json);
+        println!("{json}");
     }
 
     fn current_span(&self) -> Current {

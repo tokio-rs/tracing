@@ -50,7 +50,7 @@ impl InstrumentArgs {
     /// the only way to do this on stable Rust right now.
     pub(crate) fn warnings(&self) -> impl ToTokens {
         let warnings = self.parse_warnings.iter().map(|err| {
-            let msg = format!("found unrecognized input, {}", err);
+            let msg = format!("found unrecognized input, {err}");
             let msg = LitStr::new(&msg, err.span());
             // TODO(eliza): This is a bit of a hack, but it's just about the
             // only way to emit warnings from a proc macro on stable Rust.
