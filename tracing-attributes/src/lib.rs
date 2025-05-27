@@ -107,14 +107,16 @@ mod expand;
 /// - multiple argument names can be passed to `skip`.
 /// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
 ///
-/// Additional fields (key-value pairs with arbitrary data) can be passed to
+/// Additional fields (key-value pairs with arbitrary data) can be passed
 /// to the generated span through the `fields` argument on the
-/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
+/// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported.
+/// identifier, or a constant expression that evaluates to one, enclosed in curly
+/// braces. Note that nested (dotted) field names are supported.
 ///
-/// Note that overlap between the names of fields and (non-skipped) arguments
-/// will result in a compile error.
+/// Note that defining a field with the same name as a (non-skipped)
+/// argument will implicitly skip the argument, or even panic if using
+/// constants as field names.
 ///
 /// # Examples
 /// Instrumenting a function:
@@ -214,8 +216,16 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(fields(foo="bar", id=1, show=true))]
-/// fn my_function(arg: usize) {
+/// #[derive(Debug)]
+/// struct Argument;
+/// impl Argument {
+///     fn bar(&self) -> &'static str {
+///         "bar"
+///     }
+/// }
+/// const FOOBAR: &'static str = "foo.bar";
+/// #[instrument(fields(foo="bar", id=1, show=true, {FOOBAR}=%arg.bar()))]
+/// fn my_function(arg: Argument) {
 ///     // ...
 /// }
 /// ```
