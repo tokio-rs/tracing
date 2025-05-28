@@ -326,3 +326,27 @@ fn test_err_warn_info() {
     with_default(collector, || err_warn_info().ok());
     handle.assert_finished();
 }
+
+#[test]
+fn test_err_custom_name() {
+    #[instrument(err(rename = "message"))]
+    fn err_custom_name() -> Result<u8, TryFromIntError> {
+        u8::try_from(1234)
+    }
+    let span = expect::span().named("err_custom_name");
+    let (collector, handle) = collector::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            expect::event().at_level(Level::ERROR).with_fields(
+                expect::field("message")
+                    .with_value(&tracing::field::display(u8::try_from(1234).unwrap_err())),
+            ),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(collector, || err_custom_name().ok());
+    handle.assert_finished();
+}

@@ -11,6 +11,7 @@ use syn::parse::{Parse, ParseStream};
 #[derive(Clone, Default, Debug)]
 pub(crate) struct EventArgs {
     level: Option<Level>,
+    rename: Option<String>,
     pub(crate) mode: FormatMode,
 }
 
@@ -155,6 +156,10 @@ impl EventArgs {
     pub(crate) fn level(&self, default: Level) -> Level {
         self.level.clone().unwrap_or(default)
     }
+
+    pub(crate) fn name(&self, default: String) -> String {
+        self.rename.clone().unwrap_or(default)
+    }
 }
 
 impl Parse for EventArgs {
@@ -173,6 +178,12 @@ impl Parse for EventArgs {
                         return Err(content.error("expected only a single `level` argument"));
                     }
                     result.level = Some(content.parse()?);
+                } else if lookahead.peek(kw::rename) {
+                    if result.rename.is_some() {
+                        return Err(content.error("expected only a single `rename` argument"));
+                    }
+                    let rename = content.parse::<StrArg<kw::rename>>()?.value;
+                    result.rename = Some(rename.value());
                 } else if result.mode != FormatMode::default() {
                     return Err(content.error("expected only a single format argument"));
                 } else if let Some(ident) = content.parse::<Option<Ident>>()? {
@@ -461,4 +472,5 @@ mod kw {
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
+    syn::custom_keyword!(rename);
 }
