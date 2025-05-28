@@ -28,11 +28,12 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
+    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
 };
 use time::{format_description, Date, Duration, OffsetDateTime, Time};
 
@@ -97,16 +98,21 @@ pub struct RollingFileAppender {
 /// [writer]: std::io::Write
 /// [`MakeWriter`]: tracing_subscriber::fmt::writer::MakeWriter
 #[derive(Debug)]
-pub struct RollingWriter<'a>(RwLockReadGuard<'a, File>);
+pub struct RollingWriter<'a> {
+    inner: RwLockReadGuard<'a, File>,
+    current_size: &'a AtomicU64,
+}
 
 #[derive(Debug)]
 struct Inner {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
     log_filename_suffix: Option<String>,
+    log_filename_index: Option<AtomicU64>,
     date_format: Vec<format_description::FormatItem<'static>>,
     rotation: Rotation,
     next_date: AtomicUsize,
+    current_size: AtomicU64,
     max_files: Option<usize>,
 }
 
@@ -185,27 +191,53 @@ impl RollingFileAppender {
     }
 
     fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
+        Self::impl_from_builder(
+            builder,
+            directory,
+            #[cfg(test)]
+            Box::new(OffsetDateTime::now_utc),
+        )
+    }
+
+    #[cfg(test)]
+    fn from_builder_with_custom_now(
+        builder: &Builder,
+        directory: impl AsRef<Path>,
+        now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    ) -> Result<Self, InitError> {
+        Self::impl_from_builder(builder, directory, now)
+    }
+
+    fn impl_from_builder(
+        builder: &Builder,
+        directory: impl AsRef<Path>,
+        #[cfg(test)] now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
+    ) -> Result<Self, InitError> {
         let Builder {
-            ref rotation,
-            ref prefix,
-            ref suffix,
-            ref max_files,
-        } = builder;
+            rotation,
+            prefix,
+            suffix,
+            max_files,
+        } = &builder;
+
         let directory = directory.as_ref().to_path_buf();
-        let now = OffsetDateTime::now_utc();
         let (state, writer) = Inner::new(
-            now,
+            #[cfg(not(test))]
+            OffsetDateTime::now_utc(),
+            #[cfg(test)]
+            now(),
             rotation.clone(),
             directory,
             prefix.clone(),
             suffix.clone(),
             *max_files,
         )?;
+
         Ok(Self {
             state,
             writer,
             #[cfg(test)]
-            now: Box::new(OffsetDateTime::now_utc),
+            now,
         })
     }
 
@@ -224,11 +256,19 @@ impl io::Write for RollingFileAppender {
         let now = self.now();
         let writer = self.writer.get_mut();
         if let Some(current_time) = self.state.should_rollover(now) {
-            let _did_cas = self.state.advance_date(now, current_time);
-            debug_assert!(_did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
+            let did_cas = self.state.advance_date_and_index(now, current_time);
+            debug_assert!(did_cas, "if we have &mut access to the appender, no other thread can have advanced the timestamp...");
             self.state.refresh_writer(now, writer);
         }
-        writer.write(buf)
+
+        let written = writer.write(buf)?;
+
+        self.state.current_size.fetch_add(
+            u64::try_from(written).expect("usize to u64 conversion"),
+            Ordering::SeqCst,
+        );
+
+        Ok(written)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -238,6 +278,7 @@ impl io::Write for RollingFileAppender {
 
 impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
     type Writer = RollingWriter<'a>;
+
     fn make_writer(&'a self) -> Self::Writer {
         let now = self.now();
 
@@ -245,11 +286,15 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
         if let Some(current_time) = self.state.should_rollover(now) {
             // Did we get the right to lock the file? If not, another thread
             // did it and we can just make a writer.
-            if self.state.advance_date(now, current_time) {
+            if self.state.advance_date_and_index(now, current_time) {
                 self.state.refresh_writer(now, &mut self.writer.write());
             }
         }
-        RollingWriter(self.writer.read())
+
+        RollingWriter {
+            inner: self.writer.read(),
+            current_size: &self.state.current_size,
+        }
     }
 }
 
@@ -362,7 +407,7 @@ pub fn hourly(
 /// }
 /// ```
 ///
-/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH`.
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd`.
 pub fn daily(
     directory: impl AsRef<Path>,
     file_name_prefix: impl AsRef<Path>,
@@ -401,6 +446,48 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
     RollingFileAppender::new(Rotation::NEVER, directory, file_name)
 }
 
+/// Creates a file appender that rotates based on file size.
+///
+/// The appender returned by `rolling::max_size` can be used with `non_blocking` to create
+/// a non-blocking, size-based file appender.
+///
+/// A `RollingFileAppender` has a fixed rotation whose frequency is
+/// defined by [`Rotation`]. The `directory` and
+/// `file_name_prefix` arguments determine the location and file name's _prefix_
+/// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
+/// `max_number_of_bytes` specifies the maximum number of bytes for each file.
+///
+/// # Examples
+///
+/// ```rust
+/// # #[clippy::allow(needless_doctest_main)]
+/// fn main () {
+/// # fn doc() {
+///     let appender = tracing_appender::rolling::max_size("/some/path", "rolling.log", 100_000_000); // 100 MB
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///
+///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///
+///     tracing::collect::with_default(collector.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// # }
+/// }
+/// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd-HH-mm-ss`.
+pub fn max_size(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+    max_number_of_bytes: u64,
+) -> RollingFileAppender {
+    RollingFileAppender::new(
+        Rotation::max_bytes(max_number_of_bytes),
+        directory,
+        file_name_prefix,
+    )
+}
+
 /// Defines a fixed period for rolling of a log file.
 ///
 /// To use a `Rotation`, pick one of the following options:
@@ -437,10 +524,13 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 /// # }
 /// ```
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Rotation(RotationKind);
+pub struct Rotation {
+    timed: Timed,
+    max_bytes: Option<u64>,
+}
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-enum RotationKind {
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+enum Timed {
     Minutely,
     Hourly,
     Daily,
@@ -448,56 +538,86 @@ enum RotationKind {
 }
 
 impl Rotation {
-    /// Provides an minutely rotation
-    pub const MINUTELY: Self = Self(RotationKind::Minutely);
-    /// Provides an hourly rotation
-    pub const HOURLY: Self = Self(RotationKind::Hourly);
-    /// Provides a daily rotation
-    pub const DAILY: Self = Self(RotationKind::Daily);
+    /// Provides a minutely rotation.
+    pub const MINUTELY: Self = Self {
+        timed: Timed::Minutely,
+        max_bytes: None,
+    };
+
+    /// Provides an hourly rotation.
+    pub const HOURLY: Self = Self {
+        timed: Timed::Hourly,
+        max_bytes: None,
+    };
+
+    /// Provides a daily rotation.
+    pub const DAILY: Self = Self {
+        timed: Timed::Daily,
+        max_bytes: None,
+    };
+
     /// Provides a rotation that never rotates.
-    pub const NEVER: Self = Self(RotationKind::Never);
+    pub const NEVER: Self = Self {
+        timed: Timed::Never,
+        max_bytes: None,
+    };
+
+    /// Provides a size-based rotation.
+    pub const fn max_bytes(number_of_bytes: u64) -> Self {
+        Self::NEVER.with_max_bytes(number_of_bytes)
+    }
+
+    /// Adds a maximum size limit to an existing `Rotation`.
+    ///
+    /// The new `Rotation` will rotate the log file when the log file reaches
+    /// the specified size limit, or when the rotation period elapses, whichever
+    /// occurs first.
+    pub const fn with_max_bytes(mut self, number_of_bytes: u64) -> Self {
+        self.max_bytes = Some(number_of_bytes);
+        self
+    }
 
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
-        let unrounded_next_date = match *self {
-            Rotation::MINUTELY => *current_date + Duration::minutes(1),
-            Rotation::HOURLY => *current_date + Duration::hours(1),
-            Rotation::DAILY => *current_date + Duration::days(1),
-            Rotation::NEVER => return None,
+        let unrounded_next_date = match self.timed {
+            Timed::Minutely => *current_date + Duration::minutes(1),
+            Timed::Hourly => *current_date + Duration::hours(1),
+            Timed::Daily => *current_date + Duration::days(1),
+            Timed::Never => return None,
         };
         Some(self.round_date(&unrounded_next_date))
     }
 
-    // note that this method will panic if passed a `Rotation::NEVER`.
+    // note that this method will panic if passed a `Timed::Never`.
     pub(crate) fn round_date(&self, date: &OffsetDateTime) -> OffsetDateTime {
-        match *self {
-            Rotation::MINUTELY => {
+        match self.timed {
+            Timed::Minutely => {
                 let time = Time::from_hms(date.hour(), date.minute(), 0)
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
-            Rotation::HOURLY => {
+            Timed::Hourly => {
                 let time = Time::from_hms(date.hour(), 0, 0)
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
-            Rotation::DAILY => {
+            Timed::Daily => {
                 let time = Time::from_hms(0, 0, 0)
                     .expect("Invalid time; this is a bug in tracing-appender");
                 date.replace_time(time)
             }
-            // Rotation::NEVER is impossible to round.
-            Rotation::NEVER => {
-                unreachable!("Rotation::NEVER is impossible to round.")
+            // Timed::Never is impossible to round.
+            Timed::Never => {
+                unreachable!("Timed::Never is impossible to round.")
             }
         }
     }
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
-        match *self {
-            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
-            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
-            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+        match self.timed {
+            Timed::Minutely => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
+            Timed::Hourly => format_description::parse("[year]-[month]-[day]-[hour]"),
+            Timed::Daily => format_description::parse("[year]-[month]-[day]"),
+            Timed::Never => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
     }
@@ -507,11 +627,16 @@ impl Rotation {
 
 impl io::Write for RollingWriter<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&*self.0).write(buf)
+        let written = (&*self.inner).write(buf)?;
+        self.current_size.fetch_add(
+            u64::try_from(written).expect("usize to u64 conversion"),
+            Ordering::SeqCst,
+        );
+        Ok(written)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&*self.0).flush()
+        (&*self.inner).flush()
     }
 }
 
@@ -530,10 +655,11 @@ impl Inner {
         let date_format = rotation.date_format();
         let next_date = rotation.next_date(&now);
 
-        let inner = Inner {
+        let mut inner = Inner {
             log_directory,
             log_filename_prefix,
             log_filename_suffix,
+            log_filename_index: None,
             date_format,
             next_date: AtomicUsize::new(
                 next_date
@@ -542,29 +668,209 @@ impl Inner {
             ),
             rotation,
             max_files,
+            current_size: AtomicU64::new(0),
         };
+
+        if let Some(max_bytes) = inner.rotation.max_bytes {
+            let next_index = inner.find_filename_index(now, max_bytes);
+            inner.log_filename_index = Some(AtomicU64::new(next_index));
+        }
+
         let filename = inner.join_date(&now);
-        let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
+        let file = create_writer(inner.log_directory.as_ref(), &filename)?;
+
+        let current_file_size = file
+            .metadata()
+            .map_err(builder::InitError::ctx("Failed to read file metadata"))?
+            .len();
+        inner.current_size = AtomicU64::new(current_file_size);
+
+        let writer = RwLock::new(file);
+
         Ok((inner, writer))
     }
 
     pub(crate) fn join_date(&self, date: &OffsetDateTime) -> String {
+        macro_rules! insert_dot {
+            ($name:ident) => {
+                if !$name.is_empty() {
+                    $name.push_str(".");
+                }
+            };
+        }
+
         let date = date
             .format(&self.date_format)
             .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
 
-        match (
-            &self.rotation,
-            &self.log_filename_prefix,
-            &self.log_filename_suffix,
-        ) {
-            (&Rotation::NEVER, Some(filename), None) => filename.to_string(),
-            (&Rotation::NEVER, Some(filename), Some(suffix)) => format!("{}.{}", filename, suffix),
-            (&Rotation::NEVER, None, Some(suffix)) => suffix.to_string(),
-            (_, Some(filename), Some(suffix)) => format!("{}.{}.{}", filename, date, suffix),
-            (_, Some(filename), None) => format!("{}.{}", filename, date),
-            (_, None, Some(suffix)) => format!("{}.{}", date, suffix),
-            (_, None, None) => date,
+        let mut filename = String::new();
+
+        if let Some(prefix) = &self.log_filename_prefix {
+            filename.push_str(prefix);
+        };
+
+        match self.rotation.timed {
+            // Insert the date when there is time-based rotations
+            Timed::Minutely | Timed::Hourly | Timed::Daily => {
+                insert_dot!(filename);
+                filename.push_str(&date);
+            }
+            // "Never" but no prefix and no suffix means we should use the date anyway
+            // The date is always included when there is a filename index (size-based rotation)
+            Timed::Never
+                if (self.log_filename_prefix.is_none() && self.log_filename_suffix.is_none())
+                    || self.log_filename_index.is_some() =>
+            {
+                insert_dot!(filename);
+                filename.push_str(&date);
+            }
+            // Otherwise, the date must not be inserted
+            Timed::Never => {}
+        }
+
+        if let Some(index) = &self.log_filename_index {
+            insert_dot!(filename);
+            filename.push_str(&index.load(Ordering::Acquire).to_string());
+        }
+
+        if let Some(suffix) = &self.log_filename_suffix {
+            insert_dot!(filename);
+            filename.push_str(suffix);
+        }
+
+        // Sanity check: we should never end up with an empty filename
+        assert!(
+            !filename.is_empty(),
+            "log file name should never be empty; this is a bug in tracing-appender"
+        );
+
+        filename
+    }
+
+    fn filter_log_file(&self, entry: &fs::DirEntry) -> Option<FilteredLogFile> {
+        let metadata = entry.metadata().ok()?;
+
+        // the appender only creates files, not directories or symlinks,
+        // so we should never delete a dir or symlink.
+        if !metadata.is_file() {
+            return None;
+        }
+
+        let filename = entry.file_name();
+
+        // if the filename is not a UTF-8 string, skip it.
+        let mut filename = filename.to_str()?;
+
+        if let Some(prefix) = &self.log_filename_prefix {
+            let striped = filename.strip_prefix(prefix)?;
+            filename = striped.trim_start_matches('.');
+        }
+
+        if let Some(suffix) = &self.log_filename_suffix {
+            let striped = filename.strip_suffix(suffix)?;
+            filename = striped.trim_end_matches('.');
+        }
+
+        let mut found_index = None;
+
+        let formatted_date = match (self.rotation.timed, filename.find('.')) {
+            (Timed::Never, None)
+                if self.log_filename_prefix.is_none() && self.log_filename_suffix.is_none() =>
+            {
+                let _date = Date::parse(filename, &self.date_format).ok()?;
+                Some(filename.to_owned())
+            }
+            (_, Some(dot_idx)) => {
+                // Check for <date>.<index> pattern
+
+                let date_segment = &filename[..dot_idx];
+                let index_segment = &filename[dot_idx + 1..];
+
+                let _date = Date::parse(date_segment, &self.date_format).ok()?;
+                let index = index_segment.parse::<u64>().ok()?;
+
+                found_index = Some(index);
+                Some(date_segment.to_owned())
+            }
+            (_, None) => {
+                if Date::parse(filename, &self.date_format).is_ok() {
+                    Some(filename.to_owned())
+                } else {
+                    None
+                }
+            }
+        };
+
+        if self.log_filename_prefix.is_none()
+            && self.log_filename_suffix.is_none()
+            && found_index.is_none()
+            && formatted_date.is_none()
+        {
+            return None;
+        }
+
+        let created_at = metadata.created().ok()?;
+
+        Some(FilteredLogFile {
+            path: entry.path(),
+            metadata,
+            created_at,
+            formatted_date,
+            index: found_index,
+        })
+    }
+
+    fn find_filename_index(&self, now: OffsetDateTime, max_bytes: u64) -> u64 {
+        macro_rules! unwrap_or_zero {
+            ($value:expr) => {
+                if let Some(value) = $value {
+                    value
+                } else {
+                    return 0;
+                }
+            };
+        }
+
+        let read_dir = unwrap_or_zero!(fs::read_dir(&self.log_directory).ok());
+
+        let mut files: Vec<FilteredLogFile> = read_dir
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                self.filter_log_file(&entry)
+            })
+            .collect();
+
+        files.sort_unstable_by_key(|file| file.created_at);
+
+        let most_recent_file = unwrap_or_zero!(files.last());
+
+        let most_recent_formatted_date = unwrap_or_zero!(&most_recent_file.formatted_date).clone();
+
+        let formatted_date_now = now
+            .format(&self.date_format)
+            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+
+        if most_recent_formatted_date != formatted_date_now {
+            return 0;
+        }
+
+        let latest_file = files
+            .into_iter()
+            .filter(|log_file| match &log_file.formatted_date {
+                Some(formatted_date) => most_recent_formatted_date.eq(formatted_date),
+                None => false,
+            })
+            .max_by_key(|log_file| log_file.index);
+
+        let latest_file = unwrap_or_zero!(latest_file);
+
+        let index = unwrap_or_zero!(latest_file.index);
+
+        // Increase the index if the latest file was too big
+        if latest_file.metadata.len() > max_bytes {
+            index + 1
+        } else {
+            index
         }
     }
 
@@ -572,38 +878,7 @@ impl Inner {
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(|entry| {
                 let entry = entry.ok()?;
-                let metadata = entry.metadata().ok()?;
-
-                // the appender only creates files, not directories or symlinks,
-                // so we should never delete a dir or symlink.
-                if !metadata.is_file() {
-                    return None;
-                }
-
-                let filename = entry.file_name();
-                // if the filename is not a UTF-8 string, skip it.
-                let filename = filename.to_str()?;
-                if let Some(prefix) = &self.log_filename_prefix {
-                    if !filename.starts_with(prefix) {
-                        return None;
-                    }
-                }
-
-                if let Some(suffix) = &self.log_filename_suffix {
-                    if !filename.ends_with(suffix) {
-                        return None;
-                    }
-                }
-
-                if self.log_filename_prefix.is_none()
-                    && self.log_filename_suffix.is_none()
-                    && Date::parse(filename, &self.date_format).is_err()
-                {
-                    return None;
-                }
-
-                let created = metadata.created().ok()?;
-                Some((entry, created))
+                self.filter_log_file(&entry)
             })
             .collect::<Vec<_>>()
         });
@@ -620,14 +895,14 @@ impl Inner {
         }
 
         // sort the files by their creation timestamps.
-        files.sort_by_key(|(_, created_at)| *created_at);
+        files.sort_by_key(|log_file| log_file.created_at);
 
         // delete files, so that (n-1) files remain, because we will create another log file
-        for (file, _) in files.iter().take(files.len() - (max_files - 1)) {
-            if let Err(error) = fs::remove_file(file.path()) {
+        for file in files.iter().take(files.len() - (max_files - 1)) {
+            if let Err(error) = fs::remove_file(&file.path) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
-                    file.path().display(),
+                    file.path.display(),
                     error
                 );
             }
@@ -647,6 +922,7 @@ impl Inner {
                     eprintln!("Couldn't flush previous writer: {}", err);
                 }
                 *file = new_file;
+                self.current_size.store(0, Ordering::Release);
             }
             Err(err) => eprintln!("Couldn't create writer for logs: {}", err),
         }
@@ -662,7 +938,17 @@ impl Inner {
     /// Otherwise, if this returns we should not rotate the log file.
     fn should_rollover(&self, date: OffsetDateTime) -> Option<usize> {
         let next_date = self.next_date.load(Ordering::Acquire);
-        // if the next date is 0, this appender *never* rotates log files.
+
+        // if there is a maximum size for the file, check that it is not exceeded
+        match self.rotation.max_bytes {
+            Some(max_bytes) if self.current_size.load(Ordering::Acquire) > max_bytes => {
+                // maximum size is exceeded, the appender should rotate immediately
+                return Some(next_date);
+            }
+            _ => {}
+        }
+
+        // otherwise, if the next date is 0, this appender *never* rotates log files.
         if next_date == 0 {
             return None;
         }
@@ -674,15 +960,29 @@ impl Inner {
         None
     }
 
-    fn advance_date(&self, now: OffsetDateTime, current: usize) -> bool {
+    fn advance_date_and_index(&self, now: OffsetDateTime, current: usize) -> bool {
         let next_date = self
             .rotation
             .next_date(&now)
             .map(|date| date.unix_timestamp() as usize)
             .unwrap_or(0);
-        self.next_date
+        let next_date_updated = self
+            .next_date
             .compare_exchange(current, next_date, Ordering::AcqRel, Ordering::Acquire)
-            .is_ok()
+            .is_ok();
+
+        match &self.log_filename_index {
+            Some(index) if next_date_updated => {
+                if current == next_date {
+                    index.fetch_add(1, Ordering::SeqCst);
+                } else {
+                    index.store(0, Ordering::Release);
+                }
+            }
+            _ => {}
+        }
+
+        next_date_updated
     }
 }
 
@@ -702,6 +1002,15 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
     }
 
     new_file.map_err(InitError::ctx("failed to create initial log file"))
+}
+
+struct FilteredLogFile {
+    path: PathBuf,
+    metadata: fs::Metadata,
+    created_at: std::time::SystemTime,
+    /// This is the date found in the filename, rounded (as opposed to `created_at`)
+    formatted_date: Option<String>,
+    index: Option<u64>,
 }
 
 #[cfg(test)]
@@ -791,7 +1100,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "internal error: entered unreachable code: Rotation::NEVER is impossible to round."
+        expected = "internal error: entered unreachable code: Timed::Never is impossible to round."
     )]
     fn test_never_date_rounding() {
         let now = OffsetDateTime::now_utc();
@@ -842,6 +1151,30 @@ mod test {
         let test_cases = vec![
             // prefix only
             TestCase {
+                expected: "app.log.2020-02-01-10-01.0",
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
+                prefix: Some("app.log"),
+                suffix: None,
+            },
+            TestCase {
+                expected: "app.log.2020-02-01-10.0",
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
+                prefix: Some("app.log"),
+                suffix: None,
+            },
+            TestCase {
+                expected: "app.log.2020-02-01.0",
+                rotation: Rotation::DAILY.with_max_bytes(1024),
+                prefix: Some("app.log"),
+                suffix: None,
+            },
+            TestCase {
+                expected: "app.log.2020-02-01.0",
+                rotation: Rotation::max_bytes(1024),
+                prefix: Some("app.log"),
+                suffix: None,
+            },
+            TestCase {
                 expected: "app.log.2020-02-01-10-01",
                 rotation: Rotation::MINUTELY,
                 prefix: Some("app.log"),
@@ -866,6 +1199,30 @@ mod test {
                 suffix: None,
             },
             // prefix and suffix
+            TestCase {
+                expected: "app.2020-02-01-10-01.0.log",
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
+                prefix: Some("app"),
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "app.2020-02-01-10.0.log",
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
+                prefix: Some("app"),
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "app.2020-02-01.0.log",
+                rotation: Rotation::DAILY.with_max_bytes(1024),
+                prefix: Some("app"),
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "app.2020-02-01.0.log",
+                rotation: Rotation::max_bytes(1024),
+                prefix: Some("app"),
+                suffix: Some("log"),
+            },
             TestCase {
                 expected: "app.2020-02-01-10-01.log",
                 rotation: Rotation::MINUTELY,
@@ -892,6 +1249,30 @@ mod test {
             },
             // suffix only
             TestCase {
+                expected: "2020-02-01-10-01.0.log",
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
+                prefix: None,
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "2020-02-01-10.0.log",
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
+                prefix: None,
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "2020-02-01.0.log",
+                rotation: Rotation::DAILY.with_max_bytes(1024),
+                prefix: None,
+                suffix: Some("log"),
+            },
+            TestCase {
+                expected: "2020-02-01.0.log",
+                rotation: Rotation::max_bytes(1024),
+                prefix: None,
+                suffix: Some("log"),
+            },
+            TestCase {
                 expected: "2020-02-01-10-01.log",
                 rotation: Rotation::MINUTELY,
                 prefix: None,
@@ -915,7 +1296,57 @@ mod test {
                 prefix: None,
                 suffix: Some("log"),
             },
+            // no suffix nor prefix
+            TestCase {
+                expected: "2020-02-01-10-01.0",
+                rotation: Rotation::MINUTELY.with_max_bytes(1024),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10.0",
+                rotation: Rotation::HOURLY.with_max_bytes(1024),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01.0",
+                rotation: Rotation::DAILY.with_max_bytes(1024),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01.0",
+                rotation: Rotation::max_bytes(1024),
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10-01",
+                rotation: Rotation::MINUTELY,
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01-10",
+                rotation: Rotation::HOURLY,
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::DAILY,
+                prefix: None,
+                suffix: None,
+            },
+            TestCase {
+                expected: "2020-02-01",
+                rotation: Rotation::NEVER,
+                prefix: None,
+                suffix: None,
+            },
         ];
+
         for test_case in test_cases {
             test(test_case)
         }
@@ -1019,7 +1450,7 @@ mod test {
         let (state, writer) = Inner::new(
             now,
             Rotation::HOURLY,
-            directory.path(),
+            &directory,
             Some("test_max_log_files".to_string()),
             None,
             Some(2),
@@ -1078,7 +1509,7 @@ mod test {
 
         drop(default);
 
-        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        let dir_contents = fs::read_dir(&directory).expect("Failed to read directory");
         println!("dir={:?}", dir_contents);
 
         for entry in dir_contents {
@@ -1105,5 +1536,52 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    fn size_based_rotation() {
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+
+        let mut appender = RollingFileAppender::builder()
+            .rotation(Rotation::max_bytes(8))
+            .filename_prefix("size_based_rotation")
+            .filename_suffix("log")
+            .build_with_now(&directory, Box::new(|| OffsetDateTime::UNIX_EPOCH))
+            .expect("initializing rolling file appender failed");
+
+        writeln!(appender, "(file1) more than 8 bytes").unwrap();
+        writeln!(appender, "(file2) more than 8 bytes again").unwrap();
+        writeln!(appender, "(file3) and here is a third file").unwrap();
+
+        let dir_contents = fs::read_dir(&directory).expect("read directory");
+        println!("dir={:?}", dir_contents);
+
+        let expected_files = [
+            "size_based_rotation.1970-01-01.0.log",
+            "size_based_rotation.1970-01-01.1.log",
+            "size_based_rotation.1970-01-01.2.log",
+        ];
+        let mut expected_files: std::collections::HashSet<&str> =
+            expected_files.iter().copied().collect();
+
+        for entry in dir_contents {
+            println!("entry={:?}", entry);
+
+            let path = entry.expect("dir entry").path();
+            let contents = fs::read_to_string(&path).expect("read file");
+            println!("path={}\ncontents={:?}", path.display(), contents);
+
+            let filename = path.file_name().unwrap().to_str().unwrap();
+            expected_files
+                .remove(filename)
+                .then_some(())
+                .expect("filename");
+        }
+
+        assert!(
+            expected_files.is_empty(),
+            "missing file(s): {:?}",
+            expected_files
+        );
     }
 }
