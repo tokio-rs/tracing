@@ -10,7 +10,7 @@
 //! `tracing-subscriber` is intended for use by both `Collector` authors and
 //! application authors using `tracing` to instrument their applications.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -106,7 +106,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -122,6 +122,7 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [collector]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
+//! [`tracing`]: https://crates.io/crates/tracing
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
