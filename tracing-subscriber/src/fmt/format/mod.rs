@@ -1274,12 +1274,20 @@ impl field::Visit for DefaultVisitor<'_> {
             return;
         }
 
+        let name = field.name();
+
+        // Skip fields that are actually log metadata that have already been handled
+        #[cfg(feature = "tracing-log")]
+        if name.starts_with("log.") {
+            debug_assert_eq!(self.result, Ok(())); // no need to update self.result
+            return;
+        }
+
+        // emit separating spaces if needed
         self.maybe_pad();
-        self.result = match field.name() {
+
+        self.result = match name {
             "message" => write!(self.writer, "{:?}", value),
-            // Skip fields that are actually log metadata that have already been handled
-            #[cfg(feature = "tracing-log")]
-            name if name.starts_with("log.") => Ok(()),
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",

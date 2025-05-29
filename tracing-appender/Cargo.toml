@@ -24,7 +24,7 @@ rust-version = "1.63.0"
 crossbeam-channel = "0.5.6"
 time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 parking_lot = { optional = true, version = "0.12.1" }
-thiserror = "1"
+thiserror = "2"
 
 [dependencies.tracing-subscriber]
 path = "../tracing-subscriber"

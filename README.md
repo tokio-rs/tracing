@@ -14,7 +14,7 @@
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
 [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com
+[docs-master-url]: https://tracing.rs
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -252,7 +252,7 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -370,7 +370,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
-- [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+- [`tracing-gelf`] implements a subscriber for exporting traces in Graylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
@@ -396,7 +396,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
-- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
@@ -475,6 +475,7 @@ Tracing.
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 * [Crabs with instruments!][tremorcon-2021-09], September 2021
+* [Decrusting the tracing crate by Jon Gjengset][decrusting-tracing-2024-02], February 2024
 
 [bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
@@ -485,6 +486,7 @@ Tracing.
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 [tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
+[decrusting-tracing-2024-02]: https://www.youtube.com/watch?v=21rtHinFA40
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

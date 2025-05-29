@@ -236,6 +236,213 @@ fn method_name_resolution() {
     filter.max_level_hint();
 }
 
+#[test]
+fn parse_invalid_string() {
+    assert!(EnvFilter::builder().parse(",!").is_err());
+}
+
+#[test]
+fn parse_empty_string_no_default_directive() {
+    let filter = EnvFilter::builder().parse("").expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock().only().run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::trace!("this should be disabled");
+        tracing::debug!("this should be disabled");
+        tracing::info!("this should be disabled");
+        tracing::warn!("this should be disabled");
+        tracing::error!("this should be disabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn parse_empty_string_with_default_directive() {
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .parse("")
+        .expect("filter should parse");
+    let (subscriber, finished) = subscriber::mock()
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::WARN))
+        .event(expect::event().at_level(Level::ERROR))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::trace!("this should be disabled");
+        tracing::debug!("this should be disabled");
+        tracing::info!("this shouldn't be disabled");
+        tracing::warn!("this shouldn't be disabled");
+        tracing::error!("this shouldn't be disabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn new_invalid_string() {
+    let filter = EnvFilter::new(",!");
+    let (subscriber, finished) = subscriber::mock()
+        .event(expect::event().at_level(Level::ERROR))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::trace!("this should be disabled");
+        tracing::debug!("this should be disabled");
+        tracing::info!("this should be disabled");
+        tracing::warn!("this should be disabled");
+        tracing::error!("this shouldn't be disabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn new_empty_string() {
+    let filter = EnvFilter::new("");
+    let (subscriber, finished) = subscriber::mock()
+        .event(expect::event().at_level(Level::ERROR))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::trace!("this should be disabled");
+        tracing::debug!("this should be disabled");
+        tracing::info!("this should be disabled");
+        tracing::warn!("this should be disabled");
+        tracing::error!("this shouldn't be disabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn more_specific_static_filter_more_verbose() {
+    let filter = EnvFilter::new("info,hello=debug");
+    let (subscriber, finished) = subscriber::mock()
+        .event(expect::event().at_level(Level::INFO))
+        .event(expect::event().at_level(Level::DEBUG).with_target("hello"))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::info!("should be enabled");
+        tracing::debug!("should be disabled");
+        tracing::debug!(target: "hello", "should be enabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn more_specific_static_filter_less_verbose() {
+    let filter = EnvFilter::new("info,hello=warn");
+    let (subscriber, finished) = subscriber::mock()
+        .event(expect::event().at_level(Level::INFO))
+        .event(
+            expect::event()
+                .at_level(Level::WARN)
+                .with_target("env_filter"),
+        )
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::info!("should be enabled");
+        tracing::warn!("should be enabled");
+        tracing::info!(target: "hello", "should be disabled");
+    });
+
+    finished.assert_finished();
+}
+
+#[test]
+fn more_specific_dynamic_filter_more_verbose() {
+    let filter = EnvFilter::new("info,[{hello=4}]=debug");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(expect::span().at_level(Level::INFO))
+        .drop_span("enabled info")
+        .new_span(
+            expect::span()
+                .at_level(Level::DEBUG)
+                .with_fields(expect::field("hello").with_value(&4_u64)),
+        )
+        .drop_span("enabled debug")
+        .event(expect::event().with_fields(expect::msg("marker")))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::info_span!("enabled info");
+        tracing::debug_span!("disabled debug");
+        tracing::debug_span!("enabled debug", hello = &4_u64);
+
+        // .only() doesn't work when we don't enter/exit spans
+        tracing::info!("marker");
+    });
+
+    finished.assert_finished();
+}
+
+/// This is a negative test. This functionality should work, but doesn't.
+///
+/// If an improvement to `EnvFilter` fixes this test, then the `#[should_panic]`
+/// can be removed and the test kept as it is. If the test requires some sort of
+/// modification, then care should be taken.
+///
+/// Fixing this test would resolve https://github.com/tokio-rs/tracing/issues/1388
+/// (and probably a few more issues as well).
+#[test]
+#[should_panic(
+    expected = "[more_specific_dynamic_filter_less_verbose] expected a new span \
+    at level `Level(Warn)`,\n[more_specific_dynamic_filter_less_verbose] but \
+    got one at level `Level(Info)` instead."
+)]
+fn more_specific_dynamic_filter_less_verbose() {
+    let filter = EnvFilter::new("info,[{hello=4}]=warn");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(expect::span().at_level(Level::INFO))
+        .drop_span("enabled info")
+        .new_span(
+            expect::span()
+                .at_level(Level::WARN)
+                .with_fields(expect::field("hello").with_value(&100_u64)),
+        )
+        .drop_span("enabled hello=100 warn")
+        .new_span(
+            expect::span()
+                .at_level(Level::WARN)
+                .with_fields(expect::field("hello").with_value(&4_u64)),
+        )
+        .drop_span("enabled hello=4 warn")
+        .event(expect::event().with_fields(expect::msg("marker")))
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        tracing::info_span!("enabled info");
+        tracing::warn_span!("enabled hello=100 warn", hello = &100_u64);
+        tracing::info_span!("disabled hello=4 info", hello = &4_u64);
+        tracing::warn_span!("enabled hello=4 warn", hello = &4_u64);
+
+        // .only() doesn't work when we don't enter/exit spans
+        tracing::info!("marker");
+    });
+
+    finished.assert_finished();
+}
+
 // contains the same tests as the first half of this file
 // but using EnvFilter as a `Filter`, not as a `Layer`
 mod per_layer_filter {

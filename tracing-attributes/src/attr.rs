@@ -378,7 +378,7 @@ impl ToTokens for Field {
             // `instrument` produce empty field values, so changing it now
             // is a breaking change. agh.
             let name = &self.name;
-            tokens.extend(quote!(#name = tracing::field::Empty))
+            tokens.extend(quote!(#name = ::tracing::field::Empty))
         } else {
             self.kind.to_tokens(tokens);
             self.name.to_tokens(tokens);
@@ -454,11 +454,11 @@ impl Parse for Level {
 impl ToTokens for Level {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Level::Trace => tokens.extend(quote!(tracing::Level::TRACE)),
-            Level::Debug => tokens.extend(quote!(tracing::Level::DEBUG)),
-            Level::Info => tokens.extend(quote!(tracing::Level::INFO)),
-            Level::Warn => tokens.extend(quote!(tracing::Level::WARN)),
-            Level::Error => tokens.extend(quote!(tracing::Level::ERROR)),
+            Level::Trace => tokens.extend(quote!(::tracing::Level::TRACE)),
+            Level::Debug => tokens.extend(quote!(::tracing::Level::DEBUG)),
+            Level::Info => tokens.extend(quote!(::tracing::Level::INFO)),
+            Level::Warn => tokens.extend(quote!(::tracing::Level::WARN)),
+            Level::Error => tokens.extend(quote!(::tracing::Level::ERROR)),
             Level::Path(ref pat) => tokens.extend(quote!(#pat)),
         }
     }
