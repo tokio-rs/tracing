@@ -6,6 +6,7 @@ use tracing_mock::*;
 // Reproduces a compile error when an instrumented function body contains inner
 // attributes (https://github.com/tokio-rs/tracing/issues/2294).
 #[deny(unused_variables)]
+#[allow(dead_code, clippy::mixed_attributes_style)]
 #[instrument]
 fn repro_2294() {
     #![allow(unused_variables)]
@@ -331,6 +332,7 @@ fn user_tracing_module() {
 
     // Reproduces https://github.com/tokio-rs/tracing/issues/3119
     #[instrument(fields(f = Empty))]
+    #[allow(dead_code)]
     fn my_fn() {
         assert_eq!("test", tracing::my_other_fn());
     }
