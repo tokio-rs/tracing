@@ -448,7 +448,7 @@ impl Eq for Metadata<'_> {}
 impl PartialEq for Metadata<'_> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        if core::ptr::eq(&self, &other) {
+        if core::ptr::eq(self, other) {
             true
         } else if cfg!(not(debug_assertions)) {
             // In a well-behaving application, two `Metadata` can be assumed to
