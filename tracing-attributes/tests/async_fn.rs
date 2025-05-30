@@ -30,14 +30,17 @@ async fn test_ret_impl_trait_err(n: i32) -> Result<impl Iterator<Item = i32>, &'
 }
 
 #[instrument]
+#[allow(dead_code)]
 async fn test_async_fn_empty() {}
 
 #[instrument]
+#[allow(dead_code)]
 async unsafe fn test_async_unsafe_fn_empty() {}
 
 // Reproduces a compile error when an instrumented function body contains inner
 // attributes (https://github.com/tokio-rs/tracing/issues/2294).
 #[deny(unused_variables)]
+#[allow(dead_code, clippy::mixed_attributes_style)]
 #[instrument]
 async fn repro_async_2294() {
     #![allow(unused_variables)]
@@ -50,6 +53,7 @@ async fn repro_async_2294() {
 // with the rustfmt-generated formatting, the lint will not be triggered!
 #[rustfmt::skip]
 #[deny(clippy::suspicious_else_formatting)]
+#[allow(dead_code)]
 async fn repro_1613(var: bool) {
     println!(
         "{}",
@@ -61,6 +65,7 @@ async fn repro_1613(var: bool) {
 // and https://github.com/rust-lang/rust-clippy/issues/7760
 #[instrument]
 #[deny(clippy::suspicious_else_formatting)]
+#[allow(dead_code)]
 async fn repro_1613_2() {
     // hello world
     // else
