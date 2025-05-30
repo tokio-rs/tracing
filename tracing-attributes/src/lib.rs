@@ -325,7 +325,7 @@ mod expand;
 ///
 /// It also works with [async-trait](https://crates.io/crates/async-trait)
 /// (a crate that allows defining async functions in traits,
-/// something not currently possible before Rust 1.75),
+/// something that wasn't possible before Rust 1.75),
 /// and hopefully most libraries that exhibit similar behaviors:
 ///
 /// ```
