@@ -441,8 +441,12 @@ impl<'writer> Writer<'writer> {
         }
     }
 
-    // TODO(eliza): consider making this a public API?
-    pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
+    /// Returns a new `Writer` with `is_ansi` set.
+    ///
+    /// If false, the returned `Writer` will not support ANSI escape code
+    /// output when written to by e.g. [`FormatEvent::format_event`] by a layer
+    /// that has ANSI escape codes enabled.
+    pub fn with_ansi(self, is_ansi: bool) -> Self {
         Self { is_ansi, ..self }
     }
 
