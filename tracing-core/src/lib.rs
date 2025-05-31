@@ -170,7 +170,7 @@ pub mod __macro_support {
     // Re-export the `core` functions that are used in macros. This allows
     // a crate to be named `core` and avoid name clashes.
     // See here: https://github.com/tokio-rs/tracing/issues/2761
-    pub use core::{file, line, module_path, option::Option};
+    pub use core::{column, file, line, module_path, option::Option};
 }
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
@@ -272,11 +272,22 @@ macro_rules! metadata {
             $name,
             $target,
             $level,
-            $crate::__macro_support::Option::Some($crate::__macro_support::file!()),
-            $crate::__macro_support::Option::Some($crate::__macro_support::line!()),
-            $crate::__macro_support::Option::Some($crate::__macro_support::module_path!()),
+            $crate::location!(),
             $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,
+        )
+    };
+}
+
+/// Statically constructs a new source code location.
+#[macro_export]
+macro_rules! location {
+    () => {
+        $crate::metadata::Location::new(
+            $crate::__macro_support::Option::Some($crate::__macro_support::file!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::line!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::column!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::module_path!()),
         )
     };
 }
@@ -311,7 +322,7 @@ pub use self::{
     dispatch::Dispatch,
     event::Event,
     field::Field,
-    metadata::{Level, LevelFilter, Metadata},
+    metadata::{Level, LevelFilter, Location, Metadata},
 };
 
 pub use self::{collect::Interest, metadata::Kind};
