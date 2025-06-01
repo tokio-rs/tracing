@@ -29,7 +29,7 @@ structured, event-based diagnostic information. `tracing-mock` provides
 tools for making assertions about what `tracing` diagnostics are emitted
 by code under test.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -154,7 +154,7 @@ handle.assert_finished();
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

@@ -22,7 +22,7 @@
 //!
 //! This crate can be used in a few ways to record spans/events:
 //!  - Using a [`RollingFileAppender`] to perform writes to a log file. This will block on writes.
-//!  - Using *any* type implementing [`std::io::Write`][write] in a non-blocking fashion.
+//!  - Using *any* type implementing [`std::io::Write`] in a non-blocking fashion.
 //!  - Using a combination of [`NonBlocking`] and [`RollingFileAppender`] to allow writes to a log file
 //!    without blocking.
 //!
@@ -48,7 +48,7 @@
 //! # }
 //! ```
 //!
-//! The file appender implements [`std::io::Write`][write]. To be used with
+//! The file appender implements [`std::io::Write`]. To be used with
 //! [`tracing_subscriber::FmtSubscriber`][fmt_subscriber], it must be combined with a
 //! [`MakeWriter`][make_writer] implementation to be able to record tracing spans/event.
 //!
@@ -68,12 +68,12 @@
 //!     .init();
 //! # }
 //! ```
-//! **Note:** `_guard` is a [`WorkerGuard`][guard] which is returned by [`tracing_appender::non_blocking`][non_blocking]
+//! **Note:** `_guard` is a [`WorkerGuard`] which is returned by [`tracing_appender::non_blocking`][non_blocking]
 //! to ensure buffered logs are flushed to their output in the case of abrupt terminations of a process.
 //! See [`WorkerGuard` module][guard] for more details.
 //!
 //! The example below demonstrates the construction of a [`tracing_appender::non_blocking`][non_blocking]
-//! writer constructed with a [`std::io::Write`][write]:
+//! writer constructed with a [`std::io::Write`]:
 //!
 //! ```rust
 //! use std::io::Error;
@@ -102,7 +102,6 @@
 //!
 //! The [`non_blocking` module][non_blocking]'s documentation provides more detail on how to use `non_blocking`.
 //!
-//! [write]: std::io::Write
 //! [non_blocking]: mod@non_blocking
 //! [guard]: non_blocking::WorkerGuard
 //! [make_writer]: tracing_subscriber::fmt::MakeWriter
