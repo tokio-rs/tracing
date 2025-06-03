@@ -15,6 +15,7 @@ fn err() -> Result<u8, TryFromIntError> {
 }
 
 #[instrument(err)]
+#[allow(dead_code)]
 fn err_suspicious_else() -> Result<u8, TryFromIntError> {
     {}
     u8::try_from(1234)

@@ -20,14 +20,14 @@ categories = [
     "asynchronous",
 ]
 keywords = ["logging", "tracing", "metrics", "subscriber"]
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 
 [features]
 
 default = ["smallvec", "fmt", "ansi", "tracing-log", "std"]
 alloc = []
 std = ["alloc", "tracing-core/std"]
-env-filter = ["matchers", "regex", "once_cell", "tracing", "std", "thread_local"]
+env-filter = ["matchers", "once_cell", "tracing", "std", "thread_local", "dep:regex-automata"]
 fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
@@ -37,20 +37,23 @@ valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracin
 # formatters.
 local-time = ["time/local-offset"]
 nu-ansi-term = ["dep:nu-ansi-term"]
+# For backwards compatibility only
+regex = []
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.33", default-features = false }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1.41", default-features = false }
-matchers = { optional = true, version = "0.1.0" }
-regex = { optional = true, version = "1.6.0", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
+matchers = { optional = true, version = "0.2.0" }
+# required to have matchers::BuildError implement std::error::Error
+regex-automata = { optional = true, version = "0.4", default-features = false, features = ["std"] }
 smallvec = { optional = true, version = "1.9.0" }
 once_cell = { optional = true, version = "1.13.0" }
 
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2.0", optional = true, default-features = false, features = ["log-tracer", "std"] }
-nu-ansi-term = { version = "0.46.0", optional = true }
+nu-ansi-term = { version = "0.50.0", optional = true }
 time = { version = "0.3.2", features = ["formatting"], optional = true }
 
 # only required by the json feature

@@ -130,6 +130,36 @@ macro_rules! span {
     };
 }
 
+/// Records multiple values on a span in a single call. As with recording
+/// individual values, all fields must be declared when the span is created.
+///
+/// This macro supports two optional sigils:
+/// - `%` uses the Display implementation.
+/// - `?` uses the Debug implementation.
+///
+/// For more details, see the [top-level documentation][lib].
+///
+/// [lib]: tracing/#recording-fields
+///
+/// # Examples
+///
+/// ```
+/// # use tracing::{field, info_span, record_all};
+/// let span = info_span!("my span", field1 = field::Empty, field2 = field::Empty, field3 = field::Empty).entered();
+/// record_all!(span, field1 = ?"1", field2 = %"2", field3 = 3);
+/// ```
+#[macro_export]
+macro_rules! record_all {
+    ($span:expr, $($fields:tt)*) => {
+        if let Some(meta) = $span.metadata() {
+            $span.record_all(&$crate::valueset!(
+                meta.fields(),
+                $($fields)*
+            ));
+        }
+    };
+}
+
 /// Constructs a span at the trace level.
 ///
 /// [Fields] and [attributes] are set using the same syntax as the [`span!`]
@@ -3066,9 +3096,12 @@ macro_rules! level_to_log {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
-    ($($t:tt)*) => {
-        stringify!($($t)*)
-    };
+    ($($k:ident).+) => {{
+        const NAME: $crate::__macro_support::FieldName<{
+            $crate::__macro_support::FieldName::len($crate::__macro_support::stringify!($($k).+))
+        }> = $crate::__macro_support::FieldName::new($crate::__macro_support::stringify!($($k).+));
+        NAME.as_str()
+    }};
 }
 
 #[cfg(not(feature = "log"))]
