@@ -399,15 +399,29 @@ impl Hash for Identifier {
     }
 }
 
+/// A temporary guard that holds strong references to `Dispatch` instances
+/// to prevent them from being dropped too early.
+///
+/// This is used to ensure that `Dispatch` objects upgraded from `Weak`
+/// stay alive for the duration of interest computation or other operations
+/// that require holding the `LOCKED_DISPATCHERS` lock. Dropping a `Dispatch`
+/// while holding that lock could lead to a deadlock if its `Drop` implementation
+/// tries to acquire the same lock again.
+///
+/// By storing `Dispatch` instances in this guard, we ensure that they are
+/// only dropped after the guard itself is dropped, i.e., after the critical
+/// section has completed.
+type DispatchGuard = Vec<Dispatch>;
+
 // === impl Callsites ===
 
 impl Callsites {
     /// Rebuild `Interest`s for all callsites in the registry.
     ///
     /// This also re-computes the max level hint.
-    fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder<'_>) {
+    fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder<'_>) -> DispatchGuard {
         let mut max_level = LevelFilter::OFF;
-        dispatchers.for_each(|dispatch| {
+        let guard = dispatchers.guarded_for_each(|dispatch| {
             // If the subscriber did not provide a max level hint, assume
             // that it may enable every level.
             let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
@@ -415,11 +429,11 @@ impl Callsites {
                 max_level = level_hint;
             }
         });
-
         self.for_each(|callsite| {
             rebuild_callsite_interest(callsite, &dispatchers);
         });
         LevelFilter::set_max(max_level);
+        guard
     }
 
     /// Push a `dyn Callsite` trait object to the callsite registry.
@@ -485,7 +499,13 @@ impl Callsites {
 pub(crate) fn register_dispatch(dispatch: &Dispatch) {
     let dispatchers = DISPATCHERS.register_dispatch(dispatch);
     dispatch.subscriber().on_register_dispatch(dispatch);
-    CALLSITES.rebuild_interest(dispatchers);
+    // The `dispatchers` variable holds a write lock on LOCKED_DISPATCHERS,
+    // but it is dropped immediately after being passed to `rebuild_interest`.
+    // `_guard` holds strong references to Dispatch instances,
+    // which may trigger Drop when `_guard` is dropped.
+    // Since `_guard` is dropped after `dispatchers` (and thus the write lock) has been released,
+    // any locking inside Drop will not cause a deadlock.
+    let _guard = CALLSITES.rebuild_interest(dispatchers);
 }
 
 fn rebuild_callsite_interest(
@@ -495,7 +515,7 @@ fn rebuild_callsite_interest(
     let meta = callsite.metadata();
 
     let mut interest = None;
-    dispatchers.for_each(|dispatch| {
+    let _guard = dispatchers.guarded_for_each(|dispatch| {
         let this_interest = dispatch.register_callsite(meta);
         interest = match interest.take() {
             None => Some(this_interest),
@@ -559,17 +579,32 @@ mod dispatchers {
     }
 
     impl Rebuilder<'_> {
-        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
+        pub(super) fn guarded_for_each(
+            &self,
+            mut f: impl FnMut(&dispatcher::Dispatch),
+        ) -> super::DispatchGuard {
             let iter = match self {
                 Rebuilder::JustOne => {
                     dispatcher::get_default(f);
-                    return;
+                    return vec![];
                 }
                 Rebuilder::Read(vec) => vec.iter(),
                 Rebuilder::Write(vec) => vec.iter(),
             };
+            // Without creating this guard, Dispatch instances upgraded inside for_each may be dropped
+            // immediately after the callback, potentially triggering their Drop implementations.
+            // Since this function is called while holding the LOCKED_DISPATCHERS write or read lock,
+            // dropping a Dispatch here could lead to a deadlock if its Drop implementation
+            // also attempts to acquire the same lock.
+            // To prevent this, we temporarily store the Dispatch instances in a Vec and return it,
+            // ensuring they stay alive until the guard is dropped.
+            let mut guard = Vec::with_capacity(iter.len());
             iter.filter_map(dispatcher::Registrar::upgrade)
-                .for_each(|dispatch| f(&dispatch))
+                .for_each(|dispatch| {
+                    f(&dispatch);
+                    guard.push(dispatch);
+                });
+            guard
         }
     }
 }
