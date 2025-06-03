@@ -6,7 +6,7 @@ name = "tracing-core"
 # - Update doc url in README.md.
 # - Update CHANGELOG.md.
 # - Create "tracing-core-0.1.x" git tag.
-version = "0.1.33"
+version = "0.1.34"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"
 readme = "README.md"
