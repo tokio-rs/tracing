@@ -136,7 +136,6 @@
 
 use error::Error;
 use error::Kind;
-use once_cell::sync::Lazy;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -157,10 +156,8 @@ use tracing_subscriber::Subscribe;
 
 mod error;
 
-static START: Lazy<Instant> = Lazy::new(Instant::now);
-
 thread_local! {
-    static LAST_EVENT: Cell<Instant> = Cell::new(*START);
+    static LAST_EVENT: Cell<Option<Instant>> = const { Cell::new(None) };
 
     static THREAD_NAME: String = {
         let thread = std::thread::current();
@@ -264,7 +261,6 @@ where
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the subscriber
-        let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
             config: Default::default(),
@@ -387,13 +383,17 @@ where
     W: Write + 'static,
 {
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, C>) {
-        let samples = self.time_since_last_event();
+        let Some(samples) = self.time_since_last_event() else {
+            return;
+        };
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
 
         if !self.config.empty_samples && first.parent().is_none() {
             return;
         }
+
+        let Some(second) = first.parent() else { return };
 
         let mut stack = String::new();
 
@@ -403,12 +403,9 @@ where
             stack += "all-threads";
         }
 
-        if let Some(second) = first.parent() {
-            for parent in second.scope().from_root() {
-                stack += ";";
-                write(&mut stack, parent, &self.config)
-                    .expect("expected: write to String never fails");
-            }
+        for parent in second.scope().from_root() {
+            stack += ";";
+            write(&mut stack, parent, &self.config).expect("expected: write to String never fails");
         }
 
         write!(&mut stack, " {}", samples.as_nanos())
@@ -436,7 +433,9 @@ where
             };
         }
 
-        let samples = self.time_since_last_event();
+        let samples = self
+            .time_since_last_event()
+            .expect("expected: LAST_EVENT has been initialized");
         let first = expect!(ctx.span(id), "expected: span id exists in registry");
 
         let mut stack = String::new();
@@ -468,16 +467,16 @@ where
     C: Collect + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn time_since_last_event(&self) -> Duration {
+    fn time_since_last_event(&self) -> Option<Duration> {
         let now = Instant::now();
 
         let prev = LAST_EVENT.with(|e| {
             let prev = e.get();
-            e.set(now);
+            e.set(Some(now));
             prev
         });
 
-        now - prev
+        prev.map(|prev| now - prev)
     }
 }
 
