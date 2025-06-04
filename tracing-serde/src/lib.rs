@@ -3,12 +3,12 @@
 //! An adapter for serializing [`tracing`] types using [`serde`].
 //!
 //! [![Documentation][docs-badge]][docs-url]
-//! [![Documentation (master)][docs-master-badge]][docs-master-url]
+//! [![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 //!
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
 //! [docs-url]: https://docs.rs/tracing-serde
-//! [docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-//! [docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
+//! [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+//! [docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_serde
 //!
 //! ## Overview
 //!
@@ -162,7 +162,7 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`serde`]: https://crates.io/crates/serde
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]

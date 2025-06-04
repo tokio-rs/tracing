@@ -1,10 +1,10 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -13,8 +13,8 @@
 [crates-url]: https://crates.io/crates/tracing
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing.rs
+[docs-0.2-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-0.2-url]: https://tracing.rs
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -23,7 +23,7 @@
 [discord-url]: https://discord.gg/EeF3cQw
 
 [Website](https://tokio.rs) |
-[Chat](https://discord.gg/EeF3cQw) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
+[Chat](https://discord.gg/EeF3cQw)
 
 ## Overview
 
@@ -33,9 +33,9 @@ Tokio project, but does _not_ require the `tokio` runtime to be used.
 
 ### Branch set-up
 
-- `main` - Default branch, crates.io releases are done from this branch. This was previously the
+- [`main`](https://github.com/tokio-rs/tracing/tree/main) - Default branch, crates.io releases are done from this branch. This was previously the
   `v0.1.x` branch.
-- `v0.2.x` - Branch containing the as-yet unreleased 0.2 version of `tracing-core`, `tracing`, and
+- [`v0.2.x`](https://github.com/tokio-rs/tracing/tree/v0.2.x) - Branch containing the as-yet unreleased 0.2 version of `tracing-core`, `tracing`, and
   all the other tracing crates that depend on these versions. This was previously the `master`
   branch.
 

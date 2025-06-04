@@ -5,7 +5,7 @@ name = "tracing-core"
 # - Update html_root_url.
 # - Update doc url in README.md.
 # - Update CHANGELOG.md.
-# - Create "v0.1.x" git tag.
+# - Create "tracing-core-0.1.x" git tag.
 version = "0.1.33"
 authors = ["Tokio Contributors <team@tokio.rs>"]
 license = "MIT"

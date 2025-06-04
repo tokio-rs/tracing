@@ -1,6 +1,6 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing
 
@@ -8,7 +8,7 @@ Application-level tracing for Rust.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -19,8 +19,8 @@ Application-level tracing for Rust.
 [crates-url]: https://crates.io/crates/tracing
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -437,12 +437,12 @@ undergoing active development. They may be less stable than `tracing` and
 
 [`log`]: https://docs.rs/log/0.4.6/log/
 [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
-[`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/master/tracing-futures
-[`tracing-subscriber`]: https://github.com/tokio-rs/tracing/tree/master/tracing-subscriber
-[`tracing-log`]: https://github.com/tokio-rs/tracing/tree/master/tracing-log
+[`tracing-futures`]: https://github.com/tokio-rs/tracing/tree/main/tracing-futures
+[`tracing-subscriber`]: https://github.com/tokio-rs/tracing/tree/main/tracing-subscriber
+[`tracing-log`]: https://github.com/tokio-rs/tracing/tree/main/tracing-log
 [`env_logger`]: https://crates.io/crates/env_logger
 [`FmtSubscriber`]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html
-[`examples`]: https://github.com/tokio-rs/tracing/tree/master/examples
+[`examples`]: https://github.com/tokio-rs/tracing/tree/main/examples
 
 ## Supported Rust Versions
 
