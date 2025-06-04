@@ -15,7 +15,7 @@ preserving structured information.
 [crates-badge]: https://img.shields.io/crates/v/tracing-journald.svg
 [crates-url]: https://crates.io/crates/tracing-journald
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_journald
+[docs-v0.2.x-url]: https://tracing.rs/tracing_journald
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg

@@ -8,7 +8,7 @@
 //! [docs-badge]: https://docs.rs/tracing-serde/badge.svg
 //! [docs-url]: https://docs.rs/tracing-serde
 //! [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-//! [docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_serde
+//! [docs-v0.2.x-url]: https://tracing.rs/tracing_serde
 //!
 //! ## Overview
 //!

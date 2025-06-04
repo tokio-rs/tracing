@@ -33,7 +33,7 @@ application authors using `tracing` to instrument their applications.
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
 [docs-url]: https://docs.rs/tracing-subscriber/latest
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_subscriber
+[docs-v0.2.x-url]: https://tracing.rs/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

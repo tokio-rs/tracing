@@ -21,7 +21,7 @@ Utilities for instrumenting futures-based code with [`tracing`].
 [docs-badge]: https://docs.rs/tracing-futures/badge.svg
 [docs-url]: https://docs.rs/tracing-futures/0.2.5/tracing_futures
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_futures
+[docs-v0.2.x-url]: https://tracing.rs/tracing_futures
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

@@ -20,7 +20,7 @@ Core primitives for application-level tracing.
 [docs-badge]: https://docs.rs/tracing-core/badge.svg
 [docs-url]: https://docs.rs/tracing-core/0.1.33
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_core
+[docs-v0.2.x-url]: https://tracing.rs/tracing_core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

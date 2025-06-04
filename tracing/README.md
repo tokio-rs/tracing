@@ -20,7 +20,7 @@ Application-level tracing for Rust.
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing
+[docs-v0.2.x-url]: https://tracing.rs/tracing
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

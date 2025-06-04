@@ -13,8 +13,8 @@
 [crates-url]: https://crates.io/crates/tracing
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
-[docs-0.2-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-0.2-url]: https://tracing.rs
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

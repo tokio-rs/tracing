@@ -137,7 +137,7 @@ terms or conditions.
 [docs-badge]: https://docs.rs/tracing-flame/badge.svg
 [docs-url]: https://docs.rs/tracing-flame/0.2.6
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_flame
+[docs-v0.2.x-url]: https://tracing.rs/tracing_flame
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

@@ -22,7 +22,7 @@ information.
 [docs-badge]: https://docs.rs/tracing-error/badge.svg
 [docs-url]: https://docs.rs/tracing-error/0.2.1/tracing_error
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing-rs.netlify.com/tracing_error
+[docs-v0.2.x-url]: https://tracing.rs/tracing_error
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
