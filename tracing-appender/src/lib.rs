@@ -4,13 +4,13 @@
 //!
 //! [`tracing`][tracing] is a framework for structured, event-based diagnostic information.
 //! `tracing-appender` allows events and spans to be recorded in a non-blocking manner through
-//! a dedicated logging thread. It also provides a [`RollingFileAppender`][file_appender] that can
+//! a dedicated logging thread. It also provides a [`RollingFileAppender`] that can
 //! be used with _or_ without the non-blocking writer.
 //!
 //! *Compiler support: [requires `rustc` 1.63+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
-//! [file_appender]: rolling::RollingFileAppender
+//! [`RollingFileAppender`]: rolling::RollingFileAppender
 //! [tracing]: https://docs.rs/tracing/
 //!
 //! # Usage

@@ -68,7 +68,7 @@ mod socket;
 /// - `DEBUG` => Informational (6)
 /// - `TRACE` => Debug (7)
 ///
-/// These mappings can be changed with [`Subscriber::with_priority_mappings`].
+/// These mappings can be changed with [`Layer::with_priority_mappings`].
 ///
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target.
