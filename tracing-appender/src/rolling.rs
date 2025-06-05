@@ -1,6 +1,6 @@
 //! A rolling file appender.
 //!
-//! Creates a new log file at a fixed frequency as defined by [`Rotation`][self::Rotation].
+//! Creates a new log file at a fixed frequency as defined by [`Rotation`].
 //! Logs will be written to this file for the duration of the period and will automatically roll over
 //! to the newly created log file once the time period has elapsed.
 //!
@@ -116,9 +116,9 @@ impl RollingFileAppender {
     /// Creates a new `RollingFileAppender`.
     ///
     /// A `RollingFileAppender` will have a fixed rotation whose frequency is
-    /// defined by [`Rotation`][self::Rotation]. The `directory` and
-    /// `file_name_prefix` arguments determine the location and file name's _prefix_
-    /// of the log file. `RollingFileAppender` will automatically append the current date
+    /// defined by [`Rotation`]. The `directory` and `file_name_prefix`
+    /// arguments determine the location and file name's _prefix_ of the log
+    /// file. `RollingFileAppender` will automatically append the current date
     /// and hour (UTC format) to the file name.
     ///
     /// Alternatively, a `RollingFileAppender` can be constructed using one of the following helpers:
@@ -340,9 +340,9 @@ pub fn hourly(
 /// a non-blocking, daily file appender.
 ///
 /// A `RollingFileAppender` has a fixed rotation whose frequency is
-/// defined by [`Rotation`][self::Rotation]. The `directory` and
-/// `file_name_prefix` arguments determine the location and file name's _prefix_
-/// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
+/// defined by [`Rotation`]. The `directory` and `file_name_prefix`
+/// arguments determine the location and file name's _prefix_ of the log file.
+/// `RollingFileAppender` automatically appends the current date in UTC.
 ///
 /// # Examples
 ///
@@ -376,9 +376,9 @@ pub fn daily(
 /// a non-blocking, weekly file appender.
 ///
 /// A `RollingFileAppender` has a fixed rotation whose frequency is
-/// defined by [`Rotation`][self::Rotation]. The `directory` and
-/// `file_name_prefix` arguments determine the location and file name's _prefix_
-/// of the log file. `RollingFileAppender` automatically appends the current date in UTC.
+/// defined by [`Rotation`]. The `directory` and `file_name_prefix` arguments
+/// determine the location and file name's _prefix_ of the log file.
+/// `RollingFileAppender` automatically appends the current date in UTC.
 ///
 /// # Examples
 ///

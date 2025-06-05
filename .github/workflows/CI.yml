@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-    - "v0.1.x"
+    - "main"
   pull_request: {}
 
 env:

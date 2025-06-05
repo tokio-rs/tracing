@@ -321,8 +321,8 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// whether or not other crates in the dependency graph enable the "ansi"
     /// feature flag.
     ///
-    /// [`with_ansi`]: Subscriber::with_ansi
-    /// [`set_ansi`]: Subscriber::set_ansi
+    /// [`with_ansi`]: Layer::with_ansi
+    /// [`set_ansi`]: Layer::set_ansi
     pub fn with_ansi(self, ansi: bool) -> Self {
         #[cfg(not(feature = "ansi"))]
         if ansi {

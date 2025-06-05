@@ -468,9 +468,9 @@
 //! function pointer. In addition, when more control is required, the [`Filter`]
 //! trait may also be implemented for user-defined types.
 //!
-//! //! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
-//! filter. [`None`](Option::None) filters out _nothing_ (that is, allows
-//! everything through). For example:
+//! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
+//! filter. [`None`] filters out _nothing_ (that is, allows everything through). For
+//! example:
 //!
 //! ```rust
 //! # use tracing_subscriber::{filter::filter_fn, Layer};
