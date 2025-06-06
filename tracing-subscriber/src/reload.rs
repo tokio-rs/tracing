@@ -272,7 +272,7 @@ impl<L, S> Layer<L, S> {
     /// Returns a `Handle` that can be used to reload the wrapped [`Layer`] or [`Filter`].
     ///
     /// [`Layer`]: crate::layer::Layer
-    /// [`Filter`]: crate::filter::Filter
+    /// [`Filter`]: crate::layer::Filter
     pub fn handle(&self) -> Handle<L, S> {
         Handle {
             inner: Arc::downgrade(&self.inner),

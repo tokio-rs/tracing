@@ -93,7 +93,7 @@
 //! [always]: crate::subscriber::Interest::always
 //! [sometimes]: crate::subscriber::Interest::sometimes
 //! [never]: crate::subscriber::Interest::never
-//! [`Dispatch`]: crate::dispatch::Dispatch
+//! [`Dispatch`]: crate::dispatcher::Dispatch
 //! [macros]: https://docs.rs/tracing/latest/tracing/#macros
 //! [instrument]: https://docs.rs/tracing/latest/tracing/attr.instrument.html
 use crate::stdlib::{
@@ -301,7 +301,7 @@ impl DefaultCallsite {
     /// See the [documentation on callsite registration][reg-docs] for details
     /// on the global callsite registry.
     ///
-    /// [`Callsite`]: crate::callsite::Callsite
+    /// [`tracing_core::callsite::register`]: crate::callsite::register
     /// [reg-docs]: crate::callsite#registering-callsites
     #[inline(never)]
     // This only happens once (or if the cached interest value was corrupted).

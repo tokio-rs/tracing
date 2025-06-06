@@ -167,7 +167,7 @@ impl<F: Formattable> LocalTime<F> {
     /// [`time` crate]: time
     /// [`Formattable`]: time::formatting::Formattable
     /// [well-known formats]: time::format_description::well_known
-    /// [`format_description!`]: time::macros::format_description!
+    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
     /// [`time::format_description::parse`]: time::format_description::parse()
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(format: F) -> Self {
@@ -284,7 +284,7 @@ impl<F: Formattable> UtcTime<F> {
     /// [`time` crate]: time
     /// [`Formattable`]: time::formatting::Formattable
     /// [well-known formats]: time::format_description::well_known
-    /// [`format_description!`]: time::macros::format_description!
+    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
     /// [`time::format_description::parse`]: time::format_description::parse
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(format: F) -> Self {
@@ -440,7 +440,7 @@ impl<F: time::formatting::Formattable> OffsetTime<F> {
     /// [`Formattable`]: time::formatting::Formattable
     /// [local offset]: time::UtcOffset::current_local_offset()
     /// [well-known formats]: time::format_description::well_known
-    /// [`format_description!`]: time::macros::format_description
+    /// [`format_description!`]: https://docs.rs/time/0.3/time/macros/macro.format_description.html
     /// [`time::format_description::parse`]: time::format_description::parse
     /// [`time` book]: https://time-rs.github.io/book/api/format-description.html
     pub fn new(offset: time::UtcOffset, format: F) -> Self {

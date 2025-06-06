@@ -32,7 +32,7 @@
 //! long as doing so complies with this policy.
 //!
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
@@ -68,7 +68,7 @@ mod socket;
 /// - `DEBUG` => Informational (6)
 /// - `TRACE` => Debug (7)
 ///
-/// These mappings can be changed with [`Subscriber::with_priority_mappings`].
+/// These mappings can be changed with [`Layer::with_priority_mappings`].
 ///
 /// The standard journald `CODE_LINE` and `CODE_FILE` fields are automatically emitted. A `TARGET`
 /// field is emitted containing the event's target.

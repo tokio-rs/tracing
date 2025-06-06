@@ -33,7 +33,6 @@ where
 /// Note: Libraries should *NOT* call `set_global_default()`! That will cause conflicts when
 /// executables try to set them later.
 ///
-/// [span]: super::span
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`Event`]: super::event::Event
 pub fn set_global_default<S>(subscriber: S) -> Result<(), SetGlobalDefaultError>
