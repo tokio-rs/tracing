@@ -25,6 +25,8 @@
 [Website](https://tokio.rs) |
 [Chat](https://discord.gg/EeF3cQw)
 
+# The `v0.1.x` branch is no longer in use. For the versions of `tracing` released to crates.io, please see [main](https://github.com/tokio-rs/tracing/tree/main). For the pre-release development version of `tracing`, please see [v0.2.x](https://github.com/tokio-rs/tracing/tree/v0.2.x).
+
 ## Overview
 
 `tracing` is a framework for instrumenting Rust programs to collect
