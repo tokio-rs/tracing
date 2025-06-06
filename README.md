@@ -25,7 +25,7 @@
 [Website](https://tokio.rs) |
 [Chat](https://discord.gg/EeF3cQw) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
 
-# The master branch is the pre-release, development version of `tracing`. Please see the [v0.1.x](https://github.com/tokio-rs/tracing/tree/v0.1.x) branch for the versions of `tracing` released to crates.io.
+# The master branch is no longer in use. For the versions of `tracing` released to crates.io, please see [main](https://github.com/tokio-rs/tracing/tree/main). For the pre-release development version of `tracing`, please see [v0.2.x](https://github.com/tokio-rs/tracing/tree/v0.2.x).
 
 ## Overview
 
