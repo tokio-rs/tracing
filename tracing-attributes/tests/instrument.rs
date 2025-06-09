@@ -13,6 +13,21 @@ fn repro_2294() {
     let i = 42;
 }
 
+// Reproduces a compile error when an instrumented function signature contains lifetimes
+// (https://github.com/tokio-rs/tracing/issues/2796).
+#[instrument(err)]
+fn repro_2796_err(x: &mut u8) -> Result<&u8, &u8> {
+    Ok(x)
+}
+#[instrument(ret)]
+fn repro_2796_ret(x: &mut u8) -> Result<&u8, &u8> {
+    Ok(x)
+}
+#[instrument(err, ret)]
+fn repro_2796_err_ret(x: &mut u8) -> Result<&u8, &u8> {
+    Ok(x)
+}
+
 #[test]
 fn override_everything() {
     #[instrument(target = "my_target", level = "debug")]
