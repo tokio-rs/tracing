@@ -5,7 +5,11 @@
 //! [`tracing`] is a framework for instrumenting Rust programs with context-aware,
 //! structured, event-based diagnostic information. This crate provides an
 //! implementation of the [`Collect`] trait that records `tracing`'s `Event`s
-//! and `Span`s by formatting them as text and logging them to stdout.
+//! and `Span`s by formatting them as text and logging them to **stdout**.
+//!
+//! _Note: It is not good practice to write logging information to stdout.
+//! It is recommended for most applications to set this to stderr instead, which
+//! can be done with [`CollectorBuilder::with_writer`]_
 //!
 //! # Usage
 //!
