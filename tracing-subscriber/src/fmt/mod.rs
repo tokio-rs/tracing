@@ -703,6 +703,38 @@ where
         }
     }
 
+    /// Sets whether or not the binary name of the process is displayed when
+    /// formatting events. If executable_name is None, argv\[0\] will be used,
+    /// otherwise the spcified string will be used.
+    ///
+    /// [argv\[0\]]: std::env::args
+    pub fn with_executable_name(
+        self,
+        display_executable_name: bool,
+        executable_name: Option<impl Into<String>>,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self
+                .inner
+                .with_executable_name(display_executable_name, executable_name),
+            ..self
+        }
+    }
+
+    /// Sets whether or not the [process ID] of the current thread is displayed
+    /// when formatting events.
+    ///
+    /// [process ID]: std::process::id
+    pub fn with_process_id(
+        self,
+        display_process_id: bool,
+    ) -> CollectorBuilder<N, format::Format<L, T>, F, W> {
+        CollectorBuilder {
+            inner: self.inner.with_process_id(display_process_id),
+            ..self
+        }
+    }
+
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events.
     ///
