@@ -16,7 +16,7 @@
 //! - An [`env_logger`] module, with helpers for using the [`env_logger` crate]
 //!   with `tracing` (optional, enabled by the `env-logger` feature).
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -76,7 +76,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -92,9 +92,9 @@
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`log`]: https://crates.io/crates/log
 //! [`env_logger` crate]: https://crates.io/crates/env-logger
-//! [`tracing::Collector`]: tracing::Collect
+//! [`tracing::Collector`]: tracing_core::Collect
 //! [`tracing::Event`]: tracing_core::Event
-//! [`Collect`]: tracing::Collect
+//! [`Collect`]: tracing_core::Collect
 //! [flags]: https://docs.rs/tracing/latest/tracing/#crate-feature-flags
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",

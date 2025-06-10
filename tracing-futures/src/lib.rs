@@ -15,7 +15,7 @@
 //! * [`WithCollector`] allows a `tracing` [collector] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -25,16 +25,16 @@
 //! features with other crates in the asynchronous ecosystem:
 //!
 //! - `tokio`: Enables compatibility with the `tokio` 0.1 crate, including
-//!    [`Instrument`] and [`WithCollector`] implementations for
-//!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
-//!    `tokio::runtime::current_thread`. This is not needed for compatibility
-//!    with `tokio` v1.
+//!   [`Instrument`] and [`WithCollector`] implementations for
+//!   `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
+//!   `tokio::runtime::current_thread`. This is not needed for compatibility
+//!   with `tokio` v1.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
-//!    crate, including [`Instrument`] and [`WithCollector`]
-//!    implementations for types implementing `tokio_executor::Executor`.
-//!    This is intended primarily for use in crates which depend on
-//!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
-//!    should be used instead.
+//!   crate, including [`Instrument`] and [`WithCollector`]
+//!   implementations for types implementing `tokio_executor::Executor`.
+//!   This is intended primarily for use in crates which depend on
+//!   `tokio-executor` rather than `tokio`; in general the `tokio` feature
+//!   should be used instead.
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
@@ -59,7 +59,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio

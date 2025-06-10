@@ -1,10 +1,12 @@
 //! Metadata describing trace data.
 use super::{callsite, field};
-use core::{
-    cmp, fmt,
-    str::FromStr,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use core::{cmp, fmt, str::FromStr, sync::atomic::Ordering};
+
+#[cfg(feature = "portable-atomic")]
+use portable_atomic::AtomicUsize;
+
+#[cfg(not(feature = "portable-atomic"))]
+use core::sync::atomic::AtomicUsize;
 
 /// Metadata describing a [span] or [event].
 ///
@@ -446,7 +448,7 @@ impl Eq for Metadata<'_> {}
 impl PartialEq for Metadata<'_> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        if core::ptr::eq(&self, &other) {
+        if core::ptr::eq(self, other) {
             true
         } else if cfg!(not(debug_assertions)) {
             // In a well-behaving application, two `Metadata` can be assumed to

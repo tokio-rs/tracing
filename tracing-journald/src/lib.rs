@@ -11,7 +11,7 @@
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [`tracing`]: https://crates.io/crates/tracing
@@ -21,7 +21,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -517,11 +517,17 @@ pub struct PriorityMappings {
 impl PriorityMappings {
     /// Returns the default priority mappings:
     ///
-    /// - [`tracing::Level::ERROR`]: [`Priority::Error`] (3)
-    /// - [`tracing::Level::WARN`]: [`Priority::Warning`] (4)
-    /// - [`tracing::Level::INFO`]: [`Priority::Notice`] (5)
-    /// - [`tracing::Level::DEBUG`]: [`Priority::Informational`] (6)
-    /// - [`tracing::Level::TRACE`]: [`Priority::Debug`] (7)
+    /// - [`tracing::Level::ERROR`][]: [`Priority::Error`] (3)
+    /// - [`tracing::Level::WARN`][]: [`Priority::Warning`] (4)
+    /// - [`tracing::Level::INFO`][]: [`Priority::Notice`] (5)
+    /// - [`tracing::Level::DEBUG`][]: [`Priority::Informational`] (6)
+    /// - [`tracing::Level::TRACE`][]: [`Priority::Debug`] (7)
+    ///
+    /// [`tracing::Level::ERROR`]: tracing_core::Level::ERROR
+    /// [`tracing::Level::WARN`]: tracing_core::Level::WARN
+    /// [`tracing::Level::INFO`]: tracing_core::Level::INFO
+    /// [`tracing::Level::DEBUG`]: tracing_core::Level::DEBUG
+    /// [`tracing::Level::TRACE`]: tracing_core::Level::TRACE
     pub fn new() -> PriorityMappings {
         Self {
             error: Priority::Error,

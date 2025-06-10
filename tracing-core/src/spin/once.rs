@@ -1,8 +1,14 @@
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::hint::spin_loop;
-use core::sync::atomic::{AtomicUsize, Ordering};
 use core::mem::MaybeUninit;
+use core::sync::atomic::Ordering;
+
+#[cfg(feature = "portable-atomic")]
+use portable_atomic::AtomicUsize;
+
+#[cfg(not(feature = "portable-atomic"))]
+use core::sync::atomic::AtomicUsize;
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Unlike its std equivalent, this is generalized so that the

@@ -16,11 +16,13 @@ categories = [
     "encoding",
 ]
 keywords = ["logging", "tracing", "serialization"]
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 
 [features]
 default = ["std"]
 std = ["serde/std", "tracing-core/std"]
+portable-atomic = ["tracing-core/portable-atomic"]
+critical-section = ["tracing-core/critical-section"]
 
 [dependencies]
 serde = { version = "1.0.139", default-features = false, features = ["alloc"] }
