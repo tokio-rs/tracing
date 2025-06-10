@@ -1,6 +1,7 @@
 use core::cell::UnsafeCell;
 use core::fmt;
 use core::hint::spin_loop;
+use core::mem::MaybeUninit;
 use core::sync::atomic::Ordering;
 
 #[cfg(feature = "portable-atomic")]
@@ -15,7 +16,7 @@ use core::sync::atomic::AtomicUsize;
 /// a future, too.
 pub struct Once<T> {
     state: AtomicUsize,
-    data: UnsafeCell<Option<T>>, // TODO remove option and use mem::uninitialized
+    data: UnsafeCell<MaybeUninit<T>>,
 }
 
 impl<T: fmt::Debug> fmt::Debug for Once<T> {
@@ -47,7 +48,7 @@ impl<T> Once<T> {
     /// Initialization constant of `Once`.
     pub const INIT: Self = Once {
         state: AtomicUsize::new(INCOMPLETE),
-        data: UnsafeCell::new(None),
+        data: UnsafeCell::new(MaybeUninit::uninit()),
     };
 
     /// Creates a new `Once` value.
@@ -56,10 +57,7 @@ impl<T> Once<T> {
     }
 
     fn force_get<'a>(&'a self) -> &'a T {
-        match unsafe { &*self.data.get() }.as_ref() {
-            None => unsafe { unreachable() },
-            Some(p) => p,
-        }
+        unsafe { (*self.data.get()).assume_init_ref() }
     }
 
     /// Performs an initialization routine once and only once. The given closure
@@ -97,7 +95,9 @@ impl<T> Once<T> {
                         state: &self.state,
                         panicked: true,
                     };
-                    unsafe { *self.data.get() = Some(builder()) };
+                    unsafe {
+                        *self.data.get() = MaybeUninit::new(builder());
+                    };
                     finish.panicked = false;
 
                     self.state.store(COMPLETE, Ordering::SeqCst);
