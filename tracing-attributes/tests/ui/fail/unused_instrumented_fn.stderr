@@ -1,11 +1,11 @@
 error: function `never_used` is never used
- --> tests/ui/unused_instrumented_fn.rs:4:4
+ --> tests/ui/fail/unused_instrumented_fn.rs:4:4
   |
 4 | fn never_used() {}
   |    ^^^^^^^^^^
   |
 note: the lint level is defined here
- --> tests/ui/unused_instrumented_fn.rs:1:9
+ --> tests/ui/fail/unused_instrumented_fn.rs:1:9
   |
 1 | #![deny(dead_code)]
   |         ^^^^^^^^^

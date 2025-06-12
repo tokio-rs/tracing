@@ -2,7 +2,7 @@
 
 #[rustversion::stable]
 #[test]
-fn trybuild() {
+fn compile_fail() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/ui/*.rs");
+    t.compile_fail("tests/ui/fail/*.rs");
 }
