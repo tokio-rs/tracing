@@ -406,6 +406,7 @@ are not maintained by the `tokio` project. These include:
 - [`reqwest-tracing`] provides a middleware to trace [`reqwest`] HTTP requests.
 - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
 - [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
+- [`tracing-indicatif`] provides a layer to show [`indicatif`] CLI progress bars for active spans.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -451,6 +452,8 @@ please let us know!)
 [`reqwest`]: https://crates.io/crates/reqwest
 [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
 [`clippy-tracing`]: https://crates.io/crates/clippy-tracing
+[`tracing-indicatif`]: https://crates.io/crates/tracing-indicatif
+[`indicatif`]: https://crates.io/crates/indicatif
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
