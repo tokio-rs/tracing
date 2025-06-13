@@ -826,7 +826,7 @@ where
     /// [`self.enabled`]: Subscribe::enabled()
     /// [the trait-level documentation]: #filtering-with-subscribers
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        if self.enabled(metadata, Context::none()) {
+        if self.enabled(metadata, &Context::none()) {
             Interest::always()
         } else {
             Interest::never()
@@ -861,7 +861,7 @@ where
     ///
     /// [`Interest`]: tracing_core::Interest
     /// [the trait-level documentation]: #filtering-with-subscribers
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
         let _ = (metadata, ctx);
         true
     }
@@ -1584,7 +1584,7 @@ where
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
         match self {
             Some(ref inner) => inner.enabled(metadata, ctx),
             None => true,
@@ -1696,7 +1696,7 @@ macro_rules! subscriber_impl_body {
         }
 
         #[inline]
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
             self.deref().enabled(metadata, ctx)
         }
 
@@ -1804,8 +1804,8 @@ feature! {
             interest
         }
 
-        fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-            self.iter().all(|s| s.enabled(metadata, ctx.clone()))
+        fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
+            self.iter().all(|s| s.enabled(metadata, ctx))
         }
 
         fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, C>) {

@@ -17,7 +17,7 @@ impl<C: Collect> crate::Subscribe<C> for LevelFilter {
         }
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, _: crate::subscribe::Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: &crate::subscribe::Context<'_, C>) -> bool {
         self >= metadata.level()
     }
 
