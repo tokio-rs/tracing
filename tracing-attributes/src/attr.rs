@@ -1,10 +1,11 @@
 use std::collections::HashSet;
-use syn::{punctuated::Punctuated, Block, Expr, Ident, LitInt, LitStr, Path, Token};
+use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
+use syn::token::Brace;
 
 /// Arguments to `#[instrument(err(...))]` and `#[instrument(ret(...))]` which describe how the
 /// return value event should be emitted.
@@ -321,14 +322,18 @@ pub(crate) enum FieldKind {
 
 #[derive(Clone, Debug)]
 pub(crate) enum FieldName {
-    Expr(Block),
+    Expr(Expr),
     Punctuated(Punctuated<Ident, Token![.]>),
 }
 
 impl ToTokens for FieldName {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            FieldName::Expr(expr) => expr.to_tokens(tokens),
+            FieldName::Expr(expr) => {
+                Brace::default().surround(tokens, |tokens| {
+                    expr.to_tokens(tokens)
+                });
+            },
             FieldName::Punctuated(punctuated) => punctuated.to_tokens(tokens),
         }
     }
@@ -362,7 +367,10 @@ impl Parse for Field {
         };
         // Parse name as either an expr between braces or a dotted identifier.
         let name = if input.peek(syn::token::Brace) {
-            FieldName::Expr(input.parse::<Block>()?)
+            let content;
+            let _ = syn::braced!(content in input);
+            let expr = content.call(Expr::parse)?;
+            FieldName::Expr(expr)
         } else {
             FieldName::Punctuated(Punctuated::parse_separated_nonempty_with(
                 input,
