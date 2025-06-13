@@ -1,14 +1,15 @@
-// Only test on nightly, since UI tests are bound to change over time
+// Only test on stable, since UI tests are bound to change over time
+
 #[rustversion::stable]
 #[test]
-fn async_instrument() {
+fn pass() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/ui/async_instrument.rs");
+    t.pass("tests/ui/pass/*.rs");
 }
 
 #[rustversion::stable]
 #[test]
-fn const_instrument() {
+fn compile_fail() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/ui/const_instrument.rs");
+    t.compile_fail("tests/ui/fail/*.rs");
 }
