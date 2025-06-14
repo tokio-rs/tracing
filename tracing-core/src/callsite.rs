@@ -109,7 +109,6 @@ use core::{
 use self::dispatchers::Dispatchers;
 use crate::{
     dispatcher::Dispatch,
-    lazy::Lazy,
     metadata::{LevelFilter, Metadata},
     subscriber::Interest,
     sync::Mutex,
@@ -259,7 +258,7 @@ static CALLSITES: Callsites = Callsites {
 
 static DISPATCHERS: Dispatchers = Dispatchers::new();
 
-static LOCKED_CALLSITES: Lazy<Mutex<Vec<&'static dyn Callsite>>> = Lazy::new(Default::default);
+static LOCKED_CALLSITES: Mutex<Vec<&'static dyn Callsite>> = Mutex::new(Vec::new());
 
 struct Callsites {
     list_head: AtomicPtr<DefaultCallsite>,
@@ -514,7 +513,7 @@ mod private {
 
 #[cfg(feature = "std")]
 mod dispatchers {
-    use crate::{dispatcher, lazy::Lazy};
+    use crate::dispatcher;
     use alloc::vec::Vec;
     use std::sync::{
         atomic::{AtomicBool, Ordering},
@@ -525,8 +524,7 @@ mod dispatchers {
         has_just_one: AtomicBool,
     }
 
-    static LOCKED_DISPATCHERS: Lazy<RwLock<Vec<dispatcher::Registrar>>> =
-        Lazy::new(Default::default);
+    static LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
 
     pub(super) enum Rebuilder<'a> {
         JustOne,
