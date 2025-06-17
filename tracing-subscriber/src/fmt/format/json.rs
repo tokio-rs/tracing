@@ -493,7 +493,7 @@ impl field::Visit for JsonVisitor<'_> {
             }
         };
 
-        self.values.insert(field.name(), value);
+        self.values.insert(field.name().into(), value);
     }
 
     /// Visit a double precision floating point value.
