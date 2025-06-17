@@ -441,7 +441,7 @@ where
             self.state = self.serializer.serialize_entry(field.name(), &value)
         }
     }
-    
+
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if self.state.is_ok() {
             self.state = self
