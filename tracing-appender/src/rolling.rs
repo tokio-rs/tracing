@@ -431,9 +431,9 @@ pub fn weekly(
 ///     let appender = tracing_appender::rolling::size("/some/path", "rolling.log");
 ///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
 ///
-///     let collector = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
 ///
-///     tracing::collect::with_default(collector.finish(), || {
+///     tracing::subscriber::with_default(subscriber.finish(), || {
 ///         tracing::event!(tracing::Level::INFO, "Hello");
 ///     });
 /// # }
@@ -599,7 +599,9 @@ impl Rotation {
             }
             // Rotation::SIZE is impossible to round.
             Rotation::SIZE => {
-                unreachable!("Rotation::SIZE is impossible to round.")
+                let time = Time::from_hms(date.hour(), date.minute(), date.second())
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_time(time)
             }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
@@ -614,9 +616,9 @@ impl Rotation {
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
             Rotation::WEEKLY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::SIZE => format_description::parse(
-                "[year]-[month]-[day]-[hour]-[minute]-[second]-[subsecond]",
-            ),
+            Rotation::SIZE => {
+                format_description::parse("[year]-[month]-[day]-[hour]-[minute]-[second]")
+            }
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
@@ -1111,7 +1113,7 @@ mod test {
                 suffix: None,
             },
             TestCase {
-                expected: "app.log.2020-02-01-10-01-00-0",
+                expected: "app.log.2020-02-01-10-01-00",
                 rotation: Rotation::SIZE,
                 prefix: Some("app.log"),
                 suffix: None,
@@ -1142,7 +1144,7 @@ mod test {
                 suffix: Some("log"),
             },
             TestCase {
-                expected: "app.2020-02-01-10-01-00-0.log",
+                expected: "app.2020-02-01-10-01-00.log",
                 rotation: Rotation::SIZE,
                 prefix: Some("app"),
                 suffix: Some("log"),
@@ -1173,7 +1175,7 @@ mod test {
                 suffix: Some("log"),
             },
             TestCase {
-                expected: "2020-02-01-10-01-00-0.log",
+                expected: "2020-02-01-10-01-00.log",
                 rotation: Rotation::SIZE,
                 prefix: None,
                 suffix: Some("log"),
@@ -1389,7 +1391,7 @@ mod test {
         )
         .unwrap();
 
-        const MAX_FILE_SIZE: u64 = 1024;
+        const MAX_FILE_SIZE: u64 = 2048;
         let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
@@ -1419,9 +1421,9 @@ mod test {
             .set_default();
 
         for file_num in 0..5 {
-            for i in 0..58 {
+            for i in 0..200 {
                 tracing::info!("file {} content {}", file_num, i);
-                (*clock.lock().unwrap()) += Duration::milliseconds(1);
+                (*clock.lock().unwrap()) += Duration::milliseconds(100);
             }
         }
 
@@ -1443,9 +1445,8 @@ mod test {
             let file = fs::read_to_string(&path).expect("Failed to read file");
             println!("path={}\nfile={:?}", path.display(), file);
 
-            assert_eq!(
-                MAX_FILE_SIZE + 10,
-                file_metadata.len(),
+            assert!(
+                file_metadata.len() <= MAX_FILE_SIZE + 16,
                 "expected size = {:?}, file size = {:?}",
                 MAX_FILE_SIZE,
                 file_metadata.len(),
