@@ -1162,11 +1162,6 @@ impl Span {
     ///     span was created:
     /// </pre>
     ///
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    ///     <strong>Note</strong>: <a href="https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html"><code>FmtSubscriber</code></a> has a bug
-    ///     where it duplicates span fiels because of its implementation. See details at:  <a href="https://github.com/tokio-rs/tracing/issues/1372">Github</a>
-    /// </pre>
-    ///
     /// ```
     /// use tracing::{trace_span, field};
     ///
@@ -1191,6 +1186,11 @@ impl Span {
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
     /// **Note**: To record several values in just one call, see the [`record_all!`](crate::record_all!) macro.
     /// </pre></div>
+    ///
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    ///     <strong>Note</strong>: <a href="https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/struct.Subscriber.html"><code>FmtSubscriber</code></a> has a bug
+    ///     where it might duplicates span fields because of its implementation. See details at:  <a href="https://github.com/tokio-rs/tracing/issues/1372">Github</a>
+    /// </pre>
     ///
     /// [`field::Empty`]: super::field::Empty
     /// [`Metadata`]: super::Metadata
