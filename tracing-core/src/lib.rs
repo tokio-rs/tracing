@@ -116,11 +116,12 @@
 //! [`Dispatch`]: dispatcher::Dispatch
 //! [`tokio-rs/tracing`]: https://github.com/tokio-rs/tracing
 //! [`tracing`]: https://crates.io/crates/tracing
+
+#![no_std]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
-#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 #![warn(
     missing_debug_implementations,
@@ -144,8 +145,11 @@
     unused_parens,
     while_true
 )]
-#[cfg(not(feature = "std"))]
+
 extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
 
 #[doc(hidden)]
 pub mod __macro_support {

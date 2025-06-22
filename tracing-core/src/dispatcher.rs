@@ -122,7 +122,7 @@
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
-//!
+
 use core::ptr::addr_of;
 
 use crate::{
@@ -182,7 +182,7 @@ enum Kind<T> {
 }
 
 #[cfg(feature = "std")]
-thread_local! {
+std::thread_local! {
     static CURRENT_STATE: State = const {
         State {
             default: RefCell::new(None),
