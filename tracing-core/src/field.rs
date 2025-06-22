@@ -109,17 +109,18 @@
 //! [`record`]: super::subscriber::Subscriber::record
 //! [`event`]:  super::subscriber::Subscriber::event
 //! [`Value::record`]: Value::record
-use crate::callsite;
-use crate::stdlib::{
+
+use alloc::{boxed::Box, string::String};
+use core::{
     borrow::Borrow,
     fmt::{self, Write},
     hash::{Hash, Hasher},
     num,
     ops::Range,
-    string::String,
 };
 
 use self::private::ValidLen;
+use crate::callsite;
 
 /// An opaque key allowing _O_(1) access to a field in a `Span`'s key-value
 /// data.
@@ -649,9 +650,9 @@ impl Value for fmt::Arguments<'_> {
     }
 }
 
-impl<T: ?Sized> crate::sealed::Sealed for crate::stdlib::boxed::Box<T> where T: Value {}
+impl<T: ?Sized> crate::sealed::Sealed for Box<T> where T: Value {}
 
-impl<T: ?Sized> Value for crate::stdlib::boxed::Box<T>
+impl<T: ?Sized> Value for Box<T>
 where
     T: Value,
 {
@@ -1120,12 +1121,11 @@ mod private {
 
 #[cfg(test)]
 mod test {
-    use alloc::boxed::Box;
+    use alloc::{borrow::ToOwned, boxed::Box, string::String};
     use std::format;
 
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
-    use crate::stdlib::{borrow::ToOwned, string::String};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
     struct TestCallsite1();
@@ -1238,7 +1238,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (fmt::Debug)) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -1257,7 +1257,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (crate::stdlib::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn (fmt::Debug)) {
                 assert_eq!(field.name(), "bar")
             }
         }
@@ -1276,7 +1276,7 @@ mod test {
         let valueset = fields.value_set(values);
         let mut result = String::new();
         valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
-            use crate::stdlib::fmt::Write;
+            use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, "123".to_owned());

@@ -277,7 +277,7 @@ pub(crate) mod spin;
 pub type Once = self::spin::Once<()>;
 
 #[cfg(feature = "std")]
-pub use stdlib::sync::Once;
+pub use std::sync::Once;
 
 pub mod callsite;
 pub mod dispatcher;
@@ -286,8 +286,12 @@ pub mod field;
 pub mod metadata;
 mod parent;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
+#[cfg(not(feature = "std"))]
+mod sync;
+
+#[cfg(feature = "std")]
+pub(crate) use std::sync;
 
 #[doc(inline)]
 pub use self::{
