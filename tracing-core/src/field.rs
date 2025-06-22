@@ -1120,6 +1120,9 @@ mod private {
 
 #[cfg(test)]
 mod test {
+    use alloc::boxed::Box;
+    use std::format;
+
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
     use crate::stdlib::{borrow::ToOwned, string::String};

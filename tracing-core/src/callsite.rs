@@ -516,6 +516,7 @@ mod private {
 #[cfg(feature = "std")]
 mod dispatchers {
     use crate::{dispatcher, lazy::Lazy};
+    use alloc::vec::Vec;
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
