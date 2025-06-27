@@ -32,13 +32,14 @@ impl Subscriber for NopSubscriber {
     fn exit(&self, _: &Id) {}
 }
 
-/// Running these two tests in parallel will cause flaky failures, since they are both modifying the MAX_LEVEL value.
+/// Running these tests in parallel will cause flaky failures, since they are modifying the MAX_LEVEL value.
 /// "cargo test -- --test-threads=1 fixes it, but it runs all tests in serial.
 /// The only way to run tests in serial in a single file is this way.
 #[test]
 fn run_all_reload_test() {
     reload_handle();
     reload_filter();
+    reload_filtered_layer();
 }
 
 fn reload_handle() {
@@ -159,4 +160,74 @@ fn reload_filter() {
         assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 1);
     })
+}
+
+fn reload_filtered_layer() {
+    use tracing_subscriber::Registry;
+
+    struct NopLayer;
+    impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
+        fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
+            Interest::sometimes()
+        }
+
+        fn enabled(&self, _m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+            true
+        }
+    }
+
+    static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    enum Filter {
+        One,
+        Two,
+    }
+
+    impl<S: Subscriber> tracing_subscriber::layer::Filter<S> for Filter {
+        fn enabled(&self, m: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
+            println!("ENABLED: {:?}", m);
+            match self {
+                Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
+                Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::SeqCst),
+            };
+            true
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
+    }
+
+    let layer_old = NopLayer.with_filter(Filter::One);
+    let (layer_old, handle) = Layer::new(layer_old);
+
+    let dispatcher = tracing_core::Dispatch::new(tracing_subscriber::registry().with(layer_old));
+
+    tracing_core::dispatcher::with_default(&dispatcher, || {
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
+        let layer_new = NopLayer.with_filter(Filter::Two);
+        let subscriber = dispatcher.downcast_ref::<Registry>().unwrap();
+
+        handle
+            .reload_filtered(layer_new, subscriber)
+            .expect("failed reloading layer");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 1);
+    });
 }
