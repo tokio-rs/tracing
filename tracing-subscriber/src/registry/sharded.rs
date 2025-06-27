@@ -12,7 +12,7 @@ use crate::{
 };
 use core::{
     cell::{self, Cell, RefCell},
-    sync::atomic::{fence, AtomicUsize, Ordering},
+    sync::atomic::{fence, AtomicU8, AtomicUsize, Ordering},
 };
 use std::thread_local;
 use tracing_core::{
@@ -93,7 +93,7 @@ use tracing_core::{
 pub struct Registry {
     spans: Pool<DataInner>,
     current_spans: ThreadLocal<RefCell<SpanStack>>,
-    next_filter_id: u8,
+    next_filter_id: AtomicU8,
 }
 
 /// Span data stored in a [`Registry`].
@@ -138,7 +138,7 @@ impl Default for Registry {
         Self {
             spans: Pool::new(),
             current_spans: ThreadLocal::new(),
-            next_filter_id: 0,
+            next_filter_id: AtomicU8::new(0),
         }
     }
 }
@@ -202,7 +202,7 @@ impl Registry {
     }
 
     pub(crate) fn has_per_layer_filters(&self) -> bool {
-        self.next_filter_id > 0
+        self.next_filter_id.load(Ordering::SeqCst) > 0
     }
 
     pub(crate) fn span_stack(&self) -> cell::Ref<'_, SpanStack> {
@@ -376,9 +376,12 @@ impl<'a> LookupSpan<'a> for Registry {
     }
 
     fn register_filter(&mut self) -> FilterId {
-        let id = FilterId::new(self.next_filter_id);
-        self.next_filter_id += 1;
-        id
+        self.register_filter_immut()
+    }
+
+    fn register_filter_immut(&self) -> FilterId {
+        let filter_id = self.next_filter_id.fetch_add(1, Ordering::SeqCst);
+        FilterId::new(filter_id)
     }
 }
 
