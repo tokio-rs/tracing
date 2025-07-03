@@ -18,7 +18,7 @@ Macro attributes for application-level tracing.
 [crates-badge]: https://img.shields.io/crates/v/tracing-attributes.svg
 [crates-url]: https://crates.io/crates/tracing-attributes
 [docs-badge]: https://docs.rs/tracing-attributes/badge.svg
-[docs-url]: https://docs.rs/tracing-attributes/0.1.29
+[docs-url]: https://docs.rs/tracing-attributes/0.1.30
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
 [docs-v0.2.x-url]: https://tracing.rs/tracing_attributes
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -47,7 +47,7 @@ First, add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing-attributes = "0.1.29"
+tracing-attributes = "0.1.30"
 ```
 
 

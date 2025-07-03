@@ -87,7 +87,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     let block = quote! {
         {
             #fake_return_edge
-            #block
+            { #block }
         }
     };
 
