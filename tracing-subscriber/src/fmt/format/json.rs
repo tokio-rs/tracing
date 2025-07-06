@@ -119,10 +119,9 @@ where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<Span, N> serde::ser::Serialize for SerializableContext<'_, '_, Span, N>
+impl<Span> serde::ser::Serialize for SerializableContext<'_, '_, Span, JsonFields>
 where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -149,10 +148,9 @@ where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<Span, N> serde::ser::Serialize for SerializableSpan<'_, '_, Span, N>
+impl<Span> serde::ser::Serialize for SerializableSpan<'_, '_, Span, JsonFields>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -162,7 +160,7 @@ where
 
         let ext = self.0.extensions();
         let data = ext
-            .get::<FormattedFields<N>>()
+            .get::<FormattedFields<JsonFields>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
         // TODO: let's _not_ do this, but this resolves
@@ -210,15 +208,14 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
+impl<S, T> FormatEvent<S, JsonFields> for Format<Json, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, S, JsonFields>,
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result
@@ -248,7 +245,7 @@ where
                 serializer.serialize_entry("level", &meta.level().as_serde())?;
             }
 
-            let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
+            let format_field_marker: std::marker::PhantomData<JsonFields> = std::marker::PhantomData;
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
