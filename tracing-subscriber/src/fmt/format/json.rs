@@ -3,6 +3,7 @@ use crate::{
     field::{RecordFields, VisitOutput},
     fmt::{
         fmt_layer::{FmtContext, FormattedFields},
+        format::DefaultFields,
         writer::WriteAdaptor,
     },
     registry::LookupSpan,
@@ -149,6 +150,38 @@ struct SerializableSpan<'a, 'b, Span, N>(
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
+
+impl<Span> serde::ser::Serialize for SerializableSpan<'_, '_, Span, DefaultFields>
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        let mut serializer = serializer.serialize_map(None)?;
+
+        let ext = self.0.extensions();
+        let data = ext
+            .get::<FormattedFields<DefaultFields>>()
+            .expect("Unable to find FormattedFields in extensions; this is a bug");
+
+        let fields = data.split(" ");
+
+        for key_value_pair in fields {
+            let mut kvp_iter = key_value_pair.split("=");
+            if let (Some(key), Some(value)) = (kvp_iter.next(), kvp_iter.next()) {
+                // The default formatter surrounds the values in literal quotation marks;
+                // remove these from the serialization so they don't end up in the JSON
+                // output.
+                serializer.serialize_entry(&key, &value[1..value.len() - 1]);
+            }
+        }
+
+        serializer.serialize_entry("name", self.0.metadata().name())?;
+        serializer.end()
+    }
+}
 
 impl<Span> serde::ser::Serialize for SerializableSpan<'_, '_, Span, JsonFields>
 where
