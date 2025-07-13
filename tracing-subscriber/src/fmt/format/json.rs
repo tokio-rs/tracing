@@ -119,9 +119,11 @@ where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<Span> serde::ser::Serialize for SerializableContext<'_, '_, Span, JsonFields>
+impl<Span, N> serde::ser::Serialize for SerializableContext<'_, '_, Span, N>
 where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+    for<'inner, 'outer> SerializableSpan<'inner, 'outer, Span, N>: serde::Serialize,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -208,14 +210,16 @@ where
     }
 }
 
-impl<S, T> FormatEvent<S, JsonFields> for Format<Json, T>
+impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+    for<'inner, 'outer> SerializableSpan<'inner, 'outer, S, N>: serde::Serialize,
     T: FormatTime,
 {
     fn format_event(
         &self,
-        ctx: &FmtContext<'_, S, JsonFields>,
+        ctx: &FmtContext<'_, S, N>,
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result
@@ -245,7 +249,7 @@ where
                 serializer.serialize_entry("level", &meta.level().as_serde())?;
             }
 
-            let format_field_marker: std::marker::PhantomData<JsonFields> = std::marker::PhantomData;
+            let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
