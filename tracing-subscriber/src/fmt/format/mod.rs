@@ -399,7 +399,7 @@ pub struct Full;
 /// intended for use in development.
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
-    format: F,
+    pub(crate) format: F,
     pub(crate) timer: T,
     pub(crate) ansi: Option<bool>,
     pub(crate) display_timestamp: bool,
@@ -2122,6 +2122,47 @@ pub(super) mod test {
             );
 
             assert_info_hello_ignore_numeric(subscriber, make_writer, &expected)
+        }
+    }
+
+    mod json {
+        use core::cell::Cell;
+
+        use super::*;
+
+        struct CountDebugCalls(Cell<usize>);
+
+        impl fmt::Debug for CountDebugCalls {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let value = self.0.get() + 1;
+                self.0.set(value);
+                write!(f, "CountDebugCalls({value})")
+            }
+        }
+
+        #[test]
+        fn does_not_record_span_fields() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .json()
+                .with_current_span(false)
+                .with_span_list(false)
+                .with_writer(make_writer.clone())
+                .with_timer(MockTime);
+            let _default = set_default(&subscriber.into());
+
+            let count_debug_calls = CountDebugCalls(Cell::default());
+
+            let span = tracing::info_span!("a span", fields = ?count_debug_calls);
+            let _guard = span.enter();
+            tracing::info!("an event");
+
+            let result = make_writer.get_string();
+            assert_eq!(
+                result.trim(),
+                r#"{"timestamp":"fake time","level":"INFO","fields":{"message":"an event"},"target":"tracing_subscriber::fmt::format::test::json"}"#
+            );
+            assert_eq!(count_debug_calls.0.get(), 0);
         }
     }
 
