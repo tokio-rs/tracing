@@ -7,7 +7,7 @@ use crate::{
     },
     registry::LookupSpan,
 };
-use serde::{ser::SerializeMap, Deserialize, Deserializer as _, Serialize, Serializer as _};
+use serde::{ser::SerializeMap, Deserializer as _, Serializer as _};
 use serde_json::{Deserializer, Serializer};
 use std::{
     collections::BTreeMap,
@@ -395,15 +395,6 @@ impl<'a> FormatFields<'a> for JsonFields {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum SpanFieldsValue<'a> {
-    /// String which could be borrowed directly from the input json
-    Borrowed(&'a str),
-    /// Any other value
-    Owned(serde_json::Value),
-}
-
 /// The [serde::de::Visitor] which moves entries from one map to another.
 struct SerializeMapVisitor<'a, S: SerializeMap>(&'a mut S);
 
@@ -415,7 +406,7 @@ impl<'de, S: SerializeMap> serde::de::Visitor<'de> for SerializeMapVisitor<'_, S
     }
 
     fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-        while let Some((key, value)) = map.next_entry::<&str, SpanFieldsValue<'_>>()? {
+        while let Some((key, value)) = map.next_entry::<&str, serde_json::Value>()? {
             self.0
                 .serialize_entry(key, &value)
                 .map_err(serde::de::Error::custom)?;
