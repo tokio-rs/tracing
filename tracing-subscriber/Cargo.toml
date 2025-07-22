@@ -31,7 +31,7 @@ env-filter = ["matchers", "once_cell", "tracing", "std", "thread_local", "dep:re
 fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
-json = ["tracing-serde", "serde", "serde_json"]
+json = ["tracing-serde", "serde", "serde_json", "serde/derive"]
 valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracing-serde/valuable"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.

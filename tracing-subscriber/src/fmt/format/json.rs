@@ -7,8 +7,8 @@ use crate::{
     },
     registry::LookupSpan,
 };
-use serde::ser::{SerializeMap, Serializer as _};
-use serde_json::Serializer;
+use serde::{ser::SerializeMap, Deserialize, Deserializer as _, Serialize, Serializer as _};
+use serde_json::{Deserializer, Serializer};
 use std::{
     collections::BTreeMap,
     fmt::{self, Write},
@@ -165,46 +165,24 @@ where
             .get::<FormattedFields<N>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
-        // TODO: let's _not_ do this, but this resolves
-        // https://github.com/tokio-rs/tracing/issues/391.
-        // We should probably rework this to use a `serde_json::Value` or something
-        // similar in a JSON-specific layer, but I'd (david)
-        // rather have a uglier fix now rather than shipping broken JSON.
-        match serde_json::from_str::<serde_json::Value>(data) {
-            Ok(serde_json::Value::Object(fields)) => {
-                for field in fields {
-                    serializer.serialize_entry(&field.0, &field.1)?;
-                }
+        let mut deserializer = Deserializer::from_str(data);
+        if let Err(error) = deserializer.deserialize_map(SerializeMapVisitor(&mut serializer)) {
+            // We have fields for this span which are not a valid JSON object.
+            if cfg!(debug_assertions) {
+                // This is probably a bug, so panic if we're in debug mode
+                panic!(
+                    "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
+                    self.0.metadata().name(),
+                    error,
+                    data
+                );
+            } else {
+                // If we *aren't* in debug mode, it's probably best not to crash the program,
+                // let's log the raw fields together with the parsing error from serde
+                serializer.serialize_entry("fields", &data.fields)?;
+                serializer.serialize_entry("fields_error", &format!("{error:?}"))?;
             }
-            // We have fields for this span which are valid JSON but not an object.
-            // This is probably a bug, so panic if we're in debug mode
-            Ok(_) if cfg!(debug_assertions) => panic!(
-                "span '{}' had malformed fields! this is a bug.\n  error: invalid JSON object\n  fields: {:?}",
-                self.0.metadata().name(),
-                data
-            ),
-            // If we *aren't* in debug mode, it's probably best not to
-            // crash the program, let's log the field found but also an
-            // message saying it's type  is invalid
-            Ok(value) => {
-                serializer.serialize_entry("field", &value)?;
-                serializer.serialize_entry("field_error", "field was no a valid object")?
-            }
-            // We have previously recorded fields for this span
-            // should be valid JSON. However, they appear to *not*
-            // be valid JSON. This is almost certainly a bug, so
-            // panic if we're in debug mode
-            Err(e) if cfg!(debug_assertions) => panic!(
-                "span '{}' had malformed fields! this is a bug.\n  error: {}\n  fields: {:?}",
-                self.0.metadata().name(),
-                e,
-                data
-            ),
-            // If we *aren't* in debug mode, it's probably best not
-            // crash the program, but let's at least make sure it's clear
-            // that the fields are not supposed to be missing.
-            Err(e) => serializer.serialize_entry("field_error", &format!("{}", e))?,
-        };
+        }
         serializer.serialize_entry("name", self.0.metadata().name())?;
         serializer.end()
     }
@@ -413,6 +391,35 @@ impl<'a> FormatFields<'a> for JsonFields {
         v.finish()?;
         current.fields = new;
 
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum SpanFieldsValue<'a> {
+    /// String which could be borrowed directly from the input json
+    Borrowed(&'a str),
+    /// Any other value
+    Owned(serde_json::Value),
+}
+
+/// The [serde::de::Visitor] which moves entries from one map to another.
+struct SerializeMapVisitor<'a, S: SerializeMap>(&'a mut S);
+
+impl<'de, S: SerializeMap> serde::de::Visitor<'de> for SerializeMapVisitor<'_, S> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "a map of values")
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        while let Some((key, value)) = map.next_entry::<&str, SpanFieldsValue<'_>>()? {
+            self.0
+                .serialize_entry(key, &value)
+                .map_err(serde::de::Error::custom)?;
+        }
         Ok(())
     }
 }
