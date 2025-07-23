@@ -476,7 +476,7 @@ impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
 
 impl field::Visit for JsonVisitor<'_> {
     #[cfg(all(tracing_unstable, feature = "valuable"))]
-    fn record_value(&mut self, field: &Field, value: valuable_crate::Value<'_>) {
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         let value = match serde_json::to_value(valuable_serde::Serializable::new(value)) {
             Ok(value) => value,
             Err(_e) => {
