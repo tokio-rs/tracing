@@ -50,7 +50,7 @@ impl InstrumentArgs {
         if let Some(ref tracing) = self.tracing {
             quote!(#tracing)
         } else {
-            quote!(tracing)
+            quote!(::tracing)
         }
     }
 

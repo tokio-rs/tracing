@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -80,8 +80,10 @@
 )]
 
 use proc_macro2::TokenStream;
+use quote::TokenStreamExt;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
+use syn::token::Brace;
 use syn::{Attribute, ItemFn, Signature, Visibility};
 
 mod attr;
@@ -444,6 +446,7 @@ struct MaybeItemFn {
     inner_attrs: Vec<Attribute>,
     vis: Visibility,
     sig: Signature,
+    brace_token: Brace,
     block: TokenStream,
 }
 
@@ -454,6 +457,7 @@ impl MaybeItemFn {
             inner_attrs: &self.inner_attrs,
             vis: &self.vis,
             sig: &self.sig,
+            brace_token: &self.brace_token,
             block: &self.block,
         }
     }
@@ -467,12 +471,15 @@ impl Parse for MaybeItemFn {
         let vis: Visibility = input.parse()?;
         let sig: Signature = input.parse()?;
         let inner_attrs = input.call(Attribute::parse_inner)?;
-        let block: TokenStream = input.parse()?;
+        let block;
+        let brace_token = syn::braced!(block in input);
+        let block: TokenStream = block.call(|buffer| buffer.parse())?;
         Ok(Self {
             outer_attrs,
             inner_attrs,
             vis,
             sig,
+            brace_token,
             block,
         })
     }
@@ -490,12 +497,15 @@ impl From<ItemFn> for MaybeItemFn {
         let (outer_attrs, inner_attrs) = attrs
             .into_iter()
             .partition(|attr| attr.style == syn::AttrStyle::Outer);
+        let mut block_tokens = TokenStream::new();
+        block_tokens.append_all(block.stmts);
         Self {
             outer_attrs,
             inner_attrs,
             vis,
             sig,
-            block: block.to_token_stream(),
+            brace_token: block.brace_token,
+            block: block_tokens,
         }
     }
 }
@@ -508,5 +518,6 @@ struct MaybeItemFnRef<'a, B: ToTokens> {
     inner_attrs: &'a Vec<Attribute>,
     vis: &'a Visibility,
     sig: &'a Signature,
+    brace_token: &'a Brace,
     block: &'a B,
 }

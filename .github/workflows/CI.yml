@@ -121,7 +121,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.63.0). This
+    # Run `cargo check` on our minimum supported Rust version (1.65.0). This
     # checks with minimal versions; maximal versions are checked above.
     name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
@@ -143,7 +143,7 @@ jobs:
         - tracing-tower
         - tracing
         toolchain:
-        - 1.63.0
+        - 1.65.0
         - stable
     steps:
     - uses: actions/checkout@v4
@@ -188,6 +188,30 @@ jobs:
             ;;
         esac
       shell: bash
+
+  check-portable-atomic:
+    # Run `cargo check` on platforms without full atomic support
+    name: cargo check (${{ matrix.target }} with portable-atomic)
+    needs: check
+    strategy:
+      matrix:
+        target: ["thumbv6m-none-eabi"]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    - name: Check tracing-core
+      run: cargo check --target ${{ matrix.target }} -p tracing-core --no-default-features --features alloc,portable-atomic,critical-section
+    - name: Check tracing-serde
+      run: cargo check --target ${{ matrix.target }} -p tracing-serde --no-default-features --features portable-atomic,critical-section
+    - name: Check tracing
+      run: cargo check --target ${{ matrix.target }} -p tracing --no-default-features --features attributes,portable-atomic,critical-section
+    - name: Check tracing-subscriber
+      run: cargo check --target ${{ matrix.target }} -p tracing-subscriber --no-default-features --features alloc,portable-atomic,critical-section
+    - name: Check tracing-futures
+      run: cargo check --target ${{ matrix.target }} -p tracing-futures --no-default-features --features portable-atomic,critical-section
 
   ### test jobs #############################################################
 
