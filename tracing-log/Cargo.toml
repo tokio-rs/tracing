@@ -19,6 +19,7 @@ rust-version = "1.65.0"
 
 [features]
 default = ["log-tracer", "std"]
+kv = ["log/kv"]
 std = ["log/std"]
 log-tracer = []
 interest-cache = ["lru", "ahash"]
