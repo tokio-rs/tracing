@@ -52,7 +52,7 @@ smallvec = { optional = true, version = "1.9.0" }
 once_cell = { optional = true, version = "1.13.0" }
 
 # fmt
-tracing-log = { path = "../tracing-log", version = "0.2.0", optional = true, default-features = false, features = ["log-tracer", "std"] }
+tracing-log = { path = "../tracing-log", version = "0.2.0", optional = true, default-features = false, features = ["kv", "log-tracer", "std"] }
 nu-ansi-term = { version = "0.50.0", optional = true }
 time = { version = "0.3.2", features = ["formatting"], optional = true }
 
