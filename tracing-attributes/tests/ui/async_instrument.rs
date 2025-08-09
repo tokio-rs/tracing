@@ -10,7 +10,6 @@ async fn simple_mismatch() -> String {
     ""
 }
 
-// FIXME: this span is still pretty poor
 #[tracing::instrument]
 async fn opaque_unsatisfied() -> impl std::fmt::Display {
     ("",)

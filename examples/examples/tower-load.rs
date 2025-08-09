@@ -1,3 +1,6 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
+//!
 //! A demo showing how filtering on values and dynamic filter reloading can be
 //! used together to help make sense of complex or noisy traces.
 //!

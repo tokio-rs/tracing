@@ -1105,9 +1105,9 @@ impl Span {
 
     /// Returns a [`Field`](super::field::Field) for the field with the
     /// given `name`, if one exists,
-    pub fn field<Q: ?Sized>(&self, field: &Q) -> Option<field::Field>
+    pub fn field<Q>(&self, field: &Q) -> Option<field::Field>
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
     {
         self.metadata().and_then(|meta| field.as_field(meta))
     }
@@ -1115,9 +1115,9 @@ impl Span {
     /// Returns true if this `Span` has a field for the given
     /// [`Field`](super::field::Field) or field name.
     #[inline]
-    pub fn has_field<Q: ?Sized>(&self, field: &Q) -> bool
+    pub fn has_field<Q>(&self, field: &Q) -> bool
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
     {
         self.field(field).is_some()
     }
@@ -1191,11 +1191,16 @@ impl Span {
     /// span.record("parting", "you will be remembered");
     /// ```
     ///
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// **Note**: To record several values in just one call, see the [`record_all!`](crate::record_all!) macro.
+    /// </pre></div>
+    ///
     /// [`field::Empty`]: super::field::Empty
     /// [`Metadata`]: super::Metadata
-    pub fn record<Q: ?Sized, V>(&self, field: &Q, value: V) -> &Self
+    pub fn record<Q, V>(&self, field: &Q, value: V) -> &Self
     where
-        Q: field::AsField,
+        Q: field::AsField + ?Sized,
         V: field::Value,
     {
         if let Some(meta) = self.meta {
@@ -1212,6 +1217,7 @@ impl Span {
     }
 
     /// Records all the fields in the provided `ValueSet`.
+    #[doc(hidden)]
     pub fn record_all(&self, values: &field::ValueSet<'_>) -> &Self {
         let record = Record::new(values);
         if let Some(ref inner) = self.inner {
@@ -1549,7 +1555,7 @@ impl Deref for EnteredSpan {
     }
 }
 
-impl<'a> Drop for Entered<'a> {
+impl Drop for Entered<'_> {
     #[inline(always)]
     fn drop(&mut self) {
         self.span.do_exit()
@@ -1594,9 +1600,11 @@ unsafe impl Sync for PhantomNotSend {}
 mod test {
     use super::*;
 
+    #[allow(dead_code)]
     trait AssertSend: Send {}
     impl AssertSend for Span {}
 
+    #[allow(dead_code)]
     trait AssertSync: Sync {}
     impl AssertSync for Span {}
     impl AssertSync for Entered<'_> {}

@@ -23,7 +23,7 @@
 //! In addition, it defines the global callsite registry and per-thread current
 //! dispatcher which other components of the tracing system rely on.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -109,7 +109,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -164,6 +164,14 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+#[doc(hidden)]
+pub mod __macro_support {
+    // Re-export the `core` functions that are used in macros. This allows
+    // a crate to be named `core` and avoid name clashes.
+    // See here: https://github.com/tokio-rs/tracing/issues/2761
+    pub use core::{file, line, module_path, option::Option};
+}
 
 /// Statically constructs an [`Identifier`] for the provided [`Callsite`].
 ///
@@ -264,9 +272,9 @@ macro_rules! metadata {
             $name,
             $target,
             $level,
-            ::core::option::Option::Some(file!()),
-            ::core::option::Option::Some(line!()),
-            ::core::option::Option::Some(module_path!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::file!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::line!()),
+            $crate::__macro_support::Option::Some($crate::__macro_support::module_path!()),
             $crate::field::FieldSet::new($fields, $crate::identify_callsite!($callsite)),
             $kind,
         )

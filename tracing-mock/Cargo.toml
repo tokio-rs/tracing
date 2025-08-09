@@ -14,7 +14,7 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/tracing"
 homepage = "https://tokio.rs"
 edition = "2018"
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 publish = false
 
 [dependencies]
@@ -28,3 +28,6 @@ tokio-stream = "0.1.9"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

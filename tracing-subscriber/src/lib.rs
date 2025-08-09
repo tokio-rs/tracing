@@ -122,6 +122,7 @@
 //! [`Collect`]: tracing_core::collect::Collect
 //! [collector]: tracing_core::collect::Collect
 //! [`EnvFilter`]: filter::EnvFilter
+//! [`tracing`]: https://crates.io/crates/tracing
 //! [`tracing-log`]: https://crates.io/crates/tracing-log
 //! [`smallvec`]: https://crates.io/crates/smallvec
 //! [`env_logger` crate]: https://crates.io/crates/env_logger
@@ -210,7 +211,11 @@ feature! {
     #![all(feature = "registry", feature = "std")]
     pub use registry::Registry;
 
+    /// Creates a default [`Registry`], a [`Collect`](tracing_core::Collect)
+    /// implementation which tracks per-span data and exposes it to
+    /// [`Subscribe`]s.
     ///
+    /// Returns a default [`Registry`].
     pub fn registry() -> Registry {
         Registry::default()
     }

@@ -38,7 +38,7 @@
 use crate::callsite;
 use core::{
     borrow::Borrow,
-    fmt,
+    fmt::{self, Write},
     hash::{Hash, Hasher},
     num,
     ops::Range,
@@ -224,6 +224,11 @@ pub trait Visit {
         self.record_debug(field, &value)
     }
 
+    /// Visit a byte slice.
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.record_debug(field, &HexBytes(value))
+    }
+
     /// Records a type implementing `Error`.
     ///
     /// <div class="example-wrap" style="display:inline-block">
@@ -283,15 +288,35 @@ where
     DebugValue(t)
 }
 
+struct HexBytes<'a>(&'a [u8]);
+
+impl fmt::Debug for HexBytes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_char('[')?;
+
+        let mut bytes = self.0.iter();
+
+        if let Some(byte) = bytes.next() {
+            f.write_fmt(format_args!("{byte:02x}"))?;
+        }
+
+        for byte in bytes {
+            f.write_fmt(format_args!(" {byte:02x}"))?;
+        }
+
+        f.write_char(']')
+    }
+}
+
 // ===== impl Visit =====
 
-impl<'a, 'b> Visit for fmt::DebugStruct<'a, 'b> {
+impl Visit for fmt::DebugStruct<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.field(field.name(), value);
     }
 }
 
-impl<'a, 'b> Visit for fmt::DebugMap<'a, 'b> {
+impl Visit for fmt::DebugMap<'_, '_> {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.entry(&format_args!("{}", field), value);
     }
@@ -443,6 +468,14 @@ impl Value for str {
     }
 }
 
+impl crate::sealed::Sealed for [u8] {}
+
+impl Value for [u8] {
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_bytes(key, self)
+    }
+}
+
 #[cfg(feature = "std")]
 impl crate::sealed::Sealed for dyn std::error::Error + 'static {}
 
@@ -511,9 +544,9 @@ where
     }
 }
 
-impl<'a> crate::sealed::Sealed for fmt::Arguments<'a> {}
+impl crate::sealed::Sealed for fmt::Arguments<'_> {}
 
-impl<'a> Value for fmt::Arguments<'a> {
+impl Value for fmt::Arguments<'_> {
     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
         visitor.record_debug(key, self)
     }
@@ -648,6 +681,11 @@ impl Field {
     pub fn name(&self) -> &'static str {
         self.fields.names[self.i]
     }
+
+    /// Returns the index of this field in its [`FieldSet`].
+    pub fn index(&self) -> usize {
+        self.i
+    }
 }
 
 impl fmt::Display for Field {
@@ -713,9 +751,9 @@ impl FieldSet {
     /// Returns the [`Field`] named `name`, or `None` if no such field exists.
     ///
     /// [`Field`]: super::Field
-    pub fn field<Q: ?Sized>(&self, name: &Q) -> Option<Field>
+    pub fn field<Q>(&self, name: &Q) -> Option<Field>
     where
-        Q: Borrow<str>,
+        Q: Borrow<str> + ?Sized,
     {
         let name = &name.borrow();
         self.names.iter().position(|f| f == name).map(|i| Field {
@@ -780,7 +818,7 @@ impl FieldSet {
     }
 }
 
-impl<'a> IntoIterator for &'a FieldSet {
+impl IntoIterator for &FieldSet {
     type IntoIter = Iter;
     type Item = Field;
     #[inline]
@@ -859,7 +897,7 @@ impl Iterator for Iter {
 
 // ===== impl ValueSet =====
 
-impl<'a> ValueSet<'a> {
+impl ValueSet<'_> {
     /// Returns an [`Identifier`] that uniquely identifies the [`Callsite`]
     /// defining the fields this `ValueSet` refers to.
     ///
@@ -920,7 +958,7 @@ impl<'a> ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ValueSet<'a> {
+impl fmt::Debug for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
@@ -935,7 +973,7 @@ impl<'a> fmt::Debug for ValueSet<'a> {
     }
 }
 
-impl<'a> fmt::Display for ValueSet<'a> {
+impl fmt::Display for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.values
             .iter()
@@ -966,8 +1004,8 @@ mod test {
     use crate::metadata::{Kind, Level, Metadata};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
-    struct TestCallsite1(u8);
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1(0);
+    struct TestCallsite1();
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1();
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -987,8 +1025,8 @@ mod test {
         }
     }
 
-    struct TestCallsite2(u8);
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2(0);
+    struct TestCallsite2();
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2();
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
@@ -1018,6 +1056,17 @@ mod test {
         ];
         let valueset = fields.value_set(values);
         assert!(valueset.is_empty());
+    }
+
+    #[test]
+    fn index_of_field_in_fieldset_is_correct() {
+        let fields = TEST_META_1.fields();
+        let foo = fields.field("foo").unwrap();
+        assert_eq!(foo.index(), 0);
+        let bar = fields.field("bar").unwrap();
+        assert_eq!(bar.index(), 1);
+        let baz = fields.field("baz").unwrap();
+        assert_eq!(baz.index(), 2);
     }
 
     #[test]
@@ -1128,5 +1177,24 @@ mod test {
             write!(&mut result, "{:?}", value).unwrap();
         });
         assert_eq!(result, format!("{}", err));
+    }
+
+    #[test]
+    fn record_bytes() {
+        let fields = TEST_META_1.fields();
+        let first = &b"abc"[..];
+        let second: &[u8] = &[192, 255, 238];
+        let values = &[
+            (&fields.field("foo").unwrap(), Some(&first as &dyn Value)),
+            (&fields.field("bar").unwrap(), Some(&" " as &dyn Value)),
+            (&fields.field("baz").unwrap(), Some(&second as &dyn Value)),
+        ];
+        let valueset = fields.value_set(values);
+        let mut result = String::new();
+        valueset.record(&mut |_: &Field, value: &dyn fmt::Debug| {
+            use core::fmt::Write;
+            write!(&mut result, "{:?}", value).unwrap();
+        });
+        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
     }
 }

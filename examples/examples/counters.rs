@@ -1,3 +1,5 @@
+//! NOTE: This is pre-release documentation for the upcoming tracing 0.2.0 ecosystem. For the
+//! release examples, please see the `v0.1.x` branch instead.
 #![deny(rust_2018_idioms)]
 
 use tracing::{
@@ -29,7 +31,7 @@ struct Count<'a> {
     counters: RwLockReadGuard<'a, HashMap<String, AtomicUsize>>,
 }
 
-impl<'a> Visit for Count<'a> {
+impl Visit for Count<'_> {
     fn record_i64(&mut self, field: &Field, value: i64) {
         if let Some(counter) = self.counters.get(field.name()) {
             if value > 0 {

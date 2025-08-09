@@ -5,7 +5,7 @@ use tracing_mock::*;
 use tracing_subscriber::{filter::EnvFilter, prelude::*};
 
 #[test]
-#[cfg_attr(not(flaky_tests), ignore)]
+#[ignore] // flaky, use `cargo test -- --ignored` or `--include-ignored` to run
 fn field_filter_events() {
     let filter: EnvFilter = "[{thing}]=debug".parse().expect("filter should parse");
     let (subscriber, finished) = collector::mock()
@@ -35,7 +35,7 @@ fn field_filter_events() {
 }
 
 #[test]
-#[cfg_attr(not(flaky_tests), ignore)]
+#[ignore] // flaky, use `cargo test -- --ignored` or `--include-ignored` to run
 fn field_filter_spans() {
     let filter: EnvFilter = "[{enabled=true}]=debug"
         .parse()

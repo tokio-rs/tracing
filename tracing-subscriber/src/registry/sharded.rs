@@ -348,7 +348,7 @@ impl Collect for Registry {
 
         let refs = span.ref_count.fetch_sub(1, Ordering::Release);
         if !std::thread::panicking() {
-            assert!(refs < std::usize::MAX, "reference count overflow!");
+            assert!(refs < usize::MAX, "reference count overflow!");
         }
         if refs > 1 {
             return false;
@@ -379,13 +379,13 @@ impl<'a> LookupSpan<'a> for Registry {
 
 // === impl CloseGuard ===
 
-impl<'a> CloseGuard<'a> {
+impl CloseGuard<'_> {
     pub(crate) fn set_closing(&mut self) {
         self.is_closing = true;
     }
 }
 
-impl<'a> Drop for CloseGuard<'a> {
+impl Drop for CloseGuard<'_> {
     fn drop(&mut self) {
         // If this returns with an error, we are already panicking. At
         // this point, there's nothing we can really do to recover
@@ -541,10 +541,6 @@ mod tests {
         Collect,
     };
 
-    #[derive(Debug)]
-    struct DoesNothing;
-    impl<C: Collect> Subscribe<C> for DoesNothing {}
-
     struct AssertionSubscriber;
     impl<C> Subscribe<C> for AssertionSubscriber
     where
@@ -592,6 +588,7 @@ mod tests {
         closed: Vec<(&'static str, Weak<()>)>,
     }
 
+    #[allow(dead_code)] // Field is exercised via checking `Arc::downgrade()`
     struct SetRemoved(Arc<()>);
 
     impl<C> Subscribe<C> for CloseSubscriber

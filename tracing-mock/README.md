@@ -4,7 +4,7 @@
 
 # tracing-mock
 
-Utilities for testing [`tracing`][tracing] and crates that uses it.
+Utilities for testing [`tracing`] and crates that uses it.
 
 [![Documentation (master)][docs-master-badge]][docs-master-url]
 [![MIT licensed][mit-badge]][mit-url]
@@ -29,7 +29,7 @@ structured, event-based diagnostic information. `tracing-mock` provides
 tools for making assertions about what `tracing` diagnostics are emitted
 by code under test.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -78,7 +78,7 @@ fn yak_shaving() {
 }
 
 let (collector, handle) = collector::mock()
-    .event(expect::event().with_fields(expect::message("preparing to shave yaks")))
+    .event(expect::event().with_fields(expect::msg("preparing to shave yaks")))
     .only()
     .run_with_handle();
 
@@ -128,7 +128,7 @@ let (collector, handle) = collector::mock()
         expect::event().with_fields(
             expect::field("number_of_yaks")
                 .with_value(&yak_count)
-                .and(expect::message("preparing to shave yaks"))
+                .and(expect::msg("preparing to shave yaks"))
                 .only(),
         ),
     )
@@ -136,7 +136,7 @@ let (collector, handle) = collector::mock()
         expect::event().with_fields(
             expect::field("all_yaks_shaved")
                 .with_value(&true)
-                .and(expect::message("yak shaving completed."))
+                .and(expect::msg("yak shaving completed."))
                 .only(),
         ),
     )
@@ -154,7 +154,7 @@ handle.assert_finished();
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
