@@ -4,7 +4,7 @@ use crate::filter::{
     env::{field, FieldMap},
     level::LevelFilter,
 };
-use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr, sync::OnceLock};
+use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
 /// A single filtering directive.
