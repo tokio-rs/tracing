@@ -549,6 +549,34 @@ where
         }
     }
 
+    /// Sets whether or not the current span context is displayed.
+    ///
+    /// When enabled (the default), the formatter will include the current span
+    /// name and fields in the formatted output.
+    pub fn with_current_span(
+        self,
+        display_current_span: bool,
+    ) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_current_span(display_current_span),
+            ..self
+        }
+    }
+
+    /// Sets whether or not span lists are displayed.
+    ///
+    /// When enabled (the default), the formatter will include fields from all
+    /// spans in the current span context in the formatted output.
+    pub fn with_span_list(
+        self,
+        display_span_list: bool,
+    ) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_span_list(display_span_list),
+            ..self
+        }
+    }
+
     /// Sets the layer being built to use a [less verbose formatter][super::format::Compact].
     pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where

@@ -409,6 +409,8 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    pub(crate) display_current_span: bool,
+    pub(crate) display_span_list: bool,
 }
 
 // === impl Writer ===
@@ -599,6 +601,8 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            display_current_span: true,
+            display_span_list: true,
         }
     }
 }
@@ -619,6 +623,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
         }
     }
 
@@ -658,6 +664,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
         }
     }
 
@@ -689,6 +697,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
         }
     }
 
@@ -718,6 +728,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
         }
     }
 
@@ -734,6 +746,8 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
         }
     }
 
@@ -813,6 +827,48 @@ impl<F, T> Format<F, T> {
     pub fn with_source_location(self, display_location: bool) -> Self {
         self.with_line_number(display_location)
             .with_file(display_location)
+    }
+
+    /// Sets whether or not the current span context is displayed.
+    ///
+    /// When enabled (the default), the formatter will include the current span
+    /// name and fields in the formatted output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let formatter = fmt::format()
+    ///     .compact()
+    ///     .with_current_span(false);
+    /// ```
+    pub fn with_current_span(self, display_current_span: bool) -> Format<F, T> {
+        Format {
+            display_current_span,
+            ..self
+        }
+    }
+
+    /// Sets whether or not span lists are displayed.
+    ///
+    /// When enabled (the default), the formatter will include fields from all
+    /// spans in the current span context in the formatted output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_subscriber::fmt;
+    ///
+    /// let formatter = fmt::format()
+    ///     .compact()
+    ///     .with_span_list(false);
+    /// ```
+    pub fn with_span_list(self, display_span_list: bool) -> Format<F, T> {
+        Format {
+            display_span_list,
+            ..self
+        }
     }
 
     #[inline]
@@ -1084,17 +1140,19 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
-        let fmt_ctx = {
-            #[cfg(feature = "ansi")]
-            {
-                FmtCtx::new(ctx, event.parent(), writer.has_ansi_escapes())
-            }
-            #[cfg(not(feature = "ansi"))]
-            {
-                FmtCtx::new(&ctx, event.parent())
-            }
-        };
-        write!(writer, "{}", fmt_ctx)?;
+        if self.display_current_span {
+            let fmt_ctx = {
+                #[cfg(feature = "ansi")]
+                {
+                    FmtCtx::new(ctx, event.parent(), writer.has_ansi_escapes())
+                }
+                #[cfg(not(feature = "ansi"))]
+                {
+                    FmtCtx::new(&ctx, event.parent())
+                }
+            };
+            write!(writer, "{}", fmt_ctx)?;
+        }
 
         let dimmed = writer.dimmed();
 
@@ -1139,15 +1197,17 @@ where
 
         ctx.format_fields(writer.by_ref(), event)?;
 
-        for span in ctx
-            .event_scope()
-            .into_iter()
-            .flat_map(crate::registry::Scope::from_root)
-        {
-            let exts = span.extensions();
-            if let Some(fields) = exts.get::<FormattedFields<N>>() {
-                if !fields.is_empty() {
-                    write!(writer, " {}", dimmed.paint(&fields.fields))?;
+        if self.display_span_list {
+            for span in ctx
+                .event_scope()
+                .into_iter()
+                .flat_map(crate::registry::Scope::from_root)
+            {
+                let exts = span.extensions();
+                if let Some(fields) = exts.get::<FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, " {}", dimmed.paint(&fields.fields))?;
+                    }
                 }
             }
         }
@@ -2102,6 +2162,67 @@ pub(super) mod test {
                 "fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n",
                 crate::fmt::Subscriber::builder().compact(),
             )
+        }
+
+        #[test]
+        fn without_current_span() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .compact()
+                .with_current_span(false)
+                .with_writer(make_writer.clone())
+                .with_ansi(false)
+                .with_timer(MockTime);
+
+            let _default = set_default(&subscriber.into());
+            let span = tracing::info_span!("span", span_field = "value");
+            let _guard = span.enter();
+            tracing::info!("hello");
+
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test::compact: hello\n";
+            let actual = make_writer.get_string();
+            assert_eq!(expected, actual);
+        }
+
+        #[test]
+        fn without_span_list() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .compact()
+                .with_span_list(false)
+                .with_writer(make_writer.clone())
+                .with_ansi(false)
+                .with_timer(MockTime);
+
+            let _default = set_default(&subscriber.into());
+            let span = tracing::info_span!("span", span_field = "value");
+            let _guard = span.enter();
+            tracing::info!("hello");
+
+            let expected = "fake time  INFO span: tracing_subscriber::fmt::format::test: hello\n";
+            let actual = make_writer.get_string();
+            assert_eq!(expected, actual);
+        }
+
+        #[test]
+        fn without_current_span_and_span_list() {
+            let make_writer = MockMakeWriter::default();
+            let subscriber = crate::fmt::Subscriber::builder()
+                .compact()
+                .with_current_span(false)
+                .with_span_list(false)
+                .with_writer(make_writer.clone())
+                .with_ansi(false)
+                .with_timer(MockTime);
+
+            let _default = set_default(&subscriber.into());
+            let span = tracing::info_span!("span", span_field = "value");
+            let _guard = span.enter();
+            tracing::info!("hello");
+
+            let expected = "fake time  INFO tracing_subscriber::fmt::format::test: hello\n";
+            let actual = make_writer.get_string();
+            assert_eq!(expected, actual);
         }
     }
 
