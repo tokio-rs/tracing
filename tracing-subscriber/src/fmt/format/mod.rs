@@ -409,6 +409,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    pub(crate) display_event_name: bool,
 }
 
 // === impl Writer ===
@@ -599,6 +600,7 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            display_event_name: false,
         }
     }
 }
@@ -619,6 +621,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_event_name: self.display_event_name,
         }
     }
 
@@ -658,6 +661,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            display_event_name: false,
         }
     }
 
@@ -689,6 +693,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_event_name: self.display_event_name,
         }
     }
 
@@ -718,6 +723,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_event_name: self.display_event_name,
         }
     }
 
@@ -734,6 +740,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_event_name: self.display_thread_name,
         }
     }
 
@@ -790,6 +797,35 @@ impl<F, T> Format<F, T> {
     pub fn with_file(self, display_filename: bool) -> Format<F, T> {
         Format {
             display_filename,
+            ..self
+        }
+    }
+
+    /// Sets whether or not an event's [name] is
+    /// displayed.
+    /// This enables the inclusion of the event's name in the formatted output.
+    /// By default, event names are not displayed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use tracing_subscriber::fmt;
+    /// use tracing::{Level, event};
+    ///
+    /// let format = fmt::format()
+    ///     .with_event_name(true);
+    ///
+    /// let subscriber = fmt()
+    ///     .event_format(format)
+    ///     .finish();
+    ///
+    ///event!(name: "my_event_name", Level::INFO, "hello");
+    /// ```
+    ///
+    /// [name]: tracing_core::Metadata::name
+    pub fn with_event_name(self, display_event_name: bool) -> Format<F, T> {
+        Format {
+            display_event_name,
             ..self
         }
     }
@@ -1008,6 +1044,24 @@ where
             }
         }
 
+        if self.display_event_name {
+            let name = meta.name();
+
+            let should_display = match (meta.file(), meta.line()) {
+                (Some(file), Some(line)) => name != format!("event {}:{}", file, line),
+                _ => true,
+            };
+
+            if should_display {
+                write!(
+                    writer,
+                    "{}{} ",
+                    dimmed.paint(meta.name()),
+                    dimmed.paint(":")
+                )?;
+            }
+        }
+
         if let Some(line_number) = line_number {
             write!(
                 writer,
@@ -1115,6 +1169,23 @@ where
                     writer.write_char(' ')?;
                 }
                 write!(writer, "{}{}", dimmed.paint(filename), dimmed.paint(":"))?;
+                needs_space = true;
+            }
+        }
+
+        if self.display_event_name {
+           let name = meta.name();
+
+            let should_display = match (meta.file(), meta.line()) {
+                (Some(file), Some(line)) => name != format!("event {}:{}", file, line),
+                _ => true,
+            };
+
+            if should_display {
+                if needs_space {
+                    writer.write_char(' ')?;
+                }
+                write!(writer, "{}{}", dimmed.paint(name), dimmed.paint(":"))?;
                 needs_space = true;
             }
         }
@@ -1743,11 +1814,7 @@ impl Display for TimingDisplay {
 #[cfg(test)]
 pub(super) mod test {
     use crate::fmt::{test::MockMakeWriter, time::FormatTime};
-    use tracing::{
-        self,
-        dispatcher::{set_default, Dispatch},
-        subscriber::with_default,
-    };
+    use tracing::{self, dispatcher::{set_default, Dispatch}, event, subscriber::with_default};
 
     use super::*;
 
@@ -1880,6 +1947,80 @@ pub(super) mod test {
             current_path(),
         );
         assert_info_hello(subscriber, make_writer, expected);
+    }
+
+    #[test]
+    fn with_event_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer.clone())
+            .with_event_name(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let _default = set_default(&subscriber.into());
+        event!(name: "custom_event", Level::INFO, "hello");
+
+        let expected
+            = "fake time tracing_subscriber::fmt::format::test: custom_event: hello\n";
+
+        assert_eq!(expected, make_writer.get_string());
+    }
+
+    #[test]
+    fn with_event_name_compact() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer.clone())
+            .with_event_name(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .compact();
+
+        let _default = set_default(&subscriber.into());
+        event!(name: "compact_event", Level::INFO, "hello");
+
+        let result = make_writer.get_string();
+        assert!(result.contains("compact_event:"));
+    }
+
+    #[test]
+    fn with_event_name_hides_default() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer.clone())
+            .with_event_name(true)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let _default = set_default(&subscriber.into());
+        tracing::info!("hello");
+
+        let result = make_writer.get_string();
+        assert!(!result.contains("event "));
+        assert_eq!("fake time tracing_subscriber::fmt::format::test: hello\n", result);
+    }
+
+    #[test]
+    fn without_event_name() {
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer.clone())
+            .with_event_name(false)
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+
+        let _default = set_default(&subscriber.into());
+        event!(name: "custom_event", Level::INFO, "hello");
+
+        let result = make_writer.get_string();
+        // adding this test to double check I didnt miss anything
+        assert!(!result.contains("custom_event:"));
+        assert_eq!("fake time tracing_subscriber::fmt::format::test: hello\n", result);
     }
 
     #[test]

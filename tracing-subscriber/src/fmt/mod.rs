@@ -694,6 +694,20 @@ where
         }
     }
 
+    /// Sets whether or not an event's [name] is
+    /// displayed.
+    ///
+    /// [name]: tracing_core::Metadata::name
+    pub fn with_event_name(
+        self,
+        display_event_name: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_event_name(display_event_name),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's level is displayed.
     pub fn with_level(
         self,
