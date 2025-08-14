@@ -25,6 +25,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) fields: Option<Fields>,
     pub(crate) err_args: Option<EventArgs>,
     pub(crate) ret_args: Option<EventArgs>,
+    tracing: Option<Path>,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -39,6 +40,17 @@ impl InstrumentArgs {
             quote!(#target)
         } else {
             quote!(module_path!())
+        }
+    }
+
+    /// The location of the `tracing` crate.
+    ///
+    /// For backwards-compatibility, this must default to the plain `tracing` identifier with call site resolution.
+    pub(crate) fn tracing(&self) -> impl ToTokens {
+        if let Some(ref tracing) = self.tracing {
+            quote!(#tracing)
+        } else {
+            quote!(::tracing)
         }
     }
 
@@ -134,6 +146,14 @@ impl Parse for InstrumentArgs {
                 let _ = input.parse::<kw::ret>()?;
                 let ret_args = EventArgs::parse(input)?;
                 args.ret_args = Some(ret_args);
+            } else if lookahead.peek(kw::tracing) {
+                if args.tracing.is_some() {
+                    return Err(input.error("expected only a single `tracing` argument"));
+                }
+                let _ = input.parse::<kw::tracing>()?;
+                let _ = input.parse::<Token![=]>()?;
+                let tracing = Path::parse(input)?;
+                args.tracing = Some(tracing);
             } else if lookahead.peek(Token![,]) {
                 let _ = input.parse::<Token![,]>()?;
             } else {
@@ -306,6 +326,11 @@ pub(crate) enum FieldKind {
     Value,
 }
 
+pub(crate) struct WithArgs<'a, T> {
+    value: &'a T,
+    args: &'a InstrumentArgs,
+}
+
 impl Parse for Fields {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let _ = input.parse::<kw::fields>();
@@ -316,9 +341,18 @@ impl Parse for Fields {
     }
 }
 
-impl ToTokens for Fields {
+impl Fields {
+    pub(crate) fn with_args<'a>(&'a self, args: &'a InstrumentArgs) -> WithArgs<'a, Self> {
+        WithArgs { value: self, args }
+    }
+}
+
+impl ToTokens for WithArgs<'_, Fields> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.0.to_tokens(tokens)
+        for pair in self.value.0.pairs() {
+            pair.value().with_args(self.args).to_tokens(tokens);
+            pair.punct().to_tokens(tokens);
+        }
     }
 }
 
@@ -350,25 +384,34 @@ impl Parse for Field {
     }
 }
 
-impl ToTokens for Field {
+impl Field {
+    fn with_args<'a>(&'a self, args: &'a InstrumentArgs) -> WithArgs<'a, Self> {
+        WithArgs { value: self, args }
+    }
+}
+
+impl ToTokens for WithArgs<'_, Field> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(ref value) = self.value {
-            let name = &self.name;
-            let kind = &self.kind;
+        let field = self.value;
+
+        if let Some(ref value) = field.value {
+            let name = &field.name;
+            let kind = &field.kind;
             tokens.extend(quote! {
                 #name = #kind #value
             })
-        } else if self.kind == FieldKind::Value {
+        } else if field.kind == FieldKind::Value {
             // XXX(eliza): I don't like that fields without values produce
             // empty fields rather than local variable shorthand...but,
             // we've released a version where field names without values in
             // `instrument` produce empty field values, so changing it now
             // is a breaking change. agh.
-            let name = &self.name;
-            tokens.extend(quote!(#name = ::tracing::field::Empty))
+            let name = &field.name;
+            let tracing = self.args.tracing();
+            tokens.extend(quote!(#name = #tracing::field::Empty))
         } else {
-            self.kind.to_tokens(tokens);
-            self.name.to_tokens(tokens);
+            field.kind.to_tokens(tokens);
+            field.name.to_tokens(tokens);
         }
     }
 }
@@ -438,14 +481,29 @@ impl Parse for Level {
     }
 }
 
-impl ToTokens for Level {
+impl Level {
+    pub(crate) fn with_tracing<T: ToTokens>(self, tracing: T) -> LevelWithTracing<T> {
+        LevelWithTracing {
+            level: self,
+            tracing,
+        }
+    }
+}
+
+pub(crate) struct LevelWithTracing<T: ToTokens> {
+    level: Level,
+    tracing: T,
+}
+
+impl<T: ToTokens> ToTokens for LevelWithTracing<T> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Level::Trace => tokens.extend(quote!(::tracing::Level::TRACE)),
-            Level::Debug => tokens.extend(quote!(::tracing::Level::DEBUG)),
-            Level::Info => tokens.extend(quote!(::tracing::Level::INFO)),
-            Level::Warn => tokens.extend(quote!(::tracing::Level::WARN)),
-            Level::Error => tokens.extend(quote!(::tracing::Level::ERROR)),
+        let tracing = &self.tracing;
+        match self.level {
+            Level::Trace => tokens.extend(quote!(#tracing::Level::TRACE)),
+            Level::Debug => tokens.extend(quote!(#tracing::Level::DEBUG)),
+            Level::Info => tokens.extend(quote!(#tracing::Level::INFO)),
+            Level::Warn => tokens.extend(quote!(#tracing::Level::WARN)),
+            Level::Error => tokens.extend(quote!(#tracing::Level::ERROR)),
             Level::Path(ref pat) => tokens.extend(quote!(#pat)),
         }
     }
@@ -461,4 +519,5 @@ mod kw {
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
+    syn::custom_keyword!(tracing);
 }
