@@ -33,20 +33,14 @@ error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
 16 | | }
    | | ^
    | | |
-   | |_`(&str,)` cannot be formatted with the default formatter
+   | |_the trait `std::fmt::Display` is not implemented for `(&str,)`
    |   return type was inferred to be `(&str,)` here
-   |
-   = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 
 error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/fail/async_instrument.rs:14:34
    |
 14 | async fn opaque_unsatisfied() -> impl std::fmt::Display {
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^ `(&str,)` cannot be formatted with the default formatter
-   |
-   = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `(&str,)`
 
 error[E0308]: mismatched types
   --> tests/ui/fail/async_instrument.rs:22:5
