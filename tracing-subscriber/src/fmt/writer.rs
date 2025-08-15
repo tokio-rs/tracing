@@ -57,6 +57,16 @@ use tracing_core::Metadata;
 /// # drop(subscriber);
 /// ```
 ///
+/// `MakeWriter` is implemented for `Option<M>` when `M` implements `MakeWriter`.
+///
+/// ```
+/// # let enable_stdout = true;
+/// let subscriber = tracing_subscriber::fmt()
+///     .with_writer(enable_stdout.then_some(std::io::stdout))
+///     .finish();
+/// # drop(subscriber);
+/// ```
+///
 /// A closure can be used to introduce arbitrary logic into how the writer is
 /// created. Consider the (admittedly rather silly) example of sending every 5th
 /// event to stderr, and all other events to stdout:
@@ -1110,6 +1120,27 @@ where
     }
 }
 
+impl<'a, M> MakeWriter<'a> for Option<M>
+where
+    M: MakeWriter<'a> + 'static,
+{
+    type Writer = OptionalWriter<M::Writer>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        match self {
+            Some(inner) => OptionalWriter::some(inner.make_writer()),
+            None => OptionalWriter::none(),
+        }
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        match self {
+            Some(inner) => OptionalWriter::some(inner.make_writer_for(meta)),
+            None => OptionalWriter::none(),
+        }
+    }
+}
+
 // === impl WriteAdaptor ===
 
 #[cfg(any(feature = "json", feature = "time"))]
@@ -1405,5 +1436,81 @@ mod test {
 
         has_lines(&a_buf, &lines[..]);
         has_lines(&b_buf, &lines[..]);
+    }
+
+    #[test]
+    fn option_some_makewriter() {
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let make_writer = Some(MockMakeWriter::new(buf.clone()));
+
+        let lines = &[(Level::INFO, "hello"), (Level::INFO, "world")];
+        let c = {
+            #[cfg(feature = "ansi")]
+            let f = Format::default().without_time().with_ansi(false);
+            #[cfg(not(feature = "ansi"))]
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .with_max_level(Level::TRACE)
+                .finish()
+        };
+        let _s = tracing::collect::set_default(c);
+        info!("hello");
+        info!("world");
+        has_lines(&buf, &lines[..]);
+    }
+
+    #[test]
+    fn option_none_makewriter() {
+        let make_writer = Option::<MockMakeWriter>::None;
+
+        let c = {
+            #[cfg(feature = "ansi")]
+            let f = Format::default().without_time().with_ansi(false);
+            #[cfg(not(feature = "ansi"))]
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .with_max_level(Level::TRACE)
+                .finish()
+        };
+        let _s = tracing::collect::set_default(c);
+        info!("hello");
+        info!("world");
+    }
+
+    #[test]
+    fn multi_tee() {
+        let always_buf = Arc::new(Mutex::new(Vec::new()));
+        let some_buf = Arc::new(Mutex::new(Vec::new()));
+
+        let always_make_writer = MockMakeWriter::new(always_buf.clone());
+        let some_make_writer = Some(MockMakeWriter::new(some_buf.clone()));
+        let none_make_writer = Option::<MockMakeWriter>::None;
+
+        let make_writer = always_make_writer
+            .and(some_make_writer)
+            .and(none_make_writer);
+
+        let lines = &[(Level::INFO, "hello"), (Level::INFO, "world")];
+        let c = {
+            #[cfg(feature = "ansi")]
+            let f = Format::default().without_time().with_ansi(false);
+            #[cfg(not(feature = "ansi"))]
+            let f = Format::default().without_time();
+            Collector::builder()
+                .event_format(f)
+                .with_writer(make_writer)
+                .with_max_level(Level::TRACE)
+                .finish()
+        };
+        let _s = tracing::collect::set_default(c);
+        info!("hello");
+        info!("world");
+
+        has_lines(&always_buf, &lines[..]);
+        has_lines(&some_buf, &lines[..]);
     }
 }
