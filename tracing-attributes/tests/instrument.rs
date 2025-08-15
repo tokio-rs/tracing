@@ -51,7 +51,7 @@ fn override_everything() {
 
 #[test]
 fn fields() {
-    #[instrument(target = "my_target", level = "debug")]
+    #[instrument(target = "my_target", level = "debug", fields(nested.dotted.field = "foo-bar"))]
     fn my_fn(arg1: usize, arg2: bool, arg3: String) {}
 
     let span = expect::span()
@@ -70,6 +70,7 @@ fn fields() {
                     .with_value(&2usize)
                     .and(expect::field("arg2").with_value(&false))
                     .and(expect::field("arg3").with_value(&"Cool".to_string()))
+                    .and(expect::field("nested.dotted.field").with_value(&"foo-bar"))
                     .only(),
             ),
         )
@@ -82,6 +83,7 @@ fn fields() {
                     .with_value(&3usize)
                     .and(expect::field("arg2").with_value(&true))
                     .and(expect::field("arg3").with_value(&"Still Cool".to_string()))
+                    .and(expect::field("nested.dotted.field").with_value(&"foo-bar"))
                     .only(),
             ),
         )
