@@ -418,12 +418,6 @@ pub struct Format<F = Full, T = SystemTime> {
 // === impl Writer ===
 
 impl<'writer> Writer<'writer> {
-    // TODO(eliza): consider making this a public API?
-    // We may not want to do that if we choose to expose specialized
-    // constructors instead (e.g. `from_string` that stores whether the string
-    // is empty...?)
-    //(@kaifastromai) I suppose having dedicated constructors may have certain benefits
-    // but I am not privy to the larger direction of tracing/subscriber.
     /// Create a new [`Writer`] from any type that implements [`fmt::Write`].
     ///
     /// The returned `Writer` value may be passed as an argument to methods
@@ -441,8 +435,8 @@ impl<'writer> Writer<'writer> {
         }
     }
 
-    // TODO(eliza): consider making this a public API?
-    pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
+    /// Turn ANSI support on or off for this `Writer`.
+    pub fn with_ansi(self, is_ansi: bool) -> Self {
         Self { is_ansi, ..self }
     }
 
