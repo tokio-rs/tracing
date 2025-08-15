@@ -323,14 +323,18 @@ impl<C, N, E, W> Subscriber<C, N, E, W> {
     /// [`with_ansi`]: Subscriber::with_ansi
     /// [`set_ansi`]: Subscriber::set_ansi
     pub fn with_ansi(self, ansi: bool) -> Self {
-        #[cfg(not(feature = "ansi"))]
         if ansi {
-            const ERROR: &str =
-                "tracing-subscriber: the `ansi` crate feature is required to enable ANSI terminal colors";
-            #[cfg(debug_assertions)]
-            panic!("{}", ERROR);
-            #[cfg(not(debug_assertions))]
-            eprintln!("{}", ERROR);
+            #[cfg(not(feature = "ansi"))]
+            {
+                const ERROR: &str =
+                    "tracing-subscriber: the `ansi` crate feature is required to enable ANSI terminal colors";
+                #[cfg(debug_assertions)]
+                panic!("{}", ERROR);
+                #[cfg(not(debug_assertions))]
+                eprintln!("{}", ERROR);
+            }
+            #[cfg(target_os = "windows")]
+            nu_ansi_term::enable_ansi_support();
         }
 
         Subscriber {
@@ -571,6 +575,8 @@ where
     #[cfg(feature = "ansi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ansi")))]
     pub fn pretty(self) -> Subscriber<C, format::Pretty, format::Format<format::Pretty, T>, W> {
+        #[cfg(target_os = "windows")]
+        nu_ansi_term::enable_ansi_support();
         Subscriber {
             fmt_event: self.fmt_event.pretty(),
             fmt_fields: format::Pretty::default(),
