@@ -1114,28 +1114,32 @@ pub mod __macro_support {
             }
         }
 
-        /// Returns the callsite's cached Interest, or registers it for the
-        /// first time if it has not yet been registered.
+        /// Returns whether the callsite is enabled.
         ///
         /// /!\ WARNING: This is *not* a stable API! /!\
-        /// This method, and all code contained in the `__macro_support` module, is
+        /// This type, and all code contained in the `__macro_support` module, is
         /// a *private* API of `tracing`. It is exposed publicly because it is used
         /// by the `tracing` macros, but it is not part of the stable versioned API.
         /// Breaking changes to this module may occur in small-numbered versions
         /// without warning.
         #[inline]
-        pub fn interest(&'static self) -> Interest {
-            match self.interest.load(Ordering::Relaxed) {
+        pub fn is_enabled(&'static self) -> bool {
+            let interest = match self.interest.load(Ordering::Relaxed) {
                 Self::INTEREST_NEVER => Interest::never(),
                 Self::INTEREST_SOMETIMES => Interest::sometimes(),
                 Self::INTEREST_ALWAYS => Interest::always(),
                 _ => self.register(),
-            }
-        }
+            };
 
-        pub fn is_enabled(&self, interest: Interest) -> bool {
-            interest.is_always()
-                || crate::dispatch::get_default(|default| default.enabled(self.meta))
+            if interest.is_never() {
+                return false;
+            }
+
+            if interest.is_always() {
+                return true;
+            }
+
+            crate::dispatch::get_default(|default| default.enabled(self.meta))
         }
 
         #[inline]
