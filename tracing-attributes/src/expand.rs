@@ -314,7 +314,8 @@ fn gen_block<B: ToTokens>(
             ),
             (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
-                    match async move #block.await {
+                    let __match_scrutinee = async move #block.await;
+                    match  __match_scrutinee {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
