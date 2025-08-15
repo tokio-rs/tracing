@@ -420,7 +420,7 @@ impl SetGlobalDefaultError {
 #[inline(always)]
 pub fn get_default<T, F>(mut f: F) -> T
 where
-    F: FnMut(&Dispatch) -> T,
+    F: FnOnce(&Dispatch) -> T,
 {
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped dispatcher has been set; just use the global
@@ -448,6 +448,10 @@ where
         }
     }
 
+    // workaround to allow `f` to be `FnOnce. The `f` in this function will be executed
+    // only once thus it is safe to call `f.take().expect()`
+    let mut f = Some(f);
+
     CURRENT_STATE
         .try_with(|state| {
             if state.can_enter.replace(false) {
@@ -460,12 +464,13 @@ where
                     // keep getting the global on every `get_default_slow` call.
                     .get_or_insert_with(|| get_global().clone());
 
-                return f(&*default);
+
+                return f.take().expect("Failed to get callback (1)")(&*default);
             }
 
-            f(&Dispatch::none())
+            f.take().expect("Failed to get callback (2)")(&Dispatch::none())
         })
-        .unwrap_or_else(|_| f(&Dispatch::none()))
+        .unwrap_or_else(|_| f.take().expect("Failed to get callback (3)")(&Dispatch::none()))
 }
 
 /// Executes a closure with a reference to this thread's current [dispatcher].
