@@ -139,7 +139,8 @@ impl Directive {
 
         use ParseState::*;
         let mut state = Start;
-        for (i, c) in from.trim().char_indices() {
+        let from = from.trim();
+        for (i, c) in from.char_indices() {
             state = match (state, c) {
                 (Start, '[') => Span { span_start: i + 1 },
                 (Start, c) if !['-', ':', '_'].contains(&c) && !c.is_alphanumeric() => {
