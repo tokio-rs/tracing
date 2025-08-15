@@ -389,7 +389,7 @@ impl EnvFilter {
     /// use tracing_subscriber::EnvFilter;
     ///
     /// # fn docs() -> Result<EnvFilter, tracing_subscriber::filter::FromEnvError> {
-    /// EnvFilter::builder().try_from_env()
+    /// EnvFilter::try_from_default_env()
     /// # }
     /// ```
     pub fn try_from_default_env() -> Result<Self, FromEnvError> {
