@@ -6,11 +6,12 @@ use core::{fmt, marker::PhantomData};
 pub use tracing_core::field::Visit;
 use tracing_core::{
     span::{Attributes, Record},
-    Event,
+    Event, Field,
 };
 pub mod debug;
 pub mod delimited;
 pub mod display;
+pub mod filter;
 
 /// Creates new [visitors].
 ///
@@ -152,6 +153,16 @@ where
         Self::Visitor: VisitFmt,
     {
         delimited::Delimited::new(delimiter, self)
+    }
+
+    /// Wraps `self` so that any fields can be filtered using a closure.
+    fn filter_fields<F>(self, filter_fn: F) -> filter::FieldFilter<F, Self>
+    where
+        F: Fn(&Field) -> bool,
+        F: Clone,
+        Self::Visitor: VisitFmt,
+    {
+        filter::FieldFilter::new(filter_fn, self)
     }
 }
 
