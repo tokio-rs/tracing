@@ -191,7 +191,7 @@
 //! [`Collect`]: https://docs.rs/tracing/latest/tracing/trait.Collect.html
 //! [`tracing`]: https://crates.io/crates/tracing
 //! [`fmt::format`]: mod@crate::fmt::format
-use std::{any::TypeId, error::Error, io, ptr::NonNull};
+use std::{any::TypeId, io, ptr::NonNull};
 use tracing_core::{collect::Interest, span, Event, Metadata};
 
 mod fmt_subscriber;
@@ -208,6 +208,7 @@ use crate::{
     filter::LevelFilter,
     registry::{LookupSpan, Registry},
     reload, subscribe,
+    util::TryInitError,
 };
 
 #[doc(inline)]
@@ -279,18 +280,16 @@ pub struct CollectorBuilder<
 /// [`try_init`] returns an error if the default collector could not be set:
 ///
 /// ```rust
-/// use std::error::Error;
+/// use tracing_subscriber::util::TryInitError;
 ///
-/// fn init_subscriber() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+/// fn init_subscriber() -> Result<(), TryInitError> {
 ///     tracing_subscriber::fmt()
 ///         // Configure the collector to emit logs in JSON format.
 ///         .json()
 ///         // Configure the collector to flatten event fields in the output JSON objects.
 ///         .flatten_event(true)
 ///         // Set the collector as the default, returning an error if this fails.
-///         .try_init()?;
-///
-///     Ok(())
+///         .try_init()
 /// }
 /// ```
 ///
@@ -495,11 +494,9 @@ where
     /// Returns an Error if the initialization was unsuccessful, likely
     /// because a global collector was already installed by another
     /// call to `try_init`.
-    pub fn try_init(self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    pub fn try_init(self) -> Result<(), TryInitError> {
         use crate::util::SubscriberInitExt;
-        self.finish().try_init()?;
-
-        Ok(())
+        self.finish().try_init()
     }
 
     /// Install this collector as the global default.
@@ -1182,7 +1179,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
 /// This is shorthand for
 ///
 /// ```rust
-/// # fn doc() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+/// # fn doc() -> Result<(), tracing_subscriber::util::TryInitError> {
 /// tracing_subscriber::fmt().try_init()
 /// # }
 /// ```
@@ -1198,7 +1195,7 @@ impl<N, E, F, W> CollectorBuilder<N, E, F, W> {
 ///     https://docs.rs/tracing-log/0.1.0/tracing_log/struct.LogTracer.html
 /// [`RUST_LOG` environment variable]:
 ///     ../filter/struct.EnvFilter.html#associatedconstant.DEFAULT_ENV
-pub fn try_init() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+pub fn try_init() -> Result<(), TryInitError> {
     let builder = Collector::builder();
 
     #[cfg(feature = "env-filter")]
