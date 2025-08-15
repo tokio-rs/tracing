@@ -1014,7 +1014,9 @@ pub mod __macro_support {
     // Re-export the `core` functions that are used in macros. This allows
     // a crate to be named `core` and avoid name clashes.
     // See here: https://github.com/tokio-rs/tracing/issues/2761
-    pub use core::{concat, file, format_args, iter::Iterator, line, option::Option, stringify};
+    pub use core::{
+        column, concat, file, format_args, iter::Iterator, line, option::Option, stringify,
+    };
 
     /// Callsite implementation used by macro-generated code.
     ///
