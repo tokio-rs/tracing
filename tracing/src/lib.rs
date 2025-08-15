@@ -151,8 +151,8 @@
 //! The [`#[instrument]`][instrument] attribute provides an easy way to
 //! add `tracing` spans to functions. A function annotated with `#[instrument]`
 //! will create and enter a span with that function's name every time the
-//! function is called, with arguments to that function will be recorded as
-//! fields using `fmt::Debug`.
+//! function is called, with arguments to that function recorded as fields
+//! using the `Value` trait or, if it is not implemented, `fmt::Debug`.
 //!
 //! For example:
 //! ```ignore

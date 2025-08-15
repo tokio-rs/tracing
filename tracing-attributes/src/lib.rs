@@ -96,7 +96,7 @@ mod expand;
 /// By default, all arguments to the function are included as fields on the
 /// span. Arguments that are `tracing` [primitive types] implementing the
 /// [`Value` trait] will be recorded as fields of that type. Types which do
-/// not implement `Value` will be recorded using [`std::fmt::Debug`].
+/// not implement `Value` will be recorded using [`fmt::Debug`].
 ///
 /// [primitive types]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html#foreign-impls
 /// [`Value` trait]: https://docs.rs/tracing/latest/tracing/field/trait.Value.html
@@ -107,7 +107,7 @@ mod expand;
 /// not implement [`fmt::Debug`], or to exclude an argument with a verbose
 /// or costly Debug implementation. Note that:
 /// - multiple argument names can be passed to `skip`.
-/// - arguments passed to `skip` do _not_ need to implement `fmt::Debug`.
+/// - arguments passed to `skip` do _not_ need to implement [`fmt::Debug`].
 ///
 /// Additional fields (key-value pairs with arbitrary data) can be passed to
 /// to the generated span through the `fields` argument on the
@@ -250,8 +250,8 @@ mod expand;
 /// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values if and
 /// only if the function returns [`Result::Ok`].
 ///
-/// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
-/// If a returned value implements [`std::fmt::Display`], it can be recorded using its `Display`
+/// By default, returned values will be recorded using their [`fmt::Debug`] implementations.
+/// If a returned value implements [`fmt::Display`], it can be recorded using its `Display`
 /// implementation instead, by writing `ret(Display)`:
 ///
 /// ```
@@ -262,7 +262,7 @@ mod expand;
 /// }
 /// ```
 ///
-/// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
+/// If the function returns a `Result<T, E>` and `E` implements [`fmt::Display`], adding
 /// `err` or `err(Display)` will emit error events when the function returns `Err`:
 ///
 /// ```
@@ -286,8 +286,8 @@ mod expand;
 /// }
 /// ```
 ///
-/// By default, error values will be recorded using their `std::fmt::Display` implementations.
-/// If an error implements `std::fmt::Debug`, it can be recorded using its `Debug` implementation
+/// By default, error values will be recorded using their [`fmt::Display`] implementations.
+/// If an error implements [`fmt::Debug`], it can be recorded using its `Debug` implementation
 /// instead by writing `err(Debug)`:
 ///
 /// ```
@@ -359,6 +359,9 @@ mod expand;
 /// [`follows_from`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.follows_from
 /// [`tracing`]: https://github.com/tokio-rs/tracing
 /// [`fmt::Debug`]: std::fmt::Debug
+/// [`fmt::Display`]: std::fmt::Display
+/// [`Result::Ok`]: std::result::Result::Ok
+/// [`Result::Err`]: std::result::Result::Err
 /// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
 /// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
 /// [`Level::ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
