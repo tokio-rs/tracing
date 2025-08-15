@@ -99,6 +99,9 @@ use tracing_core::{
 ///   with an underscore.
 /// - A dash in a target will only appear when being specified explicitly:
 ///   `tracing::info!(target: "target-name", ...);`
+/// - Each directive in a string is allowed to have whitespace around it, which will be
+///   ignored; e.g. `\t tokio::net=info , \n  tokio::sync=trace ` parses the same as
+///   `tokio::net=info,tokio::sync=trace`
 ///
 /// ## Example Syntax
 ///

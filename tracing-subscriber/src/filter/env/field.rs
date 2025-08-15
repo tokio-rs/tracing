@@ -71,6 +71,7 @@ impl PartialEq for ValueMatch {
             (U64(a), U64(b)) => a.eq(b),
             (I64(a), I64(b)) => a.eq(b),
             (NaN, NaN) => true,
+            (Debug(a), Debug(b)) => a.eq(b),
             (Pat(a), Pat(b)) => a.eq(b),
             _ => false,
         }
@@ -348,7 +349,7 @@ impl Ord for MatchPattern {
 // === impl MatchDebug ===
 
 impl MatchDebug {
-    fn new(s: &str) -> Self {
+    pub(crate) fn new(s: &str) -> Self {
         Self {
             pattern: s.to_owned().into(),
         }

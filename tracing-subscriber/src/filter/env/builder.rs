@@ -139,17 +139,15 @@ impl Builder {
     ///
     /// [default directive]: Self::with_default_directive
     pub fn parse_lossy<S: AsRef<str>>(&self, dirs: S) -> EnvFilter {
-        let directives = dirs
-            .as_ref()
-            .split(',')
-            .filter(|s| !s.is_empty())
-            .filter_map(|s| match Directive::parse(s, self.regex) {
+        let directives = directive::split_directives(dirs.as_ref()).filter_map(|s| {
+            match Directive::parse(s, self.regex) {
                 Ok(d) => Some(d),
                 Err(err) => {
                     eprintln!("ignoring `{}`: {}", s, err);
                     None
                 }
-            });
+            }
+        });
         self.from_directives(directives)
     }
 
@@ -165,9 +163,7 @@ impl Builder {
         if dirs.is_empty() {
             return Ok(self.from_directives(std::iter::empty()));
         }
-        let directives = dirs
-            .split(',')
-            .filter(|s| !s.is_empty())
+        let directives = directive::split_directives(dirs.as_ref())
             .map(|s| Directive::parse(s, self.regex))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self.from_directives(directives))

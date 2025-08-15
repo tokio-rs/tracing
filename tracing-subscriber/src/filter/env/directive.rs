@@ -478,20 +478,22 @@ impl SpanMatcher {
     }
 }
 
+pub(super) fn split_directives(dirs: &str) -> impl Iterator<Item = &str> {
+    dirs.split(',').map(str::trim).filter(|s| !s.is_empty())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
-            .filter_map(|s| s.parse().ok())
+        split_directives(dirs.as_ref())
+            .filter_map(|s| Directive::parse(s, false).ok())
             .collect()
     }
 
     fn expect_parse(dirs: impl AsRef<str>) -> Vec<Directive> {
-        dirs.as_ref()
-            .split(',')
+        split_directives(dirs.as_ref())
             .map(|s| {
                 s.parse()
                     .unwrap_or_else(|err| panic!("directive '{:?}' should parse: {}", s, err))
@@ -884,5 +886,45 @@ mod test {
 
         let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
         assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+    }
+
+    #[test]
+    fn parse_directives_with_whitespace() {
+        let dirs = parse_directives(
+            "target1=info,\ntarget2=debug,  target3[span{x=\"hello there\"}]=warn\t",
+        );
+        assert_eq!(dirs.len(), 3, "\nparsed: {:#?}", dirs);
+        assert_eq!(
+            dirs[0],
+            Directive {
+                in_span: None,
+                fields: vec![],
+                target: Some("target1".to_string()),
+                level: LevelFilter::INFO,
+            }
+        );
+        assert_eq!(
+            dirs[1],
+            Directive {
+                in_span: None,
+                fields: vec![],
+                target: Some("target2".to_string()),
+                level: LevelFilter::DEBUG
+            }
+        );
+        assert_eq!(
+            dirs[2],
+            Directive {
+                in_span: Some("span".to_string()),
+                fields: vec![field::Match {
+                    name: "x".to_string(),
+                    value: Some(field::ValueMatch::Debug(field::MatchDebug::new(
+                        "\"hello there\""
+                    )))
+                }],
+                target: Some("target3".to_string()),
+                level: LevelFilter::WARN
+            }
+        );
     }
 }
