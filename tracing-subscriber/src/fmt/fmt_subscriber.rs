@@ -540,13 +540,56 @@ where
     /// Sets whether or not the [name] of the current thread is displayed
     /// when formatting events.
     ///
+    /// To control whether or not the displayed thread names are padded with
+    /// extra whitespace for alignment, see the [`with_thread_names_padding`] method.
+    ///
     /// [name]: std::thread#naming-threads
+    /// [`with_thread_names_padding`]: Self::with_thread_names_padding
     pub fn with_thread_names(
         self,
         display_thread_names: bool,
     ) -> Subscriber<C, N, format::Format<L, T>, W> {
         Subscriber {
             fmt_event: self.fmt_event.with_thread_names(display_thread_names),
+            ..self
+        }
+    }
+
+    /// Sets whether or not the length of the [name] of the current thread is padded.
+    ///
+    /// If this is `true`, the formatter will track the length of the longest
+    /// thread name that has been displayed, and pad any shorter thread
+    /// names so that the thread name is always aligned with that many
+    /// characters. If this is `false`, no additional whitespace will be added
+    /// when displaying thread names.
+    ///
+    /// By default, thread names will be padded.
+    /// This setting only has an effect if [`with_thread_names`] is `true`.
+    ///
+    /// # Examples
+    ///
+    /// If this is `true`:
+    /// ```
+    /// INFO main target: message
+    /// INFO actix-rt|system:0|arbiter:1 target: message
+    /// INFO main                        target: message
+    /// ```
+    ///
+    /// If this is `false`:
+    /// ```
+    /// INFO main target: message
+    /// INFO actix-rt|system:0|arbiter:1 target: message
+    /// INFO main target: message
+    /// ```
+    ///
+    /// [name]: std::thread#naming-threads
+    /// [`with_thread_names`]: Self::with_thread_names
+    pub fn with_thread_names_padding(
+        self,
+        pad_thread_name: bool,
+    ) -> Subscriber<C, N, format::Format<L, T>, W> {
+        Subscriber {
+            fmt_event: self.fmt_event.with_thread_names_padding(pad_thread_name),
             ..self
         }
     }
