@@ -501,7 +501,7 @@ where
 
     #[inline]
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
-        self.a.on_record(id, values, ctx.clone());
+        self.a.on_record(id, values, ctx);
     }
 
     #[inline]

@@ -163,7 +163,7 @@
 )]
 use crate::non_blocking::{NonBlocking, WorkerGuard};
 
-use std::io::Write;
+use std::{fmt::Debug, io::Write, sync::Arc};
 
 pub mod non_blocking;
 
@@ -197,3 +197,5 @@ pub(crate) enum Msg {
     Line(Vec<u8>),
     Shutdown,
 }
+
+type BuilderFn = Arc<dyn Fn(Box<dyn Write + Send>) -> Box<dyn Write + Send> + Send + Sync>;
