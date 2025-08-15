@@ -67,7 +67,7 @@
 //! # fn new() -> Self { Self {} }
 //! # }
 //! # impl MySubscriber {
-//! # fn new() -> Self { Self { }}
+//! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = MySubscriber::new()
@@ -107,7 +107,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
-//! }
+//! # }
 //! # impl MyLayer {
 //! # fn new() -> Self { Self {} }
 //! # }
@@ -118,7 +118,7 @@
 //! # fn new() -> Self { Self {} }
 //! # }
 //! # impl MySubscriber {
-//! # fn new() -> Self { Self { }}
+//! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = MySubscriber::new()
