@@ -42,7 +42,7 @@ impl<S: Collect> tracing_subscriber::Subscribe<S> for NopSubscriber {
         Interest::sometimes()
     }
 
-    fn enabled(&self, _m: &Metadata<'_>, _: subscribe::Context<'_, S>) -> bool {
+    fn enabled(&self, _m: &Metadata<'_>, _: &subscribe::Context<'_, S>) -> bool {
         true
     }
 }
@@ -71,7 +71,7 @@ fn reload_handle() {
             Interest::sometimes()
         }
 
-        fn enabled(&self, m: &Metadata<'_>, _: subscribe::Context<'_, S>) -> bool {
+        fn enabled(&self, m: &Metadata<'_>, _: &subscribe::Context<'_, S>) -> bool {
             println!("ENABLED: {:?}", m);
             match self {
                 Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),

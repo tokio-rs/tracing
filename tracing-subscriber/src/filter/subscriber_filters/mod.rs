@@ -760,15 +760,15 @@ where
         Interest::always()
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, C>) -> bool {
-        let cx = cx.with_filter(self.id());
+    fn enabled(&self, metadata: &Metadata<'_>, cx: &Context<'_, C>) -> bool {
+        let cx = cx.clone().with_filter(self.id());
         let enabled = self.filter.enabled(metadata, &cx);
         FILTERING.with(|filtering| filtering.set(self.id(), enabled));
 
         if enabled {
             // If the filter enabled this metadata, ask the wrapped subscriber if
             // _it_ wants it --- it might have a global filter.
-            self.subscriber.enabled(metadata, cx)
+            self.subscriber.enabled(metadata, &cx)
         } else {
             // Otherwise, return `true`. The _per-subscriber_ filter disabled this
             // metadata, but returning `false` in `Subscribe::enabled` will

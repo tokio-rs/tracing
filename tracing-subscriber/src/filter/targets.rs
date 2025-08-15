@@ -440,7 +440,7 @@ impl<C> subscribe::Subscribe<C> for Targets
 where
     C: Collect,
 {
-    fn enabled(&self, metadata: &Metadata<'_>, _: subscribe::Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: &subscribe::Context<'_, C>) -> bool {
         self.0.enabled(metadata)
     }
 

@@ -10,7 +10,7 @@ impl<C: Collect> tracing_subscriber::Subscribe<C> for BasicLayer {
         Interest::sometimes()
     }
 
-    fn enabled(&self, _m: &Metadata<'_>, _: subscribe::Context<'_, C>) -> bool {
+    fn enabled(&self, _m: &Metadata<'_>, _: &subscribe::Context<'_, C>) -> bool {
         true
     }
 

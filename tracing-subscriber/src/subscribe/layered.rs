@@ -99,7 +99,7 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        if self.subscriber.enabled(metadata, self.ctx()) {
+        if self.subscriber.enabled(metadata, &self.ctx()) {
             // if the outer subscriber enables the callsite metadata, ask the collector.
             self.inner.enabled(metadata)
         } else {
@@ -261,8 +261,8 @@ where
         })
     }
 
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
-        if self.subscriber.enabled(metadata, ctx.clone()) {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
+        if self.subscriber.enabled(metadata, ctx) {
             // if the outer subscriber enables the callsite metadata, ask the inner subscriber.
             self.inner.enabled(metadata, ctx)
         } else {

@@ -490,7 +490,7 @@ impl EnvFilter {
     /// This is equivalent to calling the [`Subscribe::enabled`] or
     /// [`Filter::enabled`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
-    pub fn enabled<C>(&self, metadata: &Metadata<'_>, _: Context<'_, C>) -> bool {
+    pub fn enabled<C>(&self, metadata: &Metadata<'_>, _: &Context<'_, C>) -> bool {
         let level = metadata.level();
 
         // is it possible for a dynamic filter directive to enable this event?
@@ -666,7 +666,7 @@ impl<C: Collect> Subscribe<C> for EnvFilter {
     }
 
     #[inline]
-    fn enabled(&self, metadata: &Metadata<'_>, ctx: Context<'_, C>) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
         self.enabled(metadata, ctx)
     }
 
@@ -703,7 +703,7 @@ feature! {
     impl<C> Filter<C> for EnvFilter {
         #[inline]
         fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, C>) -> bool {
-            self.enabled(meta, ctx.clone())
+            self.enabled(meta, ctx)
         }
 
         #[inline]
