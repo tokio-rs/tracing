@@ -177,6 +177,7 @@ impl Parse for EventArgs {
                     return Err(content.error("expected only a single format argument"));
                 } else if let Some(ident) = content.parse::<Option<Ident>>()? {
                     match ident.to_string().as_str() {
+                        "skip" => result.mode = FormatMode::Skip,
                         "Debug" => result.mode = FormatMode::Debug,
                         "Display" => result.mode = FormatMode::Display,
                         _ => return Err(syn::Error::new(
@@ -287,6 +288,7 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
+    Skip,
 }
 
 #[derive(Clone, Debug)]
