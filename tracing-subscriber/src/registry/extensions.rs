@@ -1,15 +1,173 @@
 // taken from https://github.com/hyperium/http/blob/master/src/extensions.rs.
 
-use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
 use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
+    any::TypeId,
+    collections::{hash_map::Entry, HashMap},
     fmt,
     hash::{BuildHasherDefault, Hasher},
 };
 
+use crate::registry::extensions::boxed_entry::BoxedEntry;
+use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
+
+#[allow(unreachable_pub)]
+mod boxed_entry {
+    use std::mem::{ManuallyDrop, MaybeUninit};
+    use std::ptr::NonNull;
+    use std::{mem, ptr};
+
+    /// Used to give ourselves one free bit for liveness checks.
+    #[repr(align(2))]
+    struct Aligned<T>(pub T);
+
+    /// Wrapper around an untyped pointer to avoid casting bugs.
+    ///
+    /// This type holds the pointer to a `Box<Aligned<T>>`.
+    #[derive(Copy, Clone)]
+    struct ExtPtr(NonNull<()>);
+
+    impl ExtPtr {
+        fn new<T>(val: T) -> Self {
+            let mut this = {
+                let ptr = Box::into_raw(Box::new(Aligned(val)));
+                Self(unsafe { NonNull::new_unchecked(ptr) }.cast())
+            };
+            this.set_live(true);
+            this
+        }
+
+        fn typed<T>(self) -> NonNull<Aligned<T>> {
+            #[cfg(not(nightly))]
+            let ptr = {
+                let addr = self.0.as_ptr() as usize;
+                let addr = addr & !1; // Zero out the live bit
+                addr as *mut _
+            };
+            #[cfg(nightly)]
+            let ptr = self.0.as_ptr().mask(!1).cast();
+            unsafe { NonNull::new_unchecked(ptr) }
+        }
+
+        fn live(&self) -> bool {
+            #[cfg(not(nightly))]
+            let addr = self.0.as_ptr() as usize;
+            #[cfg(nightly)]
+            let addr = self.0.as_ptr().addr();
+            (addr & 1) == 1
+        }
+
+        fn set_live(&mut self, live: bool) {
+            let update = |addr: usize| if live { addr | 1 } else { addr & !1 };
+            #[cfg(not(nightly))]
+            let ptr = update(self.0.as_ptr() as usize) as *mut _;
+            #[cfg(nightly)]
+            let ptr = self.0.as_ptr().map_addr(update);
+            self.0 = unsafe { NonNull::new_unchecked(ptr) };
+        }
+    }
+
+    /// Extension storage
+    pub struct BoxedEntry {
+        ptr: ExtPtr,
+        op_fn: unsafe fn(ExtPtr, BoxedEntryOp),
+    }
+
+    unsafe impl Send for BoxedEntry {}
+
+    unsafe impl Sync for BoxedEntry {}
+
+    enum BoxedEntryOp {
+        DropLiveValue,
+        Drop,
+    }
+
+    unsafe fn run_boxed_entry_op<T>(ext: ExtPtr, op: BoxedEntryOp) {
+        let ptr = ext.typed::<T>().as_ptr();
+        match op {
+            BoxedEntryOp::DropLiveValue => unsafe {
+                ptr::drop_in_place(ptr);
+            },
+            BoxedEntryOp::Drop => {
+                if ext.live() {
+                    unsafe {
+                        drop(Box::from_raw(ptr));
+                    }
+                } else {
+                    unsafe {
+                        drop(Box::from_raw(ptr.cast::<MaybeUninit<Aligned<T>>>()));
+                    }
+                }
+            }
+        }
+    }
+
+    impl BoxedEntry {
+        pub fn new<T: Send + Sync + 'static>(val: T) -> Self {
+            Self {
+                ptr: ExtPtr::new(val),
+                op_fn: run_boxed_entry_op::<T>,
+            }
+        }
+
+        pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+            let mut ptr = self.ptr.typed::<T>();
+            if self.ptr.live() {
+                Some(mem::replace(unsafe { ptr.as_mut() }, Aligned(val)).0)
+            } else {
+                unsafe {
+                    ptr::write(ptr.as_ptr(), Aligned(val));
+                }
+                self.ptr.set_live(true);
+                None
+            }
+        }
+
+        pub fn as_ref<T>(&self) -> Option<&T> {
+            self.ptr
+                .live()
+                .then(|| &unsafe { self.ptr.typed::<T>().as_ref() }.0)
+        }
+
+        pub fn as_mut<T>(&mut self) -> Option<&mut T> {
+            self.ptr
+                .live()
+                .then(|| &mut unsafe { self.ptr.typed::<T>().as_mut() }.0)
+        }
+
+        pub fn remove<T>(self) -> Option<T> {
+            let this = ManuallyDrop::new(self);
+            let ptr = this.ptr.typed::<T>().as_ptr();
+            if this.ptr.live() {
+                Some(unsafe { Box::from_raw(ptr) }.0)
+            } else {
+                unsafe {
+                    drop(Box::from_raw(ptr.cast::<MaybeUninit<Aligned<T>>>()));
+                }
+                None
+            }
+        }
+
+        pub fn clear(&mut self) {
+            if self.ptr.live() {
+                self.ptr.set_live(false);
+                unsafe {
+                    (self.op_fn)(self.ptr, BoxedEntryOp::DropLiveValue);
+                }
+            }
+        }
+    }
+
+    impl Drop for BoxedEntry {
+        fn drop(&mut self) {
+            unsafe {
+                (self.op_fn)(self.ptr, BoxedEntryOp::Drop);
+            }
+        }
+    }
+}
+
 #[allow(warnings)]
-type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdHasher>>;
+type AnyMap = HashMap<TypeId, BoxedEntry, BuildHasherDefault<IdHasher>>;
 
 /// With TypeIds as keys, there's no need to hash them. They are already hashes
 /// themselves, coming from the compiler. The IdHasher holds the u64 of
@@ -135,46 +293,36 @@ impl ExtensionsInner {
     /// If a extension of this type already existed, it will
     /// be returned.
     pub(crate) fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
-        self.map
-            .insert(TypeId::of::<T>(), Box::new(val))
-            .and_then(|boxed| {
-                #[allow(warnings)]
-                {
-                    (boxed as Box<dyn Any + 'static>)
-                        .downcast()
-                        .ok()
-                        .map(|boxed| *boxed)
-                }
-            })
+        match self.map.entry(TypeId::of::<T>()) {
+            Entry::Occupied(mut entry) => entry.get_mut().insert::<T>(val),
+            Entry::Vacant(entry) => {
+                entry.insert(BoxedEntry::new(val));
+                None
+            }
+        }
     }
 
     /// Get a reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get<T: 'static>(&self) -> Option<&T> {
         self.map
             .get(&TypeId::of::<T>())
-            .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
+            .and_then(BoxedEntry::as_ref::<T>)
     }
 
     /// Get a mutable reference to a type previously inserted on this `Extensions`.
     pub(crate) fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.map
             .get_mut(&TypeId::of::<T>())
-            .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
+            .and_then(BoxedEntry::as_mut::<T>)
     }
 
     /// Remove a type from this `Extensions`.
     ///
     /// If a extension of this type existed, it will be returned.
     pub(crate) fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
-        self.map.remove(&TypeId::of::<T>()).and_then(|boxed| {
-            #[allow(warnings)]
-            {
-                (boxed as Box<dyn Any + 'static>)
-                    .downcast()
-                    .ok()
-                    .map(|boxed| *boxed)
-            }
-        })
+        self.map
+            .remove(&TypeId::of::<T>())
+            .and_then(BoxedEntry::remove::<T>)
     }
 
     /// Clear the `ExtensionsInner` in-place, dropping any elements in the map but
@@ -184,7 +332,7 @@ impl ExtensionsInner {
     /// that future spans will not need to allocate new hashmaps.
     #[cfg(any(test, feature = "registry"))]
     pub(crate) fn clear(&mut self) {
-        self.map.clear();
+        self.map.values_mut().for_each(BoxedEntry::clear);
     }
 }
 
@@ -234,8 +382,8 @@ mod tests {
 
         assert_eq!(
             extensions.map.len(),
-            0,
-            "after clear(), extensions map should have length 0"
+            3,
+            "after clear(), extensions map should have length 3"
         );
         assert_eq!(
             extensions.map.capacity(),
