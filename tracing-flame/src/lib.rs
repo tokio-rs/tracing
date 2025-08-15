@@ -10,7 +10,7 @@
 //! issues bottlenecks in an application. For more details, see Brendan Gregg's [post]
 //! on flamegraphs.
 //!
-//! *Compiler support: [requires `rustc` 1.65+][msrv]*
+//! *Compiler support: [requires `rustc` 1.70+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [post]: http://www.brendangregg.com/flamegraphs.html
@@ -95,7 +95,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.65. The current Tracing version is not guaranteed to build on
+//! version is 1.70. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -136,7 +136,6 @@
 
 use error::Error;
 use error::Kind;
-use once_cell::sync::Lazy;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -147,6 +146,7 @@ use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tracing::span;
 use tracing::Collect;
@@ -157,10 +157,10 @@ use tracing_subscriber::Subscribe;
 
 mod error;
 
-static START: Lazy<Instant> = Lazy::new(Instant::now);
+static START: OnceLock<Instant> = OnceLock::new();
 
 thread_local! {
-    static LAST_EVENT: Cell<Instant> = Cell::new(*START);
+    static LAST_EVENT: Cell<Instant> = Cell::new(*START.get_or_init(Instant::now));
 
     static THREAD_NAME: String = {
         let thread = std::thread::current();
@@ -264,7 +264,7 @@ where
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the subscriber
-        let _unused = *START;
+        let _unused = START.get_or_init(Instant::now);
         Self {
             out: Arc::new(Mutex::new(writer)),
             config: Default::default(),

@@ -27,15 +27,14 @@ rust-version = "1.65.0"
 [features]
 default = ["std"]
 alloc = ["portable-atomic-util?/alloc"]
-std = ["once_cell", "alloc", "portable-atomic?/std", "portable-atomic-util?/std"]
-portable-atomic = ["dep:portable-atomic", "dep:portable-atomic-util", "once_cell?/portable-atomic"]
-critical-section = ["portable-atomic?/critical-section", "once_cell?/critical-section"]
+std = ["alloc", "portable-atomic?/std", "portable-atomic-util?/std"]
+portable-atomic = ["dep:portable-atomic", "dep:portable-atomic-util"]
+critical-section = ["portable-atomic?/critical-section"]
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-once_cell = { version = "1.13.0", optional = true }
 portable-atomic-util = { version = "0.2.4", default-features = false, optional = true }
 portable-atomic = { version = "1", default-features = false, optional = true }
 

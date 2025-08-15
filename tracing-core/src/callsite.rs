@@ -173,7 +173,6 @@ pub use self::inner::{rebuild_interest_cache, register};
 #[cfg(feature = "std")]
 mod inner {
     use super::*;
-    use once_cell::sync::Lazy;
     use std::sync::RwLock;
     use std::vec::Vec;
 
@@ -184,10 +183,10 @@ mod inner {
         dispatchers: RwLock<Dispatchers>,
     }
 
-    static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry {
+    static REGISTRY: Registry = Registry {
         callsites: LinkedList::new(),
         dispatchers: RwLock::new(Vec::new()),
-    });
+    };
 
     /// Clear and reregister interest on every [`Callsite`]
     ///

@@ -334,7 +334,7 @@ impl Eq for MatchPattern {}
 impl PartialOrd for MatchPattern {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 
@@ -430,7 +430,7 @@ impl Eq for MatchDebug {}
 impl PartialOrd for MatchDebug {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 

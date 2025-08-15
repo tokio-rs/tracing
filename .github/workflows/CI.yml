@@ -121,7 +121,7 @@ jobs:
       shell: bash
 
   check-msrv:
-    # Run `cargo check` on our minimum supported Rust version (1.65.0). This
+    # Run `cargo check` on our minimum supported Rust version (1.70.0). This
     # checks with minimal versions; maximal versions are checked above.
     name: "cargo check (+MSRV -Zminimal-versions)"
     needs: check
@@ -143,7 +143,7 @@ jobs:
         - tracing-tower
         - tracing
         toolchain:
-        - 1.65.0
+        - 1.70.0
         - stable
     steps:
     - uses: actions/checkout@v4
