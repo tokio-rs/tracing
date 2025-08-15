@@ -243,15 +243,13 @@ jobs:
       uses: taiki-e/install-action@nextest
     - name: Run tests
       run: cargo nextest run --profile ci --workspace
-    # TODO(eliza): punt on this for now because the generated JUnit report is
-    # missing some fields that this action needs to give good output.
-    # - name: Publish Test Report
-    #   uses: mikepenz/action-junit-report@v3
-    #   if: always() # always run even if the previous step fails
-    #   with:
-    #     report_paths: 'target/nextest/ci/junit.xml'
-    #     check_name: "cargo test (Rust ${{ matrix.rust }} on ${{ matrix.os }})"
-    #     check_title_template: "{{SUITE_NAME}}::{{TEST_NAME}}"
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: always() # always run even if the previous step fails
+      with:
+        report_paths: 'target/nextest/ci/junit.xml'
+        check_name: "cargo test (Rust ${{ matrix.rust }} on ${{ matrix.os }})"
+        check_title_template: "{{SUITE_NAME}}::{{TEST_NAME}}"
     - name: Run doctests
       run: cargo test --doc --workspace
 

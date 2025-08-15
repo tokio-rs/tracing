@@ -372,6 +372,8 @@ fn explicit_child_at_levels() {
     });
 
     handle.assert_finished();
+
+    panic!("break CI for fun!")
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

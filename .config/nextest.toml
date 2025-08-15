@@ -8,5 +8,5 @@ failure-output = "immediate-final"
 fail-fast = false
 
 # TODO(eliza): uncomment this when we can get nicer JUnit output from nextest...
-# [profile.ci.junit]
-# path = "junit.xml"
+[profile.ci.junit]
+path = "junit.xml"
