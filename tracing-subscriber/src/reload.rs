@@ -20,8 +20,7 @@
 //!
 //! [`Subscribe`]: crate::Subscribe
 //! [`Filter`]: crate::subscribe::Filter
-use crate::subscribe;
-use crate::sync::RwLock;
+use crate::{filter, subscribe, sync::RwLock};
 
 use core::{any::TypeId, ptr::NonNull};
 use std::{
@@ -45,6 +44,8 @@ pub struct Subscriber<S> {
     // of our internal `RwLock` wrapper type. If possible, we should profile
     // this first to determine if it's necessary.
     inner: Arc<RwLock<S>>,
+
+    inner_has_subscriber_filter: bool,
 }
 
 /// Allows reloading the state of an associated `Collect`.
@@ -76,9 +77,26 @@ where
         try_lock!(self.inner.read()).on_register_dispatch(collector);
     }
 
+    fn on_subscribe(&mut self, collector: &mut C) {
+        let mut inner = try_lock!(self.inner.write());
+        self.inner_has_subscriber_filter = filter::subscriber_has_psf(&*inner);
+        inner.on_subscribe(collector);
+    }
+
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
-        try_lock!(self.inner.read(), else return Interest::sometimes()).register_callsite(metadata)
+        try_lock!(self.inner.read(), else {
+            if self.inner_has_subscriber_filter {
+                // If per-layer filters are in use, and we are short-circuiting
+                // (rather than calling into the inner type), clear the current
+                // per-layer filter interest state.
+                #[cfg(feature = "registry")]
+                filter::FilterState::take_interest();
+            }
+
+            return Interest::sometimes();
+        })
+        .register_callsite(metadata)
     }
 
     #[inline]
@@ -162,6 +180,19 @@ where
             return try_lock!(self.inner.read(), else return None).downcast_raw(id);
         }
 
+        // Safety: Similar reasoning as for `NoneLayerMarker`. This crate
+        // controls the type and it is not public (even outside the `filter`
+        // module) so no one except that module can even try to downcast to this
+        // type. We will never dereference it and just to make sure, we will
+        // return a reference to a static marker.  If we just returned the
+        // downcasted pointer, someone could reload the layer and invalidate it.
+        // So to be on the safe side, we return a fake one with static lifetime.
+        if filter::is_psf_downcast_marker(id) {
+            return try_lock!(self.inner.read(), else return None)
+                .downcast_raw(id)
+                .map(|_| filter::static_psf_downcast_marker());
+        }
+
         None
     }
 }
@@ -234,6 +265,8 @@ impl<T> Subscriber<T> {
     pub fn new(inner: T) -> (Self, Handle<T>) {
         let this = Self {
             inner: Arc::new(RwLock::new(inner)),
+            // Assume `true` but we will find out in `on_subscribe`.
+            inner_has_subscriber_filter: true,
         };
         let handle = this.handle();
         (this, handle)
