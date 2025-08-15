@@ -12,5 +12,6 @@ ignore = [
     #
     # TODO: when `tracing-futures` drops support for `tokio` 0.1, we can remove
     # the `ignore` for this warning, as we will no longer pull `net2`.
-    "RUSTSEC-2020-0016"
+    "RUSTSEC-2020-0016",
+    "RUSTSEC-2021-0124",
 ]
