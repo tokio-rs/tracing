@@ -309,11 +309,20 @@ where
             }
 
             let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+            if let Some(true) = self.ansi {
+                let fields = &ext
+                    .get::<FormattedFields<N, true>>()
+                    .expect("Unable to find FormattedFields in extensions; this is a bug");
+                if !fields.is_empty() {
+                    write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                }
+            } else {
+                let fields = &ext
+                    .get::<FormattedFields<N, false>>()
+                    .expect("Unable to find FormattedFields in extensions; this is a bug");
+                if !fields.is_empty() {
+                    write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                }
             }
             writer.write_char('\n')?;
         }
@@ -329,9 +338,9 @@ impl<'writer> FormatFields<'writer> for Pretty {
         v.finish()
     }
 
-    fn add_fields(
+    fn add_fields<const ANSI: bool>(
         &self,
-        current: &'writer mut FormattedFields<Self>,
+        current: &'writer mut FormattedFields<Self, ANSI>,
         fields: &span::Record<'_>,
     ) -> fmt::Result {
         let empty = current.is_empty();
