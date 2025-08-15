@@ -1,16 +1,31 @@
 use super::{RollingFileAppender, Rotation};
-use std::{io, path::Path};
+use std::{fs::File, io, path::Path, sync::Arc};
 use thiserror::Error;
+
+pub(super) type WriterFn<W> = Arc<dyn Fn(File) -> W + Send + Sync>;
 
 /// A [builder] for configuring [`RollingFileAppender`]s.
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
-#[derive(Debug)]
-pub struct Builder {
+pub struct Builder<W = File> {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) make_writer: WriterFn<W>,
+}
+
+impl<W> std::fmt::Debug for Builder<W> {
+    // This manual impl is required because of the `now` field (only present
+    // with `cfg(test)`), which is not `Debug`...
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("rotation", &self.rotation)
+            .field("prefix", &self.rotation)
+            .field("suffix", &self.rotation)
+            .field("max_files", &self.max_files)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Errors returned by [`Builder::build`].
@@ -48,12 +63,62 @@ impl Builder {
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
             max_files: None,
+            make_writer: Arc::new(|file| file),
+        }
+    }
+}
+
+impl<W> Builder<W> {
+    /// Wraps the current file writer with the provided writer
+    ///
+    /// With this approach, compression can be enabled if a compression writer builder is provided.
+    ///
+    /// # Examples
+    /// ```
+    /// # fn docs() {
+    /// # use std::sync::Mutex;
+    /// # use std::io::Result;
+    /// // Assume you have some helper like this
+    /// struct MutexWriter<W>(Mutex<W>);
+    ///
+    /// impl<W: std::io::Write> std::io::Write for &'_ MutexWriter<W> {
+    /// # fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    /// #   self.0.lock().unwrap().write(buf)
+    /// # }
+    /// # fn flush(&mut self) -> Result<()> {
+    /// #   self.0.lock().unwrap().flush()
+    /// # }
+    ///   // ...
+    /// }
+    ///
+    /// use tracing_appender::rolling::RollingFileAppender;
+    /// use snap::write::FrameEncoder;
+    ///
+    /// let appender = RollingFileAppender::builder()
+    ///     .writer_builder(|file| {
+    ///        let buf_writer = std::io::BufWriter::new(file);
+    ///        let snap_writer = snap::write::FrameEncoder::new(buf_writer);
+    ///        MutexWriter(Mutex::new(snap_writer))
+    ///     })
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    pub fn writer_builder<W2>(self, builder: impl Fn(File) -> W2 + Send + Sync + 'static) -> Builder<W2> {
+        Builder {
+            make_writer: Arc::new(builder),
+            rotation: self.rotation,
+            prefix: self.prefix,
+            suffix: self.suffix,
+            max_files: self.max_files,
         }
     }
 
@@ -232,7 +297,12 @@ impl Builder {
             ..self
         }
     }
+}
 
+impl<W> Builder<W>
+where
+    for<'a> &'a W: std::io::Write,
+{
     /// Builds a new [`RollingFileAppender`] with the configured parameters,
     /// emitting log files to the provided directory.
     ///
@@ -261,7 +331,7 @@ impl Builder {
     /// # drop(appender);
     /// # }
     /// ```
-    pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender, InitError> {
+    pub fn build(&self, directory: impl AsRef<Path>) -> Result<RollingFileAppender<W>, InitError> {
         RollingFileAppender::from_builder(self, directory)
     }
 }
