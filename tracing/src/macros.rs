@@ -1087,10 +1087,10 @@ macro_rules! event_enabled {
 /// Tests whether a span with the specified level and target would be enabled.
 ///
 /// This is similar to [`enabled!`], but queries the current collector specifically for
-/// an event, whereas [`enabled!`] queries for an event _or_ span.
+/// a span, whereas [`enabled!`] queries for an event _or_ span.
 ///
 /// See the documentation for [`enabled!]` for more details on using this macro.
-/// See also [`span_enabled!`].
+/// See also [`event_enabled!`].
 ///
 /// # Examples
 ///
@@ -1110,7 +1110,7 @@ macro_rules! event_enabled {
 /// ```
 ///
 /// [`enabled!`]: crate::enabled
-/// [`span_enabled!`]: crate::span_enabled
+/// [`event_enabled!`]: crate::event_enabled
 #[macro_export]
 macro_rules! span_enabled {
     ($($rest:tt)*)=> (
