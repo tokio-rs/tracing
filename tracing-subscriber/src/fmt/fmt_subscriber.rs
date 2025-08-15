@@ -869,20 +869,21 @@ where
 
     fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, C>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
-        if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
-            let _ = self.fmt_fields.add_fields(fields, values);
-            return;
-        }
 
-        let mut fields = FormattedFields::<N>::new(String::new());
+        let mut new_fields = FormattedFields::<N>::new(String::new());
         if self
             .fmt_fields
-            .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
+            .format_fields(new_fields.as_writer().with_ansi(self.is_ansi), values)
             .is_ok()
         {
-            fields.was_ansi = self.is_ansi;
-            extensions.insert(fields);
+            new_fields.was_ansi = self.is_ansi;
+        }
+
+        let mut extensions = span.extensions_mut();
+        if let Some(fields) = extensions.get_mut::<FormattedFields<N>>() {
+            let _ = self.fmt_fields.merge_fields(fields, new_fields);
+        } else {
+            extensions.insert(new_fields);
         }
     }
 

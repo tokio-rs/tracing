@@ -340,6 +340,24 @@ impl<'writer> FormatFields<'writer> for Pretty {
         fields.record(&mut v);
         v.finish()
     }
+
+    fn merge_fields(
+            &self,
+            current: &'writer mut FormattedFields<Self>,
+            other: FormattedFields<Self>,
+        ) -> fmt::Result {
+        match (current.is_empty(), other.is_empty()) {
+            (_, true) => {}
+            (true, false) => { current.fields = other.fields; }
+            (false, false) => {
+                current.fields.reserve(other.fields.len() + 2);
+                current.fields.push_str(", ");
+                current.fields.push_str(&other.fields);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // === impl PrettyFields ===

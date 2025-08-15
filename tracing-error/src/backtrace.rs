@@ -316,4 +316,22 @@ mod tests {
             assert_eq!(SpanTraceStatus::UNSUPPORTED, span_trace.status())
         });
     }
+
+    #[test]
+    fn extensions_deadlock_check() {
+        let subscriber = Registry::default()
+            .with(ErrorSubscriber::default())
+            .with(tracing_subscriber::fmt::subscriber());
+
+        with_default(subscriber, || {
+            let span =
+                tracing::info_span!("maybe_deadlock", exception = tracing::field::Empty).entered();
+
+            let context = SpanTrace::capture();
+
+            span.record("exception", &tracing::field::debug(&context));
+
+            tracing::info!(?context, "event");
+        });
+    }
 }
