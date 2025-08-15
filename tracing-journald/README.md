@@ -4,7 +4,7 @@
 
 # tracing-journald
 
-Support for logging [`tracing`][tracing] events natively to [journald],
+Support for logging [`tracing`] events natively to [journald],
 preserving structured information.
 
 [![Crates.io][crates-badge]][crates-url]
