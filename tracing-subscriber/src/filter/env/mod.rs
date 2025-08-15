@@ -320,6 +320,56 @@ impl EnvFilter {
             .from_env_lossy()
     }
 
+    /// Returns a new `EnvFilter` from the given directives.
+    ///
+    /// If the directives are empty, no default directive is added.
+    ///
+    /// To set additional configuration options prior to creating the filter, use
+    /// the [`Builder`] type instead.
+    ///
+    /// This function is roughly equivalent to the following:
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// # fn docs() -> EnvFilter {
+    /// # let dirs = [
+    ///    # "myapp=debug".parse().expect("hard-coded default directive should be valid"),
+    ///    # LevelFilter::INFO.into(),
+    /// # ];
+    /// let mut filter = EnvFilter::default();
+    /// for dir in dirs {
+    ///     filter = filter.add_directive(dir);
+    /// }
+    /// # assert_eq!(filter.to_string(), "myapp=debug,info");
+    /// filter
+    /// # }
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// [`Directive`]s can be parsed independently and used to create a new `EnvFilter`:
+    ///
+    /// ```rust
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+    ///
+    /// let dirs = [
+    ///     LevelFilter::INFO.into(),
+    ///     "myapp=debug"
+    ///         .parse()
+    ///         .expect("hard-coded default directive should be valid"),
+    /// ];
+    ///
+    /// let filter = EnvFilter::from_directives(dirs);
+    ///
+    /// assert_eq!(filter.to_string(), "myapp=debug,info");
+    /// # Ok(()) }
+    /// ```
+    pub fn from_directives(dirs: impl IntoIterator<Item = Directive>) -> Self {
+        Self::builder().from_directives(dirs)
+    }
+
     /// Returns a new `EnvFilter` from the directives in the given string,
     /// ignoring any that are invalid.
     ///
