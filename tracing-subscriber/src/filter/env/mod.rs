@@ -372,8 +372,10 @@ impl EnvFilter {
     /// ```
     ///
     /// [`ERROR`]: tracing::Level::ERROR
-    pub fn try_new<S: AsRef<str>>(dirs: S) -> Result<Self, directive::ParseError> {
-        Self::builder().parse(dirs)
+    pub fn try_new<S: AsRef<str>>(directives: S) -> Result<Self, directive::ParseError> {
+        Self::builder()
+            .with_default_directive(LevelFilter::ERROR.into())
+            .parse(directives)
     }
 
     /// Returns a new `EnvFilter` from the value of the `RUST_LOG` environment
