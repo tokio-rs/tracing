@@ -228,7 +228,7 @@ impl Builder {
     #[must_use]
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
-            max_files: Some(n),
+            max_files: Some(n).filter(|&n| n > 0),
             ..self
         }
     }
