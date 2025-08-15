@@ -122,7 +122,7 @@
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
-//!
+
 use core::ptr::addr_of;
 
 use crate::{
@@ -131,17 +131,15 @@ use crate::{
     Event, LevelFilter, Metadata,
 };
 
-use crate::stdlib::{
+use alloc::sync::{Arc, Weak};
+use core::{
     any::Any,
     fmt,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Weak,
-    },
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 #[cfg(feature = "std")]
-use crate::stdlib::{
+use std::{
     cell::{Cell, Ref, RefCell},
     error,
 };
@@ -182,7 +180,7 @@ enum Kind<T> {
 }
 
 #[cfg(feature = "std")]
-thread_local! {
+std::thread_local! {
     static CURRENT_STATE: State = const {
         State {
             default: RefCell::new(None),
@@ -904,9 +902,10 @@ impl Drop for DefaultGuard {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     #[cfg(feature = "std")]
-    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::*;
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},

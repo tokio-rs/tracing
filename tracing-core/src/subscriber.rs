@@ -1,11 +1,8 @@
 //! Collectors collect and record trace data.
 use crate::{span, Dispatch, Event, LevelFilter, Metadata};
 
-use crate::stdlib::{
-    any::{Any, TypeId},
-    boxed::Box,
-    sync::Arc,
-};
+use alloc::{boxed::Box, sync::Arc};
+use core::any::{Any, TypeId};
 
 /// Trait representing the functions required to collect trace data.
 ///
