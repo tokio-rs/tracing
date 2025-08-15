@@ -5,7 +5,7 @@
 use std::{
     fmt,
     io::{self, Write},
-    sync::{Mutex, MutexGuard},
+    sync::{Arc, Mutex, MutexGuard},
 };
 use tracing_core::Metadata;
 
@@ -657,6 +657,17 @@ where
 
     fn make_writer(&'a self) -> Self::Writer {
         (self)()
+    }
+}
+
+impl<'a, W> MakeWriter<'a> for Arc<Mutex<W>>
+where
+    W: io::Write + 'a,
+{
+    type Writer = MutexGuardWriter<'a, W>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        MutexGuardWriter(self.lock().expect("lock poisoned"))
     }
 }
 
@@ -1405,5 +1416,17 @@ mod test {
 
         has_lines(&a_buf, &lines[..]);
         has_lines(&b_buf, &lines[..]);
+    }
+
+    #[test]
+    fn makewriter_for_arcmutext() {
+        let buf = Vec::new();
+        let make_writer = Arc::new(Mutex::new(buf.clone()));
+
+        let c = Collector::builder().with_writer(make_writer).finish();
+
+        let _s = tracing::collect::set_default(c);
+        info!("hello");
+        has_lines(&Mutex::new(buf), &[(Level::INFO, "hello")]);
     }
 }
