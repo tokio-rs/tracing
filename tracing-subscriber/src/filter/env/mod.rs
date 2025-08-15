@@ -78,8 +78,7 @@ use tracing_core::{
 /// instead.
 ///
 /// When field value filters are interpreted as regular expressions, the
-/// [`regex-automata` crate's regular expression syntax][re-syntax] is
-/// supported.
+/// [`regex` crate's regular expression syntax][re-syntax] is supported.
 ///
 /// **Note**: When filters are constructed from potentially untrusted inputs,
 /// [disabling regular expression matching](Builder::with_regex) is strongly
@@ -192,6 +191,7 @@ use tracing_core::{
 /// [global]: crate::layer#global-filtering
 /// [plf]: crate::layer#per-layer-filtering
 /// [filtering]: crate::layer#filtering-with-layers
+/// [re-syntax]: https://docs.rs/regex/1.11.1/regex/#syntax
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
