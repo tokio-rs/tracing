@@ -20,7 +20,7 @@ Writers for logging events and spans
 [docs-badge]: https://docs.rs/tracing-appender/badge.svg
 [docs-url]: https://docs.rs/tracing-appender/0.2.2
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
-[docs-v0.2.x-url]: https://tracing.rs/tracing-appender
+[docs-v0.2.x-url]: https://docs.rs/tracing-appender/
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: ../LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
