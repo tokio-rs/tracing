@@ -206,7 +206,7 @@ mod expand;
 ///
 /// # Adding Fields
 ///
-/// Additional fields (key-value pairs with arbitrary data) can be passed to
+/// Additional fields (key-value pairs with arbitrary data) can be passed
 /// to the generated span through the `fields` argument on the
 /// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
@@ -219,8 +219,9 @@ mod expand;
 /// whose value may be recorded later within the function body.
 ///
 /// Note that defining a field with the same name as a (non-skipped)
-/// argument will implicitly skip the argument, or even panic if using
-/// constants as field names.
+/// argument will implicitly skip the argument, unless the field is provided
+/// via a constant expression (e.g. {EXPR} or {const_fn()}) as deduplicating
+/// would incur a runtime cost.
 ///
 /// ## Examples
 ///

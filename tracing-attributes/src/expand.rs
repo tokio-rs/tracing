@@ -212,8 +212,8 @@ fn gen_block<B: ToTokens>(
                 if let Some(ref fields) = args.fields {
                     fields.0.iter().all(|Field { ref name, .. }| {
                         match name {
-                            // TODO(#3158): Implement this variant when the compiler supports const
-                            //     evaluation (https://rustc-dev-guide.rust-lang.org/const-eval).
+                            // #3158: Expressions cannot be evaluated at compile time and will
+                            // incur a runtime cost to de-duplicate.
                             FieldName::Expr(_) => true,
                             FieldName::Punctuated(punctuated) => {
                                 let first = punctuated.first();
