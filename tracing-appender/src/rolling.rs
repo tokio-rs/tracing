@@ -687,9 +687,12 @@ impl Inner {
                         datetime = datetime.strip_suffix('.')?;
                     }
 
-                    Some(PrimitiveDateTime::parse(datetime, &self.date_format)
-                        .ok()?
-                        .assume_utc().into())
+                    Some(
+                        PrimitiveDateTime::parse(datetime, &self.date_format)
+                            .ok()?
+                            .assume_utc()
+                            .into(),
+                    )
                 })?;
                 Some((entry, created))
             })
