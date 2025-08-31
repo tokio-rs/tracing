@@ -18,7 +18,7 @@
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
-[actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
+[actions-url]: https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discord.gg/EeF3cQw
 
@@ -136,7 +136,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Parameters passed to the function are recorded as fields.
+// function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -326,13 +326,13 @@ The crates included as part of Tracing are:
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
 * [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
-  tracing spans
+  tracing spans. ([crates.io][err-crates]|[docs][err-docs])
 
-* [`tracing-flame`]; Provides a layer for generating flame graphs based on
-  tracing span entry / exit events.
+* [`tracing-flame`]: Provides a layer for generating flame graphs based on
+  tracing span entry / exit events. ([crates.io][flame-crates]|[docs][flame-docs])
 
 * [`tracing-journald`]: Provides a layer for recording events to the
-  Linux `journald` service, preserving structured data.
+  Linux `journald` service, preserving structured data. ([crates.io][jour-crates]|[docs][jour-docs])
 
 [`tracing`]: tracing
 [`tracing-core`]: tracing-core
@@ -363,6 +363,15 @@ The crates included as part of Tracing are:
 
 [app-crates]: https://crates.io/crates/tracing-appender
 [app-docs]: https://docs.rs/tracing-appender
+
+[err-crates]: https://crates.io/crates/tracing-error
+[err-docs]: https://docs.rs/tracing-error
+
+[flame-crates]: https://crates.io/crates/tracing-flame
+[flame-docs]: https://docs.rs/tracing-flame
+
+[jour-crates]: https://crates.io/crates/tracing-journald
+[jour-docs]: https://docs.rs/tracing-journald
 
 ## Related Crates
 
