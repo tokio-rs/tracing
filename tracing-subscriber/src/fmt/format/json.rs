@@ -9,6 +9,7 @@ use crate::{
 };
 use serde::ser::{SerializeMap, Serializer as _};
 use serde_json::Serializer;
+use std::borrow::Cow;
 use std::{
     collections::BTreeMap,
     fmt::{self, Write},
@@ -405,7 +406,7 @@ impl<'a> FormatFields<'a> for JsonFields {
         // then, we could store fields as JSON values, and add to them
         // without having to parse and re-serialize.
         let mut new = String::new();
-        let map: BTreeMap<&'_ str, serde_json::Value> =
+        let map: BTreeMap<Cow<'_, str>, serde_json::Value> =
             serde_json::from_str(current).map_err(|_| fmt::Error)?;
         let mut v = JsonVisitor::new(&mut new);
         v.values = map;
@@ -422,7 +423,7 @@ impl<'a> FormatFields<'a> for JsonFields {
 /// [visitor]: crate::field::Visit
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
-    values: BTreeMap<&'a str, serde_json::Value>,
+    values: BTreeMap<Cow<'a, str>, serde_json::Value>,
     writer: &'a mut dyn Write,
 }
 
@@ -460,7 +461,7 @@ impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
             let mut ser_map = serializer.serialize_map(None)?;
 
             for (k, v) in self.values {
-                ser_map.serialize_entry(k, &v)?;
+                ser_map.serialize_entry(&*k, &v)?;
             }
 
             ser_map.end()
@@ -492,42 +493,63 @@ impl field::Visit for JsonVisitor<'_> {
             }
         };
 
-        self.values.insert(field.name(), value);
+        self.values.insert(field.name().into(), value);
     }
 
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     fn record_bytes(&mut self, field: &Field, value: &[u8]) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
+    }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.values.insert(
+            field.name().into(),
+            serde_json::Value::from(value.to_string()),
+        );
+
+        if let Some(source) = value.source() {
+            let mut sources = Vec::new();
+            let mut curr = Some(source);
+            while let Some(curr_err) = curr {
+                sources.push(serde_json::Value::from(curr_err.to_string()));
+                curr = curr_err.source();
+            }
+
+            self.values.insert(
+                format!("{}.sources", field.name()).into(),
+                serde_json::Value::Array(sources),
+            );
+        }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -536,12 +558,14 @@ impl field::Visit for JsonVisitor<'_> {
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name if name.starts_with("r#") => {
-                self.values
-                    .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
+                self.values.insert(
+                    (&name[2..]).into(),
+                    serde_json::Value::from(format!("{:?}", value)),
+                );
             }
             name => {
                 self.values
-                    .insert(name, serde_json::Value::from(format!("{:?}", value)));
+                    .insert(name.into(), serde_json::Value::from(format!("{:?}", value)));
             }
         };
     }
@@ -825,6 +849,83 @@ mod test {
             drop(span);
             assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
         });
+    }
+
+    #[test]
+    fn json_field_record_error() {
+        let buffer = MockMakeWriter::default();
+        let subscriber = crate::fmt()
+            .json()
+            .with_writer(buffer.clone())
+            .with_span_events(FmtSpan::NEW)
+            .finish();
+
+        #[derive(Debug)]
+        struct Error {
+            message: &'static str,
+            source: Option<Box<Error>>,
+        }
+
+        impl std::fmt::Display for Error {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.message)
+            }
+        }
+
+        impl std::error::Error for Error {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                self.source.as_ref().map(|e| e.as_ref() as _)
+            }
+        }
+
+        let error = Error {
+            message: "outer",
+            source: Some(
+                Error {
+                    message: "middle",
+                    source: Some(
+                        Error {
+                            message: "inner",
+                            source: None,
+                        }
+                        .into(),
+                    ),
+                }
+                .into(),
+            ),
+        };
+
+        with_default(subscriber, || {
+            // Event: `tracing_serde::SerdeMapVisitor`
+            {
+                tracing::info!(error = &error as &dyn std::error::Error, "event");
+                let event = parse_as_json(&buffer);
+                
+                println!("event {:#?}", event);
+
+                assert_eq!(event["fields"]["message"], "event");
+                assert_eq!(event["fields"]["error"], "outer");
+                assert_eq!(
+                    event["fields"]["error.sources"].as_array().unwrap().len(),
+                    2
+                );
+                assert_eq!(event["fields"]["error.sources"][0], "middle");
+                assert_eq!(event["fields"]["error.sources"][1], "inner");
+            }
+
+            // Span: `tracing_subscriber::fmt::json::JsonVisitor`
+            {
+                let _span =
+                    tracing::info_span!("parent_span", error = &error as &dyn std::error::Error);
+                let event = parse_as_json(&buffer);
+
+                assert_eq!(event["span"]["name"], "parent_span");
+                assert_eq!(event["span"]["error"], "outer");
+                assert_eq!(event["span"]["error.sources"].as_array().unwrap().len(), 2);
+                assert_eq!(event["span"]["error.sources"][0], "middle");
+                assert_eq!(event["span"]["error.sources"][1], "inner");
+            }
+        })
     }
 
     fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
