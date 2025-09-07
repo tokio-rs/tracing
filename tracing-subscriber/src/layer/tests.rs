@@ -113,6 +113,8 @@ fn downcasts_to_layer() {
 
 #[cfg(all(feature = "registry", feature = "std"))]
 mod registry_tests {
+    use std::dbg;
+
     use super::*;
     use crate::registry::LookupSpan;
 

@@ -519,7 +519,10 @@ mod tests {
         prelude::*,
         registry::LookupSpan,
     };
-    use std::sync::{Arc, Mutex};
+    use std::{
+        sync::{Arc, Mutex},
+        vec::Vec,
+    };
     use tracing::{span, Subscriber};
 
     #[test]

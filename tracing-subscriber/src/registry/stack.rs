@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 pub(crate) use tracing_core::span::Id;
 
 #[derive(Debug)]

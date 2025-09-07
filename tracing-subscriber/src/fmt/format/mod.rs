@@ -48,7 +48,6 @@ use tracing_log::NormalizeEvent;
 #[cfg(feature = "ansi")]
 use nu_ansi_term::{Color, Style};
 
-
 mod escape;
 use escape::Escape;
 
@@ -433,6 +432,8 @@ impl<'writer> Writer<'writer> {
     /// value implementing [`fmt::Write`] is a [`String`], it will contain
     /// the formatted output of [`Format::format_event`], which may then be
     /// used for other purposes.
+    ///
+    /// [`String`]: alloc::string::String
     #[must_use]
     pub fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
@@ -1269,7 +1270,10 @@ impl field::Visit for DefaultVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(field, &format_args!("{}", Escape(&format_args!("{}", value))))
+            self.record_debug(
+                field,
+                &format_args!("{}", Escape(&format_args!("{}", value))),
+            )
         }
     }
 
@@ -1294,7 +1298,7 @@ impl field::Visit for DefaultVisitor<'_> {
             "message" => {
                 // Escape ANSI characters to prevent malicious patterns (e.g., terminal injection attacks)
                 write!(self.writer, "{:?}", Escape(value))
-            },
+            }
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
@@ -1750,6 +1754,11 @@ impl Display for TimingDisplay {
 #[cfg(test)]
 pub(super) mod test {
     use crate::fmt::{test::MockMakeWriter, time::FormatTime};
+    use alloc::{
+        borrow::ToOwned,
+        format,
+        string::{String, ToString},
+    };
     use tracing::{
         self,
         dispatcher::{set_default, Dispatch},
