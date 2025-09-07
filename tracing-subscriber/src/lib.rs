@@ -161,6 +161,8 @@
 //! [`time` crate]: https://crates.io/crates/time
 //! [`liballoc`]: https://doc.rust-lang.org/alloc/index.html
 //! [`libstd`]: https://doc.rust-lang.org/std/index.html
+
+#![no_std]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
@@ -201,10 +203,11 @@
 // future, reducing diff noise. Allow this even though clippy considers it
 // "needless".
 #![allow(clippy::needless_update)]
-#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 #[macro_use]
 mod macros;
