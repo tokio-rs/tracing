@@ -183,7 +183,7 @@ pub trait MakeWriter<'a> {
     ///         StdioLock::Stdout(self.stdout.lock())
     ///     }
     ///
-    ///     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    ///     fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
     ///         // Here's where we can implement our special behavior. We'll
     ///         // check if the metadata's verbosity level is WARN or ERROR,
     ///         // and return stderr in that case.
@@ -202,7 +202,7 @@ pub trait MakeWriter<'a> {
     /// [make_writer]: MakeWriter::make_writer
     /// [`WARN`]: tracing_core::Level::WARN
     /// [`ERROR`]: tracing_core::Level::ERROR
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         let _ = meta;
         self.make_writer()
     }
@@ -778,7 +778,7 @@ impl<'a> MakeWriter<'a> for BoxMakeWriter {
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         self.inner.make_writer_for(meta)
     }
 }
@@ -796,7 +796,7 @@ where
         Box::new(w)
     }
 
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         let w = self.0.make_writer_for(meta);
         Box::new(w)
     }
@@ -950,7 +950,7 @@ impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMaxLevel<M> {
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         if meta.level() <= &self.level {
             return OptionalWriter::some(self.make.make_writer_for(meta));
         }
@@ -983,7 +983,7 @@ impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMinLevel<M> {
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         if meta.level() >= &self.level {
             return OptionalWriter::some(self.make.make_writer_for(meta));
         }
@@ -1023,7 +1023,7 @@ where
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         if (self.filter)(meta) {
             OptionalWriter::some(self.make.make_writer_for(meta))
         } else {
@@ -1060,7 +1060,7 @@ where
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         Tee::new(self.a.make_writer_for(meta), self.b.make_writer_for(meta))
     }
 }
@@ -1142,7 +1142,7 @@ where
     }
 
     #[inline]
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+    fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
         match self.inner.make_writer_for(meta) {
             EitherWriter::A(writer) => EitherWriter::A(writer),
             EitherWriter::B(_) => EitherWriter::B(self.or_else.make_writer_for(meta)),

@@ -1502,7 +1502,7 @@ mod test {
                 self.make_writer1.make_writer()
             }
 
-            fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+            fn make_writer_for(&'a self, meta: &'static Metadata<'static>) -> Self::Writer {
                 if meta.target() == "writer2" {
                     return self.make_writer2.make_writer();
                 }
