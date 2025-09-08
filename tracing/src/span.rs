@@ -925,7 +925,7 @@ impl Span {
     /// ```
     ///
     /// If the current [`Subscriber`] enables the [`DEBUG`] level, then both
-    /// the "parent" and "child" spans will be enabled. Thus, when the "spawaned
+    /// the "parent" and "child" spans will be enabled. Thus, when the "spawned
     /// a thread!" event occurs, it will be inside of the "child" span. Because
     /// "parent" is the parent of "child", the event will _also_ be inside of
     /// "parent".
