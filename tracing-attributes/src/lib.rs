@@ -210,7 +210,7 @@ mod expand;
 /// to the generated span through the `fields` argument on the
 /// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported. Any
+/// identifier, though nested (dotted) field names are supported. Any
 /// Rust expression can be used as a field value in this manner. These
 /// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
