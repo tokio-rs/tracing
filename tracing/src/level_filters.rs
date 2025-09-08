@@ -66,21 +66,36 @@ pub use tracing_core::{metadata::ParseLevelFilterError, LevelFilter};
 pub const STATIC_MAX_LEVEL: LevelFilter = get_max_level_inner();
 
 const fn get_max_level_inner() -> LevelFilter {
-    if cfg!(not(debug_assertions)) {
-        if cfg!(feature = "release_max_level_off") {
-            LevelFilter::OFF
-        } else if cfg!(feature = "release_max_level_error") {
-            LevelFilter::ERROR
-        } else if cfg!(feature = "release_max_level_warn") {
-            LevelFilter::WARN
-        } else if cfg!(feature = "release_max_level_info") {
-            LevelFilter::INFO
-        } else if cfg!(feature = "release_max_level_debug") {
-            LevelFilter::DEBUG
-        } else {
-            // Same as branch cfg!(feature = "release_max_level_trace")
-            LevelFilter::TRACE
-        }
+    if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_off"
+    )) {
+        LevelFilter::OFF
+    } else if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_error"
+    )) {
+        LevelFilter::ERROR
+    } else if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_warn"
+    )) {
+        LevelFilter::WARN
+    } else if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_info"
+    )) {
+        LevelFilter::INFO
+    } else if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_debug"
+    )) {
+        LevelFilter::DEBUG
+    } else if cfg!(all(
+        not(debug_assertions),
+        feature = "release_max_level_trace"
+    )) {
+        LevelFilter::TRACE
     } else if cfg!(feature = "max_level_off") {
         LevelFilter::OFF
     } else if cfg!(feature = "max_level_error") {
