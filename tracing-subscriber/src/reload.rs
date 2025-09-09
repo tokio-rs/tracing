@@ -32,7 +32,7 @@
 //! info!("This will be logged");
 //! ```
 //!
-//! Reloading a [`Filtered`](crate::filter::Filtered) layer:
+//! Reloading the [`Filter`] of a [`Filtered`](crate::filter::Filtered) layer:
 //!
 //! ```rust
 //! # use tracing::info;
@@ -53,6 +53,53 @@
 //! info!("This will be logged");
 //! ```
 //!
+//! Reloading a [`Filtered`](crate::filter::Filtered) layer using [`Handle::reload_filtered`]:
+//!
+//! ```rust
+//! use tracing::info;
+//! use tracing_subscriber::{filter, fmt, reload, prelude::*};
+//! let filtered_layer = fmt::Layer::default().with_filter(filter::LevelFilter::WARN);
+//! let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
+//! let dispatcher =
+//!     tracing_core::Dispatch::new(tracing_subscriber::registry().with(filtered_layer));
+//!
+//! tracing_core::dispatcher::with_default(&dispatcher, || {
+//!     info!("This will be ignored");
+//!     let new_layer = fmt::Layer::default().with_filter(filter::LevelFilter::INFO);
+//!     let subscriber = dispatcher
+//!         .downcast_ref::<tracing_subscriber::Registry>()
+//!         .unwrap();
+//!     reload_handle
+//!         .reload_filtered(new_layer, subscriber)
+//!         .unwrap();
+//!     info!("This will be logged");
+//! });
+//! ```
+//!
+//! Reloading a [`Filtered`](crate::filter::Filtered) layer using [`Handle::modify`]:
+//!
+//! ```rust
+//! use tracing::info;
+//! use tracing_subscriber::{filter, fmt, reload, prelude::*};
+//! let filtered_layer = fmt::Layer::default().with_filter(filter::LevelFilter::WARN);
+//! let (filtered_layer, reload_handle) = reload::Layer::new(filtered_layer);
+//! let dispatcher =
+//!     tracing_core::Dispatch::new(tracing_subscriber::registry().with(filtered_layer));
+//!
+//! tracing_core::dispatcher::with_default(&dispatcher, || {
+//!    info!("This will be ignored");
+//!    let new_layer = fmt::Layer::default().with_filter(filter::LevelFilter::INFO);
+//!    let subscriber = dispatcher
+//!        .downcast_ref::<tracing_subscriber::Registry>()
+//!        .unwrap();
+//!    reload_handle.modify(|layer| {
+//!        *layer = new_layer;
+//!        layer.on_reload_layer(subscriber);
+//!    }).unwrap();
+//!    info!("This will be logged");
+//! });
+//! ```
+//!
 //! ## Note
 //!
 //! The [`Layer`] implementation is unable to implement downcasting functionality,
@@ -62,6 +109,7 @@
 //! `Filter` on a layer, prefer wrapping that `Filter` in the `reload::Layer`.
 //!
 //! [`Filter` trait]: crate::layer::Filter
+//! [`Filter`]: crate::layer::Filter
 //! [`Layer` type]: Layer
 //! [`Layer` trait]: super::layer::Layer
 use crate::layer;
@@ -122,6 +170,10 @@ where
 
     fn on_layer(&mut self, subscriber: &mut S) {
         try_lock!(self.inner.write(), else return).on_layer(subscriber);
+    }
+
+    fn on_reload_layer(&mut self, subscriber: &S) {
+        try_lock!(self.inner.write(), else return).on_reload_layer(subscriber);
     }
 
     #[inline]
@@ -287,7 +339,9 @@ impl<L, S> Handle<L, S> {
     /// Replace the current [`Layer`] or [`Filter`] with the provided `new_value`.
     ///
     /// [`Handle::reload`] cannot be used with the [`Filtered`] layer; use
-    /// [`Handle::modify`] instead (see [this issue] for additional details).
+    /// [`Handle::reload_filtered`] instead, or [`Handle::modify`] to replace
+    /// the [`Filter`] of a [`Filtered`] layer (see [this issue] for additional
+    /// details).
     ///
     /// However, if the _only_ the [`Filter`]  needs to be modified, use
     /// `reload::Layer` to wrap the `Filter` directly.
@@ -300,6 +354,36 @@ impl<L, S> Handle<L, S> {
     pub fn reload(&self, new_value: impl Into<L>) -> Result<(), Error> {
         self.modify(|layer| {
             *layer = new_value.into();
+        })
+    }
+
+    /// Replaces the current [`Filtered`] layer with a new one and performs
+    /// late initialization using [`Layer::on_reload_layer`].
+    ///
+    /// Unlike [`Handle::reload`], this method is specifically designed to
+    /// support [per-layer filtering] by ensuring that the [`Filter`] within
+    /// a [`Filtered`] layer is correctly registered with the [`Subscriber`].
+    /// It achieves this by invoking the [`Layer::on_reload_layer`] callback
+    /// after replacing the layer, allowing the new filter to be initialized
+    /// using only a shared reference to the `Subscriber`.
+    ///
+    /// This method should be used instead of [`reload`] when reloading a
+    /// [`Filtered`] layer.
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [`Filtered`]: crate::filter::Filtered
+    /// [`reload`]: Self::reload
+    /// [`Subscriber`]: tracing::Subscriber
+    /// [`Layer::on_reload_layer`]: crate::layer::Layer::on_reload_layer
+    /// [per-layer filtering]: crate::layer::Layer#per-layer-filtering
+    pub fn reload_filtered(&self, new_value: impl Into<L>, subscriber: &S) -> Result<(), Error>
+    where
+        L: crate::layer::Layer<S> + 'static,
+        S: Subscriber,
+    {
+        self.modify(|layer| {
+            *layer = new_value.into();
+            layer.on_reload_layer(subscriber);
         })
     }
 
