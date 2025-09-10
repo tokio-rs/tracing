@@ -100,14 +100,16 @@ impl Layer {
     pub fn new() -> io::Result<Self> {
         #[cfg(unix)]
         {
+            use std::path::Path;
+
             let socket = UnixDatagram::unbound()?;
             let layer = Self {
                 socket,
                 field_prefix: Some("F".into()),
-                syslog_identifier: std::env::current_exe()
-                    .ok()
+                syslog_identifier: std::env::args_os()
+                    .next()
                     .as_ref()
-                    .and_then(|p| p.file_name())
+                    .and_then(|p| Path::new(p).file_name())
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
                     .unwrap_or_default(),
