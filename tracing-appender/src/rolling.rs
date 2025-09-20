@@ -209,12 +209,19 @@ impl RollingFileAppender {
         })
     }
 
+    #[cfg(test)]
     #[inline]
     fn now(&self) -> OffsetDateTime {
-        #[cfg(test)]
-        return (self.now)();
+        (self.now)()
+    }
 
-        #[cfg(not(test))]
+    #[cfg(not(test))]
+    #[inline]
+    fn now(&self) -> OffsetDateTime {
+        #[cfg(feature = "local-time")]
+        return OffsetDateTime::now_local().expect("Unable to get local time");
+
+        #[cfg(not(feature = "local-time"))]
         OffsetDateTime::now_utc()
     }
 }
