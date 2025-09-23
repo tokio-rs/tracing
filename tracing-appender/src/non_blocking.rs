@@ -146,6 +146,11 @@ impl NonBlocking {
         NonBlockingBuilder::default().finish(writer)
     }
 
+    /// Returns a new `NonBlocking` writer wrapping the provided `writer` with the provided `setup` function.
+    pub fn new_with_setup<T: Write + Send + 'static>(writer: T, setup: impl FnOnce() + Send + 'static) -> (NonBlocking, WorkerGuard) {
+        NonBlockingBuilder::default().finish_with_setup(writer, setup)
+    }
+
     fn create<T: Write + Send + 'static>(
         writer: T,
         buffered_lines_limit: usize,
@@ -159,6 +164,34 @@ impl NonBlocking {
         let worker = Worker::new(receiver, writer, shutdown_receiver);
         let worker_guard = WorkerGuard::new(
             worker.worker_thread(thread_name),
+            sender.clone(),
+            shutdown_sender,
+        );
+
+        (
+            Self {
+                channel: sender,
+                error_counter: ErrorCounter(Arc::new(AtomicUsize::new(0))),
+                is_lossy,
+            },
+            worker_guard,
+        )
+    }
+
+    fn create_with_setup<T: Write + Send + 'static>(
+        writer: T,
+        setup: impl FnOnce() + Send + 'static,
+        buffered_lines_limit: usize,
+        is_lossy: bool,
+        thread_name: String,
+    ) -> (NonBlocking, WorkerGuard) {
+        let (sender, receiver) = bounded(buffered_lines_limit);
+
+        let (shutdown_sender, shutdown_receiver) = bounded(0);
+
+        let worker = Worker::new(receiver, writer, shutdown_receiver);
+        let worker_guard = WorkerGuard::new(
+            worker.worker_thread_with_setup(thread_name, setup),
             sender.clone(),
             shutdown_sender,
         );
@@ -218,6 +251,16 @@ impl NonBlockingBuilder {
     pub fn finish<T: Write + Send + 'static>(self, writer: T) -> (NonBlocking, WorkerGuard) {
         NonBlocking::create(
             writer,
+            self.buffered_lines_limit,
+            self.is_lossy,
+            self.thread_name,
+        )
+    }
+
+    pub fn finish_with_setup<T: Write + Send + 'static>(self, writer: T, setup: impl FnOnce() + Send + 'static) -> (NonBlocking, WorkerGuard) {
+        NonBlocking::create_with_setup(
+            writer,
+            setup,
             self.buffered_lines_limit,
             self.is_lossy,
             self.thread_name,

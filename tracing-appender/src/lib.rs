@@ -195,6 +195,11 @@ pub fn non_blocking<T: Write + Send + 'static>(writer: T) -> (NonBlocking, Worke
     NonBlocking::new(writer)
 }
 
+/// Convenience function for creating a non-blocking, off-thread writer with setup.
+pub fn non_blocking_with_setup<T: Write + Send + 'static>(writer: T, setup: impl FnOnce() + Send + 'static) -> (NonBlocking, WorkerGuard) {
+    NonBlocking::new_with_setup(writer, setup)
+}
+
 #[derive(Debug)]
 pub(crate) enum Msg {
     Line(Vec<u8>),

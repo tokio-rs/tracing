@@ -89,4 +89,29 @@ impl<T: Write + Send + 'static> Worker<T> {
             })
             .expect("failed to spawn `tracing-appender` non-blocking worker thread")
     }
+
+    /// Creates a worker thread that processes a channel until it's disconnected
+    pub(crate) fn worker_thread_with_setup(mut self, name: String, setup: impl FnOnce() + Send + 'static) -> std::thread::JoinHandle<()> {
+        thread::Builder::new()
+            .name(name)
+            .spawn(move || {
+                setup();
+                loop {
+                    match self.work() {
+                        Ok(WorkerState::Continue) | Ok(WorkerState::Empty) => {}
+                        Ok(WorkerState::Shutdown) | Ok(WorkerState::Disconnected) => {
+                            let _ = self.shutdown.recv();
+                            break;
+                        }
+                        Err(_) => {
+                            // TODO: Expose a metric for IO Errors, or print to stderr
+                        }
+                    }
+                }
+                if let Err(e) = self.writer.flush() {
+                    eprintln!("Failed to flush. Error: {}", e);
+                }
+            })
+            .expect("failed to spawn `tracing-appender` non-blocking worker thread")
+    }
 }
