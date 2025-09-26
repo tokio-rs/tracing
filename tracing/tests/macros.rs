@@ -621,6 +621,9 @@ fn trace() {
     trace!(target: "foo_events", %foo, true, "message");
     trace!(name: "foo", target: "foo_events", ?foo, true, "message");
     trace!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    trace!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -688,6 +691,9 @@ fn debug() {
     debug!(target: "foo_events", %foo, true, "message");
     debug!(name: "foo", target: "foo_events", ?foo, true, "message");
     debug!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    debug!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -755,6 +761,9 @@ fn info() {
     info!(target: "foo_events", %foo, true, "message");
     info!(name: "foo", target: "foo_events", ?foo, true, "message");
     info!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    info!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -822,6 +831,9 @@ fn warn() {
     warn!(target: "foo_events", %foo, true, "message");
     warn!(name: "foo", target: "foo_events", ?foo, true, "message");
     warn!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    warn!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -889,6 +901,9 @@ fn error() {
     error!(target: "foo_events", %foo, true, "message");
     error!(name: "foo", target: "foo_events", ?foo, true, "message");
     error!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    error!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
