@@ -745,7 +745,7 @@ impl<'block> AsyncInfo<'block> {
                     let async_attrs = &async_expr.attrs;
                     if pinned_box {
                         quote! {
-                            ::std::boxed::Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                            ::alloc::boxed::Box::pin(#(#async_attrs) * async move { #instrumented_block })
                         }
                     } else {
                         quote! {
