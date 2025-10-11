@@ -129,7 +129,7 @@ mod expand;
 /// pub mod my_module {
 ///     # use tracing_attributes::instrument;
 ///     // The generated span's target will be "my_crate::some_special_target",
-///     // rather than "my_crate::my_module".
+///     // rather than "my_module::my_function".
 ///     #[instrument(target = "my_crate::some_special_target")]
 ///     pub fn my_function() {
 ///         // ... all kinds of neat code in here ...
