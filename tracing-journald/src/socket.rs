@@ -33,7 +33,11 @@ fn cmsg_buffer_size_for_one_fd() {
     assert_cmsg_bufsize()
 }
 
-pub fn send_one_fd_to<P: AsRef<Path>>(socket: &UnixDatagram, fd: RawFd, path: P) -> Result<usize> {
+pub(crate) fn send_one_fd_to<P: AsRef<Path>>(
+    socket: &UnixDatagram,
+    fd: RawFd,
+    path: P,
+) -> Result<usize> {
     assert_cmsg_bufsize();
 
     let mut addr: sockaddr_un = unsafe { zeroed() };
