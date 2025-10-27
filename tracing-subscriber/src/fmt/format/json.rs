@@ -65,8 +65,6 @@ use tracing_log::NormalizeEvent;
 ///   the root
 /// - [`Json::with_current_span`] can be used to control logging of the current
 ///   span
-/// - [`Json::with_span_list`] can be used to control logging of the span list
-///   object.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -84,7 +82,6 @@ use tracing_log::NormalizeEvent;
 ///
 /// [`Json::flatten_event`]: Json::flatten_event()
 /// [`Json::with_current_span`]: Json::with_current_span()
-/// [`Json::with_span_list`]: Json::with_span_list()
 /// [`valuable`]: https://crates.io/crates/valuable
 /// [unstable]: crate#unstable-features
 /// [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
@@ -92,7 +89,6 @@ use tracing_log::NormalizeEvent;
 pub struct Json {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
-    pub(crate) display_span_list: bool,
 }
 
 impl Json {
@@ -104,12 +100,6 @@ impl Json {
     /// If set to `false`, formatted events won't contain a field for the current span.
     pub fn with_current_span(&mut self, display_current_span: bool) {
         self.display_current_span = display_current_span;
-    }
-
-    /// If set to `false`, formatted events won't contain a list of all currently
-    /// entered spans. Spans are logged in a list from root to leaf.
-    pub fn with_span_list(&mut self, display_span_list: bool) {
-        self.display_span_list = display_span_list;
     }
 }
 
@@ -252,8 +242,7 @@ where
 
             let format_field_marker: std::marker::PhantomData<N> = std::marker::PhantomData;
 
-            let current_span = if self.format.display_current_span || self.format.display_span_list
-            {
+            let current_span = if self.format.display_current_span || self.display_span_list {
                 event
                     .parent()
                     .and_then(|id| ctx.span(id))
@@ -296,7 +285,7 @@ where
                 }
             }
 
-            if self.format.display_span_list && current_span.is_some() {
+            if self.display_span_list && current_span.is_some() {
                 serializer.serialize_entry(
                     "spans",
                     &SerializableContext(&ctx.ctx, format_field_marker),
@@ -336,7 +325,6 @@ impl Default for Json {
         Json {
             flatten_event: false,
             display_current_span: true,
-            display_span_list: true,
         }
     }
 }
