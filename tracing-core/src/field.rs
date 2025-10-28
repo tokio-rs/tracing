@@ -165,8 +165,16 @@ pub struct FieldSet {
 
 /// A set of fields and values for a span.
 pub struct ValueSet<'a> {
-    values: &'a [(&'a Field, Option<&'a (dyn Value + 'a)>)],
+    values: Values<'a>,
     fields: &'a FieldSet,
+}
+
+enum Values<'a> {
+    /// A set of field-value pairs. Fields may be for the wrong field set, some
+    /// fields may be missing, and fields may be in any order.
+    Mixed(&'a [(&'a Field, Option<&'a (dyn Value + 'a)>)]),
+    /// A list of values corresponding exactly to the fields in a `FieldSet`.
+    All(&'a [Option<&'a (dyn Value + 'a)>]),
 }
 
 /// An iterator over a set of fields.
@@ -922,7 +930,18 @@ impl FieldSet {
     {
         ValueSet {
             fields: self,
-            values: values.borrow(),
+            values: Values::Mixed(values.borrow()),
+        }
+    }
+
+    /// Returns a new `ValueSet` for `values`. These values must exactly
+    /// correspond to the fields in this `FieldSet`.
+    #[doc(hidden)]
+    pub fn value_set_all<'v>(&'v self, values: &'v [Option<&'v (dyn Value + 'v)>]) -> ValueSet<'v> {
+        debug_assert_eq!(values.len(), self.len());
+        ValueSet {
+            fields: self,
+            values: Values::All(values),
         }
     }
 
@@ -1033,13 +1052,24 @@ impl ValueSet<'_> {
     ///
     /// [visitor]: Visit
     pub fn record(&self, visitor: &mut dyn Visit) {
-        let my_callsite = self.callsite();
-        for (field, value) in self.values {
-            if field.callsite() != my_callsite {
-                continue;
+        match self.values {
+            Values::Mixed(values) => {
+                let my_callsite = self.callsite();
+                for (field, value) in values {
+                    if field.callsite() != my_callsite {
+                        continue;
+                    }
+                    if let Some(value) = *value {
+                        value.record(field, visitor);
+                    }
+                }
             }
-            if let Some(value) = value {
-                value.record(field, visitor);
+            Values::All(values) => {
+                for (field, value) in self.fields.iter().zip(values.iter()) {
+                    if let Some(value) = *value {
+                        value.record(&field, visitor);
+                    }
+                }
             }
         }
     }
@@ -1050,28 +1080,44 @@ impl ValueSet<'_> {
     /// [visitor]: Visit
     /// [`ValueSet::record()`]: ValueSet::record()
     pub fn len(&self) -> usize {
-        let my_callsite = self.callsite();
-        self.values
-            .iter()
-            .filter(|(field, _)| field.callsite() == my_callsite)
-            .count()
+        match &self.values {
+            Values::Mixed(values) => {
+                let my_callsite = self.callsite();
+                values
+                    .iter()
+                    .filter(|(field, _)| field.callsite() == my_callsite)
+                    .count()
+            }
+            Values::All(values) => values.len(),
+        }
     }
 
     /// Returns `true` if this `ValueSet` contains a value for the given `Field`.
     pub(crate) fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite()
-            && self
-                .values
+        if field.callsite() != self.callsite() {
+            return false;
+        }
+        match &self.values {
+            Values::Mixed(values) => values
                 .iter()
-                .any(|(key, val)| *key == field && val.is_some())
+                .any(|(key, val)| *key == field && val.is_some()),
+            Values::All(values) => {
+                values[field.i].is_some()
+            }
+        }
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub fn is_empty(&self) -> bool {
-        let my_callsite = self.callsite();
-        self.values
-            .iter()
-            .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+        match &self.values {
+            Values::All(values) => values.iter().all(|v| v.is_none()),
+            Values::Mixed(values) => {
+                let my_callsite = self.callsite();
+                values
+                    .iter()
+                    .all(|(key, val)| val.is_none() || key.callsite() != my_callsite)
+            }
+        }
     }
 
     pub(crate) fn field_set(&self) -> &FieldSet {
@@ -1081,30 +1127,17 @@ impl ValueSet<'_> {
 
 impl fmt::Debug for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_struct("ValueSet"), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .field("callsite", &self.callsite())
-            .finish()
+        let mut s = f.debug_struct("ValueSet");
+        self.record(&mut s);
+        s.field("callsite", &self.callsite()).finish()
     }
 }
 
 impl fmt::Display for ValueSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.values
-            .iter()
-            .fold(&mut f.debug_map(), |dbg, (key, v)| {
-                if let Some(val) = v {
-                    val.record(key, dbg);
-                }
-                dbg
-            })
-            .finish()
+        let mut s = f.debug_map();
+        self.record(&mut s);
+        s.finish()
     }
 }
 
