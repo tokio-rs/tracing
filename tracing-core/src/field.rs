@@ -1080,7 +1080,7 @@ impl ValueSet<'_> {
     /// [visitor]: Visit
     /// [`ValueSet::record()`]: ValueSet::record()
     pub fn len(&self) -> usize {
-        match &self.values {
+        match self.values {
             Values::Mixed(values) => {
                 let my_callsite = self.callsite();
                 values
@@ -1097,19 +1097,17 @@ impl ValueSet<'_> {
         if field.callsite() != self.callsite() {
             return false;
         }
-        match &self.values {
+        match self.values {
             Values::Mixed(values) => values
                 .iter()
                 .any(|(key, val)| *key == field && val.is_some()),
-            Values::All(values) => {
-                values[field.i].is_some()
-            }
+            Values::All(values) => values[field.i].is_some(),
         }
     }
 
     /// Returns true if this `ValueSet` contains _no_ values.
     pub fn is_empty(&self) -> bool {
-        match &self.values {
+        match self.values {
             Values::All(values) => values.iter().all(|v| v.is_none()),
             Values::Mixed(values) => {
                 let my_callsite = self.callsite();
