@@ -815,7 +815,6 @@ where
     }
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
-
         self.did_enable(|| {
             crate::usdt_provider::filtered__on__new__span!(|| {
                 (
@@ -865,7 +864,6 @@ where
         let filter_enabled = FILTERING
             .with(|filtering| filtering.and(self.id(), || self.filter.event_enabled(event, &cx)));
 
-
         let layer_enabled = if filter_enabled {
             // If the filter enabled this event, ask the wrapped subscriber if
             // _it_ wants it --- it might have a global filter.
@@ -875,7 +873,7 @@ where
             // is necessary.
             None
         };
-        crate::usdt_provider::filtered__on__event!(|| {
+        crate::usdt_provider::filtered__event_enabled!(|| {
             (
                 std::format!("{:?}", self.id()),
                 event.metadata() as *const _ as u64,
@@ -1211,7 +1209,7 @@ impl FilterState {
             )
         }
 
-        crate::usdt_provider::filterstate__set!(|| (std::format!("{filter:?}"), enabled as u8));
+        crate::usdt_provider::filterstate__set!(|| (std::format!("{filter:?} set"), enabled as u8));
         self.enabled.set(self.enabled.get().set(filter, enabled))
     }
 
@@ -1287,6 +1285,10 @@ impl FilterState {
                 std::format!("{filter:?}"),
                 false as u8
             ));
+            crate::usdt_provider::filterstate__set!(|| (
+                std::format!("{filter:?} did_ena"),
+                true as u8
+            ));
             self.enabled.set(map.set(filter, true));
         }
         #[cfg(debug_assertions)]
@@ -1310,6 +1312,7 @@ impl FilterState {
     fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
         let map = self.enabled.get();
         let enabled = map.is_enabled(filter) && f();
+        crate::usdt_provider::filterstate__set!(|| (std::format!("{filter:?} and"), enabled as u8));
         self.enabled.set(map.set(filter, enabled));
         enabled
     }
