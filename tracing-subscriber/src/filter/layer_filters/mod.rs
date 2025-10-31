@@ -886,21 +886,16 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
+        let mut enabled = false;
         self.did_enable(|| {
-            crate::usdt_provider::filtered__on__event!(|| {
-                (
-                    std::format!("{:?}", self.id()),
-                    event.metadata() as *const _ as u64,
-                    true as u8,
-                )
-            });
+            enabled = true;
             self.layer.on_event(event, cx.with_filter(self.id()));
         });
         crate::usdt_provider::filtered__on__event!(|| {
             (
                 std::format!("{:?}", self.id()),
                 event.metadata() as *const _ as u64,
-                false as u8,
+                enabled as u8,
             )
         });
     }
