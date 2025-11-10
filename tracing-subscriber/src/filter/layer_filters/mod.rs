@@ -100,12 +100,20 @@ pub struct FilterId(u64);
 /// [`Filter`]: crate::layer::Filter
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct FilterMap {
-    bits: u64,
+    // Bitmask of enabled flags. 0 = enabled, 1 = disabled.
+    enabled: u64,
+    // Bitmask of set bits. 0 = invalid (no value has been set), 1 = valid value in
+    // `enabled`.
+    valid: u64,
+    /// Callsite for which these enabled flags are valid.
+    cs: u64,
 }
 
 impl FilterMap {
+    const INVALID_CS: u64 = 0;
+
     pub(crate) const fn new() -> Self {
-        Self { bits: 0 }
+        Self { enabled: 0, valid: 0, cs: Self::INVALID_CS, }
     }
 }
 
@@ -638,10 +646,6 @@ impl<L, F, S> Filtered<L, F, S> {
         self.id.0
     }
 
-    fn did_enable(&self, f: impl FnOnce()) {
-        FILTERING.with(|filtering| filtering.did_enable(self.id(), f))
-    }
-
     /// Borrows the [`Filter`](crate::layer::Filter) used by this layer.
     pub fn filter(&self) -> &F {
         &self.filter
@@ -715,6 +719,24 @@ impl<L, F, S> Filtered<L, F, S> {
     }
 }
 
+impl<L, F, S> Filtered<L, F, S>
+where
+    S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
+    F: layer::Filter<S> + 'static,
+    L: Layer<S>,
+{
+    fn did_enable(&self, metadata: &Metadata<'_>, cx: Context<'_, S>, f: impl FnOnce()) {
+        match FILTERING.with(|filtering| filtering.is_enabled(self.id(), metadata)) {
+            Some(true) => f(),
+            Some(false) => {} // disabled for this filtered layer, do nothing.
+            None => {
+                self.enabled(metadata, cx);
+            }
+        }
+
+    }
+}
+
 impl<S, L, F> Layer<S> for Filtered<L, F, S>
 where
     S: Subscriber + for<'span> registry::LookupSpan<'span> + 'static,
@@ -765,10 +787,14 @@ where
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         let cx = cx.with_filter(self.id());
-        let enabled = self.filter.enabled(metadata, &cx);
-        FILTERING.with(|filtering| filtering.set(self.id(), enabled));
+        let enabled = if self.filter.enabled(metadata, &cx) {
+            SetEnabled::EnabledTrue
+        } else {
+            SetEnabled::EnabledFalse
+        };
+        FILTERING.with(|filtering| filtering.set(self.id(), metadata, enabled));
 
-        if enabled {
+        if enabled.is_enabled() {
             // If the filter enabled this metadata, ask the wrapped layer if
             // _it_ wants it --- it might have a global filter.
             self.layer.enabled(metadata, cx)
@@ -791,7 +817,7 @@ where
     }
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
-        self.did_enable(|| {
+        self.did_enable(attrs.metadata(), cx.clone(), || {
             let cx = cx.with_filter(self.id());
             self.filter.on_new_span(attrs, id, cx.clone());
             self.layer.on_new_span(attrs, id, cx);
@@ -819,11 +845,31 @@ where
     }
 
     fn event_enabled(&self, event: &Event<'_>, cx: Context<'_, S>) -> bool {
+        let metadata = event.metadata();
         let cx = cx.with_filter(self.id());
-        let enabled = FILTERING
-            .with(|filtering| filtering.and(self.id(), || self.filter.event_enabled(event, &cx)));
+        let event_enabled = FILTERING.with(|filtering| {
+            // We have to call the `FilterMap method outselves to keep the
+            // accounting straight.
+            let enabled = filtering
+                .enabled
+                .get()
+                .is_enabled(self.id(), metadata)
+                .unwrap_or_else(|| {
+                    // No cached enabled value, so we'll request it again. This
+                    // may duplicate a check that was done previously, but the
+                    // value has been lost, so we have no other choice.
+                    self.enabled(metadata, cx.clone())
+                });
+            let event_enabled = if enabled && self.filter.event_enabled(event, &cx) {
+                SetEnabled::EventEnabledTrue
+            } else {
+                SetEnabled::EventEnabledFalse
+            };
+            filtering.set(self.id(), metadata, event_enabled);
+            event_enabled
+        });
 
-        if enabled {
+        if event_enabled.is_enabled() {
             // If the filter enabled this event, ask the wrapped subscriber if
             // _it_ wants it --- it might have a global filter.
             self.layer.event_enabled(event, cx)
@@ -835,7 +881,7 @@ where
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
-        self.did_enable(|| {
+        self.did_enable(event.metadata(), cx.clone(), || {
             self.layer.on_event(event, cx.with_filter(self.id()));
         })
     }
@@ -1043,30 +1089,67 @@ impl<F, S> FilterExt<S> for F where F: layer::Filter<S> {}
 // === impl FilterMap ===
 
 impl FilterMap {
-    pub(crate) fn set(self, FilterId(mask): FilterId, enabled: bool) -> Self {
-        if mask == u64::MAX {
-            return self;
+    fn new_with_enabled(FilterId(mask): FilterId, metadata: &Metadata<'_>, enabled: bool) -> Self {
+        Self {
+            enabled: if enabled { 0 } else { mask },
+            valid:  mask,
+            cs: metadata as *const _ as u64,
+        }
+    }
+
+    fn set(self, FilterId(mask): FilterId, metadata: &Metadata<'_>, enabled: bool) -> Option<Self> {
+        let cs = metadata as *const _ as u64;
+        if self.cs != 0 && self.cs != cs {
+            return None;
         }
 
-        if enabled {
-            Self {
-                bits: self.bits & (!mask),
-            }
+        if mask == u64::MAX {
+            return Some(self);
+        }
+
+        let enabled_bits = if enabled {
+            self.enabled & (!mask)
         } else {
-            Self {
-                bits: self.bits | mask,
-            }
+            self.enabled | mask
+        };
+
+        Some(Self {
+            enabled: enabled_bits,
+            valid: self.valid | mask,
+            cs,
+        })
+    }
+
+    #[inline]
+    fn clear_valid(self, FilterId(mask): FilterId) -> Self {
+        let enabled = self.enabled & (!mask);
+        let valid = self.valid & (!mask);
+        let cs = if valid > 0 {
+            self.cs
+        } else {
+            Self::INVALID_CS
+        };
+
+        Self {
+            enabled,
+            valid,
+            cs,
         }
     }
 
     #[inline]
-    pub(crate) fn is_enabled(self, FilterId(mask): FilterId) -> bool {
-        self.bits & mask == 0
+    pub(crate) fn is_enabled(self, FilterId(mask): FilterId, metadata: &Metadata<'_>) -> Option<bool> {
+        let cs = metadata as *const _ as u64;
+        if cs == self.cs && self.valid & mask == mask {
+            Some(self.enabled & mask == 0)
+        } else {
+            None
+        }
     }
 
     #[inline]
     pub(crate) fn any_enabled(self) -> bool {
-        self.bits != u64::MAX
+        self.enabled != u64::MAX
     }
 }
 
@@ -1074,10 +1157,14 @@ impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alt = f.alternate();
         let mut s = f.debug_struct("FilterMap");
-        s.field("disabled_by", &format_args!("{:?}", &FmtBitset(self.bits)));
+        s.field("disabled_by", &format_args!("{:?}", &FmtBitset(self.enabled)));
+        s.field("valid", &format_args!("{:?}", &FmtBitset(self.valid)));
+        s.field("cs", &format_args!("{:#x}", self.cs));
 
         if alt {
-            s.field("bits", &format_args!("{:b}", self.bits));
+            s.field("enabled_bits", &format_args!("{:b}", self.enabled));
+            s.field("valid_bits", &format_args!("{:b}", self.valid));
+            s.field("cs", &format_args!("{:#x}", self.cs));
         }
 
         s.finish()
@@ -1087,7 +1174,7 @@ impl fmt::Debug for FilterMap {
 impl fmt::Binary for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FilterMap")
-            .field("bits", &format_args!("{:b}", self.bits))
+            .field("bits", &format_args!("{:b}", self.enabled))
             .finish()
     }
 }
@@ -1105,14 +1192,31 @@ impl FilterState {
         }
     }
 
-    fn set(&self, filter: FilterId, enabled: bool) {
+    fn set(&self, filter: FilterId, metadata: &Metadata<'_>, enabled: SetEnabled) {
+        let (enabled_state, _invalidated) = match self.enabled.get().set(filter, metadata, enabled.is_enabled()) {
+            Some(state) => (state, false),
+            None => (FilterMap::new_with_enabled(filter, metadata, enabled.is_enabled()), true),
+        };
+
         #[cfg(debug_assertions)]
         {
+            if _invalidated {
+                // If we had to create a new `FilterMap` then the filter pass
+                // counter is invalid and needs to be reset too.
+                self.counters.in_filter_pass.set(0);
+            }
+
             let in_current_pass = self.counters.in_filter_pass.get();
-            if in_current_pass == 0 {
+            std::println!("FilterState::set: enabled={enabled:?} invalidated={_invalidated} in_current_pass={in_current_pass} stored_cs={stored:#x} incoming_cs={incoming:#x}",
+                stored = self.enabled.get().cs,
+                incoming = metadata as *const _ as u64,
+            );
+            if in_current_pass == 0 && !_invalidated {
                 debug_assert_eq!(self.enabled.get(), FilterMap::new());
             }
-            self.counters.in_filter_pass.set(in_current_pass + 1);
+            if !enabled.is_event() {
+                self.counters.in_filter_pass.set(in_current_pass + 1);
+            }
             debug_assert_eq!(
                 self.counters.in_interest_pass.get(),
                 0,
@@ -1120,7 +1224,11 @@ impl FilterState {
             )
         }
 
-        self.enabled.set(self.enabled.get().set(filter, enabled))
+        self.enabled.set(enabled_state);
+        std::println!("                : self.enabled.set({filter:?}, {cs:#x}, {enabled:?}) map={map:?}",
+            cs = metadata as *const _ as u64,
+            map = self.enabled.get(),
+        );
     }
 
     fn add_interest(&self, interest: Interest) {
@@ -1174,24 +1282,19 @@ impl FilterState {
     ///
     /// This is used to implement the `on_event` and `new_span` methods for
     /// `Filtered`.
-    fn did_enable(&self, filter: FilterId, f: impl FnOnce()) {
+    fn is_enabled(&self, filter: FilterId, metadata: &Metadata<'_>) -> Option<bool> {
         let map = self.enabled.get();
-        if map.is_enabled(filter) {
-            // If the filter didn't disable the current span/event, run the
-            // callback.
-            f();
-        } else {
-            // Otherwise, if this filter _did_ disable the span or event
-            // currently being processed, clear its bit from this thread's
-            // `FilterState`. The bit has already been "consumed" by skipping
-            // this callback, and we need to ensure that the `FilterMap` for
-            // this thread is reset when the *next* `enabled` call occurs.
-            self.enabled.set(map.set(filter, true));
-        }
+        let enabled = map.is_enabled(filter, metadata);
+        self.enabled.set(map.clear_valid(filter));
         #[cfg(debug_assertions)]
         {
             let in_current_pass = self.counters.in_filter_pass.get();
-            if in_current_pass <= 1 {
+            std::println!("FilterState::is_enabled: filter={filter:?} enabled={enabled:?} in_current_pass={in_current_pass} stored_cs={stored:#x} incoming_cs={incoming:#x} map={map:?}",
+                stored = self.enabled.get().cs,
+                incoming = metadata as *const _ as u64,
+                map = self.enabled.get(),
+            );
+            if in_current_pass == 0 {
                 debug_assert_eq!(self.enabled.get(), FilterMap::new());
             }
             self.counters
@@ -1203,13 +1306,6 @@ impl FilterState {
                 "if we are in a filter pass, we must not be in an interest pass."
             )
         }
-    }
-
-    /// Run a second filtering pass, e.g. for Layer::event_enabled.
-    fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
-        let map = self.enabled.get();
-        let enabled = map.is_enabled(filter) && f();
-        self.enabled.set(map.set(filter, enabled));
         enabled
     }
 
@@ -1217,15 +1313,25 @@ impl FilterState {
     ///
     /// This resets the [`FilterMap`] and current [`Interest`] as well as
     /// clearing the debug counters.
-    pub(crate) fn clear_enabled() {
+    ///
+    /// This is needed when the layers of a filter are short-circuited and also
+    /// in the case of reentrant spans, the enabled state may change between
+    /// inner and outer `new_span` calls and this will ensure that a
+    /// re-evaluation is performed.
+    pub(crate) fn clear() {
         // Drop the `Result` returned by `try_with` --- if we are in the middle
         // a panic and the thread-local has been torn down, that's fine, just
         // ignore it ratehr than panicking.
         let _ = FILTERING.try_with(|filtering| {
+            std::println!("FilterState::clear: filtering.enabled.set(FilterMap::new());");
             filtering.enabled.set(FilterMap::new());
+            _ = filtering.interest.replace(None);
 
             #[cfg(debug_assertions)]
-            filtering.counters.in_filter_pass.set(0);
+            {
+                filtering.counters.in_filter_pass.set(0);
+                filtering.counters.in_interest_pass.set(0);
+            }
         });
     }
 
@@ -1254,6 +1360,31 @@ impl FilterState {
         map
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+enum SetEnabled {
+    EnabledTrue,
+    EnabledFalse,
+    EventEnabledTrue,
+    EventEnabledFalse,
+}
+
+impl SetEnabled {
+    fn is_enabled(&self) -> bool {
+        match self {
+            Self::EnabledTrue | Self::EventEnabledTrue => true,
+            Self::EnabledFalse | Self::EventEnabledFalse => false,
+        }
+    }
+
+    fn is_event(&self) -> bool {
+        match self {
+            Self::EnabledTrue | Self::EnabledFalse => false,
+            Self::EventEnabledTrue | Self::EventEnabledFalse => true,
+        }
+    }
+}
+
 /// This is a horrible and bad abuse of the downcasting system to expose
 /// *internally* whether a layer has per-layer filtering, within
 /// `tracing-subscriber`, without exposing a public API for it.

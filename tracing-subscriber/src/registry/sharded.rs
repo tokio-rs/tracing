@@ -219,12 +219,18 @@ thread_local! {
 }
 
 impl Subscriber for Registry {
-    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
-        if self.has_per_layer_filters() {
-            return FilterState::take_interest().unwrap_or_else(Interest::always);
-        }
+    fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
+        let filter_state_interest = if self.has_per_layer_filters() {
+            Some(FilterState::take_interest().unwrap_or_else(Interest::always))
+        } else {
+            None
+        };
 
-        Interest::always()
+        let interest = filter_state_interest.clone().unwrap_or(Interest::always());
+        std::println!("Registry::register_callsite: metadata={metadata:#x} filter_state_interest={filter_state_interest:?} interest={interest:?}",
+            metadata = metadata as *const _ as u64);
+
+        interest
     }
 
     fn enabled(&self, _: &Metadata<'_>) -> bool {
@@ -440,7 +446,9 @@ impl<'a> SpanData<'a> for Data<'a> {
 
     #[inline]
     fn is_enabled_for(&self, filter: FilterId) -> bool {
-        self.inner.filter_map.is_enabled(filter)
+        // FIXME(hds): This is wrong, we shouldn't even have all the new
+        // filtermap fields here.
+        self.inner.filter_map.is_enabled(filter, self.metadata()).unwrap_or(false)
     }
 }
 

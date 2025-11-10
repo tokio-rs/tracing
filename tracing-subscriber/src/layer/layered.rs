@@ -98,9 +98,10 @@ where
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        if self.layer.enabled(metadata, self.ctx()) {
+        let layer_enabled = self.layer.enabled(metadata, self.ctx());
+        let inner_enabled = if layer_enabled {
             // if the outer layer enables the callsite metadata, ask the subscriber.
-            self.inner.enabled(metadata)
+            Some(self.inner.enabled(metadata))
         } else {
             // otherwise, the callsite is disabled by the layer
 
@@ -108,10 +109,19 @@ where
             // (rather than calling into the inner type), clear the current
             // per-layer filter `enabled` state.
             #[cfg(feature = "registry")]
-            filter::FilterState::clear_enabled();
+            filter::FilterState::clear();
 
-            false
-        }
+            None
+        };
+        let enabled = inner_enabled.unwrap_or(false);
+
+        std::println!("Layered<as Subscriber>::enabled: layer={layer:#x} inner={inner:#x} callsite={callsite:#x} enabled={enabled} layer_enabled={layer_enabled} inner_enabled={inner_enabled:?}",
+            layer = &self.layer as *const _ as u64,
+            inner = &self.inner as *const _ as u64,
+            callsite = metadata as *const _ as u64,
+        );
+
+        enabled
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {

@@ -4,6 +4,7 @@ mod downcast_raw;
 mod filter_scopes;
 mod option;
 mod per_event;
+mod per_layer_filtering;
 mod targets;
 mod trees;
 mod vec;
