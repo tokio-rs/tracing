@@ -4,6 +4,7 @@ use crate::filter::{
     env::{field, FieldMap},
     level::LevelFilter,
 };
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use std::{cmp::Ordering, fmt, iter::FromIterator, str::FromStr};
 use tracing_core::{span, Level, Metadata};
 
@@ -481,6 +482,7 @@ impl SpanMatcher {
 #[cfg(test)]
 mod test {
     use super::*;
+    use alloc::{format, string::ToString, vec};
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
         dirs.as_ref()

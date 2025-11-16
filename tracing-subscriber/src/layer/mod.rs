@@ -1675,7 +1675,6 @@ where
 
 feature! {
     #![any(feature = "std", feature = "alloc")]
-    #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
     macro_rules! layer_impl_body {
@@ -1772,8 +1771,6 @@ feature! {
     {
         layer_impl_body! {}
     }
-
-
 
     impl<S, L> Layer<S> for Vec<L>
     where
