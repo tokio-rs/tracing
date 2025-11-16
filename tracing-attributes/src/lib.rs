@@ -221,7 +221,8 @@ mod expand;
 /// Note that defining a field with the same name as a (non-skipped)
 /// argument will implicitly skip the argument, unless the field is provided
 /// via a constant expression (e.g. {EXPR} or {const_fn()}) as deduplicating
-/// would incur a runtime cost.
+/// would incur a runtime cost. In this case, the
+/// field must be explicitly skipped.
 ///
 /// ## Examples
 ///
