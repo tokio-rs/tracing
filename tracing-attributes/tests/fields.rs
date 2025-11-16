@@ -63,7 +63,9 @@ fn fn_string_field_name() {}
 const CLASHY_FIELD_NAME: &str = "s";
 
 #[instrument(fields({CLASHY_FIELD_NAME} = "foo"))]
-fn fn_clashy_const_field_name(s: &str) { let _ = s; }
+fn fn_clashy_const_field_name(s: &str) {
+    let _ = s;
+}
 
 #[derive(Debug)]
 struct HasField {

@@ -330,10 +330,8 @@ impl ToTokens for FieldName {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             FieldName::Expr(expr) => {
-                Brace::default().surround(tokens, |tokens| {
-                    expr.to_tokens(tokens)
-                });
-            },
+                Brace::default().surround(tokens, |tokens| expr.to_tokens(tokens));
+            }
             FieldName::Punctuated(punctuated) => punctuated.to_tokens(tokens),
         }
     }
