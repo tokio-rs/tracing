@@ -11,7 +11,7 @@ use syn::{
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -211,8 +211,16 @@ fn gen_block<B: ToTokens>(
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
                     fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
+                        match name {
+                            // #3158: Expressions cannot be evaluated at compile time and will
+                            // incur a runtime cost to de-duplicate.
+                            FieldName::Expr(_) => true,
+                            FieldName::Punctuated(punctuated) => {
+                                let first = punctuated.first();
+                                first != punctuated.last()
+                                    || !first.iter().any(|name| name == &param)
+                            }
+                        }
                     })
                 } else {
                     true
