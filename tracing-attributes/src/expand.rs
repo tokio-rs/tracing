@@ -5,9 +5,9 @@ use quote::TokenStreamExt;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::visit_mut::VisitMut;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Block, Expr, ExprAsync, ExprCall, FieldPat, FnArg,
-    Ident, Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType,
-    Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
+    punctuated::Punctuated, spanned::Spanned, Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident,
+    Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path,
+    ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
 use crate::{
@@ -820,20 +820,6 @@ impl VisitMut for IdentAndTypesRenamer<'_> {
                     *ty = Type::Path(new_type.clone());
                 }
             }
-        }
-    }
-}
-
-// A visitor struct that replace an async block by its patched version
-struct AsyncTraitBlockReplacer<'a> {
-    block: &'a Block,
-    patched_block: Block,
-}
-
-impl VisitMut for AsyncTraitBlockReplacer<'_> {
-    fn visit_block_mut(&mut self, i: &mut Block) {
-        if i == self.block {
-            *i = self.patched_block.clone();
         }
     }
 }
