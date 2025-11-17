@@ -172,7 +172,7 @@ pub struct ValueSet<'a> {
 enum Values<'a> {
     /// A set of field-value pairs. Fields may be for the wrong field set, some
     /// fields may be missing, and fields may be in any order.
-    Mixed(&'a [(&'a Field, Option<&'a (dyn Value + 'a)>)]),
+    Explicit(&'a [(&'a Field, Option<&'a (dyn Value + 'a)>)]),
     /// A list of values corresponding exactly to the fields in a `FieldSet`.
     All(&'a [Option<&'a (dyn Value + 'a)>]),
 }
@@ -930,12 +930,16 @@ impl FieldSet {
     {
         ValueSet {
             fields: self,
-            values: Values::Mixed(values.borrow()),
+            values: Values::Explicit(values.borrow()),
         }
     }
 
     /// Returns a new `ValueSet` for `values`. These values must exactly
     /// correspond to the fields in this `FieldSet`.
+    ///
+    /// If `values` does not meet this requirement, the behavior of the
+    /// constructed `ValueSet` is unspecified (but not undefined). You will
+    /// probably observe panics or mismatched field/values.
     #[doc(hidden)]
     pub fn value_set_all<'v>(&'v self, values: &'v [Option<&'v (dyn Value + 'v)>]) -> ValueSet<'v> {
         debug_assert_eq!(values.len(), self.len());
@@ -1053,7 +1057,7 @@ impl ValueSet<'_> {
     /// [visitor]: Visit
     pub fn record(&self, visitor: &mut dyn Visit) {
         match self.values {
-            Values::Mixed(values) => {
+            Values::Explicit(values) => {
                 let my_callsite = self.callsite();
                 for (field, value) in values {
                     if field.callsite() != my_callsite {
@@ -1081,7 +1085,7 @@ impl ValueSet<'_> {
     /// [`ValueSet::record()`]: ValueSet::record()
     pub fn len(&self) -> usize {
         match self.values {
-            Values::Mixed(values) => {
+            Values::Explicit(values) => {
                 let my_callsite = self.callsite();
                 values
                     .iter()
@@ -1098,7 +1102,7 @@ impl ValueSet<'_> {
             return false;
         }
         match self.values {
-            Values::Mixed(values) => values
+            Values::Explicit(values) => values
                 .iter()
                 .any(|(key, val)| *key == field && val.is_some()),
             Values::All(values) => values[field.i].is_some(),
@@ -1109,7 +1113,7 @@ impl ValueSet<'_> {
     pub fn is_empty(&self) -> bool {
         match self.values {
             Values::All(values) => values.iter().all(|v| v.is_none()),
-            Values::Mixed(values) => {
+            Values::Explicit(values) => {
                 let my_callsite = self.callsite();
                 values
                     .iter()
