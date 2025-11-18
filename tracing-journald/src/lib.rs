@@ -7,7 +7,7 @@
 //!
 //! [`tracing`] is a framework for instrumenting Rust programs to collect
 //! scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
-//! [`tracing-subscriber::Layer`] implementation for logging `tracing` spans
+//! [`tracing_subscriber::Layer`] implementation for logging `tracing` spans
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!
@@ -272,7 +272,7 @@ impl Layer {
         socket::send_one_fd_to(&self.socket, mem.as_raw_fd(), JOURNALD_PATH)
     }
 
-    fn put_priority(&self, buf: &mut Vec<u8>, meta: &Metadata) {
+    fn put_priority(&self, buf: &mut Vec<u8>, meta: &Metadata<'_>) {
         put_field_wellformed(
             buf,
             "PRIORITY",
@@ -298,7 +298,7 @@ impl<S> tracing_subscriber::Layer<S> for Layer
 where
     S: Subscriber + for<'span> LookupSpan<'span>,
 {
-    fn on_new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
@@ -314,7 +314,7 @@ where
         span.extensions_mut().insert(SpanFields(buf));
     }
 
-    fn on_record(&self, id: &Id, values: &Record, ctx: Context<S>) {
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("unknown span");
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;
@@ -324,7 +324,7 @@ where
         });
     }
 
-    fn on_event(&self, event: &Event, ctx: Context<S>) {
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let mut buf = Vec::with_capacity(256);
 
         // Record span fields
@@ -543,7 +543,7 @@ impl Default for PriorityMappings {
     }
 }
 
-fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata, prefix: Option<&str>) {
+fn put_metadata(buf: &mut Vec<u8>, meta: &Metadata<'_>, prefix: Option<&str>) {
     if let Some(prefix) = prefix {
         write!(buf, "{}", prefix).unwrap();
     }

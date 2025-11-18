@@ -32,15 +32,14 @@ use crate::{
     layer::{self, Context, Layer},
     registry,
 };
-use std::{
+use alloc::{boxed::Box, fmt, sync::Arc};
+use core::{
     any::TypeId,
     cell::{Cell, RefCell},
-    fmt,
     marker::PhantomData,
     ops::Deref,
-    sync::Arc,
-    thread_local,
 };
+use std::thread_local;
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
@@ -879,7 +878,7 @@ where
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
                 Some(&self.id as *const _ as *const ())
             }
-            _ => self.layer.downcast_raw(id),
+            _ => unsafe { self.layer.downcast_raw(id) },
         }
     }
 }

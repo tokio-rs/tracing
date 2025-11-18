@@ -24,7 +24,7 @@ preserving structured information.
 
 [`tracing`] is a framework for instrumenting Rust programs to collect
 scoped, structured, and async-aware diagnostics. `tracing-journald` provides a
-[`tracing-subscriber::Layer`][layer] implementation for logging `tracing` spans
+[`tracing_subscriber::Layer`][layer] implementation for logging `tracing` spans
 and events to [`systemd-journald`][journald], on Linux distributions that use
 `systemd`.
 
