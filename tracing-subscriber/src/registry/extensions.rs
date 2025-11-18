@@ -1,12 +1,12 @@
 // taken from https://github.com/hyperium/http/blob/master/src/extensions.rs.
 
 use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
-use std::{
+use alloc::{boxed::Box, fmt};
+use core::{
     any::{Any, TypeId},
-    collections::HashMap,
-    fmt,
     hash::{BuildHasherDefault, Hasher},
 };
+use std::collections::HashMap;
 
 #[allow(warnings)]
 type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdHasher>>;

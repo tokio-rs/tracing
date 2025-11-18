@@ -171,7 +171,7 @@ pub trait WithSubscriber: Sized {
     /// ```
     ///
     /// [`Subscriber`]: super::Subscriber
-    /// [default]: crate::dispatcher#setting-the-default-subscriber
+    /// [default]: dispatcher#setting-the-default-subscriber
     /// [`Future`]: std::future::Future
     fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self>
     where
@@ -222,13 +222,13 @@ pub trait WithSubscriber: Sized {
     /// # }
     /// ```
     /// [`Subscriber`]: super::Subscriber
-    /// [default]: crate::dispatcher#setting-the-default-subscriber
+    /// [default]: dispatcher#setting-the-default-subscriber
     /// [`Future`]: std::future::Future
     #[inline]
     fn with_current_subscriber(self) -> WithDispatch<Self> {
         WithDispatch {
             inner: self,
-            dispatcher: crate::dispatcher::get_default(|default| default.clone()),
+            dispatcher: dispatcher::get_default(|default| default.clone()),
         }
     }
 }

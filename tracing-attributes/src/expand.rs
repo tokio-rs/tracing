@@ -5,13 +5,13 @@ use quote::TokenStreamExt;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::visit_mut::VisitMut;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Block, Expr, ExprAsync, ExprCall, FieldPat, FnArg,
-    Ident, Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType,
-    Path, ReturnType, Signature, Stmt, Token, Type, TypePath,
+    punctuated::Punctuated, spanned::Spanned, Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident,
+    Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path,
+    ReturnType, Signature, Stmt, Token, Type, TypePath,
 };
 
 use crate::{
-    attr::{Field, Fields, FormatMode, InstrumentArgs, Level},
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
 };
 
@@ -211,8 +211,16 @@ fn gen_block<B: ToTokens>(
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
                     fields.0.iter().all(|Field { ref name, .. }| {
-                        let first = name.first();
-                        first != name.last() || !first.iter().any(|name| name == &param)
+                        match name {
+                            // #3158: Expressions cannot be evaluated at compile time and will
+                            // incur a runtime cost to de-duplicate.
+                            FieldName::Expr(_) => true,
+                            FieldName::Punctuated(punctuated) => {
+                                let first = punctuated.first();
+                                first != punctuated.last()
+                                    || !first.iter().any(|name| name == &param)
+                            }
+                        }
                     })
                 } else {
                     true
@@ -812,20 +820,6 @@ impl VisitMut for IdentAndTypesRenamer<'_> {
                     *ty = Type::Path(new_type.clone());
                 }
             }
-        }
-    }
-}
-
-// A visitor struct that replace an async block by its patched version
-struct AsyncTraitBlockReplacer<'a> {
-    block: &'a Block,
-    patched_block: Block,
-}
-
-impl VisitMut for AsyncTraitBlockReplacer<'_> {
-    fn visit_block_mut(&mut self, i: &mut Block) {
-        if i == self.block {
-            *i = self.patched_block.clone();
         }
     }
 }

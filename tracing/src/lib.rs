@@ -912,7 +912,8 @@
 //! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 //! [flags]: #crate-feature-flags
-#![cfg_attr(not(feature = "std"), no_std)]
+
+#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
@@ -941,8 +942,8 @@
     while_true
 )]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -980,7 +981,6 @@ pub mod field;
 pub mod instrument;
 pub mod level_filters;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(hidden)]

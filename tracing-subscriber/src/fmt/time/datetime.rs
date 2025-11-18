@@ -192,7 +192,6 @@
 // permissive licensing, and of not having licensing issues being an
 // obstacle to adoption, that text has been removed.
 
-
 use std::fmt;
 
 /// A date/time type which exists primarily to convert `SystemTime` timestamps into an ISO 8601
@@ -333,7 +332,10 @@ impl From<std::time::SystemTime> for DateTime {
 #[cfg(test)]
 mod tests {
     use i32;
-    use std::time::{Duration, UNIX_EPOCH};
+    use std::{
+        format,
+        time::{Duration, UNIX_EPOCH},
+    };
 
     use super::*;
 

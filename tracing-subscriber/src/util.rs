@@ -1,5 +1,8 @@
 //! Extension traits and other utilities to make working with subscribers more
 //! ergonomic.
+
+#[cfg(feature = "std")]
+use alloc::boxed::Box;
 use core::fmt;
 #[cfg(feature = "std")]
 use std::error::Error;
