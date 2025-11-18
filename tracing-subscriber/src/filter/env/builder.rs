@@ -3,7 +3,12 @@ use super::{
     EnvFilter, FromEnvError,
 };
 use crate::sync::RwLock;
-use std::env;
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+use std::{env, eprintln};
 use thread_local::ThreadLocal;
 use tracing::level_filters::STATIC_MAX_LEVEL;
 

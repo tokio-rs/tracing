@@ -7,12 +7,14 @@ use crate::{
     },
     registry::LookupSpan,
 };
-use serde::ser::{SerializeMap, Serializer as _};
-use serde_json::Serializer;
-use std::{
+use alloc::{
     collections::BTreeMap,
     fmt::{self, Write},
+    format,
+    string::String,
 };
+use serde::ser::{SerializeMap, Serializer as _};
+use serde_json::Serializer;
 use tracing_core::{
     field::{self, Field},
     span::Record,
