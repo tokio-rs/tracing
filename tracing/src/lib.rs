@@ -670,7 +670,7 @@
 //! entered, exited, and closed. Since these additional span lifecycle logs have
 //! the potential to be very verbose, and don't include additional fields, they
 //! will always be emitted at the `Trace` level, rather than inheriting the
-//! level of the span that generated them. Furthermore, they are are categorized
+//! level of the span that generated them. Furthermore, they are categorized
 //! under a separate `log` target, "tracing::span" (and its sub-target,
 //! "tracing::span::active", for the logs on entering and exiting a span), which
 //! may be enabled or disabled separately from other `log` records emitted by
