@@ -34,7 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, Time};
+use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -605,6 +605,11 @@ impl Inner {
             rotation,
             max_files,
         };
+
+        if let Some(max_files) = max_files {
+            inner.prune_old_logs(max_files);
+        }
+
         let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
         Ok((inner, writer))
@@ -671,7 +676,24 @@ impl Inner {
                     return None;
                 }
 
-                let created = metadata.created().ok()?;
+                let created = metadata.created().ok().or_else(|| {
+                    let mut datetime = filename;
+                    if let Some(prefix) = &self.log_filename_prefix {
+                        datetime = datetime.strip_prefix(prefix)?;
+                        datetime = datetime.strip_prefix('.')?;
+                    }
+                    if let Some(suffix) = &self.log_filename_suffix {
+                        datetime = datetime.strip_suffix(suffix)?;
+                        datetime = datetime.strip_suffix('.')?;
+                    }
+
+                    Some(
+                        PrimitiveDateTime::parse(datetime, &self.date_format)
+                            .ok()?
+                            .assume_utc()
+                            .into(),
+                    )
+                })?;
                 Some((entry, created))
             })
             .collect::<Vec<_>>()
