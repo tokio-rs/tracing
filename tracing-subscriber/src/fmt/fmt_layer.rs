@@ -658,6 +658,35 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
             ..self
         }
     }
+
+    /// Formats all fields of the current span at root level.
+    ///
+    /// See [`format::Json`]
+    pub fn flatten_current_span(
+        self,
+        flatten_current_span: bool,
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.flatten_current_span(flatten_current_span),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
+
+    /// Formats all fields of the span list at root level, overwritting
+    /// colliding fields from root to leaf.
+    ///
+    /// See [`format::Json`]
+    pub fn flatten_span_list(
+        self,
+        flatten_span_list: bool,
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.flatten_span_list(flatten_span_list),
+            fmt_fields: format::JsonFields::new(),
+            ..self
+        }
+    }
 }
 
 impl<S, N, E, W> Layer<S, N, E, W> {
