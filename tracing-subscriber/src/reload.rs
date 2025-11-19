@@ -197,7 +197,7 @@ where
         // actually point to the global static singleton `NoneLayerMarker`,
         // rather than to a field inside the lock.
         if id == TypeId::of::<layer::NoneLayerMarker>() {
-            return try_lock!(self.inner.read(), else return None).downcast_raw(id);
+            unsafe { return try_lock!(self.inner.read(), else return None).downcast_raw(id) }
         }
 
         None

@@ -14,8 +14,10 @@ use crate::{
     layer::{Context, Layer},
     sync::RwLock,
 };
+use alloc::{fmt, str::FromStr, vec::Vec};
+use core::cell::RefCell;
 use directive::ParseError;
-use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, env, error::Error};
 use thread_local::ThreadLocal;
 use tracing_core::{
     callsite,
@@ -835,6 +837,8 @@ impl Error for FromEnvError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
+    use std::println;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 

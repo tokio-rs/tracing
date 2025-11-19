@@ -13,7 +13,6 @@ use crate::{
     },
     layer,
 };
-#[cfg(not(feature = "std"))]
 use alloc::string::String;
 use core::{
     fmt,
@@ -596,16 +595,17 @@ impl<'a> Iterator for Iter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::{string::ToString, vec, vec::Vec};
+    #[cfg(feature = "std")]
+    use std::dbg;
 
-    feature! {
-        #![not(feature = "std")]
-        use alloc::{vec, vec::Vec, string::ToString};
-
-        // `dbg!` is only available with `libstd`; just nop it out when testing
-        // with alloc only.
-        macro_rules! dbg {
-            ($x:expr) => { $x }
-        }
+    // `dbg!` is only available with `libstd`; just nop it out when testing
+    // with alloc only.
+    #[cfg(not(feature = "std"))]
+    macro_rules! dbg {
+        ($x:expr) => {
+            $x
+        };
     }
 
     fn expect_parse(s: &str) -> Targets {
@@ -775,6 +775,8 @@ mod tests {
     // `println!` is only available with `libstd`.
     #[cfg(feature = "std")]
     fn size_of_filters() {
+        use std::println;
+
         fn print_sz(s: &str) {
             let filter = s.parse::<Targets>().expect("filter should parse");
             println!(

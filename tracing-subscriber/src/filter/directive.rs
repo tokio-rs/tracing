@@ -1,7 +1,6 @@
 use crate::filter::level::{self, LevelFilter};
-#[cfg(not(feature = "smallvec"))]
-use alloc::vec;
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "std")]
+use alloc::boxed::Box;
 use alloc::{string::String, vec::Vec};
 
 use core::{cmp::Ordering, fmt, iter::FromIterator, slice, str::FromStr};
@@ -126,7 +125,7 @@ impl<T> IntoIterator for DirectiveSet<T> {
     #[cfg(feature = "smallvec")]
     type IntoIter = smallvec::IntoIter<[T; 8]>;
     #[cfg(not(feature = "smallvec"))]
-    type IntoIter = vec::IntoIter<T>;
+    type IntoIter = alloc::vec::IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.directives.into_iter()

@@ -10,10 +10,11 @@ use crate::{
     },
     sync::RwLock,
 };
-use std::{
+use core::{
     cell::{self, Cell, RefCell},
     sync::atomic::{fence, AtomicUsize, Ordering},
 };
+use std::thread_local;
 use tracing_core::{
     dispatcher::{self, Dispatch},
     span::{self, Current, Id},
@@ -536,7 +537,9 @@ mod tests {
     use crate::{layer::Context, registry::LookupSpan, Layer};
     use std::{
         collections::HashMap,
+        dbg, println,
         sync::{Arc, Mutex, Weak},
+        vec::Vec,
     };
     use tracing::{self, subscriber::with_default};
     use tracing_core::{

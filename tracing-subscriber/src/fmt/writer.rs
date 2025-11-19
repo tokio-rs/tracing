@@ -1,10 +1,13 @@
 //! Abstractions for creating [`io::Write`] instances.
 //!
 //! [`io::Write`]: std::io::Write
+
+use alloc::{boxed::Box, fmt, string::String, sync::Arc};
 use std::{
-    fmt,
+    eprint,
     io::{self, Write},
-    sync::{Arc, Mutex, MutexGuard},
+    print,
+    sync::{Mutex, MutexGuard},
 };
 use tracing_core::Metadata;
 
@@ -715,9 +718,7 @@ impl TestWriter {
 
     /// Returns a new `TestWriter` that writes to `stderr` instead of `stdout`.
     pub fn with_stderr() -> Self {
-        Self {
-            use_stderr: true,
-        }
+        Self { use_stderr: true }
     }
 }
 
@@ -1224,8 +1225,10 @@ mod test {
     use crate::fmt::format::Format;
     use crate::fmt::test::{MockMakeWriter, MockWriter};
     use crate::fmt::Subscriber;
+    use alloc::vec::Vec;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
+    use std::{dbg, format, println};
     use tracing::{debug, error, info, trace, warn, Level};
     use tracing_core::dispatcher::{self, Dispatch};
 
