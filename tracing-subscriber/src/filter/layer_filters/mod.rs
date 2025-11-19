@@ -878,7 +878,7 @@ where
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
                 Some(&self.id as *const _ as *const ())
             }
-            _ => self.layer.downcast_raw(id),
+            _ => unsafe { self.layer.downcast_raw(id) },
         }
     }
 }

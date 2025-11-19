@@ -232,9 +232,7 @@ where
             return Some(self as *const _ as *const ());
         }
 
-        self.layer
-            .downcast_raw(id)
-            .or_else(|| self.inner.downcast_raw(id))
+        unsafe { self.layer.downcast_raw(id) }.or_else(|| unsafe { self.inner.downcast_raw(id) })
     }
 }
 
@@ -370,14 +368,12 @@ where
             // If you don't understand this...that's fine, just don't mess with
             // it. :)
             id if filter::is_plf_downcast_marker(id) => {
-                self.layer.downcast_raw(id).and(self.inner.downcast_raw(id))
+                unsafe { self.layer.downcast_raw(id) }.and(unsafe { self.inner.downcast_raw(id) })
             }
 
             // Otherwise, try to downcast both branches normally...
-            _ => self
-                .layer
-                .downcast_raw(id)
-                .or_else(|| self.inner.downcast_raw(id)),
+            _ => unsafe { self.layer.downcast_raw(id) }
+                .or_else(|| unsafe { self.inner.downcast_raw(id) }),
         }
     }
 }
