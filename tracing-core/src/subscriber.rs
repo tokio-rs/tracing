@@ -785,7 +785,7 @@ where
             return Some(self as *const Self as *const _);
         }
 
-        self.as_ref().downcast_raw(id)
+        unsafe { self.as_ref().downcast_raw(id) }
     }
 }
 
@@ -870,6 +870,6 @@ where
             return Some(self as *const Self as *const _);
         }
 
-        self.as_ref().downcast_raw(id)
+        unsafe { self.as_ref().downcast_raw(id) }
     }
 }

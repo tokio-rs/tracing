@@ -446,7 +446,7 @@ where
         if id == TypeId::of::<Self>() {
             Some(self as *const Self as *const ())
         } else {
-            self.inner.downcast_raw(id)
+            unsafe { self.inner.downcast_raw(id) }
         }
     }
 }

@@ -1128,8 +1128,10 @@ mod test {
     use crate::metadata::{Kind, Level, Metadata};
 
     // Make sure TEST_CALLSITE_* have non-zero size, so they can't be located at the same address.
-    struct TestCallsite1();
-    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1();
+    struct TestCallsite1 {
+        _unused: u8,
+    }
+    static TEST_CALLSITE_1: TestCallsite1 = TestCallsite1 { _unused: 0 };
     static TEST_META_1: Metadata<'static> = metadata! {
         name: "field_test1",
         target: module_path!(),
@@ -1149,8 +1151,10 @@ mod test {
         }
     }
 
-    struct TestCallsite2();
-    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2();
+    struct TestCallsite2 {
+        _unused: u8,
+    }
+    static TEST_CALLSITE_2: TestCallsite2 = TestCallsite2 { _unused: 0 };
     static TEST_META_2: Metadata<'static> = metadata! {
         name: "field_test2",
         target: module_path!(),
@@ -1238,7 +1242,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn fmt::Debug) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -1257,7 +1261,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn fmt::Debug) {
                 assert_eq!(field.name(), "bar")
             }
         }

@@ -2827,79 +2827,79 @@ macro_rules! valueset {
     // };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$($k).+ as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$($k).+ as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$($k).+) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$($k).+) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$($k).+) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$($k).+) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+ = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$($k).+ as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$($k).+ as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, ?$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$($k).+) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$($k).+) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, %$($k:ident).+) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$($k).+) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$($k).+) as &dyn $crate::field::Value)) },
             $next,
         )
     };
@@ -2907,40 +2907,40 @@ macro_rules! valueset {
     // Handle literal names
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, $k:literal = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $next,
         )
     };
@@ -2948,54 +2948,55 @@ macro_rules! valueset {
     // Handle constant names
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = ?$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = %$val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = $val:expr, $($rest:tt)*) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn $crate::field::Value)) },
             $next,
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = ?$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&debug(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = %$val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&display(&$val) as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $next,
         )
     };
     (@ { $(,)* $($out:expr),* }, $next:expr, { $k:expr } = $val:expr) => {
         $crate::valueset!(
-            @ { $($out),*, (&$next, Some(&$val as &dyn Value)) },
+            @ { $($out),*, (&$next, Some(&$val as &dyn $crate::field::Value)) },
             $next,
         )
     };
 
     // Remainder is unparsable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $next:expr, $($rest:tt)+) => {
-        $crate::valueset!(@ { (&$next, $crate::__macro_support::Option::Some(&$crate::__macro_support::format_args!($($rest)+) as &dyn Value)), $($out),* }, $next, )
+        $crate::valueset!(
+            @ { (&$next, $crate::__macro_support::Option::Some(&$crate::__macro_support::format_args!($($rest)+) as &dyn $crate::field::Value)), $($out),* },
+            $next,
+        )
     };
 
     // === entry ===
     ($fields:expr, $($kvs:tt)+) => {
         {
-            #[allow(unused_imports)]
-            use $crate::field::{debug, display, Value};
             let mut iter = $fields.iter();
             $fields.value_set($crate::valueset!(
                 @ { },

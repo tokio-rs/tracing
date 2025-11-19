@@ -127,7 +127,7 @@ where
     E: Error + Send + Sync + 'static,
 {
     // Attach E's native Error vtable onto a pointer to e.error.
-    &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>)).error
+    unsafe { &(*(e as *const ErrorImpl<Erased> as *const ErrorImpl<E>)).error }
 }
 
 impl<E> Error for TracedError<E>

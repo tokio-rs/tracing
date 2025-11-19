@@ -1668,7 +1668,8 @@ where
         } else if id == TypeId::of::<NoneLayerMarker>() && self.is_none() {
             Some(&NONE_LAYER_MARKER as *const _ as *const ())
         } else {
-            self.as_ref().and_then(|inner| inner.downcast_raw(id))
+            self.as_ref()
+                .and_then(|inner| unsafe { inner.downcast_raw(id) })
         }
     }
 }
@@ -1752,7 +1753,7 @@ feature! {
             #[doc(hidden)]
             #[inline]
             unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-                self.deref().downcast_raw(id)
+                unsafe { self.deref().downcast_raw(id) }
             }
         };
     }
@@ -1878,14 +1879,16 @@ feature! {
             // XXX(eliza): it's a bummer we have to do this linear search every
             // time. It would be nice if this could be cached, but that would
             // require replacing the `Vec` impl with an impl for a newtype...
-            if filter::is_plf_downcast_marker(id) && self.iter().any(|s| s.downcast_raw(id).is_none()) {
+            if filter::is_plf_downcast_marker(id)
+                && self.iter().any(|s| unsafe { s.downcast_raw(id).is_none() })
+            {
                 return None;
             }
 
             // Otherwise, return the first child of `self` that downcaasts to
             // the selected type, if any.
             // XXX(eliza): hope this is reasonable lol
-            self.iter().find_map(|l| l.downcast_raw(id))
+            self.iter().find_map(|l| unsafe { l.downcast_raw(id) })
         }
     }
 }
