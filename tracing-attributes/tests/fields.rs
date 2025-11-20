@@ -37,6 +37,36 @@ fn fn_string(s: String) {
 #[instrument(fields(keywords.impl.type.fn = _arg), skip(_arg))]
 fn fn_keyword_ident_in_field(_arg: &str) {}
 
+const CONST_FIELD_NAME: &str = "foo.bar";
+
+#[instrument(fields({CONST_FIELD_NAME} = "baz"))]
+fn fn_const_field_name() {}
+
+const fn get_const_fn_field_name() -> &'static str {
+    "foo.bar"
+}
+
+#[instrument(fields({get_const_fn_field_name()} = "baz"))]
+fn fn_const_fn_field_name() {}
+
+struct FieldNames {}
+impl FieldNames {
+    const FOO_BAR: &'static str = "foo.bar";
+}
+
+#[instrument(fields({FieldNames::FOO_BAR} = "baz"))]
+fn fn_struct_const_field_name() {}
+
+#[instrument(fields({"foo"} = "bar"))]
+fn fn_string_field_name() {}
+
+const CLASHY_FIELD_NAME: &str = "s";
+
+#[instrument(fields({CLASHY_FIELD_NAME} = "foo"))]
+fn fn_clashy_const_field_name(s: &str) {
+    let _ = s;
+}
+
 #[derive(Debug)]
 struct HasField {
     my_field: &'static str,
@@ -157,6 +187,53 @@ fn keyword_ident_in_field_name() {
             .only(),
     );
     run_test(span, || fn_keyword_ident_in_field("test"));
+}
+
+#[test]
+fn expr_const_field_name() {
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
+    run_test(span, || {
+        fn_const_field_name();
+    });
+}
+
+#[test]
+fn expr_const_fn_field_name() {
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
+    run_test(span, || {
+        fn_const_fn_field_name();
+    });
+}
+
+#[test]
+fn struct_const_field_name() {
+    let span = expect::span().with_fields(expect::field("foo.bar").with_value(&"baz").only());
+    run_test(span, || {
+        fn_struct_const_field_name();
+    });
+}
+
+#[test]
+fn string_field_name() {
+    let span = expect::span().with_fields(expect::field("foo").with_value(&"bar").only());
+    run_test(span, || {
+        fn_string_field_name();
+    });
+}
+
+#[test]
+fn clashy_const_field_name() {
+    let span = expect::span().with_fields(
+        // #3158: To be consistent with event! and span! macros, the duplicated value should be
+        // dropped, but checking for duplicated fields would incur a significant runtime cost, as
+        // non-trivial constants (const, const fn, ...) cannot be evaluated at compile time.
+        expect::field("s")
+            .with_value(&"foo")
+            .and(expect::field("s").with_value(&"hello world")),
+    );
+    run_test(span, || {
+        fn_clashy_const_field_name("hello world");
+    });
 }
 
 fn run_test<F: FnOnce() -> T, T>(span: NewSpan, fun: F) {

@@ -181,6 +181,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![allow(clippy::needless_doctest_main)]
@@ -225,8 +226,5 @@ pub mod prelude {
     //! extension traits. These traits allow attaching `SpanTrace`s to errors and
     //! subsequently retrieving them from `dyn Error` trait objects.
 
-    // apparently `as _` reexpoorts now generate `unreachable_pub` linting? which
-    // seems wrong to me...
-    #![allow(unreachable_pub)]
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }

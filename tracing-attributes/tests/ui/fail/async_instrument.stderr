@@ -14,15 +14,17 @@ error[E0308]: mismatched types
   --> tests/ui/fail/async_instrument.rs:10:5
    |
 10 |     ""
-   |     ^^- help: try using a conversion method: `.to_string()`
-   |     |
-   |     expected `String`, found `&str`
+   |     ^^ expected `String`, found `&str`
    |
 note: return type inferred to be `String` here
   --> tests/ui/fail/async_instrument.rs:9:31
    |
-9  | async fn simple_mismatch() -> String {
+ 9 | async fn simple_mismatch() -> String {
    |                               ^^^^^^
+help: try using a conversion method
+   |
+10 |     "".to_string()
+   |       ++++++++++++
 
 error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/fail/async_instrument.rs:14:57
@@ -33,20 +35,14 @@ error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
 16 | | }
    | | ^
    | | |
-   | |_`(&str,)` cannot be formatted with the default formatter
+   | |_the trait `std::fmt::Display` is not implemented for `(&str,)`
    |   return type was inferred to be `(&str,)` here
-   |
-   = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 
 error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/fail/async_instrument.rs:14:34
    |
 14 | async fn opaque_unsatisfied() -> impl std::fmt::Display {
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^ `(&str,)` cannot be formatted with the default formatter
-   |
-   = help: the trait `std::fmt::Display` is not implemented for `(&str,)`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `(&str,)`
 
 error[E0308]: mismatched types
   --> tests/ui/fail/async_instrument.rs:22:5
@@ -82,15 +78,17 @@ error[E0308]: mismatched types
   --> tests/ui/fail/async_instrument.rs:35:16
    |
 35 |         return "";
-   |                ^^- help: try using a conversion method: `.to_string()`
-   |                |
-   |                expected `String`, found `&str`
+   |                ^^ expected `String`, found `&str`
    |
 note: return type inferred to be `String` here
   --> tests/ui/fail/async_instrument.rs:33:28
    |
 33 | async fn early_return() -> String {
    |                            ^^^^^^
+help: try using a conversion method
+   |
+35 |         return "".to_string();
+   |                  ++++++++++++
 
 error[E0308]: mismatched types
   --> tests/ui/fail/async_instrument.rs:40:1

@@ -1,4 +1,4 @@
-//! Formatters for logging `tracing` events.
+//! Formatters for logging [`tracing`] events.
 //!
 //! This module provides several formatter implementations, as well as utilities
 //! for implementing custom formatters.
@@ -48,6 +48,9 @@ use tracing_log::NormalizeEvent;
 #[cfg(feature = "ansi")]
 use nu_ansi_term::{Color, Style};
 
+mod escape;
+use escape::Escape;
+
 #[cfg(feature = "json")]
 mod json;
 #[cfg(feature = "json")]
@@ -62,17 +65,17 @@ pub use pretty::*;
 
 /// A type that can format a tracing [`Event`] to a [`Writer`].
 ///
-/// `FormatEvent` is primarily used in the context of [`fmt::Subscriber`] or
+/// [`FormatEvent`] is primarily used in the context of [`fmt::Subscriber`] or
 /// [`fmt::Layer`]. Each time an event is dispatched to [`fmt::Subscriber`] or
 /// [`fmt::Layer`], the subscriber or layer
-/// forwards it to its associated `FormatEvent` to emit a log message.
+/// forwards it to its associated [`FormatEvent`] to emit a log message.
 ///
 /// This trait is already implemented for function pointers with the same
 /// signature as `format_event`.
 ///
 /// # Arguments
 ///
-/// The following arguments are passed to `FormatEvent::format_event`:
+/// The following arguments are passed to [`FormatEvent::format_event`]:
 ///
 /// * A [`FmtContext`]. This is an extension of the [`layer::Context`] type,
 ///   which can be used for accessing stored information such as the current
@@ -83,7 +86,7 @@ pub use pretty::*;
 ///   [`FmtContext::field_format`] method. This can be used when the
 ///   [`FormatEvent`] implementation needs to format the event's fields.
 ///
-///   For convenience, [`FmtContext`] also [implements `FormatFields`],
+///   For convenience, [`FmtContext`] also implements [`FormatFields`],
 ///   forwarding to the configured [`FormatFields`] type.
 ///
 /// * A [`Writer`] to which the formatted representation of the event is
@@ -108,7 +111,7 @@ pub use pretty::*;
 ///
 /// # Examples
 ///
-/// This example re-implements a simiplified version of this crate's [default
+/// This example re-implements a simplified version of this crate's [default
 /// formatter]:
 ///
 /// ```rust
@@ -197,7 +200,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
-    /// Write a log message for `Event` in `Context` to the given [`Writer`].
+    /// Write a log message for [`Event`] in [`FmtContext`] to the given [`Writer`].
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
@@ -223,9 +226,9 @@ where
 }
 /// A type that can format a [set of fields] to a [`Writer`].
 ///
-/// `FormatFields` is primarily used in the context of [`FmtSubscriber`]. Each
+/// [`FormatFields`] is primarily used in the context of [`FmtSubscriber`]. Each
 /// time a span or event with fields is recorded, the subscriber will format
-/// those fields with its associated `FormatFields` implementation.
+/// those fields with its associated [`FormatFields`] implementation.
 ///
 /// [set of fields]: crate::field::RecordFields
 /// [`FmtSubscriber`]: super::Subscriber
@@ -250,7 +253,7 @@ pub trait FormatFields<'writer> {
     }
 }
 
-/// Returns the default configuration for an [event formatter].
+/// Returns the default configuration for an event formatter.
 ///
 /// Methods on the returned event formatter can be used for further
 /// configuration. For example:
@@ -271,7 +274,7 @@ pub fn format() -> Format {
     Format::default()
 }
 
-/// Returns the default configuration for a JSON [event formatter].
+/// Returns the default configuration for a JSON event formatter.
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub fn json() -> Format<Json> {
@@ -292,14 +295,14 @@ where
 ///
 /// This type is provided as input to the [`FormatEvent::format_event`] and
 /// [`FormatFields::format_fields`] methods, which will write formatted
-/// representations of [`Event`]s and [fields] to the `Writer`.
+/// representations of [`Event`]s and [fields] to the [`Writer`].
 ///
 /// This type implements the [`std::fmt::Write`] trait, allowing it to be used
 /// with any function that takes an instance of [`std::fmt::Write`].
 /// Additionally, it can be used with the standard library's [`std::write!`] and
 /// [`std::writeln!`] macros.
 ///
-/// Additionally, a `Writer` may expose additional `tracing`-specific
+/// Additionally, a [`Writer`] may expose additional [`tracing`]-specific
 /// information to the formatter implementation.
 ///
 /// [fields]: tracing_core::field
@@ -327,7 +330,7 @@ pub struct FieldFnVisitor<'a, F> {
 ///
 /// The compact format includes fields from all currently entered spans, after
 /// the event's fields. Span fields are ordered (but not grouped) by
-/// span, and span names are  not shown. A more compact representation of the
+/// span, and span names are not shown. A more compact representation of the
 /// event's [`Level`] is used, and additional information—such as the event's
 /// target—is disabled by default.
 ///
@@ -389,7 +392,7 @@ pub struct Full;
 
 /// A pre-configured event formatter.
 ///
-/// You will usually want to use this as the `FormatEvent` for a `FmtSubscriber`.
+/// You will usually want to use this as the [`FormatEvent`] for a [`FmtSubscriber`].
 ///
 /// The default logging format, [`Full`] includes all fields in each event and its containing
 /// spans. The [`Compact`] logging format is intended to produce shorter log
@@ -397,6 +400,8 @@ pub struct Full;
 /// span context, but other information is abbreviated. The [`Pretty`] logging
 /// format is an extra-verbose, multi-line human-readable logging format
 /// intended for use in development.
+/// 
+/// [`FmtSubscriber`]: super::Subscriber
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
     format: F,
@@ -423,12 +428,14 @@ impl<'writer> Writer<'writer> {
     /// Create a new [`Writer`] from any type that implements [`fmt::Write`].
     ///
     /// The returned `Writer` value may be passed as an argument to methods
-    /// such as [`Format::format_event`]. Since constructing a `Writer`
+    /// such as [`Format::format_event`]. Since constructing a [`Writer`]
     /// mutably borrows the underlying [`fmt::Write`] instance, that value may
-    /// be accessed again once the `Writer` is dropped. For example, if the
+    /// be accessed again once the [`Writer`] is dropped. For example, if the
     /// value implementing [`fmt::Write`] is a [`String`], it will contain
     /// the formatted output of [`Format::format_event`], which may then be
     /// used for other purposes.
+    ///
+    /// [`String`]: alloc::string::String
     #[must_use]
     pub fn new(writer: &'writer mut impl fmt::Write) -> Self {
         Self {
@@ -442,10 +449,10 @@ impl<'writer> Writer<'writer> {
         Self { is_ansi, ..self }
     }
 
-    /// Return a new `Writer` that mutably borrows `self`.
+    /// Return a new [`Writer`] that mutably borrows [`self`].
     ///
-    /// This can be used to temporarily borrow a `Writer` to pass a new `Writer`
-    /// to a function that takes a `Writer` by value, allowing the original writer
+    /// This can be used to temporarily borrow a [`Writer`] to pass a new [`Writer`]
+    /// to a function that takes a [`Writer`] by value, allowing the original writer
     /// to still be used once that function returns.
     pub fn by_ref(&mut self) -> Writer<'_> {
         let is_ansi = self.is_ansi;
@@ -455,15 +462,15 @@ impl<'writer> Writer<'writer> {
         }
     }
 
-    /// Writes a string slice into this `Writer`, returning whether the write succeeded.
+    /// Writes a string slice into this [`Writer`], returning whether the write succeeded.
     ///
     /// This method can only succeed if the entire string slice was successfully
     /// written, and this method will not return until all data has been written
     /// or an error occurs.
     ///
-    /// This is identical to calling the [`write_str` method] from the `Writer`'s
+    /// This is identical to calling the [`write_str` method] from the [`Writer`]'s
     /// [`std::fmt::Write`] implementation. However, it is also provided as an
-    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// inherent method, so that [`Writer`]s can be used without needing to import the
     /// [`std::fmt::Write`] trait.
     ///
     /// # Errors
@@ -483,9 +490,9 @@ impl<'writer> Writer<'writer> {
     /// written, and this method will not return until all data has been
     /// written or an error occurs.
     ///
-    /// This is identical to calling the [`write_char` method] from the `Writer`'s
+    /// This is identical to calling the [`write_char` method] from the [`Writer`]'s
     /// [`std::fmt::Write`] implementation. However, it is also provided as an
-    /// inherent method, so that `Writer`s can be used without needing to import the
+    /// inherent method, so that [`Writer`]s can be used without needing to import the
     /// [`std::fmt::Write`] trait.
     ///
     /// # Errors
@@ -498,14 +505,14 @@ impl<'writer> Writer<'writer> {
         self.writer.write_char(c)
     }
 
-    /// Glue for usage of the [`write!`] macro with `Writer`s.
+    /// Glue for usage of the [`write!`] macro with [`Writer`]s.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
     ///
-    /// This is identical to calling the [`write_fmt` method] from the `Writer`'s
+    /// This is identical to calling the [`write_fmt` method] from the [`Writer`]'s
     /// [`std::fmt::Write`] implementation. However, it is also provided as an
-    /// inherent method, so that `Writer`s can be used with the [`write!` macro]
+    /// inherent method, so that [`Writer`]s can be used with the [`write!`] macro
     /// without needing to import the
     /// [`std::fmt::Write`] trait.
     ///
@@ -626,7 +633,7 @@ impl<F, T> Format<F, T> {
     ///
     /// See [`Pretty`].
     ///
-    /// Note that this requires the "ansi" feature to be enabled.
+    /// Note that this requires the `"ansi"` feature to be enabled.
     ///
     /// # Options
     ///
@@ -1190,7 +1197,6 @@ pub struct DefaultVisitor<'a> {
 
 impl DefaultFields {
     /// Returns a new default [`FormatFields`] implementation.
-    ///
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -1257,7 +1263,7 @@ impl field::Visit for DefaultVisitor<'_> {
                 field,
                 &format_args!(
                     "{} {}{}{}{}",
-                    value,
+                    Escape(&format_args!("{}", value)),
                     italic.paint(field.name()),
                     italic.paint(".sources"),
                     self.writer.dimmed().paint("="),
@@ -1265,7 +1271,10 @@ impl field::Visit for DefaultVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(field, &format_args!("{}", value))
+            self.record_debug(
+                field,
+                &format_args!("{}", Escape(&format_args!("{}", value))),
+            )
         }
     }
 
@@ -1287,7 +1296,10 @@ impl field::Visit for DefaultVisitor<'_> {
         self.maybe_pad();
 
         self.result = match name {
-            "message" => write!(self.writer, "{:?}", value),
+            "message" => {
+                // Escape ANSI characters to prevent malicious patterns (e.g., terminal injection attacks)
+                write!(self.writer, "{:?}", Escape(value))
+            }
             name if name.starts_with("r#") => write!(
                 self.writer,
                 "{}{}{:?}",
@@ -1318,7 +1330,7 @@ impl crate::field::VisitFmt for DefaultVisitor<'_> {
     }
 }
 
-/// Renders an error into a list of sources, *including* the error
+/// Renders an error into a list of sources, *including* the error.
 struct ErrorSourceList<'a>(&'a (dyn std::error::Error + 'static));
 
 impl Display for ErrorSourceList<'_> {
@@ -1326,7 +1338,7 @@ impl Display for ErrorSourceList<'_> {
         let mut list = f.debug_list();
         let mut curr = Some(self.0);
         while let Some(curr_err) = curr {
-            list.entry(&format_args!("{}", curr_err));
+            list.entry(&Escape(&format_args!("{}", curr_err)));
             curr = curr_err.source();
         }
         list.finish()
@@ -1743,6 +1755,11 @@ impl Display for TimingDisplay {
 #[cfg(test)]
 pub(super) mod test {
     use crate::fmt::{test::MockMakeWriter, time::FormatTime};
+    use alloc::{
+        borrow::ToOwned,
+        format,
+        string::{String, ToString},
+    };
     use tracing::{
         self,
         dispatcher::{set_default, Dispatch},

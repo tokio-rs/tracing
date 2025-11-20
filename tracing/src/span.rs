@@ -317,18 +317,19 @@
 //! [`follows_from`]: Span::follows_from()
 //! [guard]: Entered
 //! [parent]: #span-relationships
+
 pub use tracing_core::span::{Attributes, Id, Record};
 
-use crate::stdlib::{
+use crate::{
+    dispatcher::{self, Dispatch},
+    field, Metadata,
+};
+use core::{
     cmp, fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
     mem,
     ops::Deref,
-};
-use crate::{
-    dispatcher::{self, Dispatch},
-    field, Metadata,
 };
 
 /// Trait implemented by types which have a span `Id`.
@@ -924,7 +925,7 @@ impl Span {
     /// ```
     ///
     /// If the current [`Subscriber`] enables the [`DEBUG`] level, then both
-    /// the "parent" and "child" spans will be enabled. Thus, when the "spawaned
+    /// the "parent" and "child" spans will be enabled. Thus, when the "spawned
     /// a thread!" event occurs, it will be inside of the "child" span. Because
     /// "parent" is the parent of "child", the event will _also_ be inside of
     /// "parent".

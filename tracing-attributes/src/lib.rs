@@ -54,6 +54,7 @@
 //!
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
@@ -78,9 +79,6 @@
     unused_parens,
     while_true
 )]
-// TODO: once `tracing` bumps its MSRV to 1.42, remove this allow.
-#![allow(unused)]
-extern crate proc_macro;
 
 use proc_macro2::TokenStream;
 use quote::TokenStreamExt;
@@ -206,19 +204,23 @@ mod expand;
 ///
 /// # Adding Fields
 ///
-/// Additional fields (key-value pairs with arbitrary data) can be passed to
+/// Additional fields (key-value pairs with arbitrary data) can be passed
 /// to the generated span through the `fields` argument on the
-/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
+/// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported. Any
+/// identifier, or a constant expression that evaluates to one, enclosed in curly
+/// braces. Note that nested (dotted) field names are also supported. Any
 /// Rust expression can be used as a field value in this manner. These
 /// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
 /// also be specified *without* values. Doing so will result in an [empty field]
 /// whose value may be recorded later within the function body.
 ///
-/// Note that overlap between the names of fields and (non-skipped) arguments
-/// will result in a compile error.
+/// Note that defining a field with the same name as a (non-skipped)
+/// argument will implicitly skip the argument, unless the field is provided
+/// via a constant expression (e.g. {EXPR} or {const_fn()}) as deduplicating
+/// would incur a runtime cost. In this case, the
+/// field must be explicitly skipped.
 ///
 /// ## Examples
 ///
@@ -409,8 +411,16 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(fields(foo="bar", id=1, show=true))]
-/// fn my_function(arg: usize) {
+/// #[derive(Debug)]
+/// struct Argument;
+/// impl Argument {
+///     fn bar(&self) -> &'static str {
+///         "bar"
+///     }
+/// }
+/// const FOOBAR: &'static str = "foo.bar";
+/// #[instrument(fields(foo="bar", id=1, show=true, {FOOBAR}=%arg.bar()))]
+/// fn my_function(arg: Argument) {
 ///     // ...
 /// }
 /// ```

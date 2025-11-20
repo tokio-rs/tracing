@@ -32,11 +32,11 @@ fn memfd_create_syscall(flags: c_uint) -> c_int {
     }
 }
 
-pub fn create_sealable() -> Result<File> {
+pub(crate) fn create_sealable() -> Result<File> {
     create(MFD_ALLOW_SEALING | MFD_CLOEXEC)
 }
 
-pub fn seal_fully(fd: RawFd) -> Result<()> {
+pub(crate) fn seal_fully(fd: RawFd) -> Result<()> {
     let all_seals = F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_SEAL;
     let result = unsafe { fcntl(fd, F_ADD_SEALS, all_seals) };
     if result < 0 {

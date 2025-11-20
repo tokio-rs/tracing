@@ -1,14 +1,17 @@
-use matchers::Pattern;
-use std::{
+use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
+};
+use core::{
     cmp::Ordering,
-    error::Error,
     fmt::{self, Write},
     str::FromStr,
-    sync::{
-        atomic::{AtomicBool, Ordering::*},
-        Arc,
-    },
+    sync::atomic::{AtomicBool, Ordering::*},
 };
+use matchers::Pattern;
+use std::error::Error;
 
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
@@ -334,7 +337,7 @@ impl Eq for MatchPattern {}
 impl PartialOrd for MatchPattern {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 
@@ -430,7 +433,7 @@ impl Eq for MatchDebug {}
 impl PartialOrd for MatchDebug {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 
@@ -507,9 +510,7 @@ impl Visit for MatchVisitor<'_> {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched))
-                if (value - *e).abs() < f64::EPSILON =>
-            {
+            Some((ValueMatch::F64(ref e), ref matched)) if (value - *e).abs() < f64::EPSILON => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -576,6 +577,8 @@ impl Visit for MatchVisitor<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
+
     #[derive(Debug)]
     #[allow(dead_code)]
     struct MyStruct {
