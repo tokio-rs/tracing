@@ -976,7 +976,7 @@ where
 
                 let ext = span.extensions();
                 if let Some(fields) = &ext.get::<FormattedFields<N>>() {
-                    if !fields.is_empty() {
+                    if !fields.fields.is_empty() {
                         write!(writer, "{}{}{}", bold.paint("{"), fields, bold.paint("}"))?;
                     }
                 }
@@ -1153,7 +1153,7 @@ where
         {
             let exts = span.extensions();
             if let Some(fields) = exts.get::<FormattedFields<N>>() {
-                if !fields.is_empty() {
+                if !fields.fields.is_empty() {
                     write!(writer, " {}", dimmed.paint(&fields.fields))?;
                 }
             }
