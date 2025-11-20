@@ -1,9 +1,6 @@
 #![cfg(feature = "registry")]
 
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::{Arc, Mutex};
 
 use tracing::{
     span::{self, Id},
@@ -17,15 +14,26 @@ use tracing_subscriber::{
 
 #[test]
 fn span_entered_on_different_thread_from_subscriber() {
+    /// Counters for various lifecycle events we want to track.
+    #[derive(Default)]
+    struct LifecycleCounts {
+        layer_new_count: usize,
+        layer_enter_count: usize,
+        layer_exit_count: usize,
+        layer_close_count: usize,
+
+        sub_new_count: usize,
+        sub_clone_count: usize,
+        sub_enter_count: usize,
+        sub_exit_count: usize,
+        sub_close_count: usize,
+    }
+
     /// Wraps `tracing_subscriber::Registry` and adds some accounting
     /// to verify that the subscriber is receiving the expected number of calls.
     struct CountingSubscriber {
         inner: Registry,
-        new_count: Arc<AtomicUsize>,
-        clone_count: Arc<AtomicUsize>,
-        enter_count: Arc<AtomicUsize>,
-        exit_count: Arc<AtomicUsize>,
-        close_count: Arc<AtomicUsize>,
+        counts: Arc<Mutex<LifecycleCounts>>,
     }
 
     // Forward all subscriber methods to the inner registry, adding counts where appropriate.
@@ -47,18 +55,18 @@ fn span_entered_on_different_thread_from_subscriber() {
         }
 
         fn clone_span(&self, id: &span::Id) -> span::Id {
-            self.clone_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_clone_count += 1;
             self.inner.clone_span(id)
         }
 
         fn drop_span(&self, id: span::Id) {
-            self.close_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_close_count += 1;
             #[allow(deprecated)]
             self.inner.drop_span(id);
         }
 
         fn try_close(&self, id: span::Id) -> bool {
-            self.close_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_close_count += 1;
             self.inner.try_close(id)
         }
 
@@ -75,7 +83,7 @@ fn span_entered_on_different_thread_from_subscriber() {
         }
 
         fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
-            self.new_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_new_count += 1;
             self.inner.new_span(span)
         }
 
@@ -93,21 +101,18 @@ fn span_entered_on_different_thread_from_subscriber() {
 
         fn enter(&self, span: &span::Id) {
             self.inner.enter(span);
-            self.enter_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_enter_count += 1;
         }
 
         fn exit(&self, span: &span::Id) {
             self.inner.exit(span);
-            self.exit_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().sub_exit_count += 1;
         }
     }
 
     /// Similar to the above, but for a `Layer` which sits atop the subscriber.
     struct CountingLayer {
-        new_count: Arc<AtomicUsize>,
-        enter_count: Arc<AtomicUsize>,
-        exit_count: Arc<AtomicUsize>,
-        close_count: Arc<AtomicUsize>,
+        counts: Arc<Mutex<LifecycleCounts>>,
     }
 
     // Just does bookkeeping where relevant.
@@ -118,48 +123,33 @@ fn span_entered_on_different_thread_from_subscriber() {
             _id: &span::Id,
             _ctx: Context<'_, CountingSubscriber>,
         ) {
-            self.new_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().layer_new_count += 1;
         }
 
         fn on_enter(&self, _id: &span::Id, _ctx: Context<'_, CountingSubscriber>) {
-            self.enter_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().layer_enter_count += 1;
         }
 
         fn on_exit(&self, _id: &span::Id, _ctx: Context<'_, CountingSubscriber>) {
-            self.exit_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().layer_exit_count += 1;
         }
 
         fn on_close(&self, _id: Id, _ctx: Context<'_, CountingSubscriber>) {
-            self.close_count.fetch_add(1, Ordering::SeqCst);
+            self.counts.lock().unwrap().layer_close_count += 1;
         }
     }
 
     // Setup subscriber and layer.
 
-    let l_new_count = Arc::new(AtomicUsize::new(0));
-    let l_enter_count = Arc::new(AtomicUsize::new(0));
-    let l_exit_count = Arc::new(AtomicUsize::new(0));
-    let l_close_count = Arc::new(AtomicUsize::new(0));
-    let layer = CountingLayer {
-        new_count: l_new_count.clone(),
-        enter_count: l_enter_count.clone(),
-        exit_count: l_exit_count.clone(),
-        close_count: l_close_count.clone(),
-    };
+    let counts = Arc::new(Mutex::new(LifecycleCounts::default()));
 
-    let s_new_count = Arc::new(AtomicUsize::new(0));
-    let s_clone_count = Arc::new(AtomicUsize::new(0));
-    let s_enter_count = Arc::new(AtomicUsize::new(0));
-    let s_exit_count = Arc::new(AtomicUsize::new(0));
-    let s_close_count = Arc::new(AtomicUsize::new(0));
+    let layer = CountingLayer {
+        counts: counts.clone(),
+    };
 
     let subscriber = CountingSubscriber {
         inner: tracing_subscriber::registry(),
-        new_count: s_new_count.clone(),
-        clone_count: s_clone_count.clone(),
-        enter_count: s_enter_count.clone(),
-        exit_count: s_exit_count.clone(),
-        close_count: s_close_count.clone(),
+        counts: counts.clone(),
     };
     let subscriber = Arc::new(subscriber.with(layer));
 
@@ -178,29 +168,23 @@ fn span_entered_on_different_thread_from_subscriber() {
     // layer should have seen exactly one new span & close
     // should be one enter / exit cycle
 
-    let layer_new_count = l_new_count.load(Ordering::SeqCst);
-    let layer_enter_count = l_enter_count.load(Ordering::SeqCst);
-    let layer_exit_count = l_exit_count.load(Ordering::SeqCst);
-    let layer_close_count = l_close_count.load(Ordering::SeqCst);
+    let counts = counts.lock().unwrap();
 
-    assert_eq!(layer_new_count, 1);
-    assert_eq!(layer_enter_count, 1);
-    assert_eq!(layer_exit_count, 1);
-    assert_eq!(layer_close_count, 1);
+    assert_eq!(counts.layer_new_count, 1);
+    assert_eq!(counts.layer_enter_count, 1);
+    assert_eq!(counts.layer_exit_count, 1);
+    assert_eq!(counts.layer_close_count, 1);
 
     // subscriber should have seen one new span
     // new + any clones should equal number of closes
     // enter and exit should match layer counts
 
-    let sub_new_count = s_new_count.load(Ordering::SeqCst);
-    let sub_clone_count = s_clone_count.load(Ordering::SeqCst);
-    let sub_enter_count = s_enter_count.load(Ordering::SeqCst);
-    let sub_exit_count = s_exit_count.load(Ordering::SeqCst);
-    let sub_close_count = s_close_count.load(Ordering::SeqCst);
+    assert_eq!(counts.sub_new_count, 1);
+    assert_eq!(
+        counts.sub_new_count + counts.sub_clone_count,
+        counts.sub_close_count
+    );
 
-    assert_eq!(sub_new_count, 1);
-    assert_eq!(sub_new_count + sub_clone_count, sub_close_count);
-
-    assert_eq!(sub_enter_count, layer_enter_count);
-    assert_eq!(sub_exit_count, layer_exit_count);
+    assert_eq!(counts.sub_enter_count, counts.layer_enter_count);
+    assert_eq!(counts.sub_exit_count, counts.layer_exit_count);
 }
