@@ -16,7 +16,7 @@ use tracing_subscriber::{
 };
 
 #[test]
-fn test_callback_counts() {
+fn span_entered_on_different_thread_from_subscriber() {
     /// Wraps `tracing_subscriber::Registry` and adds some accounting
     /// to verify that the subscriber is receiving the expected number of calls.
     struct CountingSubscriber {
