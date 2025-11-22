@@ -252,6 +252,11 @@ where
         self.inner.on_layer(subscriber);
     }
 
+    fn on_reload_layer(&mut self, subscriber: &S) {
+        self.layer.on_reload_layer(subscriber);
+        self.inner.on_reload_layer(subscriber);
+    }
+
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.pick_interest(self.layer.register_callsite(metadata), || {
             self.inner.register_callsite(metadata)
@@ -391,6 +396,11 @@ where
     #[cfg(all(feature = "registry", feature = "std"))]
     fn register_filter(&mut self) -> FilterId {
         self.inner.register_filter()
+    }
+
+    #[cfg(all(feature = "registry", feature = "std"))]
+    fn register_filter_immut(&self) -> FilterId {
+        self.inner.register_filter_immut()
     }
 }
 
