@@ -642,6 +642,41 @@ impl MockLayerBuilder {
         self
     }
 
+    /// Adds an expectation that [`Layer::on_register_dispatch`] will
+    /// be called next.
+    ///
+    /// **Note**: This expectation is usually fulfilled automatically when
+    /// a layer (wrapped in a subscriber) is set as the default via
+    /// [`tracing::subscriber::with_default`] or
+    /// [`tracing::subscriber::set_global_default`], so explicitly expecting
+    /// this is not usually necessary. However, it may be useful when testing
+    /// custom layer implementations that manually call `on_register_dispatch`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_mock::{expect, layer};
+    /// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+    ///
+    /// let (layer, handle) = layer::mock()
+    ///     .on_register_dispatch()
+    ///     .run_with_handle();
+    ///
+    /// let _subscriber = tracing_subscriber::registry()
+    ///     .with(layer.with_filter(tracing_subscriber::filter::filter_fn(move |_meta| true)))
+    ///     .set_default();
+    ///
+    /// // The layer's on_register_dispatch was called when the subscriber was set as default
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`Layer::on_register_dispatch`]: tracing_subscriber::layer::Layer::on_register_dispatch
+    pub fn on_register_dispatch(mut self) -> Self {
+        self.expected.push_back(Expect::OnRegisterDispatch);
+        self
+    }
+
     /// Expects that no further traces are received.
     ///
     /// The call to `only` should appear immediately before the final
@@ -835,6 +870,14 @@ impl<C> Layer<C> for MockLayer
 where
     C: Subscriber + for<'a> LookupSpan<'a>,
 {
+    fn on_register_dispatch(&self, _subscriber: &tracing::Dispatch) {
+        println!("[{}] on_register_dispatch", self.name);
+        let mut expected = self.expected.lock().unwrap();
+        if let Some(Expect::OnRegisterDispatch) = expected.front() {
+            expected.pop_front();
+        }
+    }
+
     fn register_callsite(
         &self,
         metadata: &'static tracing::Metadata<'static>,

@@ -802,6 +802,37 @@ where
         self
     }
 
+    /// Adds an expectation that [`Subscriber::on_register_dispatch`] will
+    /// be called next.
+    ///
+    /// **Note**: This expectation is usually fulfilled automatically when
+    /// a subscriber is set as the default via [`tracing::subscriber::with_default`]
+    /// or [`tracing::subscriber::set_global_default`], so explicitly expecting
+    /// this is not usually necessary. However, it may be useful when testing
+    /// custom subscriber implementations that manually call `on_register_dispatch`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_mock::{expect, subscriber};
+    ///
+    /// let (subscriber, handle) = subscriber::mock()
+    ///     .on_register_dispatch()
+    ///     .run_with_handle();
+    ///
+    /// tracing::subscriber::with_default(subscriber, || {
+    ///     // The subscriber's on_register_dispatch was called when it was set as default
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
+    /// [`Subscriber::on_register_dispatch`]: tracing::Subscriber::on_register_dispatch
+    pub fn on_register_dispatch(mut self) -> Self {
+        self.expected.push_back(Expect::OnRegisterDispatch);
+        self
+    }
+
     /// Filter the traces evaluated by the `MockSubscriber`.
     ///
     /// The filter will be applied to all traces received before
@@ -1001,6 +1032,14 @@ impl<F> Subscriber for Running<F>
 where
     F: Fn(&Metadata<'_>) -> bool + 'static,
 {
+    fn on_register_dispatch(&self, _subscriber: &tracing::Dispatch) {
+        println!("[{}] on_register_dispatch", self.name);
+        let mut expected = self.expected.lock().unwrap();
+        if let Some(Expect::OnRegisterDispatch) = expected.front() {
+            expected.pop_front();
+        }
+    }
+
     fn enabled(&self, meta: &Metadata<'_>) -> bool {
         println!("[{}] enabled: {:#?}", self.name, meta);
         let enabled = (self.filter)(meta);
