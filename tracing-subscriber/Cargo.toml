@@ -81,7 +81,7 @@ tracing-log = { path = "../tracing-log", version = "0.2.0" }
 criterion = { version = "0.3.6", default-features = false }
 regex = { version = "1", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.2.0", default-features = false, features = ["std-future", "std"] }
-tokio = { version = "1", features = ["rt", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 # Enable the `time` crate's `macros` feature, for examples.
 time = { version = "0.3.2", features = ["formatting", "macros"] }
 
