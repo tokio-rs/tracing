@@ -1602,7 +1602,7 @@ impl<F> fmt::Debug for FieldFnVisitor<'_, F> {
 ///
 /// See also [`with_span_events`].
 /// 
-/// [`with_span_events`]: (super::SubscriberBuilder::with_span_events)
+/// [`with_span_events`]: super::SubscriberBuilder::with_span_events
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);
 

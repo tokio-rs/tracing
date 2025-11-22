@@ -195,7 +195,7 @@ impl Builder {
     /// the maximum, so if you need to retain `m` log files, specify a max of
     /// `m + 1`.
     ///
-    /// If no value is supplied, the `RollingAppender` will not remove any files.
+    /// If `0` is supplied, the `RollingAppender` will not remove any files.
     ///
     /// Files are considered candidates for deletion based on the following
     /// criteria:
@@ -232,7 +232,8 @@ impl Builder {
     #[must_use]
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
-            max_files: Some(n),
+            // Setting `n` to 0 will disable the max files (effectively make it infinite).
+            max_files: Some(n).filter(|&n| n > 0),
             ..self
         }
     }
