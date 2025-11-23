@@ -1,6 +1,6 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing-flame
 
@@ -9,7 +9,7 @@ and flamecharts with [`inferno`]
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -26,7 +26,7 @@ flamegraph/flamechart. Flamegraphs/flamecharts are useful for identifying perfor
 bottlenecks in an application. For more details, see Brendan Gregg's [post]
 on flamegraphs.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 [post]: http://www.brendangregg.com/flamegraphs.html
@@ -106,7 +106,7 @@ _flamechart_, which _does not_ sort or collapse identical stack frames.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -131,13 +131,13 @@ terms or conditions.
 [`FlameLayer`]: https://docs.rs/tracing-flame/*/tracing_flame/struct.FlameLayer.html
 [`FlushGuard`]: https://docs.rs/tracing-flame/*/tracing_flame/struct.FlushGuard.html
 [`inferno-flamegraph`]: https://docs.rs/inferno/0.9.5/inferno/index.html#producing-a-flame-graph
-[`tracing`]: https://github.com/tokio-rs/tracing/tree/master/tracing
+[`tracing`]: https://github.com/tokio-rs/tracing/tree/main/tracing
 [crates-badge]: https://img.shields.io/crates/v/tracing-flame.svg
 [crates-url]: https://crates.io/crates/tracing-flame
 [docs-badge]: https://docs.rs/tracing-flame/badge.svg
 [docs-url]: https://docs.rs/tracing-flame/0.2.6
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_flame
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs/tracing_flame
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg

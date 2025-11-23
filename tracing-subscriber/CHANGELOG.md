@@ -1,3 +1,11 @@
+# 0.3.20 (August 29, 2025)
+
+[ [crates.io][crate-0.3.20] ] | [ [docs.rs][docs-0.3.20] ]
+
+### Fixed
+
+- Escape ANSI escape sequences in logs
+
 # 0.3.19 (November 29, 2024)
 
 [ [crates.io][crate-0.3.19] ] | [ [docs.rs][docs-0.3.19] ]

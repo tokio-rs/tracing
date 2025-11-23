@@ -18,7 +18,7 @@
 //!
 //! **Note**: This crate is currently experimental.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -167,7 +167,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -180,7 +180,8 @@
 //!
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![allow(clippy::needless_doctest_main)]
@@ -225,8 +226,5 @@ pub mod prelude {
     //! extension traits. These traits allow attaching `SpanTrace`s to errors and
     //! subsequently retrieving them from `dyn Error` trait objects.
 
-    // apparently `as _` reexpoorts now generate `unreachable_pub` linting? which
-    // seems wrong to me...
-    #![allow(unreachable_pub)]
     pub use crate::{ExtractSpanTrace as _, InstrumentError as _, InstrumentResult as _};
 }

@@ -1,3 +1,26 @@
+# 0.1.30 (June 17, 2025)
+
+### Fixed
+
+- Fix `tracing::instrument` regression around shadowing ([#3311])
+
+[#3311]: https://github.com/tokio-rs/tracing/pull/3311
+
+# 0.1.29 (June 6, 2025)
+
+### Changed
+
+- Bump MSRV to 1.65 ([#3033])
+
+### Fixed
+
+- Let `dead_code` lint work on `#[instrument]`ed functions ([#3108])
+- Globally qualify attribute paths ([#3126])
+
+[#3033]: https://github.com/tokio-rs/tracing/pull/3033
+[#3108]: https://github.com/tokio-rs/tracing/pull/3108
+[#3126]: https://github.com/tokio-rs/tracing/pull/3126
+
 # 0.1.28 (November 26, 2024)
 
 ### Changed

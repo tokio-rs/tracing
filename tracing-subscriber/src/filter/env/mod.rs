@@ -14,8 +14,10 @@ use crate::{
     layer::{Context, Layer},
     sync::RwLock,
 };
+use alloc::{fmt, str::FromStr, vec::Vec};
+use core::cell::RefCell;
 use directive::ParseError;
-use std::{cell::RefCell, collections::HashMap, env, error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, env, error::Error};
 use thread_local::ThreadLocal;
 use tracing_core::{
     callsite,
@@ -56,16 +58,16 @@ use tracing_core::{
 /// Each component (`target`, `span`, `field`, `value`, and `level`) will be covered in turn.
 ///
 /// - `target` matches the event or span's target. In general, this is the module path and/or crate name.
-///    Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
-///    please refer to [`Metadata`]'s documentation.
+///   Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
+///   please refer to [`Metadata`]'s documentation.
 /// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
-///    the `span` directive will match on spans _within_ the `target`.
+///   the `span` directive will match on spans _within_ the `target`.
 /// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
-///    and will match on any [`Span`] or [`Event`] that has a field with that name.
-///    For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
+///   and will match on any [`Span`] or [`Event`] that has a field with that name.
+///   For example: `[span{field=\"value\"}]=debug`, `[{field}]=trace`.
 /// - `value` matches on the value of a span's field. If a value is a numeric literal or a bool,
-///    it will match _only_ on that value. Otherwise, this filter matches the
-///    [`std::fmt::Debug`] output from the value.
+///   it will match _only_ on that value. Otherwise, this filter matches the
+///   [`std::fmt::Debug`] output from the value.
 /// - `level` sets a maximum verbosity level accepted by this directive.
 ///
 /// When a field value directive (`[{<FIELD NAME>=<FIELD_VALUE>}]=...`) matches a
@@ -78,8 +80,7 @@ use tracing_core::{
 /// instead.
 ///
 /// When field value filters are interpreted as regular expressions, the
-/// [`regex-automata` crate's regular expression syntax][re-syntax] is
-/// supported.
+/// [`regex` crate's regular expression syntax][re-syntax] is supported.
 ///
 /// **Note**: When filters are constructed from potentially untrusted inputs,
 /// [disabling regular expression matching](Builder::with_regex) is strongly
@@ -192,6 +193,7 @@ use tracing_core::{
 /// [global]: crate::layer#global-filtering
 /// [plf]: crate::layer#per-layer-filtering
 /// [filtering]: crate::layer#filtering-with-layers
+/// [re-syntax]: https://docs.rs/regex/1.11.1/regex/#syntax
 #[cfg_attr(docsrs, doc(cfg(all(feature = "env-filter", feature = "std"))))]
 #[derive(Debug)]
 pub struct EnvFilter {
@@ -202,6 +204,24 @@ pub struct EnvFilter {
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
     scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
     regex: bool,
+}
+
+/// Creates an [`EnvFilter`] with the same directives as `self`.
+///
+/// This does *not* clone any of the dynamic state that [`EnvFilter`] acquires while attached to a
+/// subscriber.
+impl Clone for EnvFilter {
+    fn clone(&self) -> EnvFilter {
+        EnvFilter {
+            statics: self.statics.clone(),
+            dynamics: self.dynamics.clone(),
+            has_dynamics: self.has_dynamics,
+            by_id: RwLock::default(),
+            by_cs: RwLock::default(),
+            scope: ThreadLocal::new(),
+            regex: self.regex,
+        }
+    }
 }
 
 type FieldMap<T> = HashMap<Field, T>;
@@ -817,6 +837,8 @@ impl Error for FromEnvError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
+    use std::println;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
 

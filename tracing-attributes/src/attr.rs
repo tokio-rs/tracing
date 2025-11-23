@@ -5,6 +5,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
+use syn::token::Brace;
 
 /// Arguments to `#[instrument(err(...))]` and `#[instrument(ret(...))]` which describe how the
 /// return value event should be emitted.
@@ -307,7 +308,7 @@ pub(crate) struct Fields(pub(crate) Punctuated<Field, Token![,]>);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Field {
-    pub(crate) name: Punctuated<Ident, Token![.]>,
+    pub(crate) name: FieldName,
     pub(crate) value: Option<Expr>,
     pub(crate) kind: FieldKind,
 }
@@ -317,6 +318,23 @@ pub(crate) enum FieldKind {
     Debug,
     Display,
     Value,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum FieldName {
+    Expr(Expr),
+    Punctuated(Punctuated<Ident, Token![.]>),
+}
+
+impl ToTokens for FieldName {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            FieldName::Expr(expr) => {
+                Brace::default().surround(tokens, |tokens| expr.to_tokens(tokens));
+            }
+            FieldName::Punctuated(punctuated) => punctuated.to_tokens(tokens),
+        }
+    }
 }
 
 impl Parse for Fields {
@@ -345,7 +363,18 @@ impl Parse for Field {
             input.parse::<Token![?]>()?;
             kind = FieldKind::Debug;
         };
-        let name = Punctuated::parse_separated_nonempty_with(input, Ident::parse_any)?;
+        // Parse name as either an expr between braces or a dotted identifier.
+        let name = if input.peek(syn::token::Brace) {
+            let content;
+            let _ = syn::braced!(content in input);
+            let expr = content.call(Expr::parse)?;
+            FieldName::Expr(expr)
+        } else {
+            FieldName::Punctuated(Punctuated::parse_separated_nonempty_with(
+                input,
+                Ident::parse_any,
+            )?)
+        };
         let value = if input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
             if input.peek(Token![%]) {
@@ -378,7 +407,7 @@ impl ToTokens for Field {
             // `instrument` produce empty field values, so changing it now
             // is a breaking change. agh.
             let name = &self.name;
-            tokens.extend(quote!(#name = tracing::field::Empty))
+            tokens.extend(quote!(#name = ::tracing::field::Empty))
         } else {
             self.kind.to_tokens(tokens);
             self.name.to_tokens(tokens);
@@ -454,11 +483,11 @@ impl Parse for Level {
 impl ToTokens for Level {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Level::Trace => tokens.extend(quote!(tracing::Level::TRACE)),
-            Level::Debug => tokens.extend(quote!(tracing::Level::DEBUG)),
-            Level::Info => tokens.extend(quote!(tracing::Level::INFO)),
-            Level::Warn => tokens.extend(quote!(tracing::Level::WARN)),
-            Level::Error => tokens.extend(quote!(tracing::Level::ERROR)),
+            Level::Trace => tokens.extend(quote!(::tracing::Level::TRACE)),
+            Level::Debug => tokens.extend(quote!(::tracing::Level::DEBUG)),
+            Level::Info => tokens.extend(quote!(::tracing::Level::INFO)),
+            Level::Warn => tokens.extend(quote!(::tracing::Level::WARN)),
+            Level::Error => tokens.extend(quote!(::tracing::Level::ERROR)),
             Level::Path(ref pat) => tokens.extend(quote!(#pat)),
         }
     }

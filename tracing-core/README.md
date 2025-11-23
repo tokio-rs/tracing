@@ -1,6 +1,6 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing-core
 
@@ -8,7 +8,7 @@ Core primitives for application-level tracing.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -16,11 +16,11 @@ Core primitives for application-level tracing.
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-core.svg
-[crates-url]: https://crates.io/crates/tracing-core/0.1.33
+[crates-url]: https://crates.io/crates/tracing-core/0.1.34
 [docs-badge]: https://docs.rs/tracing-core/badge.svg
-[docs-url]: https://docs.rs/tracing-core/0.1.33
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_core
+[docs-url]: https://docs.rs/tracing-core/0.1.34
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs/tracing_core
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -53,12 +53,12 @@ The crate provides:
 In addition, it defines the global callsite registry and per-thread current
 dispatcher which other components of the tracing system rely on.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
 ## Usage
-  
+
 Application authors will typically not use this crate directly. Instead, they
 will use the [`tracing`] crate, which provides a much more fully-featured
 API. However, this crate's API will change very infrequently, so it may be used
@@ -79,27 +79,27 @@ The following crate feature flags are available:
 
   ```toml
   [dependencies]
-  tracing-core = { version = "0.1.33", default-features = false }
+  tracing-core = { version = "0.1.34", default-features = false }
   ```
 
   **Note**:`tracing-core`'s `no_std` support requires `liballoc`.
 
 [`tracing`]: ../tracing
-[`span::Id`]: https://docs.rs/tracing-core/0.1.33/tracing_core/span/struct.Id.html
-[`Event`]: https://docs.rs/tracing-core/0.1.33/tracing_core/event/struct.Event.html
-[`Subscriber`]: https://docs.rs/tracing-core/0.1.33/tracing_core/subscriber/trait.Subscriber.html
-[`Metadata`]: https://docs.rs/tracing-core/0.1.33/tracing_core/metadata/struct.Metadata.html
-[`Callsite`]: https://docs.rs/tracing-core/0.1.33/tracing_core/callsite/trait.Callsite.html
-[`Field`]: https://docs.rs/tracing-core/0.1.33/tracing_core/field/struct.Field.html
-[`FieldSet`]: https://docs.rs/tracing-core/0.1.33/tracing_core/field/struct.FieldSet.html
-[`Value`]: https://docs.rs/tracing-core/0.1.33/tracing_core/field/trait.Value.html
-[`ValueSet`]: https://docs.rs/tracing-core/0.1.33/tracing_core/field/struct.ValueSet.html
-[`Dispatch`]: https://docs.rs/tracing-core/0.1.33/tracing_core/dispatcher/struct.Dispatch.html
+[`span::Id`]: https://docs.rs/tracing-core/0.1.34/tracing_core/span/struct.Id.html
+[`Event`]: https://docs.rs/tracing-core/0.1.34/tracing_core/event/struct.Event.html
+[`Subscriber`]: https://docs.rs/tracing-core/0.1.34/tracing_core/subscriber/trait.Subscriber.html
+[`Metadata`]: https://docs.rs/tracing-core/0.1.34/tracing_core/metadata/struct.Metadata.html
+[`Callsite`]: https://docs.rs/tracing-core/0.1.34/tracing_core/callsite/trait.Callsite.html
+[`Field`]: https://docs.rs/tracing-core/0.1.34/tracing_core/field/struct.Field.html
+[`FieldSet`]: https://docs.rs/tracing-core/0.1.34/tracing_core/field/struct.FieldSet.html
+[`Value`]: https://docs.rs/tracing-core/0.1.34/tracing_core/field/trait.Value.html
+[`ValueSet`]: https://docs.rs/tracing-core/0.1.34/tracing_core/field/struct.ValueSet.html
+[`Dispatch`]: https://docs.rs/tracing-core/0.1.34/tracing_core/dispatcher/struct.Dispatch.html
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

@@ -12,14 +12,14 @@ expert, we can use your help.
 This guide will help you get started. **Do not let this guide intimidate you**.
 It should be considered a map to help you navigate the process.
 
-You may also get help with contributing in the [dev channel][dev], please join
-us!
+You may also get help with contributing in [Tokio's Discord server][discord],
+`#tracing-dev` channel. Please join us!
 
 Tracing is a part of the [Tokio][tokio] project, and follows the project's
 guidelines for contributing. This document is based on the
 [`CONTRIBUTING.md` file][tokio-contrib] in the `tokio-rs/tokio` repository.
 
-[dev]: https://gitter.im/tokio-rs/dev
+[discord]: https://discord.gg/tokio
 [tokio]: https://tokio.rs
 [tokio-contrib]: https://github.com/tokio-rs/tokio/blob/master/CONTRIBUTING.md
 
@@ -214,7 +214,7 @@ be viewed by clicking the `details` link on the
 ### Building Documentation
 
 Tracing's documentation uses nightly-only RustDoc features and lints, like
-`doc(cfg)` and `broken_intra_doc_lints`. These features are enabled by 
+`doc(cfg)` and `broken_intra_doc_lints`. These features are enabled by
 passing `--cfg docsrs` to RustDoc. Therefore, in order to build Tracing's
 documentation the same way it would be built by docs.rs, it's necessary to
 use the following command:
@@ -430,8 +430,7 @@ When releasing a new version of a crate, follow these steps:
 2. **Update Cargo metadata.** After releasing any path dependencies, update the
    `version` field in `Cargo.toml` to the new version, and the `documentation`
    field to the docs.rs URL of the new version.
-3. **Update other documentation links.** Update the `#![doc(html_root_url)]`
-   attribute in the crate's `lib.rs` and the "Documentation" link in the crate's
+3. **Update the "Documentation" link in the crate's
    `README.md` to point to the docs.rs URL of the new version.
 4. **Update the changelog for the crate.** Each crate in the Tokio repository
    has its own `CHANGELOG.md` in that crate's subdirectory. Any changes to that

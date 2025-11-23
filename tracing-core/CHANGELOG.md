@@ -1,3 +1,16 @@
+# 0.1.34 (June 6, 2025)
+
+### Changed
+
+- Bump MSRV to 1.65 ([#3033])
+
+### Fixed
+
+- Do not compare references to pointers to compare pointers ([#3236])
+
+[#3033]: https://github.com/tokio-rs/tracing/pull/3033
+[#3236]: https://github.com/tokio-rs/tracing/pull/3236
+
 # 0.1.33 (November 25, 2024)
 
 ### Added

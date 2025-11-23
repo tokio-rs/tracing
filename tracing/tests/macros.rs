@@ -527,6 +527,13 @@ fn locals_no_message() {
         ?data,
     );
     event!(
+        name: "foo",
+        parent: ::core::option::Option::None,
+        Level::WARN,
+        private_data,
+        ?data,
+    );
+    event!(
         target: "app_events",
         Level::WARN,
         private_data,
@@ -570,6 +577,7 @@ fn trace() {
     trace!({ foo = ?2, bar.baz = %78 }, "quux");
     trace!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     trace!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
+    trace!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", foo = 3, bar.baz = 3,);
     trace!(target: "foo_events", "foo");
@@ -613,6 +621,9 @@ fn trace() {
     trace!(target: "foo_events", %foo, true, "message");
     trace!(name: "foo", target: "foo_events", ?foo, true, "message");
     trace!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    trace!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -636,6 +647,7 @@ fn debug() {
     debug!({ foo = ?2, bar.baz = %78 }, "quux");
     debug!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     debug!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
+    debug!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", foo = 3, bar.baz = 3,);
     debug!(target: "foo_events", "foo");
@@ -679,6 +691,9 @@ fn debug() {
     debug!(target: "foo_events", %foo, true, "message");
     debug!(name: "foo", target: "foo_events", ?foo, true, "message");
     debug!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    debug!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -702,6 +717,7 @@ fn info() {
     info!({ foo = ?2, bar.baz = %78 }, "quux");
     info!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     info!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
+    info!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", foo = 3, bar.baz = 3,);
     info!(target: "foo_events", "foo");
@@ -745,6 +761,9 @@ fn info() {
     info!(target: "foo_events", %foo, true, "message");
     info!(name: "foo", target: "foo_events", ?foo, true, "message");
     info!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    info!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -768,6 +787,7 @@ fn warn() {
     warn!({ foo = ?2, bar.baz = %78 }, "quux");
     warn!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     warn!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
+    warn!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", foo = 3, bar.baz = 3,);
     warn!(target: "foo_events", "foo");
@@ -811,6 +831,9 @@ fn warn() {
     warn!(target: "foo_events", %foo, true, "message");
     warn!(name: "foo", target: "foo_events", ?foo, true, "message");
     warn!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    warn!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
@@ -834,6 +857,7 @@ fn error() {
     error!({ foo = ?2, bar.baz = %78 }, "quux");
     error!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     error!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
+    error!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", foo = 3, bar.baz = 3,);
     error!(target: "foo_events", "foo");
@@ -877,6 +901,9 @@ fn error() {
     error!(target: "foo_events", %foo, true, "message");
     error!(name: "foo", target: "foo_events", ?foo, true, "message");
     error!(name: "foo", target: "foo_events", %foo, true, "message");
+    let debug = "debug";
+    let display = "display";
+    error!("{debug:?} {display:?}");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]

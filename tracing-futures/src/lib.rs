@@ -15,7 +15,7 @@
 //! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -24,23 +24,22 @@
 //! This crate provides a number of feature flags that enable compatibility
 //! features with other crates in the asynchronous ecosystem:
 //!
-//! - `tokio`: Enables compatibility with the `tokio` crate, including
-//!    [`Instrument`] and [`WithSubscriber`] implementations for
-//!    `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
-//!    `tokio::runtime::current_thread`. Enabled by default.
+//! - `tokio`: Enables compatibility with the `tokio` 0.1 crate, including
+//!   [`Instrument`] and [`WithSubscriber`] implementations for
+//!   `tokio::executor::Executor`, `tokio::runtime::Runtime`, and
+//!   `tokio::runtime::current_thread`. This is not needed for compatibility
+//!   with `tokio` v1.
 //! - `tokio-executor`: Enables compatibility with the `tokio-executor`
-//!    crate, including [`Instrument`] and [`WithSubscriber`]
-//!    implementations for types implementing `tokio_executor::Executor`.
-//!    This is intended primarily for use in crates which depend on
-//!    `tokio-executor` rather than `tokio`; in general the `tokio` feature
-//!    should be used instead.
+//!   crate, including [`Instrument`] and [`WithSubscriber`]
+//!   implementations for types implementing `tokio_executor::Executor`.
+//!   This is intended primarily for use in crates which depend on
+//!   `tokio-executor` rather than `tokio`; in general the `tokio` feature
+//!   should be used instead.
 //! - `std-future`: Enables compatibility with `std::future::Future`.
 //! - `futures-01`: Enables compatibility with version 0.1.x of the [`futures`]
 //!   crate.
 //! - `futures-03`: Enables compatibility with version 0.3.x of the `futures`
 //!   crate's `Spawn` and `LocalSpawn` traits.
-//! - `tokio-alpha`: Enables compatibility with `tokio` 0.2's alpha releases,
-//!   including the `tokio` 0.2 `Executor` and `TypedExecutor` traits.
 //! - `std`: Depend on the Rust standard library.
 //!
 //!   `no_std` users may disable this feature with `default-features = false`:
@@ -50,8 +49,9 @@
 //!   tracing-futures = { version = "0.2.5", default-features = false }
 //!   ```
 //!
-//! The `tokio`, `std-future` and `std` features are enabled by default.
+//! The `std-future` and `std` features are enabled by default.
 //!
+//! [`tracing`]: https://crates.io/crates/tracing
 //! [span]: tracing::span!
 //! [`Subscriber`]: tracing::subscriber
 //! [`futures`]: https://crates.io/crates/futures
@@ -59,7 +59,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -71,7 +71,8 @@
 //! long as doing so complies with this policy.
 //!
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![warn(

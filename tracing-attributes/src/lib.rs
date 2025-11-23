@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -53,7 +53,8 @@
 //! long as doing so complies with this policy.
 //!
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
@@ -78,13 +79,12 @@
     unused_parens,
     while_true
 )]
-// TODO: once `tracing` bumps its MSRV to 1.42, remove this allow.
-#![allow(unused)]
-extern crate proc_macro;
 
 use proc_macro2::TokenStream;
+use quote::TokenStreamExt;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
+use syn::token::Brace;
 use syn::{Attribute, ItemFn, Signature, Visibility};
 
 mod attr;
@@ -204,19 +204,23 @@ mod expand;
 ///
 /// # Adding Fields
 ///
-/// Additional fields (key-value pairs with arbitrary data) can be passed to
+/// Additional fields (key-value pairs with arbitrary data) can be passed
 /// to the generated span through the `fields` argument on the
-/// `#[instrument]` macro. Strings, integers or boolean literals are accepted values
+/// `#[instrument]` macro. Arbitrary expressions are accepted as value
 /// for each field. The name of the field must be a single valid Rust
-/// identifier, nested (dotted) field names are not supported. Any
+/// identifier, or a constant expression that evaluates to one, enclosed in curly
+/// braces. Note that nested (dotted) field names are also supported. Any
 /// Rust expression can be used as a field value in this manner. These
 /// expressions will be evaluated at the beginning of the function's body, so
 /// arguments to the function may be used in these expressions. Field names may
 /// also be specified *without* values. Doing so will result in an [empty field]
 /// whose value may be recorded later within the function body.
 ///
-/// Note that overlap between the names of fields and (non-skipped) arguments
-/// will result in a compile error.
+/// Note that defining a field with the same name as a (non-skipped)
+/// argument will implicitly skip the argument, unless the field is provided
+/// via a constant expression (e.g. {EXPR} or {const_fn()}) as deduplicating
+/// would incur a runtime cost. In this case, the
+/// field must be explicitly skipped.
 ///
 /// ## Examples
 ///
@@ -407,8 +411,16 @@ mod expand;
 ///
 /// ```
 /// # use tracing_attributes::instrument;
-/// #[instrument(fields(foo="bar", id=1, show=true))]
-/// fn my_function(arg: usize) {
+/// #[derive(Debug)]
+/// struct Argument;
+/// impl Argument {
+///     fn bar(&self) -> &'static str {
+///         "bar"
+///     }
+/// }
+/// const FOOBAR: &'static str = "foo.bar";
+/// #[instrument(fields(foo="bar", id=1, show=true, {FOOBAR}=%arg.bar()))]
+/// fn my_function(arg: Argument) {
 ///     // ...
 /// }
 /// ```
@@ -628,6 +640,7 @@ struct MaybeItemFn {
     inner_attrs: Vec<Attribute>,
     vis: Visibility,
     sig: Signature,
+    brace_token: Brace,
     block: TokenStream,
 }
 
@@ -638,6 +651,7 @@ impl MaybeItemFn {
             inner_attrs: &self.inner_attrs,
             vis: &self.vis,
             sig: &self.sig,
+            brace_token: &self.brace_token,
             block: &self.block,
         }
     }
@@ -651,12 +665,15 @@ impl Parse for MaybeItemFn {
         let vis: Visibility = input.parse()?;
         let sig: Signature = input.parse()?;
         let inner_attrs = input.call(Attribute::parse_inner)?;
-        let block: TokenStream = input.parse()?;
+        let block;
+        let brace_token = syn::braced!(block in input);
+        let block: TokenStream = block.call(|buffer| buffer.parse())?;
         Ok(Self {
             outer_attrs,
             inner_attrs,
             vis,
             sig,
+            brace_token,
             block,
         })
     }
@@ -674,12 +691,15 @@ impl From<ItemFn> for MaybeItemFn {
         let (outer_attrs, inner_attrs) = attrs
             .into_iter()
             .partition(|attr| attr.style == syn::AttrStyle::Outer);
+        let mut block_tokens = TokenStream::new();
+        block_tokens.append_all(block.stmts);
         Self {
             outer_attrs,
             inner_attrs,
             vis,
             sig,
-            block: block.to_token_stream(),
+            brace_token: block.brace_token,
+            block: block_tokens,
         }
     }
 }
@@ -692,5 +712,6 @@ struct MaybeItemFnRef<'a, B: ToTokens> {
     inner_attrs: &'a Vec<Attribute>,
     vis: &'a Visibility,
     sig: &'a Signature,
+    brace_token: &'a Brace,
     block: &'a B,
 }

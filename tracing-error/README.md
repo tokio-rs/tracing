@@ -1,6 +1,6 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing-error
 
@@ -9,20 +9,20 @@ information.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
 ![maintenance status][maint-badge]
 
-[Documentation (release)][docs-url] | [Documentation (master)][docs-master-url] | [Chat][discord-url]
+[Documentation (release)][docs-url] | [Documentation (v0.2.x)][docs-v0.2.x-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-error.svg
 [crates-url]: https://crates.io/crates/tracing-error/0.2.1
 [docs-badge]: https://docs.rs/tracing-error/badge.svg
 [docs-url]: https://docs.rs/tracing-error/0.2.1/tracing_error
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_error
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs/tracing_error
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -48,7 +48,7 @@ The crate provides the following:
 
 **Note**: This crate is currently experimental.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -186,7 +186,7 @@ fn main() {
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

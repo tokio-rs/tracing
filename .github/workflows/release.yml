@@ -19,6 +19,6 @@ jobs:
           prefix: tracing(-[a-z]+)?
           changelog: "$prefix/CHANGELOG.md"
           title: "$prefix $version"
-          branch: v0.1.x
+          branch: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

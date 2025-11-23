@@ -1,14 +1,17 @@
-use matchers::Pattern;
-use std::{
+use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
+};
+use core::{
     cmp::Ordering,
-    error::Error,
     fmt::{self, Write},
     str::FromStr,
-    sync::{
-        atomic::{AtomicBool, Ordering::*},
-        Arc,
-    },
+    sync::atomic::{AtomicBool, Ordering::*},
 };
+use matchers::Pattern;
+use std::error::Error;
 
 use super::{FieldMap, LevelFilter};
 use tracing_core::field::{Field, Visit};
@@ -234,7 +237,8 @@ impl ValueMatch {
     /// This returns an error if the string didn't contain a valid `bool`,
     /// `u64`, `i64`, or `f64` literal, and couldn't be parsed as a regular
     /// expression.
-    fn parse_regex(s: &str) -> Result<Self, matchers::Error> {
+    #[allow(clippy::result_large_err)]
+    fn parse_regex(s: &str) -> Result<Self, matchers::BuildError> {
         s.parse::<bool>()
             .map(ValueMatch::Bool)
             .or_else(|_| s.parse::<u64>().map(ValueMatch::U64))
@@ -279,7 +283,7 @@ impl fmt::Display for ValueMatch {
 // === impl MatchPattern ===
 
 impl FromStr for MatchPattern {
-    type Err = matchers::Error;
+    type Err = matchers::BuildError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let matcher = s.parse::<Pattern>()?;
         Ok(Self {
@@ -333,7 +337,7 @@ impl Eq for MatchPattern {}
 impl PartialOrd for MatchPattern {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 
@@ -429,7 +433,7 @@ impl Eq for MatchDebug {}
 impl PartialOrd for MatchDebug {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pattern.cmp(&other.pattern))
+        Some(self.cmp(other))
     }
 }
 
@@ -506,9 +510,7 @@ impl Visit for MatchVisitor<'_> {
             Some((ValueMatch::NaN, ref matched)) if value.is_nan() => {
                 matched.store(true, Release);
             }
-            Some((ValueMatch::F64(ref e), ref matched))
-                if (value - *e).abs() < f64::EPSILON =>
-            {
+            Some((ValueMatch::F64(ref e), ref matched)) if (value - *e).abs() < f64::EPSILON => {
                 matched.store(true, Release);
             }
             _ => {}
@@ -575,6 +577,8 @@ impl Visit for MatchVisitor<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
+
     #[derive(Debug)]
     #[allow(dead_code)]
     struct MyStruct {

@@ -32,15 +32,14 @@ use crate::{
     layer::{self, Context, Layer},
     registry,
 };
-use std::{
+use alloc::{boxed::Box, fmt, sync::Arc};
+use core::{
     any::TypeId,
     cell::{Cell, RefCell},
-    fmt,
     marker::PhantomData,
     ops::Deref,
-    sync::Arc,
-    thread_local,
 };
+use std::thread_local;
 use tracing_core::{
     span,
     subscriber::{Interest, Subscriber},
@@ -135,7 +134,7 @@ impl FilterMap {
 /// 2. If all the bits are set, then every per-layer filter has decided it
 ///    doesn't want to enable that span or event. In that case, the
 ///    `Registry`'s `enabled` method will return `false`, so that
-///     recording a span or event can be skipped entirely.
+///    recording a span or event can be skipped entirely.
 #[derive(Debug)]
 pub(crate) struct FilterState {
     enabled: Cell<FilterMap>,
@@ -879,7 +878,7 @@ where
             id if id == TypeId::of::<MagicPlfDowncastMarker>() => {
                 Some(&self.id as *const _ as *const ())
             }
-            _ => self.layer.downcast_raw(id),
+            _ => unsafe { self.layer.downcast_raw(id) },
         }
     }
 }

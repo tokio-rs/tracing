@@ -1,18 +1,18 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing-serde
 
 An adapter for serializing [`tracing`] types using [`serde`].
 
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 
 [docs-badge]: https://docs.rs/tracing-serde/badge.svg
 [docs-url]: https://docs.rs/tracing-serde
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_serde
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs/tracing_serde
 
 ## Overview
 
@@ -36,7 +36,7 @@ and tracing data to monitor your services in production.
 The `tracing` crate provides the APIs necessary for instrumenting
 libraries and applications to emit trace data.
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
@@ -97,7 +97,7 @@ trace data.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

@@ -122,7 +122,7 @@
 //! [`get_default`] function, which executes a closure with a reference to the
 //! currently default `Dispatch`. This is used primarily by `tracing`
 //! instrumentation.
-//!
+
 use core::ptr::addr_of;
 
 use crate::{
@@ -131,17 +131,15 @@ use crate::{
     Event, LevelFilter, Metadata,
 };
 
-use crate::stdlib::{
+use alloc::sync::{Arc, Weak};
+use core::{
     any::Any,
     fmt,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Weak,
-    },
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 #[cfg(feature = "std")]
-use crate::stdlib::{
+use std::{
     cell::{Cell, Ref, RefCell},
     error,
 };
@@ -155,7 +153,7 @@ pub struct Dispatch {
 /// `WeakDispatch` is a version of [`Dispatch`] that holds a non-owning reference
 /// to a [`Subscriber`].
 ///
-/// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+/// The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 /// which returns an `Option<Dispatch>`. If all [`Dispatch`] clones that point
 /// at the `Subscriber` have been dropped, [`WeakDispatch::upgrade`] will return
 /// `None`. Otherwise, it will return `Some(Dispatch)`.
@@ -182,7 +180,7 @@ enum Kind<T> {
 }
 
 #[cfg(feature = "std")]
-thread_local! {
+std::thread_local! {
     static CURRENT_STATE: State = const {
         State {
             default: RefCell::new(None),
@@ -244,14 +242,13 @@ pub struct DefaultGuard(Option<Dispatch>);
 ///
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///     <strong>Note</strong>: This function required the Rust standard library.
-///     <code>no_std</code> users should use <a href="../fn.set_global_default.html">
+///     <code>no_std</code> users should use <a href="fn.set_global_default.html">
 ///     <code>set_global_default</code></a> instead.
 /// </pre>
 ///
 /// [span]: super::span
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`Event`]: super::event::Event
-/// [`set_global_default`]: super::set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
@@ -268,11 +265,11 @@ pub fn with_default<T>(dispatcher: &Dispatch, f: impl FnOnce() -> T) -> T {
 ///
 /// <pre class="ignore" style="white-space:normal;font:inherit;">
 ///     <strong>Note</strong>: This function required the Rust standard library.
-///     <code>no_std</code> users should use <a href="../fn.set_global_default.html">
+///     <code>no_std</code> users should use <a href="fn.set_global_default.html">
 ///     <code>set_global_default</code></a> instead.
 /// </pre>
 ///
-/// [`set_global_default`]: super::set_global_default
+/// [`set_global_default`]: set_global_default
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[must_use = "Dropping the guard unregisters the dispatcher."]
@@ -676,7 +673,7 @@ impl Dispatch {
     /// [`Subscriber`]: super::subscriber::Subscriber
     /// [`drop_span`]: super::subscriber::Subscriber::drop_span
     /// [`new_span`]: super::subscriber::Subscriber::new_span
-    /// [`try_close`]: Entered::try_close()
+    /// [`try_close`]: Self::try_close()
     #[inline]
     #[deprecated(since = "0.1.2", note = "use `Dispatch::try_close` instead")]
     pub fn drop_span(&self, id: span::Id) {
@@ -905,9 +902,10 @@ impl Drop for DefaultGuard {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     #[cfg(feature = "std")]
-    use crate::stdlib::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::*;
     use crate::{
         callsite::Callsite,
         metadata::{Kind, Level, Metadata},

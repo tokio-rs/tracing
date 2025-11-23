@@ -189,9 +189,13 @@ impl Builder {
 
     /// Keeps the last `n` log files on disk.
     ///
-    /// When a new log file is created, if there are `n` or more
-    /// existing log files in the directory, the oldest will be deleted.
-    /// If no value is supplied, the `RollingAppender` will not remove any files.
+    /// When constructing a `RollingFileAppender` or starting a new log file,
+    /// the appender will delete the oldest matching log files until at most `n`
+    /// files remain. The exact number of retained files can sometimes dip below
+    /// the maximum, so if you need to retain `m` log files, specify a max of
+    /// `m + 1`.
+    ///
+    /// If `0` is supplied, the `RollingAppender` will not remove any files.
     ///
     /// Files are considered candidates for deletion based on the following
     /// criteria:
@@ -228,7 +232,8 @@ impl Builder {
     #[must_use]
     pub fn max_log_files(self, n: usize) -> Self {
         Self {
-            max_files: Some(n),
+            // Setting `n` to 0 will disable the max files (effectively make it infinite).
+            max_files: Some(n).filter(|&n| n > 0),
             ..self
         }
     }

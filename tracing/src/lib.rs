@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.63+][msrv]*
+//! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -193,7 +193,7 @@
 //! You can find more examples showing how to use this crate [here][examples].
 //!
 //! [RAII]: https://github.com/rust-unofficial/patterns/blob/main/src/patterns/behavioural/RAII.md
-//! [examples]: https://github.com/tokio-rs/tracing/tree/master/examples
+//! [examples]: https://github.com/tokio-rs/tracing/tree/main/examples
 //!
 //! ### Events
 //!
@@ -670,7 +670,7 @@
 //! entered, exited, and closed. Since these additional span lifecycle logs have
 //! the potential to be very verbose, and don't include additional fields, they
 //! will always be emitted at the `Trace` level, rather than inheriting the
-//! level of the span that generated them. Furthermore, they are are categorized
+//! level of the span that generated them. Furthermore, they are categorized
 //! under a separate `log` target, "tracing::span" (and its sub-target,
 //! "tracing::span::active", for the logs on entering and exiting a span), which
 //! may be enabled or disabled separately from other `log` records emitted by
@@ -710,7 +710,7 @@
 //!    `tracing-subscriber`'s `FmtSubscriber`, you don't need to depend on
 //!    `tracing-log` directly.
 //!  - [`tracing-appender`] provides utilities for outputting tracing data,
-//!     including a file appender and non blocking writer.
+//!    including a file appender and non blocking writer.
 //!
 //! Additionally, there are also several third-party crates which are not
 //! maintained by the `tokio` project. These include:
@@ -873,7 +873,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.63. The current Tracing version is not guaranteed to build on
+//! version is 1.65. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -912,10 +912,12 @@
 //! [static verbosity level]: level_filters#compile-time-filters
 //! [instrument]: https://docs.rs/tracing-attributes/latest/tracing_attributes/attr.instrument.html
 //! [flags]: #crate-feature-flags
-#![cfg_attr(not(feature = "std"), no_std)]
+
+#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
+    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
+    html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
     issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
 )]
 #![warn(
@@ -941,8 +943,8 @@
     while_true
 )]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 // Somehow this `use` statement is necessary for us to re-export the `core`
 // macros on Rust 1.26.0. I'm not sure how this makes it work, but it does.
@@ -980,17 +982,17 @@ pub mod field;
 pub mod instrument;
 pub mod level_filters;
 pub mod span;
-pub(crate) mod stdlib;
 pub mod subscriber;
 
 #[doc(hidden)]
 pub mod __macro_support {
     pub use crate::callsite::Callsite;
     use crate::{subscriber::Interest, Metadata};
+    use core::{fmt, str};
     // Re-export the `core` functions that are used in macros. This allows
     // a crate to be named `core` and avoid name clashes.
     // See here: https://github.com/tokio-rs/tracing/issues/2761
-    pub use core::{concat, file, format_args, iter::Iterator, line, option::Option};
+    pub use core::{concat, file, format_args, iter::Iterator, line, option::Option, stringify};
 
     /// Callsite implementation used by macro-generated code.
     ///
@@ -1064,6 +1066,66 @@ pub mod __macro_support {
                 ))
                 .build(),
         );
+    }
+
+    /// Implementation detail used for constructing FieldSet names from raw
+    /// identifiers. In `info!(..., r#type = "...")` the macro would end up
+    /// constructing a name equivalent to `FieldName(*b"type")`.
+    pub struct FieldName<const N: usize>([u8; N]);
+
+    impl<const N: usize> FieldName<N> {
+        /// Convert `"prefix.r#keyword.suffix"` to `b"prefix.keyword.suffix"`.
+        pub const fn new(input: &str) -> Self {
+            let input = input.as_bytes();
+            let mut output = [0u8; N];
+            let mut read = 0;
+            let mut write = 0;
+            while read < input.len() {
+                if read + 1 < input.len() && input[read] == b'r' && input[read + 1] == b'#' {
+                    read += 2;
+                }
+                output[write] = input[read];
+                read += 1;
+                write += 1;
+            }
+            assert!(write == N);
+            Self(output)
+        }
+
+        pub const fn as_str(&self) -> &str {
+            // SAFETY: Because of the private visibility of self.0, it must have
+            // been computed by Self::new. So these bytes are all of the bytes
+            // of some original valid UTF-8 string, but with "r#" substrings
+            // removed, which cannot have produced invalid UTF-8.
+            unsafe { str::from_utf8_unchecked(self.0.as_slice()) }
+        }
+    }
+
+    impl FieldName<0> {
+        /// For `"prefix.r#keyword.suffix"` compute `"prefix.keyword.suffix".len()`.
+        pub const fn len(input: &str) -> usize {
+            // Count occurrences of "r#"
+            let mut raw = 0;
+
+            let mut i = 0;
+            while i < input.len() {
+                if input.as_bytes()[i] == b'#' {
+                    raw += 1;
+                }
+                i += 1;
+            }
+
+            input.len() - 2 * raw
+        }
+    }
+
+    impl<const N: usize> fmt::Debug for FieldName<N> {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter
+                .debug_tuple("FieldName")
+                .field(&self.as_str())
+                .finish()
+        }
     }
 }
 

@@ -67,7 +67,7 @@
 //! # fn new() -> Self { Self {} }
 //! # }
 //! # impl MySubscriber {
-//! # fn new() -> Self { Self { }}
+//! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = MySubscriber::new()
@@ -107,7 +107,7 @@
 //! #   fn enabled(&self, _: &Metadata) -> bool { false }
 //! #   fn enter(&self, _: &Id) {}
 //! #   fn exit(&self, _: &Id) {}
-//! }
+//! # }
 //! # impl MyLayer {
 //! # fn new() -> Self { Self {} }
 //! # }
@@ -118,7 +118,7 @@
 //! # fn new() -> Self { Self {} }
 //! # }
 //! # impl MySubscriber {
-//! # fn new() -> Self { Self { }}
+//! # fn new() -> Self { Self {} }
 //! # }
 //!
 //! let subscriber = MySubscriber::new()
@@ -468,9 +468,9 @@
 //! function pointer. In addition, when more control is required, the [`Filter`]
 //! trait may also be implemented for user-defined types.
 //!
-//! //! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
-//! filter. [`None`](Option::None) filters out _nothing_ (that is, allows
-//! everything through). For example:
+//! [`Option<Filter>`] also implements [`Filter`], which allows for an optional
+//! filter. [`None`] filters out _nothing_ (that is, allows everything through). For
+//! example:
 //!
 //! ```rust
 //! # use tracing_subscriber::{filter::filter_fn, Layer};
@@ -1668,14 +1668,14 @@ where
         } else if id == TypeId::of::<NoneLayerMarker>() && self.is_none() {
             Some(&NONE_LAYER_MARKER as *const _ as *const ())
         } else {
-            self.as_ref().and_then(|inner| inner.downcast_raw(id))
+            self.as_ref()
+                .and_then(|inner| unsafe { inner.downcast_raw(id) })
         }
     }
 }
 
 feature! {
     #![any(feature = "std", feature = "alloc")]
-    #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
     macro_rules! layer_impl_body {
@@ -1753,7 +1753,7 @@ feature! {
             #[doc(hidden)]
             #[inline]
             unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
-                self.deref().downcast_raw(id)
+                unsafe { self.deref().downcast_raw(id) }
             }
         };
     }
@@ -1772,8 +1772,6 @@ feature! {
     {
         layer_impl_body! {}
     }
-
-
 
     impl<S, L> Layer<S> for Vec<L>
     where
@@ -1881,14 +1879,16 @@ feature! {
             // XXX(eliza): it's a bummer we have to do this linear search every
             // time. It would be nice if this could be cached, but that would
             // require replacing the `Vec` impl with an impl for a newtype...
-            if filter::is_plf_downcast_marker(id) && self.iter().any(|s| s.downcast_raw(id).is_none()) {
+            if filter::is_plf_downcast_marker(id)
+                && self.iter().any(|s| unsafe { s.downcast_raw(id).is_none() })
+            {
                 return None;
             }
 
             // Otherwise, return the first child of `self` that downcaasts to
             // the selected type, if any.
             // XXX(eliza): hope this is reasonable lol
-            self.iter().find_map(|l| l.downcast_raw(id))
+            self.iter().find_map(|l| unsafe { l.downcast_raw(id) })
         }
     }
 }

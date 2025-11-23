@@ -1,10 +1,10 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -13,23 +13,31 @@
 [crates-url]: https://crates.io/crates/tracing
 [docs-badge]: https://docs.rs/tracing/badge.svg
 [docs-url]: https://docs.rs/tracing
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
-[actions-url]:https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
+[actions-url]: https://github.com/tokio-rs/tracing/actions?query=workflow%3ACI
 [discord-badge]: https://img.shields.io/discord/500028886025895936?logo=discord&label=discord&logoColor=white
 [discord-url]: https://discord.gg/EeF3cQw
 
 [Website](https://tokio.rs) |
-[Chat](https://discord.gg/EeF3cQw) | [Documentation (master branch)](https://tracing-rs.netlify.com/)
+[Chat](https://discord.gg/EeF3cQw)
 
 ## Overview
 
 `tracing` is a framework for instrumenting Rust programs to collect
 structured, event-based diagnostic information. `tracing` is maintained by the
 Tokio project, but does _not_ require the `tokio` runtime to be used.
+
+### Branch set-up
+
+- [`main`](https://github.com/tokio-rs/tracing/tree/main) - Default branch, crates.io releases are done from this branch. This was previously the
+  `v0.1.x` branch.
+- [`v0.2.x`](https://github.com/tokio-rs/tracing/tree/v0.2.x) - Branch containing the as-yet unreleased 0.2 version of `tracing-core`, `tracing`, and
+  all the other tracing crates that depend on these versions. This was previously the `master`
+  branch.
 
 ## Usage
 
@@ -128,7 +136,7 @@ use tracing::{debug, error, info, span, warn, Level};
 
 // the `#[tracing::instrument]` attribute creates and enters a span
 // every time the instrumented function is called. The span is named after the
-// the function or method. Parameters passed to the function are recorded as fields.
+// function or method. Parameters passed to the function are recorded as fields.
 #[tracing::instrument]
 pub fn shave(yak: usize) -> Result<(), Box<dyn Error + 'static>> {
     // this creates an event at the DEBUG level with two fields:
@@ -252,7 +260,7 @@ attachment that `Future::instrument` does.
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio
@@ -318,13 +326,13 @@ The crates included as part of Tracing are:
    and non-blocking writer. ([crates.io][app-crates]|[docs][app-docs])
 
 * [`tracing-error`]: Provides `SpanTrace`, a type for instrumenting errors with
-  tracing spans
+  tracing spans. ([crates.io][err-crates]|[docs][err-docs])
 
-* [`tracing-flame`]; Provides a layer for generating flame graphs based on
-  tracing span entry / exit events.
+* [`tracing-flame`]: Provides a layer for generating flame graphs based on
+  tracing span entry / exit events. ([crates.io][flame-crates]|[docs][flame-docs])
 
 * [`tracing-journald`]: Provides a layer for recording events to the
-  Linux `journald` service, preserving structured data.
+  Linux `journald` service, preserving structured data. ([crates.io][jour-crates]|[docs][jour-docs])
 
 [`tracing`]: tracing
 [`tracing-core`]: tracing-core
@@ -356,6 +364,15 @@ The crates included as part of Tracing are:
 [app-crates]: https://crates.io/crates/tracing-appender
 [app-docs]: https://docs.rs/tracing-appender
 
+[err-crates]: https://crates.io/crates/tracing-error
+[err-docs]: https://docs.rs/tracing-error
+
+[flame-crates]: https://crates.io/crates/tracing-flame
+[flame-docs]: https://docs.rs/tracing-flame
+
+[jour-crates]: https://crates.io/crates/tracing-journald
+[jour-docs]: https://docs.rs/tracing-journald
+
 ## Related Crates
 
 In addition to this repository, here are also several third-party crates which
@@ -370,7 +387,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-actix`] provides `tracing` integration for the `actix` actor
   framework.
 - [`axum-insights`] provides `tracing` integration and Application insights export for the `axum` web framework.
-- [`tracing-gelf`] implements a subscriber for exporting traces in Greylog
+- [`tracing-gelf`] implements a subscriber for exporting traces in Graylog
   GELF format.
 - [`tracing-coz`] provides integration with the [coz] causal profiler
   (Linux-only).
@@ -396,7 +413,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-elastic-apm`] provides a layer for reporting traces to [Elastic APM].
 - [`tracing-etw`] provides a layer for emitting Windows [ETW] events.
 - [`sentry-tracing`] provides a layer for reporting events and traces to [Sentry].
-- [`tracing-forest`] provides a subscriber that preserves contextual coherence by 
+- [`tracing-forest`] provides a subscriber that preserves contextual coherence by
   grouping together logs from the same spans during writing.
 - [`tracing-loki`] provides a layer for shipping logs to [Grafana Loki].
 - [`tracing-logfmt`] provides a layer that formats events and spans into the logfmt format.
@@ -475,6 +492,7 @@ Tracing.
 * [RustConf 2019 talk][rust-conf-2019-08-video] and [slides][rust-conf-2019-08-slides], August 2019
 * [Are we observable yet? @ RustyDays talk][rusty-days-2020-08-video] and [slides][rusty-days-2020-08-slides], August 2020
 * [Crabs with instruments!][tremorcon-2021-09], September 2021
+* [Decrusting the tracing crate by Jon Gjengset][decrusting-tracing-2024-02], February 2024
 
 [bay-rust-2019-03]: https://www.youtube.com/watch?v=j_kXRg3zlec
 [rust-conf-2019-08-video]: https://www.youtube.com/watch?v=JjItsfqFIdo
@@ -485,6 +503,7 @@ Tracing.
 [custom-logging-part-1]: https://burgers.io/custom-logging-in-rust-using-tracing
 [custom-logging-part-2]: https://burgers.io/custom-logging-in-rust-using-tracing-part-2
 [tremorcon-2021-09]: https://www.youtube.com/watch?v=ZC7fyqshun8
+[decrusting-tracing-2024-02]: https://www.youtube.com/watch?v=21rtHinFA40
 
 Help us expand this list! If you've written or spoken about Tracing, or
 know of resources that aren't listed, please open a pull request adding them.

@@ -1,6 +1,6 @@
 ![Tracing — Structured, application-level diagnostics][splash]
 
-[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/splash.svg
+[splash]: https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/splash.svg
 
 # tracing-subscriber
 
@@ -18,7 +18,7 @@ application authors using `tracing` to instrument their applications.
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
-[![Documentation (master)][docs-master-badge]][docs-master-url]
+[![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 [![Build Status][actions-badge]][actions-url]
 [![Discord chat][discord-badge]][discord-url]
@@ -26,14 +26,14 @@ application authors using `tracing` to instrument their applications.
 
 [Documentation][docs-url] | [Chat][discord-url]
 
-[tracing]: https://github.com/tokio-rs/tracing/tree/master/tracing
-[tracing-fmt]: https://github.com/tokio-rs/tracing/tree/master/tracing-subscriber
+[tracing]: https://github.com/tokio-rs/tracing/tree/main/tracing
+[tracing-fmt]: https://github.com/tokio-rs/tracing/tree/main/tracing-subscriber
 [crates-badge]: https://img.shields.io/crates/v/tracing-subscriber.svg
 [crates-url]: https://crates.io/crates/tracing-subscriber
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
 [docs-url]: https://docs.rs/tracing-subscriber/latest
-[docs-master-badge]: https://img.shields.io/badge/docs-master-blue
-[docs-master-url]: https://tracing-rs.netlify.com/tracing_subscriber
+[docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
+[docs-v0.2.x-url]: https://tracing.rs/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: LICENSE
 [actions-badge]: https://github.com/tokio-rs/tracing/workflows/CI/badge.svg
@@ -42,14 +42,14 @@ application authors using `tracing` to instrument their applications.
 [discord-url]: https://discord.gg/EeF3cQw
 [maint-badge]: https://img.shields.io/badge/maintenance-experimental-blue.svg
 
-*Compiler support: [requires `rustc` 1.63+][msrv]*
+*Compiler support: [requires `rustc` 1.65+][msrv]*
 
 [msrv]: #supported-rust-versions
 
 ## Supported Rust Versions
 
 Tracing is built against the latest stable release. The minimum supported
-version is 1.63. The current Tracing version is not guaranteed to build on Rust
+version is 1.65. The current Tracing version is not guaranteed to build on Rust
 versions earlier than the minimum supported version.
 
 Tracing follows the same compiler support policies as the rest of the Tokio

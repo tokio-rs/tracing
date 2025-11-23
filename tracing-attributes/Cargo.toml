@@ -2,13 +2,10 @@
 name = "tracing-attributes"
 # When releasing to crates.io:
 # - Remove path dependencies
-# - Update html_root_url.
-# - Update doc url
-#   - Cargo.toml
-#   - README.md
+# - Update doc url in README.md.
 # - Update CHANGELOG.md.
-# - Create "v0.1.x" git tag.
-version = "0.1.28"
+# - Create "tracing-attributes-0.1.x" git tag.
+version = "0.1.30"
 authors = [
     "Tokio Contributors <team@tokio.rs>",
     "Eliza Weisman <eliza@buoyant.io>",
@@ -28,7 +25,7 @@ keywords = ["logging", "tracing", "macro", "instrument", "log"]
 license = "MIT"
 readme = "README.md"
 edition = "2018"
-rust-version = "1.63.0"
+rust-version = "1.65.0"
 
 [lib]
 proc-macro = true
