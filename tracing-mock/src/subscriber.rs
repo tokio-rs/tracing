@@ -827,6 +827,58 @@ where
     /// handle.assert_finished();
     /// ```
     ///
+    ///
+    /// ```should_panic
+    /// use tracing_mock::{subscriber};
+    ///
+    /// struct WrapSubscriber<S: tracing::Subscriber> {
+    ///     inner: S,
+    /// }
+    ///
+    /// impl<S: tracing::Subscriber> tracing::Subscriber for WrapSubscriber<S> {
+    /// #     fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
+    /// #         self.inner.enabled(metadata)
+    /// #     }
+    /// #     fn new_span(&self, span: &tracing_core::span::Attributes<'_>) -> tracing_core::span::Id {
+    /// #         self.inner.new_span(span)
+    /// #     }
+    /// #     fn record(&self, span: &tracing_core::span::Id, values: &tracing_core::span::Record<'_>) {
+    /// #         self.inner.record(span, values)
+    /// #     }
+    /// #     fn record_follows_from(
+    /// #         &self,
+    /// #         span: &tracing_core::span::Id,
+    /// #         follows: &tracing_core::span::Id,
+    /// #     ) {
+    /// #         self.inner.record_follows_from(span, follows)
+    /// #     }
+    /// #     fn event(&self, event: &tracing::Event<'_>) {
+    /// #         self.inner.event(event)
+    /// #     }
+    /// #     fn enter(&self, span: &tracing_core::span::Id) {
+    /// #         self.inner.enter(span)
+    /// #     }
+    /// #     fn exit(&self, span: &tracing_core::span::Id) {
+    /// #         self.inner.exit(span)
+    /// #     }
+    ///     // All other Subscriber methods implemented to forward correctly.
+    ///
+    ///     fn on_register_dispatch(&self, subscriber: &tracing::Dispatch) {
+    ///         // Doesn't forward to `self.inner`
+    ///         let _ = subscriber;
+    ///     }
+    /// }
+    ///
+    /// let (subscriber, handle) = subscriber::mock().on_register_dispatch().run_with_handle();
+    /// let wrap_subscriber = WrapSubscriber { inner: subscriber };
+    ///
+    /// tracing::subscriber::with_default(wrap_subscriber, || {
+    ///     // The subscriber's on_register_dispatch is called when set as default
+    /// });
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
     /// [`Subscriber::on_register_dispatch`]: tracing::Subscriber::on_register_dispatch
     pub fn on_register_dispatch(mut self) -> Self {
         self.expected.push_back(Expect::OnRegisterDispatch);
