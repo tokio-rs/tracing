@@ -18,10 +18,9 @@ pub(crate) struct SpanStack {
 
 impl SpanStack {
     #[inline]
-    pub(super) fn push(&mut self, id: Id) -> bool {
+    pub(super) fn push(&mut self, id: Id) {
         let duplicate = self.stack.iter().any(|i| i.id == id);
         self.stack.push(ContextId { id, duplicate });
-        !duplicate
     }
 
     #[inline]

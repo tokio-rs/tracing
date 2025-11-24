@@ -288,21 +288,15 @@ impl Subscriber for Registry {
     fn event(&self, _: &Event<'_>) {}
 
     fn enter(&self, id: &span::Id) {
-        if self
-            .current_spans
+        self.current_spans
             .get_or_default()
             .borrow_mut()
-            .push(id.clone())
-        {
-            self.clone_span(id);
-        }
+            .push(id.clone());
     }
 
     fn exit(&self, id: &span::Id) {
         if let Some(spans) = self.current_spans.get() {
-            if spans.borrow_mut().pop(id) {
-                dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
-            }
+            spans.borrow_mut().pop(id);
         }
     }
 
