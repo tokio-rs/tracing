@@ -91,6 +91,11 @@ where
     L: Layer<S>,
     S: Subscriber,
 {
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        self.inner.on_register_dispatch(subscriber);
+        self.layer.on_register_dispatch(subscriber);
+    }
+
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.pick_interest(self.layer.register_callsite(metadata), || {
             self.inner.register_callsite(metadata)
