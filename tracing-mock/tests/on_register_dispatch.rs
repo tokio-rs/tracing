@@ -17,7 +17,7 @@ fn subscriber_on_register_dispatch() {
 #[test]
 fn layer_on_register_dispatch() {
     use tracing_mock::layer;
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let (layer, handle) = layer::mock().on_register_dispatch().run_with_handle();
 
