@@ -671,6 +671,50 @@ impl MockLayerBuilder {
     /// handle.assert_finished();
     /// ```
     ///
+    /// If the `on_register_dispatch` call doesn't make it to the `MockLayer`,
+    /// in case it's wrapped in another Layer that doesn't forward the call,
+    /// then the expectation will fail.
+    ///
+    /// ```should_panic
+    /// # use std::marker::PhantomData;
+    ///
+    /// # use tracing::{Event, Subscriber};
+    /// # use tracing_mock::layer;
+    /// # use tracing_subscriber::{
+    /// #     layer::{Context, SubscriberExt},
+    /// #     util::SubscriberInitExt,
+    /// #     Layer,
+    /// # };
+    ///
+    /// struct WrapLayer<S: Subscriber, L: Layer<S>> {
+    ///     inner: L,
+    ///     _pd: PhantomData<S>,
+    /// }
+    ///
+    /// impl<S: Subscriber, L: Layer<S>> Layer<S> for WrapLayer<S, L> {
+    ///     fn on_register_dispatch(&self, subscriber: &tracing::Dispatch) {
+    ///         // Doesn't forward to `self.inner`
+    ///         let _ = subscriber;
+    ///     }
+    ///
+    ///     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    ///         self.inner.on_event(event, ctx)
+    ///     }
+    /// }
+    /// let (layer, handle) = layer::mock().on_register_dispatch().run_with_handle();
+    /// let wrap_layer = WrapLayer {
+    ///     inner: layer,
+    ///     _pd: PhantomData::<_>,
+    /// };
+    ///
+    /// let subscriber = tracing_subscriber::registry().with(wrap_layer).set_default();
+    ///
+    /// // The layer's on_register_dispatch is called when the subscriber is set as default
+    /// drop(subscriber);
+    ///
+    /// handle.assert_finished();
+    /// ```
+    ///
     /// [`Layer::on_register_dispatch`]: tracing_subscriber::layer::Layer::on_register_dispatch
     pub fn on_register_dispatch(mut self) -> Self {
         self.expected.push_back(Expect::OnRegisterDispatch);
