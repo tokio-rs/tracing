@@ -41,7 +41,7 @@ nu-ansi-term = ["dep:nu-ansi-term"]
 regex = []
 
 [dependencies]
-tracing-core = { path = "../tracing-core", version = "0.1.33", default-features = false }
+tracing-core = { path = "../tracing-core", version = "0.1.35", default-features = false }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1.41", default-features = false }
