@@ -61,3 +61,49 @@ fn layer_multiple_expectations() {
     drop(_subscriber);
     handle.assert_finished();
 }
+
+#[cfg(feature = "tracing-subscriber")]
+#[test]
+#[should_panic(expected = "expected on_register_dispatch to be called")]
+fn layer_on_register_dispatch_not_propagated() {
+    use tracing::error;
+    use tracing_mock::layer;
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+
+    /// A layer that wraps another layer but does NOT propagate on_register_dispatch
+    struct BadLayer<L> {
+        inner: L,
+    }
+
+    impl<S, L> Layer<S> for BadLayer<L>
+    where
+        S: tracing_core::Subscriber,
+        L: Layer<S>,
+    {
+        // Intentionally NOT implementing on_register_dispatch to test the failure case
+        // The default implementation does nothing, so the inner layer won't receive the call
+
+        fn on_event(
+            &self,
+            event: &tracing_core::Event<'_>,
+            ctx: tracing_subscriber::layer::Context<'_, S>,
+        ) {
+            self.inner.on_event(event, ctx);
+        }
+    }
+
+    let (mock_layer, handle) = layer::named("inner")
+        .on_register_dispatch()
+        .run_with_handle();
+
+    let bad_layer = BadLayer { inner: mock_layer };
+
+    let _subscriber = tracing_subscriber::registry().with(bad_layer).set_default();
+
+    // This event will be sent to the mock layer, which expects on_register_dispatch first
+    error!("send an event");
+
+    drop(_subscriber);
+
+    handle.assert_finished();
+}
