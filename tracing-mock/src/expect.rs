@@ -42,6 +42,7 @@ pub(crate) enum Expect {
     DropSpan(ExpectedSpan),
     Visit(ExpectedSpan, ExpectedFields),
     NewSpan(NewSpan),
+    OnRegisterDispatch,
     Nothing,
 }
 
@@ -323,6 +324,10 @@ impl Expect {
             Expect::NewSpan(e) => panic!(
                 "\n[{}] expected {}\n[{}] but instead {}",
                 name, e, name, what
+            ),
+            Expect::OnRegisterDispatch => panic!(
+                "\n[{}] expected on_register_dispatch to be called\n[{}] but instead {}",
+                name, name, what
             ),
             Expect::Nothing => panic!(
                 "\n[{}] expected nothing else to happen\n[{}] but {} instead",
