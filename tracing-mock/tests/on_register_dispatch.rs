@@ -47,7 +47,7 @@ fn subscriber_multiple_expectations() {
 #[test]
 fn layer_multiple_expectations() {
     use tracing_mock::layer;
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let (layer, handle) = layer::mock()
         .on_register_dispatch()
