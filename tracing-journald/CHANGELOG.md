@@ -1,3 +1,11 @@
+# 0.3.2 (November 26, 2025)
+
+### Added
+
+- Use argv0 for syslog identifier ([#3372])
+
+[#3372]: https://github.com/tokio-rs/tracing/pull/#3372
+
 # 0.3.1 (November 29, 2024)
 
 [ [crates.io][crate-0.3.1] ] | [ [docs.rs][docs-0.3.1] ]

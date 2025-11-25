@@ -8,12 +8,15 @@ Support for logging [`tracing`] events natively to [journald],
 preserving structured information.
 
 [![Crates.io][crates-badge]][crates-url]
+[![Documentation][docs-badge]][docs-url]
 [![Documentation (v0.2.x)][docs-v0.2.x-badge]][docs-v0.2.x-url]
 [![MIT licensed][mit-badge]][mit-url]
 ![maintenance status][maint-badge]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-journald.svg
-[crates-url]: https://crates.io/crates/tracing-journald
+[crates-url]: https://crates.io/crates/tracing-journald/0.3.2
+[docs-badge]: https://docs.rs/tracing-journald/badge.svg
+[docs-url]: https://docs.rs/tracing-journald/0.3.2
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
 [docs-v0.2.x-url]: https://tracing.rs/tracing_journald
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
