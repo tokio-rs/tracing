@@ -287,6 +287,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
+    - name: install cargo-nextest
+      uses: taiki-e/install-action@nextest
     - name: "Test log support"
       run: cargo test
     - name: "Test static max level"
@@ -303,6 +305,14 @@ jobs:
       # as rustdoc isn't aware of cargo's feature flags.
     - name: "Test tracing-subscriber with all features disabled"
       run: cargo test --lib --tests --no-default-features
+    - name: "Fix chrono version to 0.4.41"
+      run: cargo update -p chrono --precise 0.4.41
+    - name: "Test tracing-subscriber with all features enabled"
+      run: cargo nextest run --profile ci --all-features -p tracing-subscriber
+    - name: "Test tracing-subscriber docs with all features enabled"
+      run: cargo test --doc --all-features -p tracing-subscriber
+    - name: "Test tracing-mock with all features enabled"
+      run: cargo test --all-features -p tracing-mock
 
   # all required checks except for the main test run (which we only require
   # specific matrix combinations from)
