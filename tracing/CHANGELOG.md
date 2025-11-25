@@ -1,3 +1,48 @@
+# 0.1.42 (November 26, 2025)
+
+### Important
+
+The [`Span::record_all`] method has been removed from the documented API. It
+was always unsuable via the documented API as it requried a `ValueSet` which
+has no publically documented constructors. The method remains, but should not
+be used outside of `tracing` macros.
+
+### Added
+
+- **attributes**: Support constant expressions as instrument field names ([#3158])
+- Add `record_all!` macro for recording multiple values in one call ([#3227])
+- **core**: Improve code generation at trace points significantly ([#3398])
+
+### Changed
+
+- `tracing-core`: updated to 0.1.35 ([#3414])
+- `tracing-attributes`: updated to 0.1.31 ([#3417])
+
+### Fixed
+
+- Fix "name / parent" variant of `event!` ([#2983])
+- Remove 'r#' prefix from raw identifiers in field names ([#3130])
+- Fix perf regression when `release_max_level_*` not set ([#3373])
+- Use imported instead of fully qualified path ([#3374])
+- Make `valueset` macro sanitary ([#3382])
+
+### Documented
+
+- **core**: Add missing `dyn` keyword in `Visit` documentation code sample ([#3387])
+
+[#2983]: https://github.com/tokio-rs/tracing/pull/#2983
+[#3130]: https://github.com/tokio-rs/tracing/pull/#3130
+[#3158]: https://github.com/tokio-rs/tracing/pull/#3158
+[#3227]: https://github.com/tokio-rs/tracing/pull/#3227
+[#3373]: https://github.com/tokio-rs/tracing/pull/#3373
+[#3374]: https://github.com/tokio-rs/tracing/pull/#3374
+[#3382]: https://github.com/tokio-rs/tracing/pull/#3382
+[#3387]: https://github.com/tokio-rs/tracing/pull/#3387
+[#3398]: https://github.com/tokio-rs/tracing/pull/#3398
+[#3414]: https://github.com/tokio-rs/tracing/pull/#3414
+[#3417]: https://github.com/tokio-rs/tracing/pull/#3417
+[`Span::record_all`]: https://docs.rs/tracing/0.1.41/tracing/struct.Span.html#method.record_all
+
 # 0.1.41 (November 27, 2024)
 
 [ [crates.io][crate-0.1.41] ] | [ [docs.rs][docs-0.1.41] ]
