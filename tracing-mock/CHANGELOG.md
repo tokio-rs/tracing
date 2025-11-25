@@ -1,3 +1,18 @@
+# 0.1.0-beta.2 (November 26, 2025)
+
+### Added
+
+- Add `on_register_dispatch` expectation for subscriber and layer mocks ([#3415])
+- Add doctests for `on_register_dispatch` negative cases ([#3416])
+
+### Changed
+
+- `tracing`: updated to 0.1.42 ([#3418])
+
+[#3415]: https://github.com/tokio-rs/tracing/pull/#3415
+[#3416]: https://github.com/tokio-rs/tracing/pull/#3416
+[#3418]: https://github.com/tokio-rs/tracing/pull/#3418
+
 # 0.1.0-beta.1 (November 29, 2024)
 
 [ [crates.io][crate-0.1.0-beta.1] ] | [ [docs.rs][docs-0.1.0-beta.1] ]
