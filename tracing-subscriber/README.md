@@ -29,9 +29,9 @@ application authors using `tracing` to instrument their applications.
 [tracing]: https://github.com/tokio-rs/tracing/tree/main/tracing
 [tracing-fmt]: https://github.com/tokio-rs/tracing/tree/main/tracing-subscriber
 [crates-badge]: https://img.shields.io/crates/v/tracing-subscriber.svg
-[crates-url]: https://crates.io/crates/tracing-subscriber
+[crates-url]: https://crates.io/crates/tracing-subscriber/0.3.21
 [docs-badge]: https://docs.rs/tracing-subscriber/badge.svg
-[docs-url]: https://docs.rs/tracing-subscriber/latest
+[docs-url]: https://docs.rs/tracing-subscriber/0.3.21
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
 [docs-v0.2.x-url]: https://tracing.rs/tracing_subscriber
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
