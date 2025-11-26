@@ -16,9 +16,9 @@ Utilities for testing [`tracing`] and crates that uses it.
 [Documentation][docs-v0.2.x-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-mock.svg
-[crates-url]: https://crates.io/crates/tracing-mock
+[crates-url]: https://crates.io/crates/tracing-mock/0.1.0-beta.2
 [docs-badge]: https://docs.rs/tracing-mock/badge.svg
-[docs-url]: https://docs.rs/tracing-mock/latest
+[docs-url]: https://docs.rs/tracing-mock/0.1.0-beta.2
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
 [docs-v0.2.x-url]: https://tracing.rs/tracing_mock
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -57,14 +57,14 @@ To do so, add the following to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tracing-mock = "= 0.1.0-beta.1"
+tracing-mock = "= 0.1.0-beta.2"
 ```
 
 [tracing-spans]: https://docs.rs/tracing/0.1/tracing/#spans
 [tracing-events]: https://docs.rs/tracing/0.1/tracing/#events
 [tracing-subscriber]: https://docs.rs/tracing/0.1/tracing/trait.Subscriber.html
-[mock-subscriber-mod]: https://docs.rs/tracing-mock/0.1.0-beta.1/tracing_mock/subscriber/index.html
-[`MockSubscriber`]: https://docs.rs/tracing-mock/0.1.0-beta.1/tracing_mock/subscriber/struct.MockSubscriber.html
+[mock-subscriber-mod]: https://docs.rs/tracing-mock/0.1.0-beta.2/tracing_mock/subscriber/index.html
+[`MockSubscriber`]: https://docs.rs/tracing-mock/0.1.0-beta.2/tracing_mock/subscriber/struct.MockSubscriber.html
 
 ## Examples
 
