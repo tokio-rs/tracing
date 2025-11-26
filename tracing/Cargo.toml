@@ -27,7 +27,7 @@ rust-version = "1.65.0"
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.35", default-features = false }
 log = { version = "0.4.17", optional = true }
-tracing-attributes = { path = "../tracing-attributes", version = "0.1.29", optional = true }
+tracing-attributes = { path = "../tracing-attributes", version = "0.1.31", optional = true }
 pin-project-lite = "0.2.9"
 
 [dev-dependencies]
