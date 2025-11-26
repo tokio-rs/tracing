@@ -16,9 +16,9 @@ Writers for logging events and spans
 [Documentation][docs-url] | [Chat][discord-url]
 
 [crates-badge]: https://img.shields.io/crates/v/tracing-appender.svg
-[crates-url]: https://crates.io/crates/tracing-appender/0.2.2
+[crates-url]: https://crates.io/crates/tracing-appender/0.2.4
 [docs-badge]: https://docs.rs/tracing-appender/badge.svg
-[docs-url]: https://docs.rs/tracing-appender/0.2.2
+[docs-url]: https://docs.rs/tracing-appender/0.2.4
 [docs-v0.2.x-badge]: https://img.shields.io/badge/docs-v0.2.x-blue
 [docs-v0.2.x-url]: https://docs.rs/tracing-appender/
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg

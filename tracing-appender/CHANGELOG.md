@@ -1,3 +1,25 @@
+# 0.2.4 (November 26, 2025)
+
+### Added
+
+- Prune old files at startup ([#2966])
+- Add fallback to file creation date ([#3000])
+- Introduce weekly rotation ([#3218])
+
+### Fixed
+
+- Fix `max_files` integer underflow when set to zero ([#3348])
+
+### Documented
+
+- Update tracing-appender docs link to correct docs.rs URL ([#3325])
+
+[#2966]: https://github.com/tokio-rs/tracing/pull/#2966
+[#3000]: https://github.com/tokio-rs/tracing/pull/#3000
+[#3218]: https://github.com/tokio-rs/tracing/pull/#3218
+[#3325]: https://github.com/tokio-rs/tracing/pull/#3325
+[#3348]: https://github.com/tokio-rs/tracing/pull/#3348
+
 # 0.2.3 (November 13, 2023)
 
 This release contains several new features. It also increases the
