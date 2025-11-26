@@ -3,6 +3,7 @@ use crate::{
     field::{RecordFields, VisitOutput},
     fmt::{
         fmt_layer::{FmtContext, FormattedFields},
+        format::DefaultFields,
         writer::WriteAdaptor,
     },
     registry::LookupSpan,
@@ -125,6 +126,7 @@ impl<Span, N> serde::ser::Serialize for SerializableContext<'_, '_, Span, N>
 where
     Span: Subscriber + for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
+    for<'inner, 'outer> SerializableSpan<'inner, 'outer, Span, N>: serde::Serialize,
 {
     fn serialize<Ser>(&self, serializer_o: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -151,10 +153,9 @@ where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static;
 
-impl<Span, N> serde::ser::Serialize for SerializableSpan<'_, '_, Span, N>
+impl<Span> serde::ser::Serialize for SerializableSpan<'_, '_, Span, DefaultFields>
 where
     Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
-    N: for<'writer> FormatFields<'writer> + 'static,
 {
     fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
@@ -164,7 +165,39 @@ where
 
         let ext = self.0.extensions();
         let data = ext
-            .get::<FormattedFields<N>>()
+            .get::<FormattedFields<DefaultFields>>()
+            .expect("Unable to find FormattedFields in extensions; this is a bug");
+
+        let fields = data.split(" ");
+
+        for key_value_pair in fields {
+            let mut kvp_iter = key_value_pair.split("=");
+            if let (Some(key), Some(value)) = (kvp_iter.next(), kvp_iter.next()) {
+                // The default formatter surrounds the values in literal quotation marks;
+                // remove these from the serialization so they don't end up in the JSON
+                // output.
+                serializer.serialize_entry(&key, &value[1..value.len() - 1]);
+            }
+        }
+
+        serializer.serialize_entry("name", self.0.metadata().name())?;
+        serializer.end()
+    }
+}
+
+impl<Span> serde::ser::Serialize for SerializableSpan<'_, '_, Span, JsonFields>
+where
+    Span: for<'lookup> crate::registry::LookupSpan<'lookup>,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::ser::Serializer,
+    {
+        let mut serializer = serializer.serialize_map(None)?;
+
+        let ext = self.0.extensions();
+        let data = ext
+            .get::<FormattedFields<JsonFields>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
         // TODO: let's _not_ do this, but this resolves
@@ -216,6 +249,7 @@ impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
+    for<'inner, 'outer> SerializableSpan<'inner, 'outer, S, N>: serde::Serialize,
     T: FormatTime,
 {
     fn format_event(
