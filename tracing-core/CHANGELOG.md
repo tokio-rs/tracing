@@ -1,3 +1,23 @@
+# 0.1.35 (November 26, 2025)
+
+### Added
+
+- Switch to unconditional `no_std` ([#3323])
+- Improve code generation at trace points significantly ([#3398])
+
+### Fixed
+
+- Add missing `dyn` keyword in `Visit` documentation code sample ([#3387])
+
+### Documented
+
+- Add favicon for extra pretty docs ([#3351])
+
+[#3323]: https://github.com/tokio-rs/tracing/pull/#3323
+[#3351]: https://github.com/tokio-rs/tracing/pull/#3351
+[#3387]: https://github.com/tokio-rs/tracing/pull/#3387
+[#3398]: https://github.com/tokio-rs/tracing/pull/#3398
+
 # 0.1.34 (June 6, 2025)
 
 ### Changed
