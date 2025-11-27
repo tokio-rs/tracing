@@ -1,3 +1,20 @@
+# 0.1.43 (November 28, 2025)
+
+#### Important
+
+The previous release [0.1.42] was yanked because [#3382] was a breaking change.
+See further details in [#3424]. This release contains all the changes from that
+version, plus a revert for the problematic part of the breaking PR.
+
+### Fixed
+
+- Revert "make `valueset` macro sanitary" ([#3425])
+
+[#3382]: https://github.com/tokio-rs/tracing/pull/3382
+[#3424]: https://github.com/tokio-rs/tracing/pull/3424
+[#3425]: https://github.com/tokio-rs/tracing/pull/3425
+[0.1.42]: https://github.com/tokio-rs/tracing/releases/tag/tracing-0.1.42
+
 # 0.1.42 (November 26, 2025)
 
 ### Important
@@ -30,17 +47,17 @@ be used outside of `tracing` macros.
 
 - **core**: Add missing `dyn` keyword in `Visit` documentation code sample ([#3387])
 
-[#2983]: https://github.com/tokio-rs/tracing/pull/#2983
-[#3130]: https://github.com/tokio-rs/tracing/pull/#3130
-[#3158]: https://github.com/tokio-rs/tracing/pull/#3158
-[#3227]: https://github.com/tokio-rs/tracing/pull/#3227
-[#3373]: https://github.com/tokio-rs/tracing/pull/#3373
-[#3374]: https://github.com/tokio-rs/tracing/pull/#3374
-[#3382]: https://github.com/tokio-rs/tracing/pull/#3382
-[#3387]: https://github.com/tokio-rs/tracing/pull/#3387
-[#3398]: https://github.com/tokio-rs/tracing/pull/#3398
-[#3414]: https://github.com/tokio-rs/tracing/pull/#3414
-[#3417]: https://github.com/tokio-rs/tracing/pull/#3417
+[#2983]: https://github.com/tokio-rs/tracing/pull/2983
+[#3130]: https://github.com/tokio-rs/tracing/pull/3130
+[#3158]: https://github.com/tokio-rs/tracing/pull/3158
+[#3227]: https://github.com/tokio-rs/tracing/pull/3227
+[#3373]: https://github.com/tokio-rs/tracing/pull/3373
+[#3374]: https://github.com/tokio-rs/tracing/pull/3374
+[#3382]: https://github.com/tokio-rs/tracing/pull/3382
+[#3387]: https://github.com/tokio-rs/tracing/pull/3387
+[#3398]: https://github.com/tokio-rs/tracing/pull/3398
+[#3414]: https://github.com/tokio-rs/tracing/pull/3414
+[#3417]: https://github.com/tokio-rs/tracing/pull/3417
 [`Span::record_all`]: https://docs.rs/tracing/0.1.41/tracing/struct.Span.html#method.record_all
 
 # 0.1.41 (November 27, 2024)
