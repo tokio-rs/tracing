@@ -77,6 +77,33 @@ impl HasField {
     fn self_expr_field(&self) {}
 }
 
+struct Disp {
+    bar: u64,
+}
+
+impl ::std::fmt::Display for Disp {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::std::write!(f, "Disp.bar={bar}", bar = self.bar)
+    }
+}
+
+#[derive(Debug)]
+struct Deb {
+    _val: u64,
+}
+
+#[instrument(fields(foo = display(Disp { bar: 6, })))]
+fn fn_bare_display() {}
+
+#[instrument(skip_all, fields(foo = display(param)))]
+fn fn_bare_display_param(param: Disp) {}
+
+#[instrument(fields(foo = debug(Deb { _val: 100, })))]
+fn fn_bare_debug() {}
+
+#[instrument(skip_all, fields(foo = debug(param)))]
+fn fn_bare_debug_param(param: Deb) {}
+
 #[test]
 fn fields() {
     let span = expect::span().with_fields(
@@ -233,6 +260,52 @@ fn clashy_const_field_name() {
     );
     run_test(span, || {
         fn_clashy_const_field_name("hello world");
+    });
+}
+
+#[test]
+fn bare_display() {
+    use tracing::field::display;
+
+    let span = expect::span().with_fields(expect::field("foo").with_value(&display("Disp.bar=6")));
+
+    run_test(span, || {
+        fn_bare_display();
+    });
+}
+
+#[test]
+fn bare_display_param() {
+    use tracing::field::display;
+
+    let span = expect::span().with_fields(expect::field("foo").with_value(&display("Disp.bar=6")));
+
+    run_test(span, || {
+        fn_bare_display_param(Disp { bar: 6 });
+    });
+}
+
+#[test]
+fn bare_debug() {
+    use tracing::field::debug;
+
+    let span =
+        expect::span().with_fields(expect::field("foo").with_value(&debug(Deb { _val: 100 })));
+
+    run_test(span, || {
+        fn_bare_debug();
+    });
+}
+
+#[test]
+fn bare_debug_param() {
+    use tracing::field::debug;
+
+    let span =
+        expect::span().with_fields(expect::field("foo").with_value(&debug(Deb { _val: 100 })));
+
+    run_test(span, || {
+        fn_bare_debug_param(Deb { _val: 100 });
     });
 }
 

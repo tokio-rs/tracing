@@ -1,0 +1,10 @@
+error: format argument must be a string literal
+ --> tests/ui/fail/debug_without_key.rs:7:20
+  |
+7 |     tracing::info!(debug(foo));
+  |                    ^^^^^^^^^^
+  |
+help: you might be missing a string literal to format with
+  |
+7 |     tracing::info!("{}", debug(foo));
+  |                    +++++
