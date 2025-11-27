@@ -2971,6 +2971,9 @@ macro_rules! valueset {
     ($fields:expr, $($kvs:tt)+) => {
         {
             #[allow(unused_imports)]
+            // This import statement CANNOT be removed as it will break existing use cases.
+            // See #831, #2332, #3424 for the last times we tried.
+            use $crate::field::{debug, display, Value};
             $fields.value_set_all($crate::valueset!(
                 @ { },
                 $($kvs)+
