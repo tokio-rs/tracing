@@ -730,6 +730,11 @@ where
         self.layer.on_layer(subscriber);
     }
 
+    fn on_reload_layer(&mut self, subscriber: &S) {
+        self.id = MagicPlfDowncastMarker(subscriber.register_filter_immut());
+        self.layer.on_reload_layer(subscriber);
+    }
+
     // TODO(eliza): can we figure out a nice way to make the `Filtered` layer
     // not call `is_enabled_for` in hooks that the inner layer doesn't actually
     // have real implementations of? probably not...

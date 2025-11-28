@@ -786,6 +786,30 @@ where
         let _ = subscriber;
     }
 
+    /// Performs late initialization when a `Layer` is reloaded into a [`Subscriber`].
+    ///
+    /// This is similar to [`Layer::on_layer`], but is intended for use when a
+    /// `Layer` is dynamically reloaded via [`reload`](crate::reload), rather than
+    /// attached to a subscriber during initial construction.
+    ///
+    /// Unlike `on_layer`, this method receives a shared (`&`) reference to the
+    /// [`Subscriber`], allowing it to be called in contexts where the subscriber
+    /// is already in use and cannot be mutated. This is useful for registering
+    /// internal state (e.g., with [`register_filter_immut`]) that would otherwise
+    /// require a mutable subscriber.
+    ///
+    /// Like `on_layer`, `Layer` implementations that wrap other layers (such as
+    /// [`Filtered`] or [`Layered`]) MUST ensure that their inner layers'
+    /// `on_reload_layer` methods are called during reload, if applicable.
+    ///
+    /// [`Subscriber`]: tracing::Subscriber
+    /// [`Filtered`]: crate::filter::Filtered
+    /// [`Layered`]: crate::layer::Layered
+    /// [`register_filter_immut`]: crate::registry::LookupSpan::register_filter_immut
+    fn on_reload_layer(&mut self, subscriber: &S) {
+        let _ = subscriber;
+    }
+
     /// Registers a new callsite with this layer, returning whether or not
     /// the layer is interested in being notified about the callsite, similarly
     /// to [`Subscriber::register_callsite`].
@@ -1568,6 +1592,12 @@ where
         }
     }
 
+    fn on_reload_layer(&mut self, subscriber: &S) {
+        if let Some(ref mut layer) = self {
+            layer.on_reload_layer(subscriber);
+        }
+    }
+
     #[inline]
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
@@ -1691,6 +1721,11 @@ feature! {
             }
 
             #[inline]
+            fn on_reload_layer(&mut self, subscriber: &S) {
+                self.deref_mut().on_reload_layer(subscriber);
+            }
+
+            #[inline]
             fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
                 self.deref().on_new_span(attrs, id, ctx)
             }
@@ -1782,6 +1817,12 @@ feature! {
         fn on_layer(&mut self, subscriber: &mut S) {
             for l in self {
                 l.on_layer(subscriber);
+            }
+        }
+
+        fn on_reload_layer(&mut self, subscriber: &S) {
+            for l in self {
+                l.on_reload_layer(subscriber);
             }
         }
 
