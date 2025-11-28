@@ -1,6 +1,6 @@
 [package]
 name = "tracing-mock"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 authors = [
     "Eliza Weisman <eliza@buoyant.io>",
     "Hayden Stainsby <hds@caffeineconcepts.com>",
