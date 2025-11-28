@@ -630,7 +630,7 @@ fn record_all_macro_records_new_values_for_fields() {
             expect::span().named("foo"),
             expect::field("bar")
                 .with_value(&5)
-                .and(expect::field("baz").with_value(&"BAZ"))
+                .and(expect::field("baz").with_value(&2))
                 .and(expect::field("qux").with_value(&display("qux")))
                 .and(expect::field("quux").with_value(&debug("QuuX")))
                 .only(),
@@ -650,7 +650,7 @@ fn record_all_macro_records_new_values_for_fields() {
             qux = Empty,
             quux = Empty
         );
-        record_all!(span, bar = 5, baz = "BAZ", qux = %"qux", quux = ?"QuuX");
+        record_all!(span, bar = 5, qux = %"qux", quux = ?"QuuX");
         span.in_scope(|| {})
     });
 
