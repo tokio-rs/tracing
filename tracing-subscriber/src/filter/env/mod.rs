@@ -24,7 +24,7 @@ use tracing_core::{
     field::Field,
     span,
     subscriber::{Interest, Subscriber},
-    Metadata,
+    Event, Metadata,
 };
 
 /// A [`Layer`] which filters spans and events based on a set of filter
@@ -539,6 +539,30 @@ impl EnvFilter {
         false
     }
 
+    fn event_enabled<S>(&self, event: &Event<'_>, _: &Context<'_, S>) -> bool {
+        let metadata = event.metadata();
+        let &level = metadata.level();
+        if self.has_dynamics && self.dynamics.max_level >= level {
+            // We test against callsite one more time for the event
+            let enabled_by_cs = self
+                .by_cs
+                .read()
+                .ok()
+                .map_or(false, |by_cs| by_cs.contains_key(&metadata.callsite()));
+            if enabled_by_cs {
+                return true;
+            }
+
+            let scope = self.scope.get_or_default().borrow();
+            if scope.is_empty() {
+                return false;
+            }
+            return scope.iter().any(|&filter| filter >= level);
+        }
+        // Somehow the event hits here even though static checks should filter it out?
+        false
+    }
+
     /// Returns an optional hint of the highest [verbosity level][level] that
     /// this `EnvFilter` will enable.
     ///
@@ -709,6 +733,10 @@ feature! {
         #[inline]
         fn enabled(&self, meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
             self.enabled(meta, ctx.clone())
+        }
+
+        fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+            self.event_enabled(event, cx)
         }
 
         #[inline]
