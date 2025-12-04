@@ -1,9 +1,0 @@
-crate/tracing: tracing/**
-crate/core: tracing-core/**
-crate/proc-macros:
-- tracing-attributes/**
-- tracing-macros/**
-crate/futures: tracing-futures/**
-crate/log: tracing-log/**
-crate/subscriber: tracing-subscriber/**
-kind/docs: README.md
