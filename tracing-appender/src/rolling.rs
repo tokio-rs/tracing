@@ -192,7 +192,7 @@ impl RollingFileAppender {
             ref max_files,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
-        let now = OffsetDateTime::now_utc();
+        let now = Self::now_local_or_utc();
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
@@ -215,7 +215,16 @@ impl RollingFileAppender {
         return (self.now)();
 
         #[cfg(not(test))]
-        OffsetDateTime::now_utc()
+        Self::now_local_or_utc()
+    }
+
+    #[inline]
+    fn now_local_or_utc() -> OffsetDateTime {
+        #[cfg(not(feature = "local-time"))]
+        return OffsetDateTime::now_utc();
+
+        #[cfg(feature = "local-time")]
+        OffsetDateTime::now_local().expect("Invalid localtime; this is a bug in tracing-appender")
     }
 }
 
@@ -554,11 +563,30 @@ impl Rotation {
     }
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
-        match *self {
+        #[cfg(not(feature = "local-time"))]
+        return match *self {
             Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
             Rotation::WEEKLY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+        }
+        .expect("Unable to create a formatter; this is a bug in tracing-appender");
+
+        #[cfg(feature = "local-time")]
+        match *self {
+            Rotation::MINUTELY => format_description::parse(
+                "[year]-[month]-[day]-[hour]-[minute][offset_hour sign:mandatory][offset_minute]",
+            ),
+            Rotation::HOURLY => format_description::parse(
+                "[year]-[month]-[day]-[hour][offset_hour sign:mandatory][offset_minute]",
+            ),
+            Rotation::DAILY => format_description::parse(
+                "[year]-[month]-[day][offset_hour sign:mandatory][offset_minute]",
+            ),
+            Rotation::WEEKLY => format_description::parse(
+                "[year]-[month]-[day][offset_hour sign:mandatory][offset_minute]",
+            ),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
