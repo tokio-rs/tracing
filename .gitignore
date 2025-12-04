@@ -1,4 +1,5 @@
 /*
 
 !.gitignore
+!tracing-appender/
 !tracing-appender/**
