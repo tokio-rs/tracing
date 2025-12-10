@@ -2993,14 +2993,11 @@ macro_rules! valueset {
 
     // === base case ===
     (@ $fields:expr, { $(,)* $(($field:expr, $val:expr)),* $(,)* } $(,)*) => {{
-
         &[
-            $(
-                (
-                    &$fields.field($field).unwrap_or_else($crate::__macro_support::fake_field),
-                    $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value),
-                ),
-            )*
+            $((
+                $fields.field($field).as_ref().unwrap_or(&$crate::__macro_support::FAKE_FIELD),
+                $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value),
+            ),)*
         ]
     }};
 

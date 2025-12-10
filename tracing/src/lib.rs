@@ -1128,23 +1128,17 @@ pub mod __macro_support {
         }
     }
 
-    /// Generate a fake field that will never match a real field.
-    ///
-    /// Used via valueset to fill in for unknown fields.
-    pub const fn fake_field() -> crate::field::Field {
-        static CALLSITE: crate::callsite::DefaultCallsite =
-            crate::callsite::DefaultCallsite::new(&META);
-        static META: crate::Metadata<'static> = crate::metadata! {
-            name: "__fake_tracing_callsite",
-            target: module_path!(),
-            level: crate::Level::TRACE,
-            fields: crate::fieldset!(),
-            callsite: &CALLSITE,
-            kind: crate::metadata::Kind::SPAN,
-        };
-
-        META.private_fake_field()
-    }
+    static CALLSITE: crate::callsite::DefaultCallsite =
+        crate::callsite::DefaultCallsite::new(&META);
+    static META: crate::Metadata<'static> = crate::metadata! {
+        name: "__fake_tracing_callsite",
+        target: module_path!(),
+        level: crate::Level::TRACE,
+        fields: crate::fieldset!(),
+        callsite: &CALLSITE,
+        kind: crate::metadata::Kind::SPAN,
+    };
+    pub static FAKE_FIELD: crate::field::Field = META.private_fake_field();
 }
 
 #[cfg(feature = "log")]
