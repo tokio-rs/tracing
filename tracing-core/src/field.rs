@@ -876,7 +876,7 @@ impl FieldSet {
     /// [`Identifier`]: super::callsite::Identifier
     /// [`Callsite`]: super::callsite::Callsite
     #[inline]
-    pub(crate) fn callsite(&self) -> callsite::Identifier {
+    pub(crate) const fn callsite(&self) -> callsite::Identifier {
         callsite::Identifier(self.callsite.0)
     }
 
@@ -946,6 +946,16 @@ impl FieldSet {
         ValueSet {
             fields: self,
             values: Values::All(values),
+        }
+    }
+
+    pub(crate) const fn fake_field(&self) -> Field {
+        Field {
+            i: usize::MAX,
+            fields: FieldSet {
+                names: self.names,
+                callsite: self.callsite(),
+            },
         }
     }
 

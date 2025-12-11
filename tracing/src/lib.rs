@@ -1127,6 +1127,18 @@ pub mod __macro_support {
                 .finish()
         }
     }
+
+    static CALLSITE: crate::callsite::DefaultCallsite =
+        crate::callsite::DefaultCallsite::new(&META);
+    static META: crate::Metadata<'static> = crate::metadata! {
+        name: "__fake_tracing_callsite",
+        target: module_path!(),
+        level: crate::Level::TRACE,
+        fields: crate::fieldset!(),
+        callsite: &CALLSITE,
+        kind: crate::metadata::Kind::SPAN,
+    };
+    pub static FAKE_FIELD: crate::field::Field = META.private_fake_field();
 }
 
 #[cfg(feature = "log")]
