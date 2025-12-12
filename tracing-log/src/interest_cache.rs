@@ -1,7 +1,7 @@
-use ahash::AHasher;
 use log::{Level, Metadata};
 use lru::LruCache;
 use once_cell::sync::Lazy;
+use rapidhash::fast::{RapidHasher, RandomState as RapidRandomState};
 use std::cell::RefCell;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -90,7 +90,7 @@ struct Key {
 struct State {
     min_verbosity: Level,
     epoch: usize,
-    cache: LruCache<Key, u64, ahash::RandomState>,
+    cache: LruCache<Key, u64, RapidRandomState>,
 }
 
 impl State {
@@ -98,7 +98,7 @@ impl State {
         State {
             epoch,
             min_verbosity: config.min_verbosity,
-            cache: LruCache::new(config.lru_cache_size),
+            cache: LruCache::with_hasher(config.lru_cache_size, RapidRandomState::default()),
         }
     }
 }
@@ -175,7 +175,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
 
         let target = metadata.target();
 
-        let mut hasher = AHasher::default();
+        let mut hasher = RapidHasher::default();
         hasher.write(target.as_bytes());
 
         const HASH_MASK: u64 = !1;
