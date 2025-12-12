@@ -41,12 +41,12 @@ macro_rules! span {
                 $crate::Span::child_of(
                     $parent,
                     meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*),
+                    &$crate::valueset_all!(meta.fields(), $($fields)*),
                 )
             } else {
                 let span = $crate::__macro_support::__disabled_span(__CALLSITE.metadata());
                 $crate::if_log_enabled! { $lvl, {
-                    span.record_all(&$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+                    span.record_all(&$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
             }
@@ -71,12 +71,12 @@ macro_rules! span {
                 // span with contextual parent
                 $crate::Span::new(
                     meta,
-                    &$crate::valueset!(meta.fields(), $($fields)*),
+                    &$crate::valueset_all!(meta.fields(), $($fields)*),
                 )
             } else {
                 let span = $crate::__macro_support::__disabled_span(__CALLSITE.metadata());
                 $crate::if_log_enabled! { $lvl, {
-                    span.record_all(&$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+                    span.record_all(&$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
                 }};
                 span
             }
@@ -642,12 +642,12 @@ macro_rules! event {
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -694,12 +694,12 @@ macro_rules! event {
                     __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -752,12 +752,12 @@ macro_rules! event {
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -805,12 +805,12 @@ macro_rules! event {
                     meta,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -856,12 +856,12 @@ macro_rules! event {
                     __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -911,12 +911,12 @@ macro_rules! event {
                     __CALLSITE,
                     &value_set
                 );
-            })($crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*));
+            })($crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*));
         } else {
             $crate::__tracing_log!(
                 $lvl,
                 __CALLSITE,
-                &$crate::valueset!(__CALLSITE.metadata().fields(), $($fields)*)
+                &$crate::valueset_all!(__CALLSITE.metadata().fields(), $($fields)*)
             );
         }
     });
@@ -2811,7 +2811,7 @@ macro_rules! level_enabled {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! valueset {
+macro_rules! valueset_all {
 
     // === base case ===
     (@ { $(,)* $($val:expr),* $(,)* } $(,)*) => {
@@ -2823,148 +2823,148 @@ macro_rules! valueset {
     // TODO(#1138): determine a new syntax for uninitialized span fields, and
     // re-enable this.
     // (@{ $(,)* $($out:expr),* }, $($k:ident).+ = _, $($rest:tt)*) => {
-    //     $crate::valueset!(@ { $($out),*, (None) }, $($rest)*)
+    //     $crate::valueset_all!(@ { $($out),*, (None) }, $($rest)*)
     // };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$($k).+ as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$($k).+) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$($k).+) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = ?$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = %$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+ = $val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, $($k:ident).+) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$($k).+ as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, ?$($k:ident).+) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$($k).+) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, %$($k:ident).+) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$($k).+) as &dyn $crate::field::Value)) },
         )
     };
 
     // Handle literal names
     (@ { $(,)* $($out:expr),* }, $k:literal = ?$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = %$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = $val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = ?$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = %$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, $k:literal = $val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, ($crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value)) },
         )
     };
 
     // Handle constant names
     (@ { $(,)* $($out:expr),* }, { $k:expr } = ?$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, { $k:expr } = %$val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, { $k:expr } = $val:expr, $($rest:tt)*) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$val as &dyn $crate::field::Value)) },
             $($rest)*
         )
     };
     (@ { $(,)* $($out:expr),* }, { $k:expr } = ?$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$crate::field::debug(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, { $k:expr } = %$val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$crate::field::display(&$val) as &dyn $crate::field::Value)) },
         )
     };
     (@ { $(,)* $($out:expr),* }, { $k:expr } = $val:expr) => {
-        $crate::valueset!(
+        $crate::valueset_all!(
             @ { $($out),*, (Some(&$val as &dyn $crate::field::Value)) },
         )
     };
 
     // Remainder is unparsable, but exists --- must be format args!
     (@ { $(,)* $($out:expr),* }, $($rest:tt)+) => {
-        $crate::valueset!(@ { ($crate::__macro_support::Option::Some(&$crate::__macro_support::format_args!($($rest)+) as &dyn $crate::field::Value)), $($out),* },)
+        $crate::valueset_all!(@ { ($crate::__macro_support::Option::Some(&$crate::__macro_support::format_args!($($rest)+) as &dyn $crate::field::Value)), $($out),* },)
     };
 
     // === entry ===
@@ -2974,7 +2974,7 @@ macro_rules! valueset {
             // This import statement CANNOT be removed as it will break existing use cases.
             // See #831, #2332, #3424 for the last times we tried.
             use $crate::field::{debug, display, Value};
-            $fields.value_set_all($crate::valueset!(
+            $fields.value_set_all($crate::valueset_all!(
                 @ { },
                 $($kvs)+
             ))
@@ -2983,6 +2983,179 @@ macro_rules! valueset {
     ($fields:expr,) => {
         {
             $fields.value_set_all(&[])
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! valueset {
+
+    // === base case ===
+    (@ $fields:expr, { $(,)* $(($field:expr, $val:expr)),* $(,)* } $(,)*) => {{
+        &[
+            $((
+                $fields.field($field).as_ref().unwrap_or(&$crate::__macro_support::FAKE_FIELD),
+                $crate::__macro_support::Option::Some(&$val as &dyn $crate::field::Value),
+            ),)*
+        ]
+    }};
+
+    // === recursive case (more tts) ===
+
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = ?$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::debug(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = %$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::display(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = $val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $val) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $($k).+) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, ?$($k:ident).+, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::debug(&$($k).+)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, %$($k:ident).+, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::display(&$($k).+)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = ?$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::debug(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = %$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::display(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+ = $val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $val) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $($k:ident).+) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $($k).+) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, ?$($k:ident).+) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::debug(&$($k).+)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, %$($k:ident).+) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($crate::__tracing_stringify!($($k).+), $crate::field::display(&$($k).+)) },
+        )
+    };
+
+    // Handle literal names
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = ?$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::debug(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = %$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::display(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = $val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $val) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = ?$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::debug(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = %$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::display(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, $k:literal = $val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $val) },
+        )
+    };
+
+    // Handle constant names
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = ?$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::debug(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = %$val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::display(&$val)) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = $val:expr, $($rest:tt)*) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $val) },
+            $($rest)*
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = ?$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::debug(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = %$val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $crate::field::display(&$val)) },
+        )
+    };
+    (@ $fields:expr, { $(,)* $(($field:expr, $out:expr)),* }, { $k:expr } = $val:expr) => {
+        $crate::valueset!(
+            @ $fields, { $(($field, $out)),*, ($k, $val) },
+        )
+    };
+
+    // === entry ===
+    ($fields:expr, $($kvs:tt)+) => {
+        {
+            #[allow(unused_imports)]
+            // This import statement CANNOT be removed as it will break existing use cases.
+            // See #831, #2332, #3424 for the last times we tried.
+            use $crate::field::{debug, display, Value};
+            $fields.value_set($crate::valueset!(
+                @ $fields, { },
+                $($kvs)+
+            ))
+        }
+    };
+    ($fields:expr,) => {
+        {
+            $fields.value_set(&[])
         }
     };
 }
