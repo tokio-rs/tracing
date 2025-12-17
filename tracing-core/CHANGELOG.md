@@ -1,3 +1,9 @@
+# 0.1.36 (December 18, 2025)
+
+- Fix `record_all` panic ([#3432])
+
+[#3432]: https://github.com/tokio-rs/tracing/pull/3432
+
 # 0.1.35 (November 26, 2025)
 
 ### Added
