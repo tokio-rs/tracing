@@ -332,6 +332,19 @@ impl<L, S> ArcSwapLayer<L, S> {
 #[cfg(feature = "reload-arc-swap")]
 impl<L, S> ArcSwapHandle<L, S> {
     /// Replace the current [`Layer`] or [`Filter`] with the provided `new_value`.
+    ///
+    /// [`ArcSwapHandle::reload`] cannot be used with the [`Filtered`] layer; use
+    /// [`ArcSwapHandle::modify`] instead (see [this issue] for additional
+    /// details).
+    ///
+    /// However, if the _only_ the [`Filter`] needs to be modified, use
+    /// `reload::ArcSwapLayer` to wrap the `Filter` directly.
+    ///
+    /// [`Layer`]: crate::layer::Layer
+    /// [`Filter`]: crate::layer::Filter
+    /// [`Filtered`]: crate::filter::Filtered
+    ///
+    /// [this issue]: https://github.com/tokio-rs/tracing/issues/1629
     pub fn reload(&self, new_value: impl Into<L>) -> Result<(), Error> {
         let inner = self.inner.upgrade().ok_or(Error {
             kind: ErrorKind::SubscriberGone,
