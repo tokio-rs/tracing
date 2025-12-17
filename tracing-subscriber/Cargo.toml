@@ -33,6 +33,8 @@ ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
 json = ["tracing-serde", "serde", "serde_json"]
 valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracing-serde/valuable"]
+# Enables `reload::ArcSwapLayer`, a lock-free alternative to `reload::Layer`.
+reload-arc-swap = ["dep:arc-swap", "std"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
 local-time = ["time/local-offset"]
@@ -42,6 +44,7 @@ regex = []
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.35", default-features = false }
+arc-swap = { version = "1.7", optional = true }
 
 # only required by the filter feature
 tracing = { optional = true, path = "../tracing", version = "0.1.43", default-features = false }
@@ -106,6 +109,10 @@ harness = false
 
 [[bench]]
 name = "enter"
+harness = false
+
+[[bench]]
+name = "reload"
 harness = false
 
 [lints]

@@ -9,7 +9,7 @@ use alloc::{format, string::String, sync::Arc};
 /// [local time]: [`chrono::offset::Local`]
 /// [UTC time]: [`chrono::offset::Utc`]
 /// [`chrono` crate]: [`chrono`]
-
+///
 /// Formats the current [local time] using a [formatter] from the [`chrono`] crate.
 ///
 /// [local time]: chrono::Local::now()

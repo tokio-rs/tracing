@@ -39,6 +39,10 @@ impl Subscriber for NopSubscriber {
 fn run_all_reload_test() {
     reload_handle();
     reload_filter();
+    #[cfg(feature = "reload-arc-swap")]
+    reload_handle_arcswap();
+    #[cfg(feature = "reload-arc-swap")]
+    reload_filter_arcswap();
 }
 
 fn reload_handle() {
@@ -136,6 +140,129 @@ fn reload_filter() {
     }
 
     let (filter, handle) = Layer::new(Filter::One);
+
+    let dispatcher = tracing_core::Dispatch::new(
+        tracing_subscriber::registry().with(NopLayer.with_filter(filter)),
+    );
+
+    tracing_core::dispatcher::with_default(&dispatcher, || {
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
+        handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 1);
+    })
+}
+
+#[cfg(feature = "reload-arc-swap")]
+fn reload_handle_arcswap() {
+    static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[derive(Clone)]
+    enum Filter {
+        One,
+        Two,
+    }
+
+    impl<S: Subscriber> tracing_subscriber::Layer<S> for Filter {
+        fn register_callsite(&self, m: &Metadata<'_>) -> Interest {
+            println!("REGISTER: {:?}", m);
+            Interest::sometimes()
+        }
+
+        fn enabled(&self, m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+            println!("ENABLED: {:?}", m);
+            match self {
+                Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
+                Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::SeqCst),
+            };
+            true
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
+    }
+
+    let (layer, handle) = ArcSwapLayer::new(Filter::One);
+
+    let subscriber = tracing_core::dispatcher::Dispatch::new(layer.with_subscriber(NopSubscriber));
+
+    tracing_core::dispatcher::with_default(&subscriber, || {
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 0);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 0);
+
+        assert_eq!(LevelFilter::current(), LevelFilter::INFO);
+        handle.reload(Filter::Two).expect("should reload");
+        assert_eq!(LevelFilter::current(), LevelFilter::DEBUG);
+
+        event();
+
+        assert_eq!(FILTER1_CALLS.load(Ordering::SeqCst), 1);
+        assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 1);
+    })
+}
+
+#[cfg(feature = "reload-arc-swap")]
+fn reload_filter_arcswap() {
+    struct NopLayer;
+    impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
+        fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
+            Interest::sometimes()
+        }
+
+        fn enabled(&self, _m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+            true
+        }
+    }
+
+    static FILTER1_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static FILTER2_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    enum Filter {
+        One,
+        Two,
+    }
+
+    impl<S: Subscriber> tracing_subscriber::layer::Filter<S> for Filter {
+        fn enabled(&self, m: &Metadata<'_>, _: &layer::Context<'_, S>) -> bool {
+            println!("ENABLED: {:?}", m);
+            match self {
+                Filter::One => FILTER1_CALLS.fetch_add(1, Ordering::SeqCst),
+                Filter::Two => FILTER2_CALLS.fetch_add(1, Ordering::SeqCst),
+            };
+            true
+        }
+
+        fn max_level_hint(&self) -> Option<LevelFilter> {
+            match self {
+                Filter::One => Some(LevelFilter::INFO),
+                Filter::Two => Some(LevelFilter::DEBUG),
+            }
+        }
+    }
+
+    let (filter, handle) = ArcSwapLayer::new(Filter::One);
 
     let dispatcher = tracing_core::Dispatch::new(
         tracing_subscriber::registry().with(NopLayer.with_filter(filter)),
