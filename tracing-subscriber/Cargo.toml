@@ -82,6 +82,7 @@ tracing-mock = { path = "../tracing-mock", features = ["tracing-subscriber"] }
 log = "0.4.17"
 tracing-log = { path = "../tracing-log", version = "0.2.0" }
 criterion = { version = "0.3.6", default-features = false }
+rayon = "1.10"
 regex = { version = "1", default-features = false, features = ["std"] }
 tracing-futures = { path = "../tracing-futures", version = "0.2.0", default-features = false, features = ["std-future", "std"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
