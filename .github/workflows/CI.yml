@@ -324,9 +324,8 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
     - name: "Generate macro tests"
       run: cargo run --bin xtask -- gen-macro-tests
-    - name: "Check tracing macro invocations ("
-      # TODO(hds): remove `|| true` when all macros compile
-      run: cargo check --tests || true
+    - name: "Check tracing macro invocations"
+      run: cargo check --tests
       working-directory: "tracing/test-macros"
 
   # all required checks except for the main test run (which we only require
