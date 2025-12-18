@@ -28,6 +28,7 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
+    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
@@ -687,8 +688,15 @@ impl Inner {
                         datetime = datetime.strip_suffix('.')?;
                     }
 
+                    let mut parsed = time::parsing::Parsed::new()
+                        .with_hour_24(0)?
+                        .with_minute(0)?;
+                    parsed
+                        .parse_items(datetime.as_bytes(), &self.date_format)
+                        .ok()?;
+
                     Some(
-                        PrimitiveDateTime::parse(datetime, &self.date_format)
+                        PrimitiveDateTime::try_from(parsed)
                             .ok()?
                             .assume_utc()
                             .into(),
