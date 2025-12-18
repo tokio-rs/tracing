@@ -466,7 +466,7 @@ please let us know!)
 [`reqwest-tracing`]: https://crates.io/crates/reqwest-tracing
 [`reqwest`]: https://crates.io/crates/reqwest
 [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
-[`tracing-subscriber-reload-arcswap`]: https://github.com/mingley/tracing-subscriber-reload-arcswap
+[`tracing-subscriber-reload-arcswap`]: https://crates.io/crates/tracing-subscriber-reload-arcswap
 [`clippy-tracing`]: https://crates.io/crates/clippy-tracing
 
 **Note:** that some of the ecosystem crates are currently unreleased and
