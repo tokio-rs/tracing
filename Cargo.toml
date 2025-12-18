@@ -16,7 +16,8 @@ members = [
     "tracing-test",
     "tracing-appender",
     "tracing-journald",
-    "examples"
+    "examples",
+    "xtask",
 ]
 
  # This will be ignored with Rust older than 1.74, but for now that's okay;
