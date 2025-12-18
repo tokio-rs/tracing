@@ -1,3 +1,16 @@
+# 0.1.44 (December 18, 2025)
+
+### Fixed
+
+- Fix `record_all` panic ([#3432])
+
+### Changed
+
+- `tracing-core`: updated to 0.1.36 ([#3440])
+
+[#3432]: https://github.com/tokio-rs/tracing/pull/3432
+[#3440]: https://github.com/tokio-rs/tracing/pull/3440
+
 # 0.1.43 (November 28, 2025)
 
 #### Important
