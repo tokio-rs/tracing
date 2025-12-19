@@ -1,3 +1,5 @@
+use std::{borrow::Cow, iter, string::ToString as _};
+
 use super::{Format, FormatEvent, FormatFields, FormatTime, Writer};
 use crate::{
     field::{RecordFields, VisitOutput},
@@ -407,7 +409,7 @@ impl<'a> FormatFields<'a> for JsonFields {
         // then, we could store fields as JSON values, and add to them
         // without having to parse and re-serialize.
         let mut new = String::new();
-        let map: BTreeMap<&'_ str, serde_json::Value> =
+        let map: BTreeMap<Cow<'_, str>, serde_json::Value> =
             serde_json::from_str(current).map_err(|_| fmt::Error)?;
         let mut v = JsonVisitor::new(&mut new);
         v.values = map;
@@ -424,7 +426,7 @@ impl<'a> FormatFields<'a> for JsonFields {
 /// [visitor]: crate::field::Visit
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
-    values: BTreeMap<&'a str, serde_json::Value>,
+    values: BTreeMap<Cow<'a, str>, serde_json::Value>,
     writer: &'a mut dyn Write,
 }
 
@@ -462,7 +464,7 @@ impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
             let mut ser_map = serializer.serialize_map(None)?;
 
             for (k, v) in self.values {
-                ser_map.serialize_entry(k, &v)?;
+                ser_map.serialize_entry(&*k, &v)?;
             }
 
             ser_map.end()
@@ -494,42 +496,62 @@ impl field::Visit for JsonVisitor<'_> {
             }
         };
 
-        self.values.insert(field.name(), value);
+        self.values.insert(field.name().into(), value);
     }
 
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
     }
 
     fn record_bytes(&mut self, field: &Field, value: &[u8]) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(), serde_json::Value::from(value));
+    }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_debug(field, value);
+        if value.source().is_some() {
+            let dot_sources = ".sources";
+            let key = {
+                let mut s = String::with_capacity(field.name().len() + dot_sources.len());
+                s.push_str(field.name());
+                s.push_str(dot_sources);
+                s
+            };
+            self.values.entry(key.into()).or_insert_with(|| {
+                serde_json::Value::Array(
+                    iter::successors(value.source(), |e| e.source())
+                        .map(|it| serde_json::Value::String(it.to_string()))
+                        .collect(),
+                )
+            });
+        }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -538,12 +560,14 @@ impl field::Visit for JsonVisitor<'_> {
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => (),
             name if name.starts_with("r#") => {
-                self.values
-                    .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
+                self.values.insert(
+                    name[2..].into(),
+                    serde_json::Value::from(format!("{:?}", value)),
+                );
             }
             name => {
                 self.values
-                    .insert(name, serde_json::Value::from(format!("{:?}", value)));
+                    .insert(name.into(), serde_json::Value::from(format!("{:?}", value)));
             }
         };
     }
@@ -712,6 +736,54 @@ mod test {
         test_json(expected, subscriber, || {
             tracing::info!("some json test");
         });
+    }
+
+    #[test]
+    fn error_sources() {
+        test_json(
+            "{}",
+            subscriber().with_target(false).with_level(false),
+            || {
+                let e = Chainable::new("inner").wrap("middle").wrap("outer");
+                tracing::info!(error = &e as &dyn Error);
+            },
+        );
+
+        use alloc::{boxed::Box, string::ToString};
+        use core::error::Error;
+
+        #[derive(Debug)]
+        struct Chainable {
+            message: String,
+            source: Option<Box<Self>>,
+        }
+
+        impl Chainable {
+            fn new(message: impl ToString) -> Self {
+                Self {
+                    message: message.to_string(),
+                    source: None,
+                }
+            }
+            fn wrap(self, outer: impl ToString) -> Self {
+                Self {
+                    message: outer.to_string(),
+                    source: Some(Box::new(self)),
+                }
+            }
+        }
+
+        impl fmt::Display for Chainable {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.message, f)
+            }
+        }
+
+        impl Error for Chainable {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
+                self.source.as_deref().map(|e| e as _)
+            }
+        }
     }
 
     #[test]
