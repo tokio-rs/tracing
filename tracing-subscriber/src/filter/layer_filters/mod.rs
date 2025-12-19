@@ -740,6 +740,19 @@ where
 
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         let interest = self.filter.callsite_enabled(metadata);
+        crate::usdt_provider::filtered__register__callsite!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                metadata as *const _ as u64,
+                std::string::String::from(metadata.target()),
+                std::format!(
+                    "{}:{}",
+                    metadata.file().unwrap_or("<unknown-file>"),
+                    metadata.line().unwrap_or(0)
+                ),
+                std::format!("{interest:?}"),
+            )
+        });
 
         // If the filter didn't disable the callsite, allow the inner layer to
         // register it — since `register_callsite` is also used for purposes
@@ -765,37 +778,65 @@ where
 
     fn enabled(&self, metadata: &Metadata<'_>, cx: Context<'_, S>) -> bool {
         let cx = cx.with_filter(self.id());
-        let enabled = self.filter.enabled(metadata, &cx);
-        FILTERING.with(|filtering| filtering.set(self.id(), enabled));
+        let filter_enabled = self.filter.enabled(metadata, &cx);
 
-        if enabled {
+        let layer_enabled = if filter_enabled {
             // If the filter enabled this metadata, ask the wrapped layer if
             // _it_ wants it --- it might have a global filter.
-            self.layer.enabled(metadata, cx)
+            Some(self.layer.enabled(metadata, cx))
         } else {
-            // Otherwise, return `true`. The _per-layer_ filter disabled this
-            // metadata, but returning `false` in `Layer::enabled` will
-            // short-circuit and globally disable the span or event. This is
-            // *not* what we want for per-layer filters, as other layers may
-            // still want this event. Returning `true` here means we'll continue
-            // asking the next layer in the stack.
-            //
-            // Once all per-layer filters have been evaluated, the `Registry`
-            // at the root of the stack will return `false` from its `enabled`
-            // method if *every* per-layer  filter disabled this metadata.
-            // Otherwise, the individual per-layer filters will skip the next
-            // `new_span` or `on_event` call for their layer if *they* disabled
-            // the span or event, but it was not globally disabled.
-            true
-        }
+            None
+        };
+
+        crate::usdt_provider::filtered__enabled!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                metadata as *const _ as u64,
+                filter_enabled as u8,
+                layer_enabled.map(|b| b as i8).unwrap_or(-1),
+            )
+        });
+        FILTERING.with(|filtering| filtering.set(self.id(), filter_enabled));
+
+        // Otherwise, return `true`. The _per-layer_ filter disabled this
+        // metadata, but returning `false` in `Layer::enabled` will
+        // short-circuit and globally disable the span or event. This is
+        // *not* what we want for per-layer filters, as other layers may
+        // still want this event. Returning `true` here means we'll continue
+        // asking the next layer in the stack.
+        //
+        // Once all per-layer filters have been evaluated, the `Registry`
+        // at the root of the stack will return `false` from its `enabled`
+        // method if *every* per-layer  filter disabled this metadata.
+        // Otherwise, the individual per-layer filters will skip the next
+        // `new_span` or `on_event` call for their layer if *they* disabled
+        // the span or event, but it was not globally disabled.
+        layer_enabled.unwrap_or(true)
     }
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, cx: Context<'_, S>) {
         self.did_enable(|| {
+            crate::usdt_provider::filtered__on__new__span!(|| {
+                (
+                    std::format!("{:?}", self.id()),
+                    attrs.metadata() as *const _ as u64,
+                    id.into_u64(),
+                    true as u8,
+                )
+            });
             let cx = cx.with_filter(self.id());
             self.filter.on_new_span(attrs, id, cx.clone());
             self.layer.on_new_span(attrs, id, cx);
-        })
+        });
+
+        crate::usdt_provider::filtered__on__new__span!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                attrs.metadata() as *const _ as u64,
+                id.into_u64(),
+                false as u8,
+            )
+        });
     }
 
     #[doc(hidden)]
@@ -820,42 +861,85 @@ where
 
     fn event_enabled(&self, event: &Event<'_>, cx: Context<'_, S>) -> bool {
         let cx = cx.with_filter(self.id());
-        let enabled = FILTERING
+        let filter_enabled = FILTERING
             .with(|filtering| filtering.and(self.id(), || self.filter.event_enabled(event, &cx)));
 
-        if enabled {
+        let layer_enabled = if filter_enabled {
             // If the filter enabled this event, ask the wrapped subscriber if
             // _it_ wants it --- it might have a global filter.
-            self.layer.event_enabled(event, cx)
+            Some(self.layer.event_enabled(event, cx))
         } else {
             // Otherwise, return `true`. See the comment in `enabled` for why this
             // is necessary.
-            true
-        }
+            None
+        };
+        crate::usdt_provider::filtered__event_enabled!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                event.metadata() as *const _ as u64,
+                filter_enabled as u8,
+                layer_enabled.map(|b| b as i8).unwrap_or(-1),
+            )
+        });
+
+        layer_enabled.unwrap_or(true)
     }
 
     fn on_event(&self, event: &Event<'_>, cx: Context<'_, S>) {
+        let mut enabled = false;
         self.did_enable(|| {
+            enabled = true;
             self.layer.on_event(event, cx.with_filter(self.id()));
-        })
+        });
+        crate::usdt_provider::filtered__on__event!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                event.metadata() as *const _ as u64,
+                enabled as u8,
+            )
+        });
     }
 
     fn on_enter(&self, id: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(id, self.id()) {
+        let maybe_cx = cx.if_enabled_for(id, self.id());
+        crate::usdt_provider::filtered__on__enter!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                id.into_u64(),
+                maybe_cx.is_some() as u8,
+            )
+        });
+        if let Some(cx) = maybe_cx {
             self.filter.on_enter(id, cx.clone());
             self.layer.on_enter(id, cx);
         }
     }
 
     fn on_exit(&self, id: &span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(id, self.id()) {
+        let maybe_cx = cx.if_enabled_for(id, self.id());
+        crate::usdt_provider::filtered__on__exit!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                id.into_u64(),
+                maybe_cx.is_some() as u8,
+            )
+        });
+        if let Some(cx) = maybe_cx {
             self.filter.on_exit(id, cx.clone());
             self.layer.on_exit(id, cx);
         }
     }
 
     fn on_close(&self, id: span::Id, cx: Context<'_, S>) {
-        if let Some(cx) = cx.if_enabled_for(&id, self.id()) {
+        let maybe_cx = cx.if_enabled_for(&id, self.id());
+        crate::usdt_provider::filtered__on__exit!(|| {
+            (
+                std::format!("{:?}", self.id()),
+                id.into_u64(),
+                maybe_cx.is_some() as u8,
+            )
+        });
+        if let Some(cx) = maybe_cx {
             self.filter.on_close(id.clone(), cx.clone());
             self.layer.on_close(id, cx);
         }
@@ -1120,10 +1204,12 @@ impl FilterState {
             )
         }
 
+        crate::usdt_provider::filterstate__set!(|| (std::format!("{filter:?} set"), enabled as u8));
         self.enabled.set(self.enabled.get().set(filter, enabled))
     }
 
     fn add_interest(&self, interest: Interest) {
+        crate::usdt_provider::filterstate__add__interest!(|| std::format!("{interest:?}"));
         let mut curr_interest = self.interest.borrow_mut();
 
         #[cfg(debug_assertions)]
@@ -1179,6 +1265,10 @@ impl FilterState {
         if map.is_enabled(filter) {
             // If the filter didn't disable the current span/event, run the
             // callback.
+            crate::usdt_provider::filterstate__did__enable!(|| (
+                std::format!("{filter:?}"),
+                true as u8
+            ));
             f();
         } else {
             // Otherwise, if this filter _did_ disable the span or event
@@ -1186,6 +1276,14 @@ impl FilterState {
             // `FilterState`. The bit has already been "consumed" by skipping
             // this callback, and we need to ensure that the `FilterMap` for
             // this thread is reset when the *next* `enabled` call occurs.
+            crate::usdt_provider::filterstate__did__enable!(|| (
+                std::format!("{filter:?}"),
+                false as u8
+            ));
+            crate::usdt_provider::filterstate__set!(|| (
+                std::format!("{filter:?} did_ena"),
+                true as u8
+            ));
             self.enabled.set(map.set(filter, true));
         }
         #[cfg(debug_assertions)]
@@ -1209,6 +1307,7 @@ impl FilterState {
     fn and(&self, filter: FilterId, f: impl FnOnce() -> bool) -> bool {
         let map = self.enabled.get();
         let enabled = map.is_enabled(filter) && f();
+        crate::usdt_provider::filterstate__set!(|| (std::format!("{filter:?} and"), enabled as u8));
         self.enabled.set(map.set(filter, enabled));
         enabled
     }

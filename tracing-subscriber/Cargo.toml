@@ -51,6 +51,8 @@ regex-automata = { optional = true, version = "0.4", default-features = false, f
 smallvec = { optional = true, version = "1.9.0" }
 once_cell = { optional = true, version = "1.13.0" }
 
+usdt = "0.6"
+
 # fmt
 tracing-log = { path = "../tracing-log", version = "0.2.0", optional = true, default-features = false, features = ["log-tracer", "std"] }
 nu-ansi-term = { version = "0.50.0", optional = true }
