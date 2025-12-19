@@ -442,6 +442,40 @@ where
             self.state = self.serializer.serialize_entry(field.name(), &value)
         }
     }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_debug(field, &tracing_core::field::display(value));
+        if value.source().is_some() && self.state.is_ok() {
+            struct DotSources<'a>(&'a str);
+            impl fmt::Display for DotSources<'_> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    let Self(s) = *self;
+                    f.write_str(s)?;
+                    f.write_str(".sources")
+                }
+            }
+            struct SerializeDisplay<T>(T);
+            impl<T: fmt::Display> Serialize for SerializeDisplay<T> {
+                fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    serializer.collect_str(&self.0)
+                }
+            }
+            struct AncestorsOf<'a>(&'a (dyn std::error::Error + 'static));
+            impl Serialize for AncestorsOf<'_> {
+                fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    let mut seq = serializer.serialize_seq(None)?;
+                    for src in core::iter::successors(self.0.source(), |e| e.source()) {
+                        seq.serialize_element(&SerializeDisplay(src))?
+                    }
+                    seq.end()
+                }
+            }
+            self.state = self.serializer.serialize_entry(
+                &SerializeDisplay(DotSources(field.name())),
+                &AncestorsOf(value),
+            )
+        }
+    }
 }
 
 /// Implements `tracing_core::field::Visit` for some `serde::ser::SerializeStruct`.
