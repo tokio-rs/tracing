@@ -327,6 +327,9 @@ where
             if !fields.is_empty() {
                 write!(writer, " {} {}", dimmed.paint("with"), fields)?;
             }
+            if !self.display_span_list {
+                break;
+            }
             writer.write_char('\n')?;
         }
 
@@ -478,7 +481,7 @@ impl field::Visit for PrettyVisitor<'_> {
             "message" => {
                 // Escape ANSI characters to prevent malicious patterns (e.g., terminal injection attacks)
                 self.write_padded(&format_args!("{}{:?}", self.style.prefix(), Escape(value)))
-            },
+            }
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => self.result = Ok(()),
