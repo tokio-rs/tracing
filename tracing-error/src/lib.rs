@@ -87,7 +87,7 @@
 //! # }
 //! ```
 //!
-//! Once an error has been wrapped with with a [`TracedError`] the [`SpanTrace`]
+//! Once an error has been wrapped with a [`TracedError`] the [`SpanTrace`]
 //! can be extracted one of 3 ways: either via [`TracedError`]'s
 //! `Display`/`Debug` implementations, or via the [`ExtractSpanTrace`] trait.
 //!
