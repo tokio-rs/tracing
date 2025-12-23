@@ -797,6 +797,7 @@ impl<E: ?Sized> fmt::Display for FormattedFields<E> {
     }
 }
 
+// TODO: Evaluate removing Deref in future versions, as its a powerful tool and barely useful (consumers can just call `.fields` directly)
 impl<E: ?Sized> Deref for FormattedFields<E> {
     type Target = String;
     fn deref(&self) -> &Self::Target {
