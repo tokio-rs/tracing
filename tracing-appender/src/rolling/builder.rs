@@ -189,13 +189,13 @@ impl Builder {
 
     /// Keeps the last `n` log files on disk.
     ///
-    /// When constructing a `RollingFileAppender` or starting a new log file,
+    /// When constructing a [`RollingFileAppender`] or starting a new log file,
     /// the appender will delete the oldest matching log files until at most `n`
     /// files remain. The exact number of retained files can sometimes dip below
     /// the maximum, so if you need to retain `m` log files, specify a max of
     /// `m + 1`.
     ///
-    /// If `0` is supplied, the `RollingAppender` will not remove any files.
+    /// If `0` is supplied, the [`RollingFileAppender`] will not remove any files.
     ///
     /// Files are considered candidates for deletion based on the following
     /// criteria:
