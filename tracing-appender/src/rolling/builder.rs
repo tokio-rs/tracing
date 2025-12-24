@@ -10,6 +10,7 @@ pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
+    pub(super) latest_symlink: Option<String>,
     pub(super) max_files: Option<usize>,
 }
 
@@ -53,6 +54,7 @@ impl Builder {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
+            latest_symlink: None,
             max_files: None,
         }
     }
@@ -234,6 +236,33 @@ impl Builder {
         Self {
             // Setting `n` to 0 will disable the max files (effectively make it infinite).
             max_files: Some(n).filter(|&n| n > 0),
+            ..self
+        }
+    }
+
+    /// Create a symbolic link that points to the latest log file.
+    /// The symbolic link will be updated when new log files are created.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .latest_symlink("log.latest")
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn latest_symlink(self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        let latest_symlink = if name.is_empty() { None } else { Some(name) };
+        Self {
+            latest_symlink,
             ..self
         }
     }
