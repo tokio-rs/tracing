@@ -480,10 +480,10 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 /// let rotation = tracing_appender::rolling::Rotation::NEVER;
 /// # }
 /// ```
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub struct Rotation(RotationKind);
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 enum RotationKind {
     Minutely,
     Hourly,
