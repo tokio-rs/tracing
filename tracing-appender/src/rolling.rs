@@ -104,6 +104,7 @@ struct Inner {
     log_directory: PathBuf,
     log_filename_prefix: Option<String>,
     log_filename_suffix: Option<String>,
+    log_latest_symlink_name: Option<String>,
     date_format: Vec<format_description::FormatItem<'static>>,
     rotation: Rotation,
     next_date: AtomicUsize,
@@ -189,6 +190,7 @@ impl RollingFileAppender {
             ref rotation,
             ref prefix,
             ref suffix,
+            ref latest_symlink,
             ref max_files,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
@@ -199,6 +201,7 @@ impl RollingFileAppender {
             directory,
             prefix.clone(),
             suffix.clone(),
+            latest_symlink.clone(),
             *max_files,
         )?;
         Ok(Self {
@@ -586,6 +589,7 @@ impl Inner {
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
+        log_latest_symlink_name: Option<String>,
         max_files: Option<usize>,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
@@ -596,6 +600,7 @@ impl Inner {
             log_directory,
             log_filename_prefix,
             log_filename_suffix,
+            log_latest_symlink_name,
             date_format,
             next_date: AtomicUsize::new(
                 next_date
@@ -611,7 +616,11 @@ impl Inner {
         }
 
         let filename = inner.join_date(&now);
-        let writer = RwLock::new(create_writer(inner.log_directory.as_ref(), &filename)?);
+        let writer = RwLock::new(create_writer(
+            inner.log_directory.as_ref(),
+            &filename,
+            inner.log_latest_symlink_name.as_deref(),
+        )?);
         Ok((inner, writer))
     }
 
@@ -732,7 +741,11 @@ impl Inner {
             self.prune_old_logs(max_files);
         }
 
-        match create_writer(&self.log_directory, &filename) {
+        match create_writer(
+            &self.log_directory,
+            &filename,
+            self.log_latest_symlink_name.as_deref(),
+        ) {
             Ok(new_file) => {
                 if let Err(err) = file.flush() {
                     eprintln!("Couldn't flush previous writer: {}", err);
@@ -777,22 +790,37 @@ impl Inner {
     }
 }
 
-fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
+fn create_writer(
+    directory: &Path,
+    filename: &str,
+    latest_symlink_name: Option<&str>,
+) -> Result<File, InitError> {
     let path = directory.join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);
 
-    let new_file = open_options.open(path.as_path());
-    if new_file.is_err() {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(InitError::ctx("failed to create log directory"))?;
-            return open_options
-                .open(path)
-                .map_err(InitError::ctx("failed to create initial log file"));
-        }
+    let new_file = open_options
+        .open(&path)
+        .map_err(InitError::ctx("failed to create log file"))
+        .or_else(|_| {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(InitError::ctx("failed to create log directory"))?;
+            }
+            open_options
+                .open(&path)
+                .map_err(InitError::ctx("failed to create log file"))
+        })?;
+
+    if let Some(symlink_name) = latest_symlink_name {
+        let symlink_path = directory.join(symlink_name);
+        let _ = symlink::remove_symlink_file(&symlink_path);
+        symlink::symlink_file(path, symlink_path).map_err(InitError::ctx(
+            "failed to create symlink to latest log file",
+        ))?;
     }
 
-    new_file.map_err(InitError::ctx("failed to create initial log file"))
+    Ok(new_file)
 }
 
 #[cfg(test)]
@@ -962,6 +990,7 @@ mod test {
                 test_case.prefix.map(ToString::to_string),
                 test_case.suffix.map(ToString::to_string),
                 None,
+                None,
             )
             .unwrap();
             let path = inner.join_date(&test_case.now);
@@ -1009,6 +1038,7 @@ mod test {
                 directory.path(),
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
+                None,
                 None,
             )
             .unwrap();
@@ -1122,6 +1152,7 @@ mod test {
             Some("test_make_writer".to_string()),
             None,
             None,
+            None,
         )
         .unwrap();
 
@@ -1202,6 +1233,7 @@ mod test {
             Rotation::HOURLY,
             directory.path(),
             Some("test_max_log_files".to_string()),
+            None,
             None,
             Some(2),
         )
@@ -1286,5 +1318,68 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    fn test_latest_symlink() {
+        use std::sync::{Arc, Mutex};
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            Some("test_latest_symlink".to_string()),
+            None,
+            Some("latest.log".to_string()),
+            None,
+        )
+        .unwrap();
+
+        // Verify symlink was created pointing to the initial log file
+        let symlink_path = directory.path().join("latest.log");
+        assert!(symlink_path.is_symlink(), "latest.log should be a symlink");
+        let target = fs::read_link(&symlink_path).expect("failed to read symlink");
+        assert!(
+            target.to_string_lossy().contains("2020-02-01-10"),
+            "symlink should point to file with date 2020-02-01-10, but points to {:?}",
+            target
+        );
+
+        // Set up appender with mock clock to test rotation
+        let clock = Arc::new(Mutex::new(now));
+        let now_fn = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let mut appender = RollingFileAppender {
+            state,
+            writer,
+            now: now_fn,
+        };
+
+        // Advance time by one hour and write to trigger rotation
+        *clock.lock().unwrap() += Duration::hours(1);
+        appender.write_all(b"test\n").expect("failed to write");
+        appender.flush().expect("failed to flush");
+
+        // Verify symlink now points to the new log file
+        let target = fs::read_link(&symlink_path).expect("failed to read symlink");
+        assert!(
+            target.to_string_lossy().contains("2020-02-01-11"),
+            "symlink should point to file with date 2020-02-01-11, but points to {:?}",
+            target
+        );
+
+        // Verify the symlink is functional
+        let content = fs::read_to_string(&symlink_path).expect("failed to read through symlink");
+        assert_eq!("test\n", content);
     }
 }
