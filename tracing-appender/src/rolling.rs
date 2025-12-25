@@ -1319,4 +1319,67 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_latest_symlink() {
+        use std::sync::{Arc, Mutex};
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            Some("test_latest_symlink".to_string()),
+            None,
+            Some("latest.log".to_string()),
+            None,
+        )
+        .unwrap();
+
+        // Verify symlink was created pointing to the initial log file
+        let symlink_path = directory.path().join("latest.log");
+        assert!(symlink_path.is_symlink(), "latest.log should be a symlink");
+        let target = fs::read_link(&symlink_path).expect("failed to read symlink");
+        assert!(
+            target.to_string_lossy().contains("2020-02-01-10"),
+            "symlink should point to file with date 2020-02-01-10, but points to {:?}",
+            target
+        );
+
+        // Set up appender with mock clock to test rotation
+        let clock = Arc::new(Mutex::new(now));
+        let now_fn = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let mut appender = RollingFileAppender {
+            state,
+            writer,
+            now: now_fn,
+        };
+
+        // Advance time by one hour and write to trigger rotation
+        *clock.lock().unwrap() += Duration::hours(1);
+        appender.write_all(b"test\n").expect("failed to write");
+        appender.flush().expect("failed to flush");
+
+        // Verify symlink now points to the new log file
+        let target = fs::read_link(&symlink_path).expect("failed to read symlink");
+        assert!(
+            target.to_string_lossy().contains("2020-02-01-11"),
+            "symlink should point to file with date 2020-02-01-11, but points to {:?}",
+            target
+        );
+
+        // Verify the symlink is functional
+        let content = fs::read_to_string(&symlink_path).expect("failed to read through symlink");
+        assert_eq!("test\n", content);
+    }
 }
