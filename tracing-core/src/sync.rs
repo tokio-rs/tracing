@@ -11,7 +11,7 @@ pub(crate) struct Mutex<T> {
 }
 
 impl<T> Mutex<T> {
-    pub(crate) fn new(data: T) -> Self {
+    pub(crate) const fn new(data: T) -> Self {
         Self {
             inner: crate::spin::Mutex::new(data),
         }
