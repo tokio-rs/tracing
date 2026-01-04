@@ -62,7 +62,7 @@ async-await = []
 std = ["tracing-core/std"]
 log-always = ["log"]
 attributes = ["tracing-attributes"]
-valuable = ["tracing-core/valuable"]
+valuable = ["tracing-core/valuable", "tracing-attributes?/valuable"]
 
 [[bench]]
 name = "baseline"

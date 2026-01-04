@@ -306,3 +306,220 @@ fn test_dbg_warn() {
     with_default(subscriber, ret_dbg_warn);
     handle.assert_finished();
 }
+
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+mod valuable {
+    use tracing::{subscriber::with_default, Level};
+    use tracing_attributes::instrument;
+    use tracing_mock::{expect, subscriber};
+
+    #[instrument(ret(Valuable))]
+    fn ret_valuable_info() -> i32 {
+        42
+    }
+
+    #[test]
+    fn test_ret_valuable_info() {
+        let span = expect::span()
+            .named("ret_valuable_info")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(expect::field("return").with_value(&tracing::field::valuable(&42)))
+                    .at_level(Level::INFO),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, ret_valuable_info);
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable), ret(Valuable))]
+    fn ret_err_valuable_ok() -> Result<u8, String> {
+        Ok(0)
+    }
+
+    #[test]
+    fn test_ret_err_valuable_ok() {
+        let span = expect::span()
+            .named("ret_err_valuable_ok")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("return").with_value(&tracing::field::valuable(&0u8)),
+                    )
+                    .at_level(Level::INFO),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || ret_err_valuable_ok().ok());
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable), ret(Valuable))]
+    fn ret_err_valuable_err() -> Result<u8, String> {
+        Err("Error".to_string())
+    }
+
+    #[test]
+    fn test_ret_err_valuable_err() {
+        let span = expect::span()
+            .named("ret_err_valuable_err")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("error")
+                            .with_value(&tracing::field::valuable(&String::from("Error"))),
+                    )
+                    .at_level(Level::ERROR),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || ret_err_valuable_err().err());
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable), ret(Debug))]
+    fn ret_dbg_err_valuable_ok() -> Result<u8, String> {
+        Ok(10)
+    }
+
+    #[test]
+    fn test_ret_dbg_err_valuabe_ok() {
+        let span = expect::span()
+            .named("ret_dbg_err_valuable_ok")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("return").with_value(&tracing::field::valuable(&10u8)),
+                    )
+                    .at_level(Level::INFO),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || ret_dbg_err_valuable_ok().ok());
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable), ret(Debug))]
+    fn ret_dbg_err_valuable_err() -> Result<u8, String> {
+        Err("Failure".to_string())
+    }
+
+    #[test]
+    fn test_ret_dbg_err_valuabe_err() {
+        let span = expect::span()
+            .named("ret_dbg_err_valuable_err")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("error")
+                            .with_value(&tracing::field::valuable(&String::from("Failure"))),
+                    )
+                    .at_level(Level::ERROR),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || ret_dbg_err_valuable_err().err());
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable))]
+    fn err_valuable() -> Result<u8, String> {
+        Err("Valuable".to_string())
+    }
+
+    #[test]
+    fn test_err_valuable() {
+        let span = expect::span().named("err_valuable").at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("error")
+                            .with_value(&tracing::field::valuable(&String::from("Valuable"))),
+                    )
+                    .at_level(Level::ERROR),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || err_valuable().err());
+        handle.assert_finished();
+    }
+
+    #[instrument(err(Valuable, level = "info"))]
+    fn err_valuable_info() -> Result<u8, String> {
+        Err("Info-Valuable".to_string())
+    }
+
+    #[test]
+    fn test_err_valuable_info() {
+        let span = expect::span()
+            .named("err_valuable_info")
+            .at_level(Level::INFO);
+
+        let (subscriber, handle) = subscriber::mock()
+            .new_span(span.clone())
+            .enter(span.clone())
+            .event(
+                expect::event()
+                    .with_fields(
+                        expect::field("error")
+                            .with_value(&tracing::field::valuable(&String::from("Info-Valuable"))),
+                    )
+                    .at_level(Level::INFO),
+            )
+            .exit(span.clone())
+            .drop_span(span)
+            .only()
+            .run_with_handle();
+
+        with_default(subscriber, || err_valuable_info().err());
+        handle.assert_finished();
+    }
+}
