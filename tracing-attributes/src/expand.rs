@@ -2,17 +2,17 @@ use std::iter;
 
 use proc_macro2::TokenStream;
 use quote::TokenStreamExt;
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::visit_mut::VisitMut;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident,
-    Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path,
-    ReturnType, Signature, Stmt, Token, Type, TypePath,
+    Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident, Item, ItemFn, Pat, PatIdent, PatReference,
+    PatStruct, PatTuple, PatTupleStruct, PatType, Path, ReturnType, Signature, Stmt, Token, Type,
+    TypePath, punctuated::Punctuated, spanned::Spanned,
 };
 
 use crate::{
-    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
 };
 
 /// Given an existing function, generate an instrumented version of that function
@@ -210,7 +210,7 @@ fn gen_block<B: ToTokens>(
                 // If any parameters have the same name as a custom field, skip
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
+                    fields.0.iter().all(|Field { name, .. }| {
                         match name {
                             // #3158: Expressions cannot be evaluated at compile time and will
                             // incur a runtime cost to de-duplicate.

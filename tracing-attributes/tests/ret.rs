@@ -1,11 +1,11 @@
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
 
-use tracing::{subscriber::with_default, Level};
+use tracing::{Level, subscriber::with_default};
 use tracing_attributes::instrument;
 use tracing_mock::{expect, subscriber};
-use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_test::block_on_future;
 
 #[instrument(ret)]

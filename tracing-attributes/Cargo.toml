@@ -24,8 +24,8 @@ categories = [
 keywords = ["logging", "tracing", "macro", "instrument", "log"]
 license = "MIT"
 readme = "README.md"
-edition = "2018"
-rust-version = "1.65.0"
+edition = "2024"
+rust-version = "1.85.0"
 
 [lib]
 proc-macro = true

@@ -82,7 +82,7 @@
 
 use proc_macro2::TokenStream;
 use quote::TokenStreamExt;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::token::Brace;
 use syn::{Attribute, ItemFn, Signature, Visibility};

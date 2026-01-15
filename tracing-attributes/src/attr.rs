@@ -1,8 +1,8 @@
 use std::collections::HashSet;
-use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
+use syn::{Expr, Ident, LitInt, LitStr, Path, Token, punctuated::Punctuated};
 
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::ext::IdentExt as _;
 use syn::parse::{Parse, ParseStream};
 use syn::token::Brace;
@@ -36,7 +36,7 @@ impl InstrumentArgs {
         self.level.clone().unwrap_or(Level::Info)
     }
 
-    pub(crate) fn target(&self) -> impl ToTokens {
+    pub(crate) fn target(&self) -> impl ToTokens + use<> {
         if let Some(ref target) = self.target {
             quote!(#target)
         } else {
@@ -50,7 +50,7 @@ impl InstrumentArgs {
     /// For backwards compatibility, we need to emit compiler warnings rather
     /// than errors for unrecognized inputs. Generating a fake deprecation is
     /// the only way to do this on stable Rust right now.
-    pub(crate) fn warnings(&self) -> impl ToTokens {
+    pub(crate) fn warnings(&self) -> impl ToTokens + use<> {
         let warnings = self.parse_warnings.iter().map(|err| {
             let msg = format!("found unrecognized input, {}", err);
             let msg = LitStr::new(&msg, err.span());
@@ -179,28 +179,29 @@ impl Parse for EventArgs {
         let content;
         let _ = syn::parenthesized!(content in input);
         let mut result = Self::default();
-        let mut parse_one_arg =
-            || {
-                let lookahead = content.lookahead1();
-                if lookahead.peek(kw::level) {
-                    if result.level.is_some() {
-                        return Err(content.error("expected only a single `level` argument"));
-                    }
-                    result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
-                    return Err(content.error("expected only a single format argument"));
-                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                    match ident.to_string().as_str() {
-                        "Debug" => result.mode = FormatMode::Debug,
-                        "Display" => result.mode = FormatMode::Display,
-                        _ => return Err(syn::Error::new(
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
+                }
+                result.level = Some(content.parse()?);
+            } else if result.mode != FormatMode::default() {
+                return Err(content.error("expected only a single format argument"));
+            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                match ident.to_string().as_str() {
+                    "Debug" => result.mode = FormatMode::Debug,
+                    "Display" => result.mode = FormatMode::Display,
+                    _ => {
+                        return Err(syn::Error::new(
                             ident.span(),
                             "unknown event formatting mode, expected either `Debug` or `Display`",
-                        )),
+                        ));
                     }
                 }
-                Ok(())
-            };
+            }
+            Ok(())
+        };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -488,7 +489,7 @@ impl ToTokens for Level {
             Level::Info => tokens.extend(quote!(::tracing::Level::INFO)),
             Level::Warn => tokens.extend(quote!(::tracing::Level::WARN)),
             Level::Error => tokens.extend(quote!(::tracing::Level::ERROR)),
-            Level::Path(ref pat) => tokens.extend(quote!(#pat)),
+            Level::Path(pat) => tokens.extend(quote!(#pat)),
         }
     }
 }

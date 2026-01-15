@@ -1,10 +1,10 @@
-use tracing::subscriber::with_default;
 use tracing::Level;
+use tracing::subscriber::with_default;
 use tracing_attributes::instrument;
 use tracing_mock::*;
 use tracing_subscriber::filter::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_test::{block_on_future, PollN};
+use tracing_test::{PollN, block_on_future};
 
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
