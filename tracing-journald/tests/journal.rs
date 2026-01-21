@@ -305,6 +305,41 @@ fn journal_fields() {
 }
 
 #[test]
+#[cfg(feature = "dynamic-fields")]
+fn dynamic_fields() {
+    let layer = Layer::new().unwrap().with_field_prefix(None);
+
+    with_journald_layer(layer.clone(), || {
+        // Initially no custom fields
+        info!(test.name = "dynamic_fields.before", "Before setting fields");
+
+        let message = retry_read_one_line_from_journal("dynamic_fields.before");
+        assert_eq!(message["MESSAGE"], "Before setting fields");
+        assert!(!message.contains_key("REQUEST_ID"));
+
+        // Set custom fields dynamically
+        layer.set_custom_fields([("REQUEST_ID", "req-123"), ("USER_ID", "user-456")]);
+
+        info!(test.name = "dynamic_fields.with", "With custom fields");
+
+        let message = retry_read_one_line_from_journal("dynamic_fields.with");
+        assert_eq!(message["MESSAGE"], "With custom fields");
+        assert_eq!(message["REQUEST_ID"], "req-123");
+        assert_eq!(message["USER_ID"], "user-456");
+
+        // Clear custom fields
+        layer.clear_custom_fields();
+
+        info!(test.name = "dynamic_fields.after", "After clearing fields");
+
+        let message = retry_read_one_line_from_journal("dynamic_fields.after");
+        assert_eq!(message["MESSAGE"], "After clearing fields");
+        assert!(!message.contains_key("REQUEST_ID"));
+        assert!(!message.contains_key("USER_ID"));
+    });
+}
+
+#[test]
 fn span_metadata() {
     with_journald(|| {
         let s1 = info_span!("span1", span_field1 = "foo1");
