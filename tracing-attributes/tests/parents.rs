@@ -1,4 +1,4 @@
-use tracing::{subscriber::with_default, Id, Level};
+use tracing::{Id, Level, subscriber::with_default};
 use tracing_attributes::instrument;
 use tracing_mock::*;
 

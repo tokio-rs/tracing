@@ -2,17 +2,17 @@ use std::iter;
 
 use proc_macro2::TokenStream;
 use quote::TokenStreamExt;
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::visit_mut::VisitMut;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident,
-    Item, ItemFn, Pat, PatIdent, PatReference, PatStruct, PatTuple, PatTupleStruct, PatType, Path,
-    ReturnType, Signature, Stmt, Token, Type, TypePath,
+    Expr, ExprAsync, ExprCall, FieldPat, FnArg, Ident, Item, ItemFn, Pat, PatIdent, PatReference,
+    PatStruct, PatTuple, PatTupleStruct, PatType, Path, ReturnType, Signature, Stmt, Token, Type,
+    TypePath, punctuated::Punctuated, spanned::Spanned,
 };
 
 use crate::{
-    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
     MaybeItemFn, MaybeItemFnRef,
+    attr::{Field, FieldName, Fields, FormatMode, InstrumentArgs, Level},
 };
 
 /// Given an existing function, generate an instrumented version of that function
@@ -95,6 +95,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         &block,
         params,
         asyncness.is_some(),
+        false,
         args,
         instrumented_function_name,
         self_type,
@@ -102,7 +103,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     let mut result = quote!(
         #(#outer_attrs) *
-        #vis #constness #asyncness #unsafety #abi #fn_token #ident
+        #vis #constness #unsafety #abi #fn_token #ident
         #lt_token #gen_params #gt_token
     );
 
@@ -111,7 +112,18 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         variadic.to_tokens(tokens);
     });
 
-    output.to_tokens(&mut result);
+    if asyncness.is_some() {
+        match output {
+            ReturnType::Default => {
+                result.extend(quote!(-> impl ::core::future::Future<Output = ()>))
+            }
+            ReturnType::Type(rarrow, return_type) => {
+                result.extend(quote!(#rarrow impl ::core::future::Future<Output = #return_type>))
+            }
+        }
+    } else {
+        output.to_tokens(&mut result);
+    }
     where_clause.to_tokens(&mut result);
 
     brace_token.surround(&mut result, |tokens| {
@@ -128,6 +140,7 @@ fn gen_block<B: ToTokens>(
     block: &B,
     params: &Punctuated<FnArg, Token![,]>,
     async_context: bool,
+    async_block_already_wrapped: bool,
     mut args: InstrumentArgs,
     instrumented_function_name: &str,
     self_type: Option<&TypePath>,
@@ -210,7 +223,7 @@ fn gen_block<B: ToTokens>(
                 // If any parameters have the same name as a custom field, skip
                 // and allow them to be formatted by the custom field.
                 if let Some(ref fields) = args.fields {
-                    fields.0.iter().all(|Field { ref name, .. }| {
+                    fields.0.iter().all(|Field { name, .. }| {
                         match name {
                             // #3158: Expressions cannot be evaluated at compile time and will
                             // incur a runtime cost to de-duplicate.
@@ -303,10 +316,15 @@ fn gen_block<B: ToTokens>(
     // If `ret` is in args, instrument any resulting `Ok`s when the function
     // returns `Result`s, otherwise instrument any resulting values.
     if async_context {
+        let block = if async_block_already_wrapped {
+            quote! { #block }
+        } else {
+            quote! { async move #block }
+        };
         let mk_fut = match (err_event, ret_event) {
             (Some(err_event), Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    let __match_scrutinee = async move #block.await;
+                    let __match_scrutinee = #block.await;
                     match  __match_scrutinee {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => {
@@ -322,7 +340,7 @@ fn gen_block<B: ToTokens>(
             ),
             (Some(err_event), None) => quote_spanned!(block.span()=>
                 async move {
-                    match async move #block.await {
+                    match #block.await {
                         #[allow(clippy::unit_arg)]
                         Ok(x) => Ok(x),
                         Err(e) => {
@@ -334,13 +352,13 @@ fn gen_block<B: ToTokens>(
             ),
             (None, Some(ret_event)) => quote_spanned!(block.span()=>
                 async move {
-                    let x = async move #block.await;
+                    let x = #block.await;
                     #ret_event;
                     x
                 }
             ),
             (None, None) => quote_spanned!(block.span()=>
-                async move #block
+                #block
             ),
         };
 
@@ -349,14 +367,11 @@ fn gen_block<B: ToTokens>(
             let __tracing_instrument_future = #mk_fut;
             if !__tracing_attr_span.is_disabled() {
                 #follows_from
-                ::tracing::Instrument::instrument(
-                    __tracing_instrument_future,
-                    __tracing_attr_span
-                )
-                .await
-            } else {
-                __tracing_instrument_future.await
             }
+            ::tracing::Instrument::instrument(
+                __tracing_instrument_future,
+                __tracing_attr_span
+            )
         );
     }
 
@@ -743,21 +758,21 @@ impl<'block> AsyncInfo<'block> {
                     pinned_box,
                 } => {
                     let instrumented_block = gen_block(
-                        &async_expr.block,
+                        &async_expr,
                         &self.input.sig.inputs,
+                        true,
                         true,
                         args,
                         instrumented_function_name,
                         None,
                     );
-                    let async_attrs = &async_expr.attrs;
                     if pinned_box {
                         quote! {
-                            ::std::boxed::Box::pin(#(#async_attrs) * async move { #instrumented_block })
+                            ::std::boxed::Box::pin({ #instrumented_block })
                         }
                     } else {
                         quote! {
-                            #(#async_attrs) * async move { #instrumented_block }
+                            { #instrumented_block }
                         }
                     }
                 }
