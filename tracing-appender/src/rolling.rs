@@ -28,13 +28,17 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
+    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
+    time::SystemTime,
 };
-use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
+use time::{
+    format_description, parsing::Parsed, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time,
+};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -677,21 +681,11 @@ impl Inner {
                 }
 
                 let created = metadata.created().ok().or_else(|| {
-                    let mut datetime = filename;
-                    if let Some(prefix) = &self.log_filename_prefix {
-                        datetime = datetime.strip_prefix(prefix)?;
-                        datetime = datetime.strip_prefix('.')?;
-                    }
-                    if let Some(suffix) = &self.log_filename_suffix {
-                        datetime = datetime.strip_suffix(suffix)?;
-                        datetime = datetime.strip_suffix('.')?;
-                    }
-
-                    Some(
-                        PrimitiveDateTime::parse(datetime, &self.date_format)
-                            .ok()?
-                            .assume_utc()
-                            .into(),
+                    parse_date_from_filename(
+                        filename,
+                        &self.date_format,
+                        self.log_filename_prefix.as_deref(),
+                        self.log_filename_suffix.as_deref(),
                     )
                 })?;
                 Some((entry, created))
@@ -793,6 +787,37 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
     }
 
     new_file.map_err(InitError::ctx("failed to create initial log file"))
+}
+
+fn parse_date_from_filename(
+    filename: &str,
+    date_format: &[format_description::FormatItem<'static>],
+    prefix: Option<&str>,
+    suffix: Option<&str>,
+) -> Option<SystemTime> {
+    let mut datetime = filename;
+    if let Some(prefix) = prefix {
+        datetime = datetime.strip_prefix(prefix)?;
+        datetime = datetime.strip_prefix('.')?;
+    }
+    if let Some(suffix) = suffix {
+        datetime = datetime.strip_suffix(suffix)?;
+        datetime = datetime.strip_suffix('.')?;
+    }
+
+    let mut parsed = Parsed::new();
+    let remaining = parsed.parse_items(datetime.as_bytes(), date_format).ok()?;
+    if !remaining.is_empty() {
+        return None;
+    }
+
+    if parsed.hour_24().is_none() {
+        parsed.set_hour_24(0);
+    }
+
+    PrimitiveDateTime::try_from(parsed)
+        .ok()
+        .map(|dt| dt.assume_utc().into())
 }
 
 #[cfg(test)]
@@ -1286,5 +1311,14 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_without_time() {
+        let date_format = Rotation::DAILY.date_format();
+        let filename = "app.2020-02-01.log";
+        assert!(
+            parse_date_from_filename(filename, &date_format, Some("app"), Some("log")).is_some()
+        );
     }
 }
