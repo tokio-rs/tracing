@@ -1314,11 +1314,35 @@ mod test {
     }
 
     #[test]
-    fn test_parse_date_from_filename_without_time() {
+    fn test_parse_date_from_filename_daily() {
         let date_format = Rotation::DAILY.date_format();
         let filename = "app.2020-02-01.log";
-        assert!(
-            parse_date_from_filename(filename, &date_format, Some("app"), Some("log")).is_some()
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580515200))
+        );
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_hourly() {
+        let date_format = Rotation::HOURLY.date_format();
+        let filename = "app.2020-02-01-10.log";
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551200))
+        );
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_minutely() {
+        let date_format = Rotation::MINUTELY.date_format();
+        let filename = "app.2020-02-01-10-01.log";
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551260))
         );
     }
 }
