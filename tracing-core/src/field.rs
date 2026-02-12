@@ -1114,7 +1114,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn core::fmt::Debug) {
                 assert_eq!(field.callsite(), TEST_META_1.callsite())
             }
         }
@@ -1133,7 +1133,7 @@ mod test {
 
         struct MyVisitor;
         impl Visit for MyVisitor {
-            fn record_debug(&mut self, field: &Field, _: &dyn (core::fmt::Debug)) {
+            fn record_debug(&mut self, field: &Field, _: &dyn core::fmt::Debug) {
                 assert_eq!(field.name(), "bar")
             }
         }
