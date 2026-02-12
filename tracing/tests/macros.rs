@@ -29,357 +29,357 @@ impl ::std::fmt::Display for DisplayDebug {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span() {
-    span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
-    span!(target: "foo_events", Level::DEBUG, "foo");
-    span!(target: "foo_events", Level::DEBUG, "bar",);
-    span!(Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
-    span!(Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
-    span!(Level::DEBUG, "foo", bar.baz = ?2);
-    span!(Level::DEBUG, "foo", bar.baz = %2);
-    span!(Level::DEBUG, "foo");
-    span!(Level::DEBUG, "bar",);
+    let _ = span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(target: "foo_events", Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(target: "foo_events", Level::DEBUG, "foo");
+    let _ = span!(target: "foo_events", Level::DEBUG, "bar",);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = ?2);
+    let _ = span!(Level::DEBUG, "foo", bar.baz = %2);
+    let _ = span!(Level::DEBUG, "foo");
+    let _ = span!(Level::DEBUG, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span() {
-    trace_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
-    trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
-    trace_span!(target: "foo_events", "foo");
-    trace_span!(target: "foo_events", "bar",);
-    trace_span!("foo", bar.baz = 2, quux = 3);
-    trace_span!("foo", bar.baz = 2, quux = 4,);
-    trace_span!("foo", bar.baz = ?2);
-    trace_span!("foo", bar.baz = %2);
-    trace_span!("bar");
-    trace_span!("bar",);
+    let _ = trace_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
+    let _ = trace_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
+    let _ = trace_span!(target: "foo_events", "foo");
+    let _ = trace_span!(target: "foo_events", "bar",);
+    let _ = trace_span!("foo", bar.baz = 2, quux = 3);
+    let _ = trace_span!("foo", bar.baz = 2, quux = 4,);
+    let _ = trace_span!("foo", bar.baz = ?2);
+    let _ = trace_span!("foo", bar.baz = %2);
+    let _ = trace_span!("bar");
+    let _ = trace_span!("bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span() {
-    debug_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
-    debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
-    debug_span!(target: "foo_events", "foo");
-    debug_span!(target: "foo_events", "bar",);
-    debug_span!("foo", bar.baz = 2, quux = 3);
-    debug_span!("foo", bar.baz = 2, quux = 4,);
-    debug_span!("foo", bar.baz = ?2);
-    debug_span!("foo", bar.baz = %2);
-    debug_span!("bar");
-    debug_span!("bar",);
+    let _ = debug_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
+    let _ = debug_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
+    let _ = debug_span!(target: "foo_events", "foo");
+    let _ = debug_span!(target: "foo_events", "bar",);
+    let _ = debug_span!("foo", bar.baz = 2, quux = 3);
+    let _ = debug_span!("foo", bar.baz = 2, quux = 4,);
+    let _ = debug_span!("foo", bar.baz = ?2);
+    let _ = debug_span!("foo", bar.baz = %2);
+    let _ = debug_span!("bar");
+    let _ = debug_span!("bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span() {
-    info_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
-    info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
-    info_span!(target: "foo_events", "foo");
-    info_span!(target: "foo_events", "bar",);
-    info_span!("foo", bar.baz = 2, quux = 3);
-    info_span!("foo", bar.baz = 2, quux = 4,);
-    info_span!("foo", bar.baz = ?2);
-    info_span!("foo", bar.baz = %2);
-    info_span!("bar");
-    info_span!("bar",);
+    let _ = info_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
+    let _ = info_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
+    let _ = info_span!(target: "foo_events", "foo");
+    let _ = info_span!(target: "foo_events", "bar",);
+    let _ = info_span!("foo", bar.baz = 2, quux = 3);
+    let _ = info_span!("foo", bar.baz = 2, quux = 4,);
+    let _ = info_span!("foo", bar.baz = ?2);
+    let _ = info_span!("foo", bar.baz = %2);
+    let _ = info_span!("bar");
+    let _ = info_span!("bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span() {
-    warn_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
-    warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
-    warn_span!(target: "foo_events", "foo");
-    warn_span!(target: "foo_events", "bar",);
-    warn_span!("foo", bar.baz = 2, quux = 3);
-    warn_span!("foo", bar.baz = 2, quux = 4,);
-    warn_span!("foo", bar.baz = ?2);
-    warn_span!("foo", bar.baz = %2);
-    warn_span!("bar");
-    warn_span!("bar",);
+    let _ = warn_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
+    let _ = warn_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
+    let _ = warn_span!(target: "foo_events", "foo");
+    let _ = warn_span!(target: "foo_events", "bar",);
+    let _ = warn_span!("foo", bar.baz = 2, quux = 3);
+    let _ = warn_span!("foo", bar.baz = 2, quux = 4,);
+    let _ = warn_span!("foo", bar.baz = ?2);
+    let _ = warn_span!("foo", bar.baz = %2);
+    let _ = warn_span!("bar");
+    let _ = warn_span!("bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span() {
-    error_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
-    error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
-    error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
-    error_span!(target: "foo_events", "foo");
-    error_span!(target: "foo_events", "bar",);
-    error_span!("foo", bar.baz = 2, quux = 3);
-    error_span!("foo", bar.baz = 2, quux = 4,);
-    error_span!("foo", bar.baz = ?2);
-    error_span!("foo", bar.baz = %2);
-    error_span!("bar");
-    error_span!("bar",);
+    let _ = error_span!(target: "foo_events", "foo", bar.baz = ?2, quux = %3, quuux = 4);
+    let _ = error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 3);
+    let _ = error_span!(target: "foo_events", "foo", bar.baz = 2, quux = 4,);
+    let _ = error_span!(target: "foo_events", "foo");
+    let _ = error_span!(target: "foo_events", "bar",);
+    let _ = error_span!("foo", bar.baz = 2, quux = 3);
+    let _ = error_span!("foo", bar.baz = 2, quux = 4,);
+    let _ = error_span!("foo", bar.baz = ?2);
+    let _ = error_span!("foo", bar.baz = %2);
+    let _ = error_span!("bar");
+    let _ = error_span!("bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_root() {
-    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
-    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo");
-    span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "bar",);
-    span!(
+    let _ = span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "foo");
+    let _ = span!(target: "foo_events", parent: ::core::option::Option::None, Level::TRACE, "bar",);
+    let _ = span!(
         parent: ::core::option::Option::None,
         Level::DEBUG,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    span!(
+    let _ = span!(
         parent: ::core::option::Option::None,
         Level::DEBUG,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    span!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
-    span!(parent: ::core::option::Option::None, Level::DEBUG, "bar",);
+    let _ = span!(parent: ::core::option::Option::None, Level::DEBUG, "foo");
+    let _ = span!(parent: ::core::option::Option::None, Level::DEBUG, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span_root() {
-    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
-    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
-    trace_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    trace_span!(
+    let _ = trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    let _ = trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    let _ = trace_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    let _ = trace_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    let _ = trace_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    trace_span!(
+    let _ = trace_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    trace_span!(parent: ::core::option::Option::None, "foo");
-    trace_span!(parent: ::core::option::Option::None, "bar",);
+    let _ = trace_span!(parent: ::core::option::Option::None, "foo");
+    let _ = trace_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span_root() {
-    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
-    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
-    debug_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    debug_span!(
+    let _ = debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    let _ = debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    let _ = debug_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    let _ = debug_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    let _ = debug_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    debug_span!(
+    let _ = debug_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    debug_span!(parent: ::core::option::Option::None, "foo");
-    debug_span!(parent: ::core::option::Option::None, "bar",);
+    let _ = debug_span!(parent: ::core::option::Option::None, "foo");
+    let _ = debug_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span_root() {
-    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
-    info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
-    info_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    info_span!(
+    let _ = info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    let _ = info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    let _ = info_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    let _ = info_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    let _ = info_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    info_span!(
+    let _ = info_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    info_span!(parent: ::core::option::Option::None, "foo");
-    info_span!(parent: ::core::option::Option::None, "bar",);
+    let _ = info_span!(parent: ::core::option::Option::None, "foo");
+    let _ = info_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span_root() {
-    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
-    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
-    warn_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    warn_span!(
+    let _ = warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    let _ = warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    let _ = warn_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    let _ = warn_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    let _ = warn_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    warn_span!(
+    let _ = warn_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    warn_span!(parent: ::core::option::Option::None, "foo");
-    warn_span!(parent: ::core::option::Option::None, "bar",);
+    let _ = warn_span!(parent: ::core::option::Option::None, "foo");
+    let _ = warn_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span_root() {
-    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
-    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
-    error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
-    error_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
-    error_span!(
+    let _ = error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 3);
+    let _ = error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo", bar.baz = 2, quux = 4,);
+    let _ = error_span!(target: "foo_events", parent: ::core::option::Option::None, "foo");
+    let _ = error_span!(target: "foo_events", parent: ::core::option::Option::None, "bar",);
+    let _ = error_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 3
     );
-    error_span!(
+    let _ = error_span!(
         parent: ::core::option::Option::None,
         "foo",
         bar.baz = 2,
         quux = 4,
     );
-    error_span!(parent: ::core::option::Option::None, "foo");
-    error_span!(parent: ::core::option::Option::None, "bar",);
+    let _ = error_span!(parent: ::core::option::Option::None, "foo");
+    let _ = error_span!(parent: ::core::option::Option::None, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    span!(target: "foo_events", parent: &p, Level::TRACE, "foo", bar.baz = 2, quux = 3);
-    span!(target: "foo_events", parent: &p, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
-    span!(target: "foo_events", parent: &p, Level::TRACE, "foo");
-    span!(target: "foo_events", parent: &p, Level::TRACE, "bar",);
-    span!(parent: &p, Level::DEBUG, "foo", bar.baz = 2, quux = 3);
-    span!(parent: &p, Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
-    span!(parent: &p, Level::DEBUG, "foo");
-    span!(parent: &p, Level::DEBUG, "bar",);
+    let _ = span!(target: "foo_events", parent: &p, Level::TRACE, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(target: "foo_events", parent: &p, Level::TRACE, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(target: "foo_events", parent: &p, Level::TRACE, "foo");
+    let _ = span!(target: "foo_events", parent: &p, Level::TRACE, "bar",);
+    let _ = span!(parent: &p, Level::DEBUG, "foo", bar.baz = 2, quux = 3);
+    let _ = span!(parent: &p, Level::DEBUG, "foo", bar.baz = 2, quux = 4,);
+    let _ = span!(parent: &p, Level::DEBUG, "foo");
+    let _ = span!(parent: &p, Level::DEBUG, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn trace_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    trace_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
-    trace_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
-    trace_span!(target: "foo_events", parent: &p, "foo");
-    trace_span!(target: "foo_events", parent: &p, "bar",);
+    let _ = trace_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = trace_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = trace_span!(target: "foo_events", parent: &p, "foo");
+    let _ = trace_span!(target: "foo_events", parent: &p, "bar",);
 
-    trace_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
-    trace_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = trace_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = trace_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
 
-    trace_span!(parent: &p, "foo");
-    trace_span!(parent: &p, "bar",);
+    let _ = trace_span!(parent: &p, "foo");
+    let _ = trace_span!(parent: &p, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn debug_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    debug_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
-    debug_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
-    debug_span!(target: "foo_events", parent: &p, "foo");
-    debug_span!(target: "foo_events", parent: &p, "bar",);
+    let _ = debug_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = debug_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = debug_span!(target: "foo_events", parent: &p, "foo");
+    let _ = debug_span!(target: "foo_events", parent: &p, "bar",);
 
-    debug_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
-    debug_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = debug_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = debug_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
 
-    debug_span!(parent: &p, "foo");
-    debug_span!(parent: &p, "bar",);
+    let _ = debug_span!(parent: &p, "foo");
+    let _ = debug_span!(parent: &p, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn info_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    info_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
-    info_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
-    info_span!(target: "foo_events", parent: &p, "foo");
-    info_span!(target: "foo_events", parent: &p, "bar",);
+    let _ = info_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = info_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = info_span!(target: "foo_events", parent: &p, "foo");
+    let _ = info_span!(target: "foo_events", parent: &p, "bar",);
 
-    info_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
-    info_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = info_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = info_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
 
-    info_span!(parent: &p, "foo");
-    info_span!(parent: &p, "bar",);
+    let _ = info_span!(parent: &p, "foo");
+    let _ = info_span!(parent: &p, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn warn_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    warn_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
-    warn_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
-    warn_span!(target: "foo_events", parent: &p, "foo");
-    warn_span!(target: "foo_events", parent: &p, "bar",);
+    let _ = warn_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = warn_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = warn_span!(target: "foo_events", parent: &p, "foo");
+    let _ = warn_span!(target: "foo_events", parent: &p, "bar",);
 
-    warn_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
-    warn_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = warn_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = warn_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
 
-    warn_span!(parent: &p, "foo");
-    warn_span!(parent: &p, "bar",);
+    let _ = warn_span!(parent: &p, "foo");
+    let _ = warn_span!(parent: &p, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn error_span_with_parent() {
     let p = span!(Level::TRACE, "im_a_parent!");
-    error_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
-    error_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
-    error_span!(target: "foo_events", parent: &p, "foo");
-    error_span!(target: "foo_events", parent: &p, "bar",);
+    let _ = error_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = error_span!(target: "foo_events", parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = error_span!(target: "foo_events", parent: &p, "foo");
+    let _ = error_span!(target: "foo_events", parent: &p, "bar",);
 
-    error_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
-    error_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
+    let _ = error_span!(parent: &p, "foo", bar.baz = 2, quux = 3);
+    let _ = error_span!(parent: &p, "foo", bar.baz = 2, quux = 4,);
 
-    error_span!(parent: &p, "foo");
-    error_span!(parent: &p, "bar",);
+    let _ = error_span!(parent: &p, "foo");
+    let _ = error_span!(parent: &p, "bar",);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn span_with_non_rust_symbol() {
-    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef", "more {}", 42);
-    span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef", "more {}", 51);
-    span!(
+    let _ = span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef", "more {}", 42);
+    let _ = span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef", "more {}", 51);
+    let _ = span!(
         Level::TRACE,
         "non-rust",
         "guid:x-request-id" = "abcdef",
         "more {}",
         60
     );
-    span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef");
-    span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef");
-    span!(Level::TRACE, "non-rust", "guid:x-request-id" = "abcdef");
+    let _ = span!(Level::TRACE, "non-rust", "guid:x-request-id" = ?"abcdef");
+    let _ = span!(Level::TRACE, "non-rust", "guid:x-request-id" = %"abcdef");
+    let _ = span!(Level::TRACE, "non-rust", "guid:x-request-id" = "abcdef");
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn large_span() {
-    span!(
+    let _ = span!(
         Level::TRACE,
         "spans with more than 32 fields have been supported since #2508",
         a = 1,

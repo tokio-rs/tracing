@@ -52,8 +52,8 @@ fn same_name_spans() {
         .with(subscriber.with_filter(filter))
         .set_default();
 
-    tracing::trace_span!("foo", bar = 1);
-    tracing::trace_span!("foo", baz = 1);
+    let _ = tracing::trace_span!("foo", bar = 1);
+    let _ = tracing::trace_span!("foo", baz = 1);
 
     handle.assert_finished();
 }

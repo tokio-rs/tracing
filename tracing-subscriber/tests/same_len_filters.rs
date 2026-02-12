@@ -73,8 +73,8 @@ fn same_num_fields_and_name_len() {
         .run_with_handle();
     let subscriber = subscriber.with(filter);
     with_default(subscriber, || {
-        tracing::trace_span!("foo", bar = 1);
-        tracing::trace_span!("baz", boz = 1);
+        let _ = tracing::trace_span!("foo", bar = 1);
+        let _ = tracing::trace_span!("baz", boz = 1);
     });
 
     finished.assert_finished();
