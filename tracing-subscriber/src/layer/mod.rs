@@ -1569,6 +1569,13 @@ where
     }
 
     #[inline]
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        if let Some(ref layer) = self {
+            layer.on_register_dispatch(subscriber);
+        }
+    }
+
+    #[inline]
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         if let Some(ref inner) = self {
             inner.on_new_span(attrs, id, ctx)
