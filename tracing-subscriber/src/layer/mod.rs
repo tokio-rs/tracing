@@ -1792,6 +1792,12 @@ feature! {
             }
         }
 
+        fn on_register_dispatch(&self, subscriber: &Dispatch) {
+            for l in self {
+                l.on_register_dispatch(subscriber);
+            }
+        }
+
         fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
             // Return highest level of interest.
             let mut interest = Interest::never();
