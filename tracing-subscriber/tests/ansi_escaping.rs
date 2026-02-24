@@ -145,7 +145,7 @@ fn test_json_ansi_escaping() {
     );
 }
 
-/// Test that pretty formatter properly escapes ANSI sequences  
+/// Test that pretty formatter properly escapes ANSI sequences
 #[cfg(feature = "ansi")]
 #[test]
 fn test_pretty_ansi_escaping() {
@@ -163,6 +163,7 @@ fn test_pretty_ansi_escaping() {
 
         // Pretty formatter should escape ANSI sequences
         tracing::info!("Testing: {}", malicious_input);
+        tracing::info!(user_input = %malicious_input, "Field test");
     });
 
     let output = writer.get_output();
