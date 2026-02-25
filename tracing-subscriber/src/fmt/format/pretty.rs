@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
     field::{VisitFmt, VisitOutput},
-    fmt::fmt_layer::{FmtContext, FormattedFields},
+    fmt::{
+        fmt_layer::{FmtContext, FormattedFields},
+        format::escape::EscapeSkip,
+    },
     registry::LookupSpan,
 };
 
@@ -419,6 +422,9 @@ impl<'a> PrettyVisitor<'a> {
     }
 
     fn write_padded(&mut self, value: &impl fmt::Debug) {
+        if self.result.is_err() {
+            return;
+        }
         let padding = if self.is_empty {
             self.is_empty = false;
             ""
@@ -435,14 +441,24 @@ impl<'a> PrettyVisitor<'a> {
             Style::new()
         }
     }
+
+    fn write_field(&mut self, mut name: &str, value: &dyn fmt::Debug) {
+        if name.starts_with("r#") {
+            name = &name[2..];
+        }
+        let bold = self.bold();
+        self.write_padded(&format_args!(
+            "{}{}{}: {:?}",
+            bold.prefix(),
+            name,
+            bold.infix(self.style),
+            Escape(value)
+        ))
+    }
 }
 
 impl field::Visit for PrettyVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
-        if self.result.is_err() {
-            return;
-        }
-
         if field.name() == "message" {
             self.record_debug(field, &format_args!("{}", value))
         } else {
@@ -451,51 +467,30 @@ impl field::Visit for PrettyVisitor<'_> {
     }
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_debug(field, &format_args!("{}", value));
+
         if let Some(source) = value.source() {
-            let bold = self.bold();
-            self.record_debug(
-                field,
-                &format_args!(
-                    "{}, {}{}.sources{}: {}",
-                    Escape(&format_args!("{}", value)),
-                    bold.prefix(),
-                    field,
-                    bold.infix(self.style),
-                    ErrorSourceList(source),
-                ),
-            )
-        } else {
-            self.record_debug(field, &Escape(&format_args!("{}", value)))
+            self.write_field(
+                &std::format!("{field}.sources"),
+                &format_args!("{}", ErrorSourceList(source)),
+            );
         }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        if self.result.is_err() {
-            return;
-        }
-        let bold = self.bold();
         match field.name() {
             "message" => {
                 // Escape ANSI characters to prevent malicious patterns (e.g., terminal injection attacks)
-                self.write_padded(&format_args!("{}{:?}", self.style.prefix(), Escape(value)))
-            },
+                self.write_padded(&format_args!(
+                    "{}{:?}",
+                    self.style.prefix(),
+                    EscapeSkip(value)
+                ))
+            }
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]
             name if name.starts_with("log.") => self.result = Ok(()),
-            name if name.starts_with("r#") => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                &name[2..],
-                bold.infix(self.style),
-                value
-            )),
-            name => self.write_padded(&format_args!(
-                "{}{}{}: {:?}",
-                bold.prefix(),
-                name,
-                bold.infix(self.style),
-                value
-            )),
+            name => self.write_field(name, value),
         };
     }
 }
