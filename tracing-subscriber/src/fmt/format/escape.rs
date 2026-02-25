@@ -9,6 +9,7 @@ pub(super) struct Escape<T>(pub(super) T);
 /// Helper struct that escapes ANSI sequences as characters are written
 struct EscapingWriter<'a, 'b> {
     inner: &'a mut fmt::Formatter<'b>,
+    skip_control_chars: bool,
 }
 
 impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
@@ -17,10 +18,12 @@ impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
         for ch in s.chars() {
             // ESC BEL BS FF DEL
             if matches!(ch, '\x1b' | '\x07' | '\x08' | '\x0c' | '\x7f'..='\u{9f}') {
-                if ch.is_ascii() {
-                    write!(self.inner, "\\x{:02x}", ch as u32)?
-                } else {
-                    write!(self.inner, "\\u{{{:x}}}", ch as u32)?
+                if !self.skip_control_chars {
+                    if ch.is_ascii() {
+                        write!(self.inner, "\\x{:02x}", ch as u32)?
+                    } else {
+                        write!(self.inner, "\\u{{{:x}}}", ch as u32)?
+                    }
                 }
             } else {
                 self.inner.write_char(ch)?;
@@ -32,14 +35,20 @@ impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
 
 impl<T: fmt::Debug> fmt::Debug for Escape<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut escaping_writer = EscapingWriter { inner: f };
+        let mut escaping_writer = EscapingWriter {
+            inner: f,
+            skip_control_chars: false,
+        };
         write!(escaping_writer, "{:?}", self.0)
     }
 }
 
 impl<T: fmt::Display> fmt::Display for Escape<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut escaping_writer = EscapingWriter { inner: f };
+        let mut escaping_writer = EscapingWriter {
+            inner: f,
+            skip_control_chars: false,
+        };
         write!(escaping_writer, "{}", self.0)
     }
 }
