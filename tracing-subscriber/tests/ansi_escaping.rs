@@ -160,10 +160,12 @@ fn test_pretty_ansi_escaping() {
 
     tracing::subscriber::with_default(subscriber, || {
         let malicious_input = "\x1b]0;PWNED\x07\x1b[2J";
+        let colourful = "[\u{1b}[1m\u{1b}[38;5;9merror\u{1b}[0m\u{1b}[1m: Invalid JSON\u{1b}[0m]";
 
         // Pretty formatter should escape ANSI sequences
         tracing::info!("Testing: {}", malicious_input);
         tracing::info!(user_input = %malicious_input, "Field test");
+        tracing::info!("Colour test: {}", colourful);
     });
 
     let output = writer.get_output();
@@ -177,6 +179,10 @@ fn test_pretty_ansi_escaping() {
         !output.contains('\x07'),
         "Pretty output should not contain raw BEL characters"
     );
+    assert!(
+        output.contains("[error: Invalid JSON]"),
+        "ansi escape code should be removed from message entirely"
+    )
 }
 
 /// Comprehensive test for ANSI sanitization that prevents injection attacks
