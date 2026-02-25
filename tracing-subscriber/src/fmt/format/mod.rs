@@ -400,7 +400,7 @@ pub struct Full;
 /// span context, but other information is abbreviated. The [`Pretty`] logging
 /// format is an extra-verbose, multi-line human-readable logging format
 /// intended for use in development.
-/// 
+///
 /// [`FmtSubscriber`]: super::Subscriber
 #[derive(Debug, Clone)]
 pub struct Format<F = Full, T = SystemTime> {
@@ -1262,7 +1262,7 @@ impl field::Visit for DefaultVisitor<'_> {
             self.record_debug(
                 field,
                 &format_args!(
-                    "{} {}{}{}{}",
+                    "{:?} {}{}{}{}",
                     Escape(&format_args!("{}", value)),
                     italic.paint(field.name()),
                     italic.paint(".sources"),
@@ -1271,10 +1271,7 @@ impl field::Visit for DefaultVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(
-                field,
-                &format_args!("{}", Escape(&format_args!("{}", value))),
-            )
+            self.record_debug(field, &Escape(&format_args!("{}", value)))
         }
     }
 
@@ -1601,7 +1598,7 @@ impl<F> fmt::Debug for FieldFnVisitor<'_, F> {
 /// Configures what points in the span lifecycle are logged as events.
 ///
 /// See also [`with_span_events`].
-/// 
+///
 /// [`with_span_events`]: super::SubscriberBuilder::with_span_events
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FmtSpan(u8);

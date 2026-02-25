@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
     field::{VisitFmt, VisitOutput},
-    fmt::fmt_layer::{FmtContext, FormattedFields},
+    fmt::{
+        fmt_layer::{FmtContext, FormattedFields},
+        format::escape::EscapeSkip,
+    },
     registry::LookupSpan,
 };
 
@@ -478,7 +481,11 @@ impl field::Visit for PrettyVisitor<'_> {
         match field.name() {
             "message" => {
                 // Escape ANSI characters to prevent malicious patterns (e.g., terminal injection attacks)
-                self.write_padded(&format_args!("{}{:?}", self.style.prefix(), Escape(value)))
+                self.write_padded(&format_args!(
+                    "{}{:?}",
+                    self.style.prefix(),
+                    EscapeSkip(value)
+                ))
             }
             // Skip fields that are actually log metadata that have already been handled
             #[cfg(feature = "tracing-log")]

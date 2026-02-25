@@ -2,9 +2,33 @@
 
 use std::fmt::{self, Write};
 
-/// A wrapper that implements `fmt::Debug` and `fmt::Display` and escapes ANSI sequences on-the-fly.
+/// A wrapper that implements `fmt::Debug` and escapes control sequences on-the-fly.
 /// This avoids creating intermediate strings while providing security against terminal injection.
 pub(super) struct Escape<T>(pub(super) T);
+
+impl<T: fmt::Debug> fmt::Debug for Escape<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut escaping_writer = EscapingWriter {
+            inner: f,
+            skip_control_chars: false,
+        };
+        write!(escaping_writer, "{:?}", self.0)
+    }
+}
+
+/// A wrapper that implements `fmt::Debug` and removes control sequences on-the-fly.
+/// This avoids creating intermediate strings while providing security against terminal injection.
+pub(super) struct EscapeSkip<T>(pub(super) T);
+
+impl<T: fmt::Debug> fmt::Debug for EscapeSkip<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut escaping_writer = EscapingWriter {
+            inner: f,
+            skip_control_chars: true,
+        };
+        write!(escaping_writer, "{:?}", self.0)
+    }
+}
 
 /// Helper struct that escapes ANSI sequences as characters are written
 struct EscapingWriter<'a, 'b> {
@@ -30,25 +54,5 @@ impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
             }
         }
         Ok(())
-    }
-}
-
-impl<T: fmt::Debug> fmt::Debug for Escape<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut escaping_writer = EscapingWriter {
-            inner: f,
-            skip_control_chars: false,
-        };
-        write!(escaping_writer, "{:?}", self.0)
-    }
-}
-
-impl<T: fmt::Display> fmt::Display for Escape<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut escaping_writer = EscapingWriter {
-            inner: f,
-            skip_control_chars: false,
-        };
-        write!(escaping_writer, "{}", self.0)
     }
 }
