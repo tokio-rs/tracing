@@ -243,6 +243,7 @@ fn gen_block<B: ToTokens>(
         }
 
         let custom_fields = &args.fields;
+        let latency_field = args.latency.then(|| quote!(latency = ::tracing::field::Empty,));
 
         quote!(::tracing::span!(
             target: #target,
@@ -251,7 +252,7 @@ fn gen_block<B: ToTokens>(
             #span_name,
             #(#quoted_fields,)*
             #custom_fields
-
+            #latency_field
         ))
     })();
 
@@ -342,9 +343,26 @@ fn gen_block<B: ToTokens>(
             ),
         };
 
+        let latency_inst = args.latency.then(|| {
+            quote!(let __tracing_attr_latency = ::std::time::Instant::now();)
+        });
+        let latency_record = args.latency.then(|| {
+            quote!(
+                __tracing_attr_span.record(
+                    "latency",
+                    __tracing_attr_latency.elapsed().as_millis() as u64,
+                );
+            )
+        });
+
         return quote!(
             let __tracing_attr_span = #span;
-            let __tracing_instrument_future = #mk_fut;
+            let __tracing_instrument_future = async {
+                #latency_inst
+                let __tracing_attr_result = #mk_fut .await;
+                #latency_record
+                __tracing_attr_result
+            };
             if !__tracing_attr_span.is_disabled() {
                 #follows_from
                 ::tracing::Instrument::instrument(
@@ -357,6 +375,18 @@ fn gen_block<B: ToTokens>(
             }
         );
     }
+
+    let latency_inst = args.latency.then(|| {
+        quote!(let __tracing_attr_latency = ::std::time::Instant::now();)
+    });
+    let latency_record = args.latency.then(|| {
+        quote!(
+            __tracing_attr_span.record(
+                "latency",
+                __tracing_attr_latency.elapsed().as_millis() as u64,
+            );
+        )
+    });
 
     let span = quote!(
         // These variables are left uninitialized and initialized only
@@ -376,13 +406,14 @@ fn gen_block<B: ToTokens>(
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
+        #latency_inst
     );
 
     match (err_event, ret_event) {
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            let __tracing_attr_result = match (move || #block)() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => {
                     #ret_event;
@@ -392,25 +423,30 @@ fn gen_block<B: ToTokens>(
                     #err_event;
                     Err(e)
                 }
-            }
+            };
+            #latency_record
+            __tracing_attr_result
         },
         (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
-            match (move || #block)() {
+            let __tracing_attr_result = match (move || #block)() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
                 Err(e) => {
                     #err_event;
                     Err(e)
                 }
-            }
+            };
+            #latency_record
+            __tracing_attr_result
         ),
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
             #[allow(clippy::redundant_closure_call)]
             let x = (move || #block)();
             #ret_event;
+            #latency_record
             x
         ),
         (None, None) => quote_spanned!(block.span() =>
@@ -423,7 +459,9 @@ fn gen_block<B: ToTokens>(
                 #span
                 // ...but turn the lint back on inside the function body.
                 #[warn(clippy::suspicious_else_formatting)]
-                #block
+                let __tracing_attr_result = #block;
+                #latency_record
+                __tracing_attr_result
             }
         ),
     }

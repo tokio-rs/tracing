@@ -25,6 +25,7 @@ pub(crate) struct InstrumentArgs {
     pub(crate) fields: Option<Fields>,
     pub(crate) err_args: Option<EventArgs>,
     pub(crate) ret_args: Option<EventArgs>,
+    pub(crate) latency: bool,
     /// Errors describing any unrecognized parse inputs that we skipped.
     parse_warnings: Vec<syn::Error>,
 }
@@ -126,6 +127,9 @@ impl Parse for InstrumentArgs {
                     return Err(input.error("expected only a single `fields` argument"));
                 }
                 args.fields = Some(input.parse()?);
+            } else if lookahead.peek(kw::latency) {
+                let _ = input.parse::<kw::latency>()?;
+                args.latency = true;
             } else if lookahead.peek(kw::err) {
                 let _ = input.parse::<kw::err>();
                 let err_args = EventArgs::parse(input)?;
@@ -462,4 +466,5 @@ mod kw {
     syn::custom_keyword!(name);
     syn::custom_keyword!(err);
     syn::custom_keyword!(ret);
+    syn::custom_keyword!(latency);
 }
