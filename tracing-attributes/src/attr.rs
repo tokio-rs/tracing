@@ -179,9 +179,10 @@ impl Parse for EventArgs {
                     match ident.to_string().as_str() {
                         "Debug" => result.mode = FormatMode::Debug,
                         "Display" => result.mode = FormatMode::Display,
+                        "Redact" => result.mode = FormatMode::Redact,
                         _ => return Err(syn::Error::new(
                             ident.span(),
-                            "unknown event formatting mode, expected either `Debug` or `Display`",
+                            "unknown event formatting mode, expected either `Debug`, `Display` or `Redact`",
                         )),
                     }
                 }
@@ -287,6 +288,7 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
+    Redact,
 }
 
 #[derive(Clone, Debug)]
