@@ -49,7 +49,7 @@ use tracing_log::NormalizeEvent;
 use nu_ansi_term::{Color, Style};
 
 mod escape;
-use escape::AnsiValue;
+use escape::EscapeGuard;
 
 #[cfg(feature = "json")]
 mod json;
@@ -1281,7 +1281,7 @@ impl field::Visit for DefaultVisitor<'_> {
                 field,
                 &format_args!(
                     "{} {}{}{}{}",
-                    AnsiValue::new(format_args!("{}", value), sanitize),
+                    EscapeGuard::new(format_args!("{}", value), sanitize),
                     italic.paint(field.name()),
                     italic.paint(".sources"),
                     self.writer.dimmed().paint("="),
@@ -1291,7 +1291,7 @@ impl field::Visit for DefaultVisitor<'_> {
         } else {
             self.record_debug(
                 field,
-                &format_args!("{}", AnsiValue::new(format_args!("{}", value), sanitize)),
+                &format_args!("{}", EscapeGuard::new(format_args!("{}", value), sanitize)),
             )
         }
     }
@@ -1319,7 +1319,7 @@ impl field::Visit for DefaultVisitor<'_> {
                 write!(
                     self.writer,
                     "{:?}",
-                    AnsiValue::new(value, self.writer.sanitizes_ansi_escapes())
+                    EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
                 )
             }
             name if name.starts_with("r#") => write!(
@@ -1372,7 +1372,7 @@ impl Display for ErrorSourceList<'_> {
         let mut list = f.debug_list();
         let mut curr = Some(self.error);
         while let Some(curr_err) = curr {
-            list.entry(&AnsiValue::new(
+            list.entry(&EscapeGuard::new(
                 format_args!("{}", curr_err),
                 self.ansi_sanitization,
             ));

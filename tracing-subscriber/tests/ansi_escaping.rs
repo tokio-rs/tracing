@@ -77,15 +77,18 @@ fn test_error_ansi_escaping() {
 
     assert!(
         output.contains("An error occurred"),
-        "Error message should be logged: {output:?}"
+        "Error message should be logged: {}",
+        output
     );
     assert!(
         !output.contains('\x1b'),
-        "Output should not contain raw ESC characters: {output:?}"
+        "Output should not contain raw ESC characters: {}",
+        output
     );
     assert!(
         output.contains("\\x1b"),
-        "ESC should be escaped as \\x1b: {output:?}"
+        "ESC should be escaped as \\x1b: {}",
+        output
     );
 }
 

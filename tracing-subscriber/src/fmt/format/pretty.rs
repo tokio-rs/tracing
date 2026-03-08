@@ -458,7 +458,7 @@ impl field::Visit for PrettyVisitor<'_> {
                 field,
                 &format_args!(
                     "{}, {}{}.sources{}: {}",
-                    AnsiValue::new(format_args!("{}", value), sanitize),
+                    EscapeGuard::new(format_args!("{}", value), sanitize),
                     bold.prefix(),
                     field,
                     bold.infix(self.style),
@@ -466,7 +466,10 @@ impl field::Visit for PrettyVisitor<'_> {
                 ),
             )
         } else {
-            self.record_debug(field, &AnsiValue::new(format_args!("{}", value), sanitize))
+            self.record_debug(
+                field,
+                &EscapeGuard::new(format_args!("{}", value), sanitize),
+            )
         }
     }
 
@@ -481,7 +484,7 @@ impl field::Visit for PrettyVisitor<'_> {
                 self.write_padded(&format_args!(
                     "{}{:?}",
                     self.style.prefix(),
-                    AnsiValue::new(value, self.writer.sanitizes_ansi_escapes())
+                    EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
                 ))
             }
             // Skip fields that are actually log metadata that have already been handled

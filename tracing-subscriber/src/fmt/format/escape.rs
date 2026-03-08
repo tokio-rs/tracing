@@ -3,12 +3,12 @@
 use std::fmt::{self, Write};
 
 /// A wrapper that conditionally escapes ANSI sequences when formatted.
-pub(super) struct AnsiValue<T> {
+pub(super) struct EscapeGuard<T> {
     pub(super) value: T,
     pub(super) sanitize: bool,
 }
 
-impl<T> AnsiValue<T> {
+impl<T> EscapeGuard<T> {
     pub(super) fn new(value: T, sanitize: bool) -> Self {
         Self { value, sanitize }
     }
@@ -44,7 +44,7 @@ impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for AnsiValue<T> {
+impl<T: fmt::Debug> fmt::Debug for EscapeGuard<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sanitize {
             let mut escaping_writer = EscapingWriter { inner: f };
@@ -55,7 +55,7 @@ impl<T: fmt::Debug> fmt::Debug for AnsiValue<T> {
     }
 }
 
-impl<T: fmt::Display> fmt::Display for AnsiValue<T> {
+impl<T: fmt::Display> fmt::Display for EscapeGuard<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sanitize {
             let mut escaping_writer = EscapingWriter { inner: f };
