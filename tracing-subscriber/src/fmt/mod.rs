@@ -658,6 +658,20 @@ where
         }
     }
 
+    /// Sets the maximum capacity (in bytes) retained by the thread-local
+    /// formatting buffer between events.
+    ///
+    /// See [`Layer::with_buf_capacity_limit`] for details.
+    pub fn with_buf_capacity_limit(
+        self,
+        max_capacity: usize,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_buf_capacity_limit(max_capacity),
+            ..self
+        }
+    }
+
     /// Sets whether or not an event's target is displayed.
     pub fn with_target(
         self,
