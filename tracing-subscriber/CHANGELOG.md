@@ -1,3 +1,11 @@
+# 0.3.23 (March 13, 2026)
+
+### Fixed
+
+- Allow ansi sanitization to be disabled ([#3484])
+
+[#3484]: https://github.com/tokio-rs/tracing/pull/3484
+
 # 0.3.22 (November 28, 2025)
 
 #### Important
