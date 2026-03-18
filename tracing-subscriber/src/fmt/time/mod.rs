@@ -32,6 +32,13 @@ pub use chrono_crate::ChronoLocal;
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 pub use chrono_crate::ChronoUtc;
 
+#[cfg(feature = "tokio-time")]
+mod tokio;
+
+#[cfg(feature = "tokio-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio-time")))]
+pub use self::tokio::{tokio_uptime, TokioUptime};
+
 /// A type that can measure and format the current time.
 ///
 /// This trait is used by `Format` to include a timestamp with each `Event` when it is logged.
