@@ -718,6 +718,29 @@ impl Span {
     ///   }
     ///   ```
     ///
+    /// # Detecting Incorrect Use With Clippy
+    ///
+    /// The Clippy [`await_holding_invalid_type`] lint can be used to detect cases
+    /// where an `Entered` or `EnteredSpan` guard is held across an `.await` point.
+    /// To use this lint, add the following configuration to your `clippy.toml`:
+    ///
+    /// ```toml
+    /// await-holding-invalid-types = [
+    ///     { path = "tracing::span::Entered", reason = "generates incorrect spans when held across 'await' points" },
+    ///     { path = "tracing::span::EnteredSpan", reason = "generates incorrect spans when held across 'await' points" },
+    /// ]
+    /// ```
+    ///
+    /// And enable the lint either in your `lib.rs`:
+    ///
+    /// ```ignore
+    /// #![warn(clippy::await_holding_invalid_type)]
+    /// ```
+    ///
+    /// Or in your `Cargo.toml` / `.clippy.toml` lints configuration.
+    ///
+    /// [`await_holding_invalid_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_invalid_type
+    ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: Span::in_scope()
     /// [instrument]: crate::Instrument
