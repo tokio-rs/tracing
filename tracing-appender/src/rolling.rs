@@ -28,16 +28,23 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
+    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex,
+    },
+    thread::{spawn, JoinHandle},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
+use time::{format_description, Duration, OffsetDateTime, PrimitiveDateTime, Time};
 
 mod builder;
+mod compress;
 pub use builder::{Builder, InitError};
+pub use compress::Compression;
 
 /// A file appender with the ability to rotate log files at a fixed schedule.
 ///
@@ -106,6 +113,8 @@ struct Inner {
     log_filename_suffix: Option<String>,
     date_format: Vec<format_description::FormatItem<'static>>,
     rotation: Rotation,
+    compression: Compression,
+    compressing: Mutex<Option<JoinHandle<()>>>,
     next_date: AtomicUsize,
     max_files: Option<usize>,
 }
@@ -187,6 +196,7 @@ impl RollingFileAppender {
     fn from_builder(builder: &Builder, directory: impl AsRef<Path>) -> Result<Self, InitError> {
         let Builder {
             ref rotation,
+            ref compression,
             ref prefix,
             ref suffix,
             ref max_files,
@@ -196,6 +206,7 @@ impl RollingFileAppender {
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
+            compression.clone(),
             directory,
             prefix.clone(),
             suffix.clone(),
@@ -583,6 +594,7 @@ impl Inner {
     fn new(
         now: OffsetDateTime,
         rotation: Rotation,
+        compression: Compression,
         directory: impl AsRef<Path>,
         log_filename_prefix: Option<String>,
         log_filename_suffix: Option<String>,
@@ -603,6 +615,8 @@ impl Inner {
                     .unwrap_or(0),
             ),
             rotation,
+            compression,
+            compressing: Mutex::new(None),
             max_files,
         };
 
@@ -656,45 +670,54 @@ impl Inner {
 
                 let filename = entry.file_name();
                 // if the filename is not a UTF-8 string, skip it.
-                let filename = filename.to_str()?;
+                let mut filename = filename.to_str()?;
                 if let Some(prefix) = &self.log_filename_prefix {
-                    if !filename.starts_with(prefix) {
-                        return None;
+                    match filename.split_once('.') {
+                        Some((pre, name)) if pre == prefix => {
+                            filename = name;
+                        }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
+
+                let need_compress = self
+                    .compression
+                    .extension()
+                    .and_then(|extension| {
+                        let (name, ext) = filename.rsplit_once('.')?;
+                        Some(if ext == extension {
+                            filename = name;
+                            false
+                        } else {
+                            true
+                        })
+                    })
+                    .unwrap_or(false);
 
                 if let Some(suffix) = &self.log_filename_suffix {
-                    if !filename.ends_with(suffix) {
-                        return None;
+                    match filename.rsplit_once('.') {
+                        Some((name, suf)) if suf == suffix => {
+                            filename = name;
+                        }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
 
-                if self.log_filename_prefix.is_none()
-                    && self.log_filename_suffix.is_none()
-                    && Date::parse(filename, &self.date_format).is_err()
-                {
-                    return None;
-                }
+                let created = {
+                    let mut parsed = time::parsing::Parsed::new()
+                        .with_hour_24(0)?
+                        .with_minute(0)?;
+                    parsed
+                        .parse_items(filename.as_bytes(), &self.date_format)
+                        .ok()?;
+                    PrimitiveDateTime::try_from(parsed).ok()?
+                };
 
-                let created = metadata.created().ok().or_else(|| {
-                    let mut datetime = filename;
-                    if let Some(prefix) = &self.log_filename_prefix {
-                        datetime = datetime.strip_prefix(prefix)?;
-                        datetime = datetime.strip_prefix('.')?;
-                    }
-                    if let Some(suffix) = &self.log_filename_suffix {
-                        datetime = datetime.strip_suffix(suffix)?;
-                        datetime = datetime.strip_suffix('.')?;
-                    }
-
-                    Some(
-                        PrimitiveDateTime::parse(datetime, &self.date_format)
-                            .ok()?
-                            .assume_utc()
-                            .into(),
-                    )
-                })?;
-                Some((entry, created))
+                Some((entry, created, need_compress))
             })
             .collect::<Vec<_>>()
         });
@@ -706,22 +729,57 @@ impl Inner {
                 return;
             }
         };
-        if files.len() < max_files {
-            return;
-        }
 
-        // sort the files by their creation timestamps.
-        files.sort_by_key(|(_, created_at)| *created_at);
+        // sort the files by their ages.
+        files.sort_by_key(|(_, created_at, _)| *created_at);
 
         // delete files, so that (n-1) files remain, because we will create another log file
-        for (file, _) in files.iter().take(files.len() - (max_files - 1)) {
-            if let Err(error) = fs::remove_file(file.path()) {
-                eprintln!(
-                    "Failed to remove old log file {}: {}",
-                    file.path().display(),
-                    error
-                );
+        if let Some(len) = files.len().checked_sub(max_files) {
+            for (file, _, _) in files.drain(0..=len) {
+                if let Err(error) = fs::remove_file(file.path()) {
+                    eprintln!(
+                        "Failed to remove old log file {}: {}",
+                        file.path().display(),
+                        error
+                    );
+                }
             }
+        }
+
+        files.retain(|(_, _, need_compress)| *need_compress);
+        if !files.is_empty() {
+            // compress in a background thread because it may take a long time,
+            // and make sure only one thread to do it.
+            let _ = self.compressing.try_lock().map(|mut compressing| {
+                if compressing
+                    .as_ref()
+                    .filter(|join| !join.is_finished())
+                    .is_some()
+                {
+                    return;
+                }
+                let compression = self.compression.clone();
+                *compressing = Some(spawn(move || {
+                    for (file, _, _) in &files {
+                        let file = &file.path();
+                        if let Err(error) = compression.compress(file) {
+                            eprintln!(
+                                "Failed to compress old log file {}: {}",
+                                file.display(),
+                                error
+                            );
+                            continue;
+                        }
+                        if let Err(error) = fs::remove_file(file) {
+                            eprintln!(
+                                "Failed to remove old log file {}: {}",
+                                file.display(),
+                                error
+                            );
+                        }
+                    }
+                }));
+            });
         }
     }
 
@@ -958,6 +1016,7 @@ mod test {
             let (inner, _) = Inner::new(
                 test_case.now,
                 test_case.rotation.clone(),
+                Compression::None,
                 directory.path(),
                 test_case.prefix.map(ToString::to_string),
                 test_case.suffix.map(ToString::to_string),
@@ -1006,6 +1065,7 @@ mod test {
             let (inner, _) = Inner::new(
                 now,
                 rotation.clone(),
+                Compression::None,
                 directory.path(),
                 prefix.map(ToString::to_string),
                 suffix.map(ToString::to_string),
@@ -1118,6 +1178,7 @@ mod test {
         let (state, writer) = Inner::new(
             now,
             Rotation::HOURLY,
+            Compression::None,
             directory.path(),
             Some("test_make_writer".to_string()),
             None,
@@ -1200,6 +1261,7 @@ mod test {
         let (state, writer) = Inner::new(
             now,
             Rotation::HOURLY,
+            Compression::None,
             directory.path(),
             Some("test_max_log_files".to_string()),
             None,
@@ -1232,11 +1294,6 @@ mod test {
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
 
-        // depending on the filesystem, the creation timestamp's resolution may
-        // be as coarse as one second, so we need to wait a bit here to ensure
-        // that the next file actually is newer than the old one.
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
         tracing::info!("file 2");
 
         // advance time by one second
@@ -1246,9 +1303,6 @@ mod test {
 
         // advance time by one hour
         (*clock.lock().unwrap()) += Duration::hours(1);
-
-        // again, sleep to ensure that the creation timestamps actually differ.
-        std::thread::sleep(std::time::Duration::from_secs(1));
 
         tracing::info!("file 3");
 
@@ -1286,5 +1340,121 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    #[cfg(feature = "brotli")]
+    fn test_compress_brotli() {
+        use std::sync::Arc;
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            Compression::brotli(4096, Default::default()),
+            directory.path(),
+            Some("brotli".to_string()),
+            Some("log".to_string()),
+            Some(2),
+        )
+        .unwrap();
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        tracing::info!("file 1");
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        tracing::info!("file 2");
+
+        drop(default);
+
+        // wait thread spawn to finish.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        let dir = directory.path();
+        assert!(!dir.join("brotli.2020-02-01-10.log").exists());
+        assert!(dir.join("brotli.2020-02-01-10.log.br").exists());
+        assert!(dir.join("brotli.2020-02-01-11.log").exists());
+    }
+
+    #[test]
+    #[cfg(feature = "gzip")]
+    fn test_compress_gzip() {
+        use std::sync::Arc;
+        use tracing_subscriber::prelude::*;
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+         sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let now = OffsetDateTime::parse("2020-02-01 10:01:00 +00:00:00", &format).unwrap();
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            Compression::gzip(9),
+            directory.path(),
+            Some("gzip".to_string()),
+            Some("log".to_string()),
+            Some(2),
+        )
+        .unwrap();
+
+        let clock = Arc::new(Mutex::new(now));
+        let now = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let appender = RollingFileAppender { state, writer, now };
+        let default = tracing_subscriber::fmt()
+            .without_time()
+            .with_level(false)
+            .with_target(false)
+            .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+            .with_writer(appender)
+            .finish()
+            .set_default();
+
+        tracing::info!("file 1");
+
+        // advance time by one hour
+        (*clock.lock().unwrap()) += Duration::hours(1);
+
+        tracing::info!("file 2");
+
+        drop(default);
+
+        // wait thread spawn to finish.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        let dir = directory.path();
+        assert!(!dir.join("gzip.2020-02-01-10.log").exists());
+        assert!(dir.join("gzip.2020-02-01-10.log.gz").exists());
+        assert!(dir.join("gzip.2020-02-01-11.log").exists());
     }
 }
