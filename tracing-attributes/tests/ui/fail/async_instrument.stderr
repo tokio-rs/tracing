@@ -30,7 +30,7 @@ error[E0277]: `(&str,)` doesn't implement `std::fmt::Display`
   --> tests/ui/fail/async_instrument.rs:14:57
    |
 14 |   async fn opaque_unsatisfied() -> impl std::fmt::Display {
-   |  _________________________________________________________-
+   |  _________________________________________________________^
 15 | |     ("",)
 16 | | }
    | | ^
