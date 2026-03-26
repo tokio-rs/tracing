@@ -788,7 +788,7 @@ fn create_writer(directory: &Path, filename: &str) -> Result<File, InitError> {
 
 fn parse_date_from_filename(
     filename: &str,
-    date_format: &[format_description::FormatItem<'static>],
+    date_format: &Vec<format_description::FormatItem<'static>>,
     prefix: Option<&str>,
     suffix: Option<&str>,
 ) -> Option<SystemTime> {
