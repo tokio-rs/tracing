@@ -10,6 +10,7 @@ pub struct Builder {
     pub(super) rotation: Rotation,
     pub(super) prefix: Option<String>,
     pub(super) suffix: Option<String>,
+    pub(super) latest_symlink: Option<String>,
     pub(super) max_files: Option<usize>,
 }
 
@@ -53,6 +54,7 @@ impl Builder {
             rotation: Rotation::NEVER,
             prefix: None,
             suffix: None,
+            latest_symlink: None,
             max_files: None,
         }
     }
@@ -189,13 +191,13 @@ impl Builder {
 
     /// Keeps the last `n` log files on disk.
     ///
-    /// When constructing a `RollingFileAppender` or starting a new log file,
+    /// When constructing a [`RollingFileAppender`] or starting a new log file,
     /// the appender will delete the oldest matching log files until at most `n`
     /// files remain. The exact number of retained files can sometimes dip below
     /// the maximum, so if you need to retain `m` log files, specify a max of
     /// `m + 1`.
     ///
-    /// If `0` is supplied, the `RollingAppender` will not remove any files.
+    /// If `0` is supplied, the [`RollingFileAppender`] will not remove any files.
     ///
     /// Files are considered candidates for deletion based on the following
     /// criteria:
@@ -234,6 +236,33 @@ impl Builder {
         Self {
             // Setting `n` to 0 will disable the max files (effectively make it infinite).
             max_files: Some(n).filter(|&n| n > 0),
+            ..self
+        }
+    }
+
+    /// Create a symbolic link that points to the latest log file.
+    /// The symbolic link will be updated when new log files are created.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .latest_symlink("log.latest")
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn latest_symlink(self, name: impl Into<String>) -> Self {
+        let name = name.into();
+        let latest_symlink = if name.is_empty() { None } else { Some(name) };
+        Self {
+            latest_symlink,
             ..self
         }
     }
