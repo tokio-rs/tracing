@@ -26,13 +26,15 @@ rust-version = "1.65.0"
 
 [features]
 default = ["std", "valuable?/std"]
-std = ["once_cell"]
+std = []
+# used to be an implicit feature from an optional dependency
+# FIXME: remove with the next breaking-change release
+once_cell = []
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-once_cell = { version = "1.13.0", optional = true }
 
 [target.'cfg(tracing_unstable)'.dependencies]
 valuable = { version = "0.1.0", optional = true, default-features = false }
