@@ -1360,6 +1360,7 @@ mod test {
             created,
             Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551260))
         );
+    }
 
     #[test]
     fn test_latest_symlink() {
