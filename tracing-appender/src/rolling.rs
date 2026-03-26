@@ -28,7 +28,6 @@
 //! ```
 use crate::sync::{RwLock, RwLockReadGuard};
 use std::{
-    convert::TryFrom,
     fmt::{self, Debug},
     fs::{self, File, OpenOptions},
     io::{self, Write},
@@ -36,9 +35,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
     time::SystemTime,
 };
-use time::{
-    format_description, parsing::Parsed, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time,
-};
+use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
 
 mod builder;
 pub use builder::{Builder, InitError};
@@ -805,17 +802,8 @@ fn parse_date_from_filename(
         datetime = datetime.strip_suffix('.')?;
     }
 
-    let mut parsed = Parsed::new();
-    let remaining = parsed.parse_items(datetime.as_bytes(), date_format).ok()?;
-    if !remaining.is_empty() {
-        return None;
-    }
-
-    if parsed.hour_24().is_none() {
-        parsed.set_hour_24(0);
-    }
-
-    PrimitiveDateTime::try_from(parsed)
+    PrimitiveDateTime::parse(datetime, date_format)
+        .or_else(|_| Date::parse(datetime, date_format).map(|d| d.with_time(Time::MIDNIGHT)))
         .ok()
         .map(|dt| dt.assume_utc().into())
 }
