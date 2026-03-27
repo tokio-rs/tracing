@@ -39,8 +39,8 @@ impl<'a> MakeWriter<'a> for TestWriter {
     }
 }
 
-/// Test that basic security expectations are met - this is a smoke test
-/// for the ANSI escaping functionality using public APIs only
+/// Test that ANSI escape sequences in error Display output are sanitized
+/// when interpolated into the event message.
 #[test]
 fn test_error_ansi_escaping() {
     use std::fmt;
@@ -68,17 +68,27 @@ fn test_error_ansi_escaping() {
     tracing::subscriber::with_default(subscriber, || {
         let malicious_error = MaliciousError("\x1b]0;PWNED\x07\x1b[2J\x08\x0c\x7f");
 
-        // This demonstrates that errors are logged - the actual escaping
-        // is tested by our internal unit tests
-        tracing::error!(error = %malicious_error, "An error occurred");
+        // Log the error as part of the message so it goes through the
+        // message sanitization path (not just Debug field formatting).
+        tracing::error!("An error occurred: {}", malicious_error);
     });
 
     let output = writer.get_output();
 
-    // Just verify that something was logged
     assert!(
         output.contains("An error occurred"),
-        "Error message should be logged"
+        "Error message should be logged: {}",
+        output
+    );
+    assert!(
+        !output.contains('\x1b'),
+        "Output should not contain raw ESC characters: {}",
+        output
+    );
+    assert!(
+        output.contains("\\x1b"),
+        "ESC should be escaped as \\x1b: {}",
+        output
     );
 }
 
@@ -277,5 +287,55 @@ fn test_c1_control_characters_escaping() {
     assert!(
         output.contains("\\u{80}") || output.contains("\\u{8"),
         "Should contain escaped C1 characters"
+    );
+}
+
+/// Test that sanitization can be disabled via `with_ansi_sanitization(false)`,
+/// allowing trusted ANSI sequences in messages to pass through.
+#[test]
+fn ansi_sanitization_can_be_disabled_for_messages() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .with_ansi_sanitization(false)
+        .without_time()
+        .with_target(false)
+        .with_level(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        tracing::info!("Trusted color: \x1b[31mTEST\x1b[0m");
+    });
+
+    let output = writer.get_output();
+
+    assert!(
+        output.contains("\x1b[31mTEST\x1b[0m"),
+        "ANSI message should pass through when sanitization is disabled"
+    );
+}
+
+#[cfg(feature = "ansi")]
+#[test]
+fn ansi_sanitization_can_be_disabled_for_pretty_messages() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .pretty()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .with_ansi_sanitization(false)
+        .without_time()
+        .with_target(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        tracing::info!("Trusted color: \x1b[31mTEST\x1b[0m");
+    });
+
+    let output = writer.get_output();
+    assert!(
+        output.contains("\x1b[31mTEST\x1b[0m"),
+        "Pretty formatter message should pass through when sanitization is disabled"
     );
 }
