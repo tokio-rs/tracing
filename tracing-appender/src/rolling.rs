@@ -33,6 +33,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
+    time::SystemTime,
 };
 use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, Time};
 
@@ -686,21 +687,11 @@ impl Inner {
                 }
 
                 let created = metadata.created().ok().or_else(|| {
-                    let mut datetime = filename;
-                    if let Some(prefix) = &self.log_filename_prefix {
-                        datetime = datetime.strip_prefix(prefix)?;
-                        datetime = datetime.strip_prefix('.')?;
-                    }
-                    if let Some(suffix) = &self.log_filename_suffix {
-                        datetime = datetime.strip_suffix(suffix)?;
-                        datetime = datetime.strip_suffix('.')?;
-                    }
-
-                    Some(
-                        PrimitiveDateTime::parse(datetime, &self.date_format)
-                            .ok()?
-                            .assume_utc()
-                            .into(),
+                    parse_date_from_filename(
+                        filename,
+                        &self.date_format,
+                        self.log_filename_prefix.as_deref(),
+                        self.log_filename_suffix.as_deref(),
                     )
                 })?;
                 Some((entry, created))
@@ -817,6 +808,28 @@ fn create_writer(
     }
 
     Ok(new_file)
+}
+
+fn parse_date_from_filename(
+    filename: &str,
+    date_format: &Vec<format_description::FormatItem<'static>>,
+    prefix: Option<&str>,
+    suffix: Option<&str>,
+) -> Option<SystemTime> {
+    let mut datetime = filename;
+    if let Some(prefix) = prefix {
+        datetime = datetime.strip_prefix(prefix)?;
+        datetime = datetime.strip_prefix('.')?;
+    }
+    if let Some(suffix) = suffix {
+        datetime = datetime.strip_suffix(suffix)?;
+        datetime = datetime.strip_suffix('.')?;
+    }
+
+    PrimitiveDateTime::parse(datetime, date_format)
+        .or_else(|_| Date::parse(datetime, date_format).map(|d| d.with_time(Time::MIDNIGHT)))
+        .ok()
+        .map(|dt| dt.assume_utc().into())
 }
 
 #[cfg(test)]
@@ -1314,6 +1327,39 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_daily() {
+        let date_format = Rotation::DAILY.date_format();
+        let filename = "app.2020-02-01.log";
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580515200))
+        );
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_hourly() {
+        let date_format = Rotation::HOURLY.date_format();
+        let filename = "app.2020-02-01-10.log";
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551200))
+        );
+    }
+
+    #[test]
+    fn test_parse_date_from_filename_minutely() {
+        let date_format = Rotation::MINUTELY.date_format();
+        let filename = "app.2020-02-01-10-01.log";
+        let created = parse_date_from_filename(filename, &date_format, Some("app"), Some("log"));
+        assert_eq!(
+            created,
+            Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551260))
+        );
     }
 
     #[test]
