@@ -347,6 +347,7 @@ fn gen_block<B: ToTokens>(
         return quote!(
             let __tracing_attr_span = #span;
             let __tracing_instrument_future = #mk_fut;
+            #[allow(clippy::implicit_return)]
             if !__tracing_attr_span.is_disabled() {
                 #follows_from
                 ::tracing::Instrument::instrument(
