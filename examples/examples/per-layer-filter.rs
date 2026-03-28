@@ -31,7 +31,7 @@ fn main() {
     let log_path = dir.path().join("app.log");
 
     let file_appender = tracing_appender::rolling::never(dir.path(), "app.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     // A pretty-printed stdout layer that captures DEBUG and above.
     let stdout_layer = fmt::layer()
@@ -62,7 +62,7 @@ fn main() {
 
     // Print the log file contents so we can see only WARN+ events were captured.
     // Drop the guard first to flush the non-blocking writer.
-    drop(_guard);
+    drop(guard);
     eprintln!("\n--- Contents of {} ---", log_path.display());
     if let Ok(contents) = std::fs::read_to_string(&log_path) {
         eprint!("{contents}");
