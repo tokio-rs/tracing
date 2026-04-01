@@ -316,11 +316,11 @@ impl Subscriber for Registry {
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
         assert_ne!(
             refs, 0,
-            "tried to clone a span ({:?}) that already closed. \n\
-             This error message can indicate that a Span was hold open across an \
-             await point. \nSee the documentation \
+            "tried to clone a span ({:?}) that already closed.\n\
+             This error message may indicate that a Span was held open across an \
+             await point.\nSee the documentation \
              (https://docs.rs/tracing/latest/tracing/span/struct.EnteredSpan.html#in-asynchronous-code) \
-             for more details.
+             for more details.\n\
             ",
             id
         );
