@@ -726,8 +726,8 @@ impl Span {
     ///
     /// ```toml
     /// await-holding-invalid-types = [
-    ///     { path = "tracing::span::Entered", reason = "generates incorrect spans when held across 'await' points" },
-    ///     { path = "tracing::span::EnteredSpan", reason = "generates incorrect spans when held across 'await' points" },
+    ///     { path = "tracing::span::Entered", reason = "spans must be entered and exited on the same thread, entered guards should not be held across '.await' points" },
+    ///     { path = "tracing::span::EnteredSpan", reason = "spans must be entered and exited on the same thread, entered guards should not be held across '.await' points" },
     /// ]
     /// ```
     ///
