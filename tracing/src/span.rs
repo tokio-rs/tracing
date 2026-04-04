@@ -718,10 +718,24 @@ impl Span {
     ///   }
     ///   ```
     ///
+    /// Additionally, the [`clippy::await_holding_invalid_type`] lint may be
+    /// used to detect cases where code holds a span guard across an `.await`
+    /// point. By adding the following to a `clippy.toml` file at the root of a
+    /// crate, `clippy` will automatically warn when the `Entered` or
+    /// `EnteredSpan` guards are held across an await point:
+    ///
+    /// ```toml
+    /// await-holding-invalid-types = [
+    ///     { path = "tracing::span::Entered", reason = "spans must be entered and exited on the same thread, entered guards should not be held across '.await' points" },
+    ///     { path = "tracing::span::EnteredSpan", reason = "spans must be entered and exited on the same thread, entered guards should not be held across '.await' points" },
+    /// ]
+    /// ```
+    ///
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: Span::in_scope()
     /// [instrument]: crate::Instrument
     /// [attr]: macro@crate::instrument
+    /// [`clippy::await_holding_invalid_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#/await_holding_invalid_type
     ///
     /// # Examples
     ///
