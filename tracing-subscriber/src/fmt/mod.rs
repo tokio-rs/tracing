@@ -637,6 +637,22 @@ where
         }
     }
 
+    /// Sets whether ANSI control character sanitization is enabled.
+    ///
+    /// This defaults to `true` as a protective measure against terminal
+    /// injection attacks. If this is set to `false`, ANSI sanitization is
+    /// disabled and trusted ANSI control sequences in logged values are passed
+    /// through unchanged.
+    pub fn with_ansi_sanitization(
+        self,
+        ansi_sanitization: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_ansi_sanitization(ansi_sanitization),
+            ..self
+        }
+    }
+
     /// Sets whether to write errors from [`FormatEvent`] to the writer.
     /// Defaults to true.
     ///
