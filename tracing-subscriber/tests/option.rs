@@ -260,3 +260,15 @@ fn reload_works_with_none() {
         .unwrap();
     assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::DEBUG));
 }
+
+#[test]
+fn on_register_dispatch_is_called() {
+    let (inner_layer, inner_handle) = tracing_mock::layer::named("inner")
+        .on_register_dispatch()
+        .run_with_handle();
+
+    let subscriber = tracing_subscriber::registry().with(Some(inner_layer));
+    tracing::subscriber::with_default(subscriber, || {});
+
+    inner_handle.assert_finished();
+}
