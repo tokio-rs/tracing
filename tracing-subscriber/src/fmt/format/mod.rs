@@ -415,7 +415,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
-    pub(crate) display_tokio_task_id: bool, // Sen: https://github.com/tokio-rs/tracing/pull/818/changes#diff-3d2a515301e5ac498f093147c3e5faf9ce86650d03770531e7435f48ad03db0c
+    pub(crate) display_tokio_task_id: bool,
 }
 
 // === impl Writer ===
@@ -1003,7 +1003,7 @@ where
             let current_tokio_task_id = tokio::task::try_id();
             match current_tokio_task_id {
                 Some(id) => {
-                    write!(writer, "{:0>2?} ", id)?; // Sen: maybe use something like FmtThreadName as above
+                    write!(writer, "{:0>2?} ", id)?;
                 }
                 None => {}
             }
@@ -1142,7 +1142,7 @@ where
             let current_tokio_task_id = tokio::task::try_id();
             match current_tokio_task_id {
                 Some(id) => {
-                    write!(writer, "{:0>2?} ", id)?; // Sen: maybe use something like FmtThreadName as above
+                    write!(writer, "{:0>2?} ", id)?;
                 }
                 None => {}
             }
