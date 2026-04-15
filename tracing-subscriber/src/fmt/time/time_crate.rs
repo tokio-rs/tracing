@@ -8,14 +8,20 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/"><code>time</code>
-///     crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
-///     local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
-///     events will be logged without timestamps.
+///     <strong>Warning</strong>: In multi-threaded programs the
+///     <a href="https://docs.rs/time/0.3/time/"><code>time</code> crate</a> refuses
+///     to determine the local UTC offset by default — calls to
+///     <code>OffsetDateTime::now_local()</code> return an
+///     <code>IndeterminateOffset</code> error and timestamps fall back to UTC.
+///     This is a soundness measure: reading the system timezone is not
+///     thread-safe on most platforms. The previous
+///     <code>--cfg unsound_local_offset</code> escape hatch has been removed
+///     from the <code>time</code> crate.
 ///
-///    Alternatively, [`OffsetTime`] can log with a local offset if it is initialized early.
+///    For a local offset that is determined while the program is still
+///    single-threaded, prefer [`OffsetTime`].
 ///
-///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
+///    See the <a href="https://docs.rs/time/0.3/time/util/local_offset/"><code>time::util::local_offset</code>
 ///    documentation</a> for more details.
 /// </pre></div>
 ///
@@ -98,14 +104,18 @@ impl<F: Formattable> LocalTime<F> {
     ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-    ///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/">
-    ///     <code>time</code> crate</a> must be compiled with <code>--cfg
-    ///     unsound_local_offset</code> in order to use local timestamps. When this
-    ///     cfg is not enabled, local timestamps cannot be recorded, and
-    ///     events will be logged without timestamps.
+    ///     <strong>Warning</strong>: In multi-threaded programs the
+    ///     <a href="https://docs.rs/time/0.3/time/"><code>time</code> crate</a>
+    ///     refuses to determine the local UTC offset by default —
+    ///     <code>OffsetDateTime::now_local()</code> returns an
+    ///     <code>IndeterminateOffset</code> error and the formatter falls back
+    ///     to UTC. The previous <code>--cfg unsound_local_offset</code>
+    ///     escape hatch has been removed from the <code>time</code> crate.
+    ///     For a local offset that is determined while the program is still
+    ///     single-threaded, prefer [`OffsetTime`].
     ///
-    ///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags">
-    ///    <code>time</code> documentation</a> for more details.
+    ///    See the <a href="https://docs.rs/time/0.3/time/util/local_offset/">
+    ///    <code>time::util::local_offset</code> documentation</a> for more details.
     /// </pre></div>
     ///
     /// Typically, the format will be a format description string, or one of the
