@@ -415,6 +415,7 @@ pub struct Format<F = Full, T = SystemTime> {
     pub(crate) display_thread_name: bool,
     pub(crate) display_filename: bool,
     pub(crate) display_line_number: bool,
+    pub(crate) display_tokio_task_id: bool, // Sen: https://github.com/tokio-rs/tracing/pull/818/changes#diff-3d2a515301e5ac498f093147c3e5faf9ce86650d03770531e7435f48ad03db0c
 }
 
 // === impl Writer ===
@@ -623,6 +624,7 @@ impl Default for Format<Full, SystemTime> {
             display_thread_name: false,
             display_filename: false,
             display_line_number: false,
+            display_tokio_task_id: false,
         }
     }
 }
@@ -643,6 +645,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_tokio_task_id: self.display_tokio_task_id,
         }
     }
 
@@ -682,6 +685,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: true,
             display_line_number: true,
+            display_tokio_task_id: self.display_tokio_task_id,
         }
     }
 
@@ -713,6 +717,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_tokio_task_id: self.display_tokio_task_id,
         }
     }
 
@@ -742,6 +747,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_tokio_task_id: self.display_tokio_task_id,
         }
     }
 
@@ -758,6 +764,7 @@ impl<F, T> Format<F, T> {
             display_thread_name: self.display_thread_name,
             display_filename: self.display_filename,
             display_line_number: self.display_line_number,
+            display_tokio_task_id: self.display_tokio_task_id,
         }
     }
 
@@ -837,6 +844,17 @@ impl<F, T> Format<F, T> {
     pub fn with_source_location(self, display_location: bool) -> Self {
         self.with_line_number(display_location)
             .with_file(display_location)
+    }
+
+    /// Sets whether or not the [tokio task ID] of the current tokio task is displayed
+    /// when formatting events.
+    ///
+    /// [tokio task ID]: tokio::task::Id
+    pub fn with_tokio_task_ids(self, display_tokio_task_id: bool) -> Format<F, T> {
+        Format {
+            display_tokio_task_id,
+            ..self
+        }
     }
 
     #[inline]
@@ -980,6 +998,17 @@ where
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
         }
 
+        #[cfg(feature = "tokio-task-id")]
+        if self.display_tokio_task_id {
+            let current_tokio_task_id = tokio::task::try_id();
+            match current_tokio_task_id {
+                Some(id) => {
+                    write!(writer, "{:0>2?} ", id)?; // Sen: maybe use something like FmtThreadName as above
+                }
+                None => {}
+            }
+        }
+
         let dimmed = writer.dimmed();
 
         if let Some(scope) = ctx.event_scope() {
@@ -1106,6 +1135,17 @@ where
 
         if self.display_thread_id {
             write!(writer, "{:0>2?} ", std::thread::current().id())?;
+        }
+
+        #[cfg(feature = "tokio-task-id")]
+        if self.display_tokio_task_id {
+            let current_tokio_task_id = tokio::task::try_id();
+            match current_tokio_task_id {
+                Some(id) => {
+                    write!(writer, "{:0>2?} ", id)?; // Sen: maybe use something like FmtThreadName as above
+                }
+                None => {}
+            }
         }
 
         let fmt_ctx = {
