@@ -13,9 +13,9 @@
 /// Example output:
 ///
 /// ```not_rust
-/// Jul 17 00:38:07.177  INFO TaskId(02) task_info: i=9
-/// Jul 17 00:38:07.177  INFO            task 1 TaskId(03) task_info: i=9
-/// Jul 17 00:38:07.177  INFO large name task 2 TaskId(04) task_info: i=9
+/// 2026-04-15T20:27:00.900174Z  INFO Id(11) tokio_task_id: i=1
+/// 2026-04-15T20:27:00.900224Z  INFO Id(12) tokio_task_id: i=1
+/// 2026-04-15T20:27:00.902561Z  INFO Id(12) tokio_task_id: i=2
 /// ```
 use std::time::Duration;
 use tracing::info;
