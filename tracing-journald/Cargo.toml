@@ -15,6 +15,12 @@ categories = [
 keywords = ["tracing", "journald"]
 rust-version = "1.65.0"
 
+[features]
+default = []
+# Enable dynamic custom fields that can be updated at runtime via set_custom_fields() and clear_custom_fields().
+# This adds a small overhead (RwLock read) on every log event.
+dynamic-fields = []
+
 [dependencies]
 libc = "0.2.126"
 tracing-core = { path = "../tracing-core", version = "0.1.28" }
