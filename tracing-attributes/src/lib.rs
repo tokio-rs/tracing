@@ -52,6 +52,18 @@
 //! supported compiler version is not considered a semver breaking change as
 //! long as doing so complies with this policy.
 //!
+//! ## Experimental features
+//!
+//! The [`#[instrument]`][instrument] attribute supports the experimental
+//! `valuable` cargo feature to allow recording both the return value and the
+//! error values returned in the [`variant@Result::Err`] variant using the
+//! [valuable::Valuable][`Valuable`] trait. To take advantage of this feature
+//! you also need to enable [unstable features] of the [`tracing`] crate.
+//!
+//! [`Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
+//! [unstable features]:
+//! https://docs.rs/tracing/latest/tracing/index.html#unstable-features
+//!
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/logo-type.png",
     html_favicon_url = "https://raw.githubusercontent.com/tokio-rs/tracing/main/assets/favicon.ico",
@@ -465,6 +477,20 @@ mod expand;
 /// }
 /// ```
 ///
+/// If the experimental support for the [`valuable`] crate is enabled using the `valuable` cargo
+/// feature, and the return type implements the [`Valuable` trait] it can be recorded using the
+/// [`tracing::field::valuable`] implementation, by writing `ret(Valuable)`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// #[instrument(ret(Valuable))]
+/// fn my_function() -> i32 {
+///     42
+/// }
+/// ```
+/// **Note**: To enable support for [`valuable`] you must first enable unstable tracing features.
+/// See [unstable features] documentation of the `tracing` crate.
+///
 /// If the function returns a `Result<T, E>` and `E` implements `std::fmt::Display`, adding
 /// `err` or `err(Display)` will emit error events when the function returns `Err`:
 ///
@@ -500,6 +526,21 @@ mod expand;
 ///     Ok(())
 /// }
 /// ```
+///
+/// For error values that implement the [`Valuable` trait] it is also possible to record them as a
+/// [`Valuable` trait] using the experimental [`valuable`] support by writing `err(Valuable)`:
+///
+/// ```
+/// # use tracing_attributes::instrument;
+/// # use std::error::Error;
+/// #[instrument(err(Valuable))]
+/// fn my_function(arg: usize) -> Result<(), &'static dyn Error> {
+///     Ok(())
+/// }
+/// ```
+///
+/// **Note**: this requires enabling both the `valuable` cargo feature and [unstable features]
+/// of the `tracing` crate.
 ///
 /// If a `target` is specified, both the `ret` and `err` arguments will emit outputs to
 /// the declared target (or the default channel if `target` is not specified).
@@ -572,6 +613,10 @@ mod expand;
 /// [`Level`]: https://docs.rs/tracing/latest/tracing/struct.Level.html
 /// [`Level::TRACE`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.TRACE
 /// [`Level::ERROR`]: https://docs.rs/tracing/latest/tracing/struct.Level.html#associatedconstant.ERROR
+/// [unstable features]: https://docs.rs/tracing/latest/tracing/#unstable-features
+/// [`valuable`]: https://docs.rs/valuable/latest/valuable/
+/// [`Valuable` trait]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
+/// [`tracing::field::valuable`]: https://docs.rs/tracing/latest/tracing/field/fn.valuable.html
 #[proc_macro_attribute]
 pub fn instrument(
     args: proc_macro::TokenStream,
