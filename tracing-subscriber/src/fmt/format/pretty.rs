@@ -324,7 +324,7 @@ where
             let fields = &ext
                 .get::<FormattedFields<N>>()
                 .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
+            if !fields.fields.is_empty() {
                 write!(writer, " {} {}", dimmed.paint("with"), fields)?;
             }
             writer.write_char('\n')?;
@@ -346,7 +346,7 @@ impl<'writer> FormatFields<'writer> for Pretty {
         current: &'writer mut FormattedFields<Self>,
         fields: &span::Record<'_>,
     ) -> fmt::Result {
-        let empty = current.is_empty();
+        let empty = current.fields.is_empty();
         let writer = current.as_writer();
         let mut v = PrettyVisitor::new(writer, empty);
         fields.record(&mut v);
