@@ -880,7 +880,7 @@ impl<F, T> Format<F, T> {
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T> Format<Json, T> {
+impl<T, E> Format<Json<E>, T> {
     /// Use the full JSON format with the event's event fields flattened.
     ///
     /// # Example Output
@@ -891,7 +891,7 @@ impl<T> Format<Json, T> {
     /// See [`Json`].
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json, T> {
+    pub fn flatten_event(mut self, flatten_event: bool) -> Format<Json<E>, T> {
         self.format.flatten_event(flatten_event);
         self
     }
@@ -902,7 +902,7 @@ impl<T> Format<Json, T> {
     /// See [`format::Json`][Json]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json, T> {
+    pub fn with_current_span(mut self, display_current_span: bool) -> Format<Json<E>, T> {
         self.format.with_current_span(display_current_span);
         self
     }
@@ -913,9 +913,30 @@ impl<T> Format<Json, T> {
     /// See [`format::Json`][Json]
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json, T> {
+    pub fn with_span_list(mut self, display_span_list: bool) -> Format<Json<E>, T> {
         self.format.with_span_list(display_span_list);
         self
+    }
+
+    /// Sets an [`ExtraFields`] implementation that will be called for each
+    /// event to inject additional key-value entries into the JSON output.
+    ///
+    /// See [`Json::with_extra_fields`] for details.
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub fn with_extra_fields<E2: ExtraFields>(self, extra_fields: E2) -> Format<Json<E2>, T> {
+        Format {
+            format: self.format.with_extra_fields(extra_fields),
+            timer: self.timer,
+            ansi: self.ansi,
+            display_target: self.display_target,
+            display_timestamp: self.display_timestamp,
+            display_level: self.display_level,
+            display_thread_id: self.display_thread_id,
+            display_thread_name: self.display_thread_name,
+            display_filename: self.display_filename,
+            display_line_number: self.display_line_number,
+        }
     }
 }
 
