@@ -279,10 +279,10 @@ impl Builder {
     ///
     /// By default, [`RollingFileAppender`] uses UTC for both rotation boundaries
     /// and the date/time stamps embedded in file names. This means that, for example,
-    /// a daily-rotating appender rolls over at midnight *UTC*, which may faill in the
+    /// a daily-rotating appender rolls over at midnight *UTC*, which may fall in the
     /// middle of a day in other time zones. Calling this method switches the appender
-    /// to local time so that rotation boundaries and file name timestamps align with
-    /// local time.
+    /// to local time so that rotation boundaries and file name date/time stamps align
+    /// with the local time.
     ///
     /// # Caveats
     ///
@@ -316,7 +316,7 @@ impl Builder {
     /// Configures the appender to use UTC for rotation scheduling and log file naming.
     ///
     /// This is the default behavior. This method is provided as an explicit opt-in
-    /// for reaability, or to override a previously set [`use_local_time`] call.
+    /// for readability, or to override a previously set [`use_local_time`] call.
     ///
     /// [`use_local_time`]: Self::use_local_time
     ///
