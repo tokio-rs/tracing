@@ -1236,7 +1236,13 @@ mod test {
             let clock = clock.clone();
             Box::new(move || *clock.lock().unwrap())
         };
-        let appender = RollingFileAppender { state, writer, now };
+        let appender = RollingFileAppender {
+            state,
+            writer,
+            #[cfg(feature = "local-time")]
+            clock: ClockKind::Utc,
+            now,
+        };
         let default = tracing_subscriber::fmt()
             .without_time()
             .with_level(false)
@@ -1319,7 +1325,13 @@ mod test {
             let clock = clock.clone();
             Box::new(move || *clock.lock().unwrap())
         };
-        let appender = RollingFileAppender { state, writer, now };
+        let appender = RollingFileAppender {
+            state,
+            writer,
+            #[cfg(feature = "local-time")]
+            clock: ClockKind::Utc,
+            now,
+        };
         let default = tracing_subscriber::fmt()
             .without_time()
             .with_level(false)
@@ -1470,6 +1482,8 @@ mod test {
         let mut appender = RollingFileAppender {
             state,
             writer,
+            #[cfg(feature = "local-time")]
+            clock: ClockKind::Utc,
             now: now_fn,
         };
 
@@ -1489,5 +1503,107 @@ mod test {
         // Verify the symlink is functional
         let content = fs::read_to_string(&symlink_path).expect("failed to read through symlink");
         assert_eq!("test\n", content);
+    }
+
+    #[cfg(feature = "local-time")]
+    #[test]
+    fn test_local_time_filename_uses_local_date() {
+        // The filename should reflect the local date, not necessarily UTC.
+        // We can't control the timezone in a unit test, but we CAN verify
+        // that the generated filename matches what ClockKind::Local.now()
+        // produces right now.
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let appender = RollingFileAppender::builder()
+            .rotation(Rotation::DAILY)
+            .filename_prefix("local_date")
+            .filename_suffix("log")
+            .use_local_time()
+            .build(directory.path())
+            .expect("failed to build appender");
+
+        let now = ClockKind::Local.now();
+        let expected_date = appender.state.join_date(&now);
+
+        let dir_contents = fs::read_dir(directory.path()).expect("Failed to read directory");
+        let filenames: Vec<String> = dir_contents
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+
+        assert!(
+            filenames.iter().any(|f| f == &expected_date),
+            "Expected a file named {:?}, found {:?}",
+            expected_date,
+            filenames
+        );
+    }
+
+    #[cfg(feature = "local-time")]
+    #[test]
+    fn test_local_time_rotations() {
+        use std::sync::{Arc, Mutex};
+
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+     sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        // Use a time with a non-zero offset to prove the offset is preserved
+        // in filenames.
+        let now = OffsetDateTime::parse("2025-04-24 08:30:00 +08:00:00", &format).unwrap();
+
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let (state, writer) = Inner::new(
+            now,
+            Rotation::DAILY,
+            directory.path(),
+            Some("offset_test".to_string()),
+            Some("log".to_string()),
+            None,
+            None,
+        )
+        .unwrap();
+
+        // The initial file should use the date as seen in the +08:00 offset
+        // (2025-04-24), NOT the UTC date.
+        let expected_filename = state.join_date(&now);
+        assert!(
+            expected_filename.contains("2025-04-24"),
+            "Filename should contain local date 2025-04-24, got: {}",
+            expected_filename
+        );
+
+        let clock = Arc::new(Mutex::new(now));
+        let now_fn = {
+            let clock = clock.clone();
+            Box::new(move || *clock.lock().unwrap())
+        };
+        let mut appender = RollingFileAppender {
+            state,
+            writer,
+            clock: ClockKind::Local,
+            now: now_fn,
+        };
+
+        write_to_log(&mut appender, "day 1");
+
+        // Advance past midnight in +08:00 (16:00 UTC = 00:00 +08:00 next day)
+        *clock.lock().unwrap() =
+            OffsetDateTime::parse("2025-04-25 00:05:00 +08:00:00", &format).unwrap();
+
+        write_to_log(&mut appender, "day 2");
+
+        // Should now have two files
+        let dir_contents: Vec<_> = fs::read_dir(directory.path())
+            .expect("Failed to read dir")
+            .filter_map(|e| e.ok())
+            .collect();
+        assert_eq!(
+            dir_contents.len(),
+            2,
+            "Expected 2 log files after rotation, found {}",
+            dir_contents.len()
+        );
     }
 }

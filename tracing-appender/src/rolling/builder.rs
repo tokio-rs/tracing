@@ -291,7 +291,7 @@ impl Builder {
     ///
     /// # Examples
     /// ```
-    /// use tracing::appender::rolling::{RollingFileAppender, Rotation};
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
     ///
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
@@ -322,7 +322,7 @@ impl Builder {
     ///
     /// # Examples
     /// ```
-    /// use tracing::appender::rolling::{RollingFileAppender, Rotation};
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
     ///
     /// # fn docs() {
     /// let appender = RollingFileAppender::builder()
