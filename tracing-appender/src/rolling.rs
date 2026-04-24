@@ -87,6 +87,8 @@ pub use builder::{Builder, InitError};
 pub struct RollingFileAppender {
     state: Inner,
     writer: RwLock<File>,
+    #[cfg(feature = "local-time")]
+    clock: ClockKind,
     #[cfg(test)]
     now: Box<dyn Fn() -> OffsetDateTime + Send + Sync>,
 }
@@ -110,6 +112,39 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+}
+
+/// Specifies which clock is used for determining rotation times and formatting
+/// dates in log file names.
+///
+/// By default [`RollingFileAppender`] uses UTC. Use [`Builder::use_local_time`]
+/// to switch to the system's local timezone.
+#[cfg(feature = "local-time")]
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) enum ClockKind {
+    /// Use UTC for rotation and file naming (the defualt).
+    #[default]
+    Utc,
+    /// Use the system's local timezone for rotation and file naming.
+    ///
+    /// # Caveats
+    ///
+    /// Determining the local UTC offset may fail on some platforms.
+    /// When the local offset cannot be determined, the appender falls back
+    /// to UTC silently.
+    Local,
+}
+
+#[cfg(feature = "local-time")]
+impl ClockKind {
+    pub(crate) fn now(&self) -> OffsetDateTime {
+        match self {
+            ClockKind::Utc => OffsetDateTime::now_utc(),
+            ClockKind::Local => {
+                OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
+            }
+        }
+    }
 }
 
 // === impl RollingFileAppender ===
@@ -193,9 +228,16 @@ impl RollingFileAppender {
             ref suffix,
             ref latest_symlink,
             ref max_files,
+            #[cfg(feature = "local-time")]
+            ref clock,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
+
+        #[cfg(feature = "local-time")]
+        let now = clock.now();
+        #[cfg(not(feature = "local-time"))]
         let now = OffsetDateTime::now_utc();
+
         let (state, writer) = Inner::new(
             now,
             rotation.clone(),
@@ -208,8 +250,22 @@ impl RollingFileAppender {
         Ok(Self {
             state,
             writer,
+            #[cfg(feature = "local-time")]
+            clock: *clock,
             #[cfg(test)]
-            now: Box::new(OffsetDateTime::now_utc),
+            now: {
+                #[cfg(feature = "local-time")]
+                {
+                    Box::new({
+                        let clock = *clock;
+                        move || clock.now()
+                    })
+                }
+                #[cfg(not(feature = "local-time"))]
+                {
+                    Box::new(OffsetDateTime::now_utc)
+                }
+            },
         })
     }
 
@@ -219,7 +275,13 @@ impl RollingFileAppender {
         return (self.now)();
 
         #[cfg(not(test))]
-        OffsetDateTime::now_utc()
+        {
+            #[cfg(feature = "local-time")]
+            return self.clock.now();
+
+            #[cfg(not(feature = "local-time"))]
+            return OffsetDateTime::now_utc();
+        }
     }
 }
 
@@ -259,12 +321,16 @@ impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender
 
 impl fmt::Debug for RollingFileAppender {
     // This manual impl is required because of the `now` field (only present
-    // with `cfg(test)`), which is not `Debug`...
+    // with `cfg(test)`), which is not `Debug`. Also for the `clock` field
+    // which is behind the `local-time` feature.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RollingFileAppender")
-            .field("state", &self.state)
-            .field("writer", &self.writer)
-            .finish()
+        let mut d = f.debug_struct("RollingFileAppender");
+        let d = d.field("state", &self.state).field("writer", &self.writer);
+
+        #[cfg(feature = "local-time")]
+        let d = d.field("clock", &self.clock);
+
+        d.finish()
     }
 }
 
