@@ -1551,7 +1551,7 @@ mod test {
 
         // Use a time with a non-zero offset to prove the offset is preserved
         // in filenames.
-        let now = OffsetDateTime::parse("2025-04-24 08:30:00 +08:00:00", &format).unwrap();
+        let now = OffsetDateTime::parse("2026-04-24 08:30:00 +08:00:00", &format).unwrap();
 
         let directory = tempfile::tempdir().expect("failed to create tempdir");
         let (state, writer) = Inner::new(
@@ -1566,11 +1566,11 @@ mod test {
         .unwrap();
 
         // The initial file should use the date as seen in the +08:00 offset
-        // (2025-04-24), NOT the UTC date.
+        // (2026-04-24), NOT the UTC date.
         let expected_filename = state.join_date(&now);
         assert!(
-            expected_filename.contains("2025-04-24"),
-            "Filename should contain local date 2025-04-24, got: {}",
+            expected_filename.contains("2026-04-24"),
+            "Filename should contain local date 2026-04-24, got: {}",
             expected_filename
         );
 
@@ -1590,7 +1590,7 @@ mod test {
 
         // Advance past midnight in +08:00 (16:00 UTC = 00:00 +08:00 next day)
         *clock.lock().unwrap() =
-            OffsetDateTime::parse("2025-04-25 00:05:00 +08:00:00", &format).unwrap();
+            OffsetDateTime::parse("2026-04-25 00:05:00 +08:00:00", &format).unwrap();
 
         write_to_log(&mut appender, "day 2");
 
