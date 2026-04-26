@@ -453,6 +453,8 @@ impl<T> Instrumented<T> {
     /// instrumented by and a pinned mutable reference to the inner value.
     ///
     /// This is useful for implementing poll-type functions on foreign traits.
+    #[cfg(feature = "std-future")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std-future")))]
     pub fn span_and_inner_pin_mut(self: Pin<&mut Self>) -> (&mut Span, Pin<&mut T>) {
         self.project().span_and_inner_pin_mut()
     }
