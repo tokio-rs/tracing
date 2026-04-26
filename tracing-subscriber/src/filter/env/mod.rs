@@ -566,6 +566,9 @@ impl EnvFilter {
     /// [`Filter::on_new_span`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
     pub fn on_new_span<S>(&self, attrs: &span::Attributes<'_>, id: &span::Id, _: Context<'_, S>) {
+        if !self.has_dynamics {
+            return;
+        }
         let by_cs = try_lock!(self.by_cs.read());
         if let Some(cs) = by_cs.get(&attrs.metadata().callsite()) {
             let span = cs.to_span_match(attrs);
@@ -579,6 +582,9 @@ impl EnvFilter {
     /// [`Filter::on_enter`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
     pub fn on_enter<S>(&self, id: &span::Id, _: Context<'_, S>) {
+        if !self.has_dynamics {
+            return;
+        }
         // XXX: This is where _we_ could push IDs to the stack instead, and use
         // that to allow changing the filter while a span is already entered.
         // But that might be much less efficient...
@@ -593,6 +599,9 @@ impl EnvFilter {
     /// [`Filter::on_exit`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
     pub fn on_exit<S>(&self, id: &span::Id, _: Context<'_, S>) {
+        if !self.has_dynamics {
+            return;
+        }
         if self.cares_about_span(id) {
             self.scope.get_or_default().borrow_mut().pop();
         }
@@ -604,6 +613,9 @@ impl EnvFilter {
     /// [`Filter::on_close`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope.
     pub fn on_close<S>(&self, id: span::Id, _: Context<'_, S>) {
+        if !self.has_dynamics {
+            return;
+        }
         // If we don't need to acquire a write lock, avoid doing so.
         if !self.cares_about_span(&id) {
             return;
@@ -620,6 +632,9 @@ impl EnvFilter {
     /// [`Filter::on_record`] methods on `EnvFilter`'s implementations of those
     /// traits, but it does not require the trait to be in scope
     pub fn on_record<S>(&self, id: &span::Id, values: &span::Record<'_>, _: Context<'_, S>) {
+        if !self.has_dynamics {
+            return;
+        }
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
             span.record_update(values);
         }

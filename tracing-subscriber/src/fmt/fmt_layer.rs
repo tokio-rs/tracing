@@ -72,6 +72,7 @@ pub struct Layer<
     fmt_event: E,
     fmt_span: format::FmtSpanConfig,
     is_ansi: bool,
+    ansi_sanitization: bool,
     log_internal_errors: bool,
     _inner: PhantomData<fn(S)>,
 }
@@ -122,6 +123,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -152,6 +154,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -185,6 +188,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             make_writer,
             _inner: self._inner,
@@ -290,6 +294,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             make_writer: TestWriter::default(),
             _inner: self._inner,
@@ -340,6 +345,19 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
+    /// Sets whether ANSI control character sanitization is enabled.
+    ///
+    /// This defaults to `true` as a protective measure against terminal
+    /// injection attacks. If this is set to `false`, ANSI sanitization is
+    /// disabled and trusted ANSI control sequences in logged values are passed
+    /// through unchanged.
+    pub fn with_ansi_sanitization(self, ansi_sanitization: bool) -> Self {
+        Self {
+            ansi_sanitization,
+            ..self
+        }
+    }
+
     /// Sets whether to write errors from [`FormatEvent`] to the writer.
     /// Defaults to true.
     ///
@@ -386,6 +404,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_event: self.fmt_event,
             fmt_span: self.fmt_span,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             make_writer: f(self.make_writer),
             _inner: self._inner,
@@ -418,6 +437,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -431,6 +451,7 @@ where
             fmt_span: self.fmt_span.without_time(),
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -560,6 +581,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -575,6 +597,7 @@ where
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -606,6 +629,7 @@ where
             make_writer: self.make_writer,
             // always disable ANSI escapes in JSON mode!
             is_ansi: false,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -673,6 +697,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -704,6 +729,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             fmt_span: self.fmt_span,
             make_writer: self.make_writer,
             is_ansi: self.is_ansi,
+            ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
             _inner: self._inner,
         }
@@ -722,6 +748,7 @@ impl<S> Default for Layer<S> {
             fmt_span: format::FmtSpanConfig::default(),
             make_writer: io::stdout,
             is_ansi: ansi,
+            ansi_sanitization: true,
             log_internal_errors: false,
             _inner: PhantomData,
         }
@@ -754,12 +781,23 @@ where
 /// without conflicting.
 ///
 /// [extensions]: crate::registry::Extensions
-#[derive(Default)]
 pub struct FormattedFields<E: ?Sized> {
     _format_fields: PhantomData<fn(E)>,
     was_ansi: bool,
+    was_ansi_sanitized: bool,
     /// The formatted fields of a span.
     pub fields: String,
+}
+
+impl<E: ?Sized> Default for FormattedFields<E> {
+    fn default() -> Self {
+        Self {
+            _format_fields: Default::default(),
+            was_ansi: Default::default(),
+            was_ansi_sanitized: true,
+            fields: Default::default(),
+        }
+    }
 }
 
 impl<E: ?Sized> FormattedFields<E> {
@@ -768,6 +806,7 @@ impl<E: ?Sized> FormattedFields<E> {
         Self {
             fields,
             was_ansi: false,
+            was_ansi_sanitized: true,
             _format_fields: PhantomData,
         }
     }
@@ -777,7 +816,9 @@ impl<E: ?Sized> FormattedFields<E> {
     /// The returned [`format::Writer`] can be used with the
     /// [`FormatFields::format_fields`] method.
     pub fn as_writer(&mut self) -> format::Writer<'_> {
-        format::Writer::new(&mut self.fields).with_ansi(self.was_ansi)
+        format::Writer::new(&mut self.fields)
+            .with_ansi(self.was_ansi)
+            .with_ansi_sanitization(self.was_ansi_sanitized)
     }
 }
 
@@ -787,6 +828,7 @@ impl<E: ?Sized> fmt::Debug for FormattedFields<E> {
             .field("fields", &self.fields)
             .field("formatter", &format_args!("{}", std::any::type_name::<E>()))
             .field("was_ansi", &self.was_ansi)
+            .field("was_ansi_sanitized", &self.was_ansi_sanitized)
             .finish()
     }
 }
@@ -835,12 +877,13 @@ where
 
         if extensions.get_mut::<FormattedFields<N>>().is_none() {
             let mut fields = FormattedFields::<N>::new(String::new());
+            fields.was_ansi = self.is_ansi;
+            fields.was_ansi_sanitized = self.ansi_sanitization;
             if self
                 .fmt_fields
-                .format_fields(fields.as_writer().with_ansi(self.is_ansi), attrs)
+                .format_fields(fields.as_writer(), attrs)
                 .is_ok()
             {
-                fields.was_ansi = self.is_ansi;
                 extensions.insert(fields);
             } else {
                 eprintln!(
@@ -875,12 +918,13 @@ where
         }
 
         let mut fields = FormattedFields::<N>::new(String::new());
+        fields.was_ansi = self.is_ansi;
+        fields.was_ansi_sanitized = self.ansi_sanitization;
         if self
             .fmt_fields
-            .format_fields(fields.as_writer().with_ansi(self.is_ansi), values)
+            .format_fields(fields.as_writer(), values)
             .is_ok()
         {
-            fields.was_ansi = self.is_ansi;
             extensions.insert(fields);
         }
     }
@@ -995,7 +1039,9 @@ where
                 .fmt_event
                 .format_event(
                     &ctx,
-                    format::Writer::new(&mut buf).with_ansi(self.is_ansi),
+                    format::Writer::new(&mut buf)
+                        .with_ansi(self.is_ansi)
+                        .with_ansi_sanitization(self.ansi_sanitization),
                     event,
                 )
                 .is_ok()
