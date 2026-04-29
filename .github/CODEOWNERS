@@ -1,0 +1,9 @@
+# Eliza or Hayden should review everything unassigned.
+*                               @hawkw @hds @tokio-rs/tracing
+
+# tracing-error and tracing-flame were contributed by Jane.
+/tracing-error/                 @yaahc @tokio-rs/tracing
+/tracing-flame/                 @yaahc @tokio-rs/tracing
+
+# David contributed the Registry implementation.
+/tracing-subscriber/registry    @davidbarsky @hawkw @tokio-rs/tracing
