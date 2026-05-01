@@ -35,6 +35,9 @@ proc-macro = true
 # This feature flag is no longer necessary.
 async-await = []
 
+# Enable experimental support for valuable crate
+valuable = ["tracing/valuable"]
+
 [dependencies]
 proc-macro2 = "1.0.60"
 syn = { version = "2.0", default-features = false, features = [
@@ -65,3 +68,11 @@ maintenance = { status = "experimental" }
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+# enable unstable features in the documentation
+rustdoc-args = ["--cfg", "docsrs", "--cfg", "tracing_unstable"]
+# it's necessary to _also_ pass `--cfg tracing_unstable` to rustc, or else
+# dependencies will not be enabled, and the docs build will fail.
+rustc-args = ["--cfg", "tracing_unstable"]
