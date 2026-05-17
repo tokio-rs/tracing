@@ -451,7 +451,7 @@ mod expand;
 /// ```
 ///
 /// **Note**:  if the function returns a `Result<T, E>`, `ret` will record returned values if and
-/// only if the function returns [`Result::Ok`].
+/// only if the function returns [`Ok`](core::result::Result::Ok).
 ///
 /// By default, returned values will be recorded using their [`std::fmt::Debug`] implementations.
 /// If a returned value implements [`std::fmt::Display`], it can be recorded using its `Display`
@@ -505,7 +505,7 @@ mod expand;
 /// the declared target (or the default channel if `target` is not specified).
 ///
 /// The `ret` and `err` arguments can be combined in order to record an event if a
-/// function returns [`Result::Ok`] or [`Result::Err`]:
+/// function returns [`Ok`](core::result::Result::Ok) or [`Err`](core::result::Result::Err):
 ///
 /// ```
 /// # use tracing_attributes::instrument;

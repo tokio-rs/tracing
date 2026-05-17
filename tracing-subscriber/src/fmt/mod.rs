@@ -1008,7 +1008,7 @@ impl<N, E, F, W> SubscriberBuilder<N, E, F, W> {
         }
     }
 
-    /// Sets the [event formatter][`FormatEvent`] that the subscriber being built
+    /// Sets the [`FormatEvent`] implementation that the subscriber being built
     /// will use to format events that occur.
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]

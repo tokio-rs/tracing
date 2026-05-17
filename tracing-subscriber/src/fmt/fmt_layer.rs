@@ -91,7 +91,7 @@ where
     N: for<'writer> FormatFields<'writer> + 'static,
     W: for<'writer> MakeWriter<'writer> + 'static,
 {
-    /// Sets the [event formatter][`FormatEvent`] that the layer being built will
+    /// Sets the [`FormatEvent`] implementation that the layer being built will
     /// use to format events.
     ///
     /// The event formatter may be any type implementing the [`FormatEvent`]

@@ -95,7 +95,7 @@
 //! be forwarded to the visitor's [`record_debug`] method.
 //!
 //! [`fmt::Debug`]: std::fmt::Debug
-//! [`fmt::Display`]: std::fmt::Debug
+//! [`fmt::Display`]: std::fmt::Display
 //! [`valuable`]: https://crates.io/crates/valuable
 //! [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
 //! [`as_value`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html#tymethod.as_value
