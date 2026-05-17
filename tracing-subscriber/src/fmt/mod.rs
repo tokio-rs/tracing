@@ -29,8 +29,14 @@
 //!
 //! ## Filtering Events with Environment Variables
 //!
-//! The default subscriber installed by `init` enables you to filter events
-//! at runtime using environment variables (using the [`EnvFilter`]).
+//! The subscriber installed by [`init`] enables you to filter events at runtime
+//! using environment variables (using the [`EnvFilter`]) when the `env-filter`
+//! feature is enabled. Configuring a subscriber with [`fmt()`] does **not**
+//! enable an [`EnvFilter`] by default; call [`.with_env_filter(...)`][with_env_filter]
+//! explicitly if you need `RUST_LOG` filtering.
+//!
+//! [`init`]: crate::fmt::init
+//! [with_env_filter]: SubscriberBuilder::with_env_filter
 //!
 //! The filter syntax is a superset of the [`env_logger`] syntax.
 //!
