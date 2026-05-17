@@ -508,6 +508,13 @@ impl Rotation {
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
+    /// Parses a rotation from its lowercase name (`minutely`, `hourly`, `daily`, `weekly`, `never`).
+    ///
+    /// Matching is ASCII case-insensitive.
+    pub fn parse(s: &str) -> Result<Self, ParseRotationError> {
+        s.parse()
+    }
+
     /// Determines the next date that we should round to or `None` if `self` uses [`Rotation::NEVER`].
     pub(crate) fn next_date(&self, current_date: &OffsetDateTime) -> Option<OffsetDateTime> {
         let unrounded_next_date = match *self {
@@ -566,6 +573,35 @@ impl Rotation {
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
+    }
+}
+
+/// Error returned when a string could not be parsed as a [`Rotation`].
+#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
+#[error("invalid rotation: {input}")]
+pub struct ParseRotationError {
+    input: String,
+}
+
+impl std::str::FromStr for Rotation {
+    type Err = ParseRotationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq_ignore_ascii_case("minutely") {
+            Ok(Rotation::MINUTELY)
+        } else if s.eq_ignore_ascii_case("hourly") {
+            Ok(Rotation::HOURLY)
+        } else if s.eq_ignore_ascii_case("daily") {
+            Ok(Rotation::DAILY)
+        } else if s.eq_ignore_ascii_case("weekly") {
+            Ok(Rotation::WEEKLY)
+        } else if s.eq_ignore_ascii_case("never") {
+            Ok(Rotation::NEVER)
+        } else {
+            Err(ParseRotationError {
+                input: s.to_owned(),
+            })
+        }
     }
 }
 
@@ -897,6 +933,14 @@ mod test {
     #[test]
     fn write_never_log() {
         test_appender(Rotation::NEVER, "never.log");
+    }
+
+    #[test]
+    fn rotation_from_str() {
+        assert_eq!("hourly".parse(), Ok(Rotation::HOURLY));
+        assert_eq!("DAILY".parse(), Ok(Rotation::DAILY));
+        assert_eq!("never".parse(), Ok(Rotation::NEVER));
+        assert!("invalid".parse::<Rotation>().is_err());
     }
 
     #[test]
