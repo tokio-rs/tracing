@@ -1,3 +1,18 @@
+# 0.2.5 (April 17, 2026)
+
+### Added
+
+- Add latest symlink builder option ([#3447])
+
+### Fixed
+
+- Fix `RollingFileAppender` broken links in docs ([#3445])
+- Fix parsing of date from filename when no time is incuded ([#3471])
+
+[#3445]: https://github.com/tokio-rs/tracing/pull/3445
+[#3447]: https://github.com/tokio-rs/tracing/pull/3447
+[#3471]: https://github.com/tokio-rs/tracing/pull/3471
+
 # 0.2.4 (November 26, 2025)
 
 ### Added
