@@ -11,6 +11,7 @@ use tracing_core::{
 pub mod debug;
 pub mod delimited;
 pub mod display;
+pub mod truncate;
 
 /// Creates new [visitors].
 ///
