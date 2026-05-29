@@ -225,9 +225,14 @@ where
     }
 }
 
-impl<E> std::clone::Clone for TracedError<E> where E: Clone {
+impl<E> std::clone::Clone for TracedError<E>
+where
+    E: Clone,
+{
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -263,9 +268,16 @@ impl ErrorImpl<Erased> {
     }
 }
 
-impl<E> Clone for ErrorImpl<E> where E: Clone {
+impl<E> Clone for ErrorImpl<E>
+where
+    E: Clone,
+{
     fn clone(&self) -> Self {
-        Self { vtable: self.vtable, span_trace: self.span_trace.clone(), error: self.error.clone() }
+        Self {
+            vtable: self.vtable,
+            span_trace: self.span_trace.clone(),
+            error: self.error.clone(),
+        }
     }
 }
 
