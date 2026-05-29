@@ -179,6 +179,61 @@ where
     {
         self.map(Into::into)
     }
+
+    /// Return a reference to the original error stored within this [`TracedError`].
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Clone, Debug, PartialEq)]
+    /// # struct MyError(u64);
+    /// # impl std::fmt::Display for MyError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for MyError {}
+    ///
+    /// let original_err = MyError(42);
+    ///
+    /// let traced_err: TracedError<MyError> = TracedError::from(original_err.clone());
+    /// assert_eq!(traced_err.get_inner_error(), &original_err)
+    /// ```
+    pub fn get_inner_error(&self) -> &E {
+        &self.inner.error
+    }
+
+    /// Consume the [`TracedError`] and return the original error stored within.
+    ///
+    /// ```rust
+    /// use tracing_error::TracedError;
+    /// # #[derive(Clone, Debug, PartialEq)]
+    /// # struct MyError(u64);
+    /// # impl std::fmt::Display for MyError {
+    /// #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// #         write!(f, "Inner Error")
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for MyError {}
+    ///
+    /// let original_err = MyError(42);
+    ///
+    /// let traced_err: TracedError<MyError> = TracedError::from(original_err.clone());
+    /// assert_eq!(traced_err.to_inner_error(), original_err)
+    /// ```
+    pub fn to_inner_error(self) -> E {
+        self.inner.error
+    }
+}
+
+impl<E> std::clone::Clone for TracedError<E>
+where
+    E: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl<E> From<E> for TracedError<E>
@@ -210,6 +265,19 @@ impl ErrorImpl<Erased> {
         // the function pointer we construct here will also retain the original type. therefore,
         // when this is consumed by the `error` method, it will be safe to call.
         unsafe { (self.vtable.object_ref)(self) }
+    }
+}
+
+impl<E> Clone for ErrorImpl<E>
+where
+    E: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            vtable: self.vtable,
+            span_trace: self.span_trace.clone(),
+            error: self.error.clone(),
+        }
     }
 }
 
