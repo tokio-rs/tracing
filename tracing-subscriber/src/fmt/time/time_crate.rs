@@ -8,15 +8,13 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///
 /// <div class="example-wrap" style="display:inline-block">
 /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-///     <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/"><code>time</code>
-///     crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
-///     local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
+///     <strong>Warning</strong>: Recording local timestamps uses
+///     [`OffsetDateTime::now_local`], which may fail if the local offset cannot be determined
+///     (for example, in some multi-threaded contexts). When local time cannot be recorded,
 ///     events will be logged without timestamps.
 ///
-///    Alternatively, [`OffsetTime`] can log with a local offset if it is initialized early.
-///
-///    See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
-///    documentation</a> for more details.
+///     Alternatively, [`OffsetTime`] can log with a fixed local offset if it is initialized
+///     early in the program's lifecycle (recommended for production use).
 /// </pre></div>
 ///
 /// [local time]: time::OffsetDateTime::now_local
