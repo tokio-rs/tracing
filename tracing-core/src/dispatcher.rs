@@ -896,7 +896,10 @@ impl Drop for DefaultGuard {
         // state -- causing a clash.
         let prev = CURRENT_STATE.try_with(|state| state.default.replace(self.0.take()));
         SCOPED_COUNT.fetch_sub(1, Ordering::Release);
-        drop(prev)
+        drop(prev);
+        // Once the dispatcher has been dropped, we need to rebuild
+        // the callsite interest cache (without this dispatch).
+        callsite::rebuild_interest_cache();
     }
 }
 
@@ -924,21 +927,26 @@ mod test {
         assert!(dispatcher.downcast_ref::<NoSubscriber>().is_some());
     }
 
-    struct TestCallsite;
-    static TEST_CALLSITE: TestCallsite = TestCallsite;
-    static TEST_META: Metadata<'static> = metadata! {
-        name: "test",
-        target: module_path!(),
-        level: Level::DEBUG,
-        fields: &[],
-        callsite: &TEST_CALLSITE,
-        kind: Kind::EVENT
-    };
+    #[cfg(feature = "std")]
+    pub mod test_callsite {
+        use super::*;
 
-    impl Callsite for TestCallsite {
-        fn set_interest(&self, _: Interest) {}
-        fn metadata(&self) -> &Metadata<'_> {
-            &TEST_META
+        struct TestCallsite;
+        static TEST_CALLSITE: TestCallsite = TestCallsite;
+        pub static TEST_META: Metadata<'static> = metadata! {
+            name: "test",
+            target: module_path!(),
+            level: Level::DEBUG,
+            fields: &[],
+            callsite: &TEST_CALLSITE,
+            kind: Kind::EVENT
+        };
+
+        impl Callsite for TestCallsite {
+            fn set_interest(&self, _: Interest) {}
+            fn metadata(&self) -> &Metadata<'_> {
+                &TEST_META
+            }
         }
     }
 
@@ -968,7 +976,7 @@ mod test {
                     0,
                     "event method called twice!"
                 );
-                Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
+                Event::dispatch(&test_callsite::TEST_META, &test_callsite::TEST_META.fields().value_set(&[]))
             }
 
             fn enter(&self, _: &span::Id) {}
@@ -977,7 +985,7 @@ mod test {
         }
 
         with_default(&Dispatch::new(TestSubscriber), || {
-            Event::dispatch(&TEST_META, &TEST_META.fields().value_set(&[]))
+            Event::dispatch(&test_callsite::TEST_META, &test_callsite::TEST_META.fields().value_set(&[]))
         })
     }
 
@@ -990,8 +998,8 @@ mod test {
         fn mk_span() {
             get_default(|current| {
                 current.new_span(&span::Attributes::new(
-                    &TEST_META,
-                    &TEST_META.fields().value_set(&[]),
+                    &test_callsite::TEST_META,
+                    &test_callsite::TEST_META.fields().value_set(&[]),
                 ))
             });
         }

@@ -1166,8 +1166,7 @@ mod private {
 
 #[cfg(test)]
 mod test {
-    use alloc::{borrow::ToOwned, boxed::Box, string::String};
-    use std::format;
+    use alloc::{borrow::ToOwned, string::String};
 
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
@@ -1367,6 +1366,6 @@ mod test {
             use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
-        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
+        assert_eq!(result, String::from(r#"[61 62 63]" "[c0 ff ee]"#));
     }
 }

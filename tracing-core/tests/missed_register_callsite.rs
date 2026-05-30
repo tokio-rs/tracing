@@ -1,3 +1,4 @@
+#![cfg(feature = "std")]
 use std::{
     ptr,
     sync::atomic::{AtomicPtr, Ordering},
@@ -7,7 +8,6 @@ use std::{
 
 use tracing_core::{
     callsite::{Callsite as _, DefaultCallsite},
-    dispatcher::set_default,
     field::{FieldSet, Value},
     span, Dispatch, Event, Kind, Level, Metadata, Subscriber,
 };
