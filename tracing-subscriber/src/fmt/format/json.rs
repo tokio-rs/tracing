@@ -163,9 +163,15 @@ where
         let mut serializer = serializer.serialize_map(None)?;
 
         let ext = self.0.extensions();
-        let data = ext
-            .get::<FormattedFields<N>>()
-            .expect("Unable to find FormattedFields in extensions; this is a bug");
+        // `FormattedFields` is normally inserted by the layer's
+        // `on_new_span` hook, but the formatter can also be invoked for
+        // spans that were created before this layer was installed
+        // (for example when a `reload::Layer` is swapped in at runtime).
+        // In that case we have no formatted fields to serialize, so emit
+        // the empty span object instead of panicking.
+        let Some(data) = ext.get::<FormattedFields<N>>() else {
+            return serializer.end();
+        };
 
         // TODO: let's _not_ do this, but this resolves
         // https://github.com/tokio-rs/tracing/issues/391.
