@@ -185,6 +185,23 @@ impl Registry {
         self.spans.get(id_to_idx(id))
     }
 
+    /// Attempts to clone a span, returning `None` if the span has already been closed.
+    ///
+    /// We handle the case where a span ID on the `current_spans` stack is stale (the
+    /// span has been closed). This can happen when `span.enter()` is used across await
+    /// points and the async task migrates to a different thread.
+    fn try_clone_span(&self, id: &Id) -> Option<Id> {
+        let span = self.get(id)?;
+        // Increment ref_count only if it's > 0. This is the same pattern used by
+        // `std::sync::Arc::Weak::upgrade()`
+        span.ref_count
+            .fetch_update(Ordering::Acquire, Ordering::Relaxed, |n| {
+                if n == 0 { None } else { Some(n + 1) }
+            })
+            .ok()
+            .map(|_| id.clone())
+    }
+
     /// Returns a guard which tracks how many `Layer`s have
     /// processed an `on_close` notification via the `CLOSE_COUNT` thread-local.
     /// For additional details, see [`CloseGuard`].
@@ -239,9 +256,9 @@ impl Subscriber for Registry {
         let parent = if attrs.is_root() {
             None
         } else if attrs.is_contextual() {
-            self.current_span().id().map(|id| self.clone_span(id))
+            self.current_span().id().and_then(|id| self.try_clone_span(id))
         } else {
-            attrs.parent().map(|id| self.clone_span(id))
+            attrs.parent().and_then(|id| self.try_clone_span(id))
         };
 
         let id = self
