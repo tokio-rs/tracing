@@ -715,6 +715,60 @@ mod test {
     }
 
     #[test]
+    fn json_error_sources() {
+        test_json(
+            r#"{
+                "fields": {
+                    "error": "outer",
+                    "error.sources": ["middle", "inner"]
+                },
+                "timestamp":"fake time"
+            }"#,
+            subscriber().with_target(false).with_level(false),
+            || {
+                let e = Chainable::new("inner").wrap("middle").wrap("outer");
+                tracing::info!(error = &e as &dyn Error);
+            },
+        );
+
+        use alloc::{boxed::Box, string::ToString};
+        use core::error::Error;
+
+        #[derive(Debug)]
+        struct Chainable {
+            message: String,
+            source: Option<Box<Self>>,
+        }
+
+        impl Chainable {
+            fn new(message: impl ToString) -> Self {
+                Self {
+                    message: message.to_string(),
+                    source: None,
+                }
+            }
+            fn wrap(self, outer: impl ToString) -> Self {
+                Self {
+                    message: outer.to_string(),
+                    source: Some(Box::new(self)),
+                }
+            }
+        }
+
+        impl fmt::Display for Chainable {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.message, f)
+            }
+        }
+
+        impl Error for Chainable {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
+                self.source.as_deref().map(|e| e as _)
+            }
+        }
+    }
+
+    #[test]
     fn record_works() {
         // This test reproduces issue #707, where using `Span::record` causes
         // any events inside the span to be ignored.
