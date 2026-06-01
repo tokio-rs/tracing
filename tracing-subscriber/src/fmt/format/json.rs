@@ -67,6 +67,8 @@ use tracing_log::NormalizeEvent;
 ///   span
 /// - [`Json::with_span_list`] can be used to control logging of the span list
 ///   object.
+/// - [`Json::with_extra_fields`] can be used to register a callback that adds
+///   additional key-value entries to each JSON event.
 ///
 /// By default, event fields are not flattened, and both current span and span
 /// list are logged.
@@ -88,14 +90,15 @@ use tracing_log::NormalizeEvent;
 /// [`valuable`]: https://crates.io/crates/valuable
 /// [unstable]: crate#unstable-features
 /// [`valuable::Valuable`]: https://docs.rs/valuable/latest/valuable/trait.Valuable.html
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Json {
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Json<E = ()> {
     pub(crate) flatten_event: bool,
     pub(crate) display_current_span: bool,
     pub(crate) display_span_list: bool,
+    pub(crate) extra_fields: E,
 }
 
-impl Json {
+impl<E> Json<E> {
     /// If set to `true` event metadata will be flattened into the root object.
     pub fn flatten_event(&mut self, flatten_event: bool) {
         self.flatten_event = flatten_event;
@@ -110,6 +113,17 @@ impl Json {
     /// entered spans. Spans are logged in a list from root to leaf.
     pub fn with_span_list(&mut self, display_span_list: bool) {
         self.display_span_list = display_span_list;
+    }
+
+    /// Sets an [`ExtraFields`] implementation that will be called for each
+    /// event to inject additional key-value entries into the JSON output.
+    pub fn with_extra_fields<E2: ExtraFields>(self, extra_fields: E2) -> Json<E2> {
+        Json {
+            flatten_event: self.flatten_event,
+            display_current_span: self.display_current_span,
+            display_span_list: self.display_span_list,
+            extra_fields,
+        }
     }
 }
 
@@ -212,11 +226,116 @@ where
     }
 }
 
-impl<S, N, T> FormatEvent<S, N> for Format<Json, T>
+/// Trait for injecting additional fields into each JSON log event.
+///
+/// Implementations of this trait are called during event formatting and receive
+/// the full [`FmtContext`] (providing access to [`SpanRef`](crate::registry::SpanRef), span extensions,
+/// and the span scope), the [`Event`] being formatted, and a [`SerializeMap`]
+/// for writing entries into the JSON map.
+///
+/// The method is generic over `S` (the subscriber), `N` (the field formatter),
+/// and `M` (the serializer map), which are monomorphized at the call site.
+///
+/// # Examples
+///
+/// Inject a static service name:
+///
+/// ```
+/// use serde::ser::SerializeMap;
+/// use tracing_subscriber::fmt::format::ExtraFields;
+/// use tracing_subscriber::fmt::FmtContext;
+/// use tracing_subscriber::fmt::FormatFields;
+/// use tracing_subscriber::registry::LookupSpan;
+/// use tracing_core::{Subscriber, Event};
+///
+/// struct ServiceName(&'static str);
+///
+/// impl ExtraFields for ServiceName {
+///     fn format_extra_fields<S, N, M>(
+///         &self,
+///         _ctx: &FmtContext<'_, S, N>,
+///         _event: &Event<'_>,
+///         serializer: &mut M,
+///     ) -> serde_json::Result<()>
+///     where
+///         S: Subscriber + for<'a> LookupSpan<'a>,
+///         N: for<'a> FormatFields<'a> + 'static,
+///         M: SerializeMap<Ok = (), Error = serde_json::Error>,
+///     {
+///         serializer.serialize_entry("service", self.0)
+///     }
+/// }
+/// ```
+///
+/// Access span extensions (e.g. for OpenTelemetry trace IDs):
+///
+/// ```ignore
+/// use serde::ser::SerializeMap;
+/// use tracing_subscriber::fmt::format::ExtraFields;
+/// use tracing_subscriber::fmt::FmtContext;
+///
+/// struct OtelTraceId;
+///
+/// impl ExtraFields for OtelTraceId {
+///     fn format_extra_fields<S, N, M>(
+///         &self,
+///         ctx: &FmtContext<'_, S, N>,
+///         _event: &Event<'_>,
+///         serializer: &mut M,
+///     ) -> serde_json::Result<()>
+///     where
+///         S: Subscriber + for<'a> LookupSpan<'a>,
+///         N: for<'a> FormatFields<'a> + 'static,
+///         M: SerializeMap<Ok = (), Error = serde_json::Error>,
+///     {
+///         if let Some(span) = ctx.lookup_current() {
+///             let extensions = span.extensions();
+///             if let Some(otel) = extensions.get::<OtelData>() {
+///                 let trace_id = otel.parent_cx.span().span_context().trace_id();
+///                 serializer.serialize_entry("trace_id", &trace_id.to_string())?;
+///             }
+///         }
+///         Ok(())
+///     }
+/// }
+/// ```
+pub trait ExtraFields {
+    /// Write additional entries into the JSON serializer.
+    fn format_extra_fields<S, N, M>(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        event: &Event<'_>,
+        serializer: &mut M,
+    ) -> serde_json::Result<()>
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        M: SerializeMap<Ok = (), Error = serde_json::Error>;
+}
+
+impl ExtraFields for () {
+    #[inline]
+    fn format_extra_fields<S, N, M>(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        _event: &Event<'_>,
+        _serializer: &mut M,
+    ) -> serde_json::Result<()>
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+        M: SerializeMap<Ok = (), Error = serde_json::Error>,
+    {
+        Ok(())
+    }
+}
+
+impl<S, N, T, E> FormatEvent<S, N> for Format<Json<E>, T>
 where
     S: Subscriber + for<'lookup> LookupSpan<'lookup>,
     N: for<'writer> FormatFields<'writer> + 'static,
     T: FormatTime,
+    E: ExtraFields,
 {
     fn format_event(
         &self,
@@ -323,6 +442,10 @@ where
                     .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
             }
 
+            self.format
+                .extra_fields
+                .format_extra_fields(ctx, event, &mut serializer)?;
+
             serializer.end()
         };
 
@@ -332,11 +455,12 @@ where
 }
 
 impl Default for Json {
-    fn default() -> Json {
+    fn default() -> Self {
         Json {
             flatten_event: false,
             display_current_span: true,
             display_span_list: true,
+            extra_fields: (),
         }
     }
 }
@@ -827,6 +951,101 @@ mod test {
             drop(span);
             assert_eq!(parse_as_json(&buffer)["fields"]["message"], "close");
         });
+    }
+
+    #[test]
+    fn json_extra_fields() {
+        use crate::fmt::fmt_layer::FmtContext;
+        use crate::registry::LookupSpan;
+        use serde::ser::SerializeMap;
+        use tracing_core::Subscriber;
+
+        #[derive(Clone)]
+        struct ServiceName(&'static str);
+
+        impl ExtraFields for ServiceName {
+            fn format_extra_fields<S, N, M>(
+                &self,
+                _ctx: &FmtContext<'_, S, N>,
+                _event: &Event<'_>,
+                serializer: &mut M,
+            ) -> serde_json::Result<()>
+            where
+                S: Subscriber + for<'a> LookupSpan<'a>,
+                N: for<'a> FormatFields<'a> + 'static,
+                M: SerializeMap<Ok = (), Error = serde_json::Error>,
+            {
+                serializer.serialize_entry("service", self.0)
+            }
+        }
+
+        let buffer = MockMakeWriter::default();
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_extra_fields(ServiceName("my-app"))
+            .with_writer(buffer.clone())
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            tracing::info!("some json test");
+        });
+
+        let event = parse_as_json(&buffer);
+        assert_eq!(event["fields"]["message"], "some json test");
+        assert_eq!(event["service"], "my-app");
+    }
+
+    #[test]
+    fn json_extra_fields_from_span_context() {
+        use crate::fmt::fmt_layer::FmtContext;
+        use crate::registry::LookupSpan;
+        use serde::ser::SerializeMap;
+        use tracing_core::Subscriber;
+
+        #[derive(Clone)]
+        struct CurrentSpanName;
+
+        impl ExtraFields for CurrentSpanName {
+            fn format_extra_fields<S, N, M>(
+                &self,
+                ctx: &FmtContext<'_, S, N>,
+                _event: &Event<'_>,
+                serializer: &mut M,
+            ) -> serde_json::Result<()>
+            where
+                S: Subscriber + for<'a> LookupSpan<'a>,
+                N: for<'a> FormatFields<'a> + 'static,
+                M: SerializeMap<Ok = (), Error = serde_json::Error>,
+            {
+                if let Some(span) = ctx.lookup_current() {
+                    serializer.serialize_entry("current_span_name", span.name())?;
+                }
+                Ok(())
+            }
+        }
+
+        let buffer = MockMakeWriter::default();
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(false)
+            .with_span_list(false)
+            .with_extra_fields(CurrentSpanName)
+            .with_writer(buffer.clone())
+            .with_timer(MockTime)
+            .finish();
+
+        with_default(subscriber, || {
+            let span = tracing::info_span!("my_span");
+            let _guard = span.enter();
+            tracing::info!("inside span");
+        });
+
+        let event = parse_as_json(&buffer);
+        assert_eq!(event["fields"]["message"], "inside span");
+        assert_eq!(event["current_span_name"], "my_span");
     }
 
     fn parse_as_json(buffer: &MockMakeWriter) -> serde_json::Value {
