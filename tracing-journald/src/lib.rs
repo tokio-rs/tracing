@@ -11,6 +11,46 @@
 //! and events to [`systemd-journald`][journald], on Linux distributions that
 //! use `systemd`.
 //!
+//! ## Dynamic Custom Fields
+//!
+//! With the `dynamic-fields` feature enabled, the layer supports dynamically updating
+//! custom fields at runtime. This is useful for injecting context that changes during
+//! the application's lifetime, such as request IDs, session identifiers, or other
+//! metadata that should be included in all log entries.
+//!
+//! This feature adds a small overhead (one `RwLock` read per log event), so it is
+//! opt-in. Enable it in your `Cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! tracing-journald = { version = "0.3", features = ["dynamic-fields"] }
+//! ```
+//!
+//! Then use it like this:
+//!
+//! ```ignore
+//! use tracing_journald::Layer;
+//! use tracing_subscriber::prelude::*;
+//!
+//! // Create the layer and keep a clone as a handle
+//! let layer = Layer::new().unwrap();
+//! let handle = layer.clone();
+//!
+//! // Register with subscriber
+//! tracing_subscriber::registry().with(layer).init();
+//!
+//! // Later, when context becomes available (e.g., at the start of a request):
+//! handle.set_custom_fields([
+//!     ("REQUEST_ID", "abc-123"),
+//!     ("USER_ID", "user-456"),
+//! ]);
+//!
+//! // All subsequent log entries will include REQUEST_ID and USER_ID
+//!
+//! // When context is no longer relevant (e.g., at the end of a request):
+//! handle.clear_custom_fields();
+//! ```
+//!
 //! *Compiler support: [requires `rustc` 1.65+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
@@ -39,6 +79,8 @@
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
+#[cfg(feature = "dynamic-fields")]
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{fmt, io, io::Write};
 
 use tracing_core::{
@@ -81,11 +123,27 @@ mod socket;
 /// prevent collision with standard fields.
 ///
 /// [journald conventions]: https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
+/// Sends events and their fields to journald.
+///
+/// When the `dynamic-fields` feature is enabled, this struct can be cloned to obtain
+/// a handle for dynamically updating custom fields via [`set_custom_fields`] and
+/// [`clear_custom_fields`] after the layer has been registered with a subscriber.
+///
+/// [`set_custom_fields`]: Layer::set_custom_fields
+/// [`clear_custom_fields`]: Layer::clear_custom_fields
+#[cfg_attr(feature = "dynamic-fields", derive(Clone))]
 pub struct Layer {
     #[cfg(unix)]
+    #[cfg(feature = "dynamic-fields")]
+    socket: Arc<UnixDatagram>,
+    #[cfg(unix)]
+    #[cfg(not(feature = "dynamic-fields"))]
     socket: UnixDatagram,
     field_prefix: Option<String>,
     syslog_identifier: String,
+    #[cfg(feature = "dynamic-fields")]
+    additional_fields: Arc<RwLock<Vec<u8>>>,
+    #[cfg(not(feature = "dynamic-fields"))]
     additional_fields: Vec<u8>,
     priority_mappings: PriorityMappings,
 }
@@ -103,7 +161,14 @@ impl Layer {
         {
             use std::path::Path;
 
+            #[cfg(feature = "dynamic-fields")]
+            let socket = Arc::new(UnixDatagram::unbound()?);
+            #[cfg(not(feature = "dynamic-fields"))]
             let socket = UnixDatagram::unbound()?;
+            #[cfg(feature = "dynamic-fields")]
+            let additional_fields = Arc::new(RwLock::new(Vec::new()));
+            #[cfg(not(feature = "dynamic-fields"))]
+            let additional_fields = Vec::new();
             let layer = Self {
                 socket,
                 field_prefix: Some("F".into()),
@@ -114,7 +179,7 @@ impl Layer {
                     .map(|n| n.to_string_lossy().into_owned())
                     // If we fail to get the name of the current executable fall back to an empty string.
                     .unwrap_or_default(),
-                additional_fields: Vec::new(),
+                additional_fields,
                 priority_mappings: PriorityMappings::new(),
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
@@ -192,7 +257,50 @@ impl Layer {
         self
     }
 
-    /// Adds fields that will get be passed to journald with every log entry.
+    /// Adds fields that will be passed to journald with every log entry.
+    ///
+    /// The input values of this function are interpreted as `(field, value)` pairs.
+    ///
+    /// This can for example be used to configure the syslog facility.
+    /// See [Journal Fields](https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+    /// and [journalctl](https://www.freedesktop.org/software/systemd/man/journalctl.html)
+    /// for more information.
+    ///
+    /// Fields specified using this method will be added to the journald
+    /// message alongside fields generated from the event's fields, its
+    /// metadata, and the span context. If the name of a field provided using
+    /// this method is the same as the name of a field generated by the
+    /// layer, both fields will be sent to journald.
+    ///
+    /// This is a builder method for setting custom fields at construction time.
+    #[cfg_attr(
+        feature = "dynamic-fields",
+        doc = " For dynamically updating fields after construction, see [`set_custom_fields`]"
+    )]
+    #[cfg_attr(
+        feature = "dynamic-fields",
+        doc = " and [`clear_custom_fields`]."
+    )]
+    ///
+    #[cfg_attr(feature = "dynamic-fields", doc = " [`set_custom_fields`]: Layer::set_custom_fields")]
+    #[cfg_attr(feature = "dynamic-fields", doc = " [`clear_custom_fields`]: Layer::clear_custom_fields")]
+    ///
+    /// ```no_run
+    /// # use tracing_journald::Layer;
+    /// let layer = Layer::new()
+    ///     .unwrap()
+    ///     .with_custom_fields([("SYSLOG_FACILITY", "17")]);
+    /// ```
+    #[cfg(feature = "dynamic-fields")]
+    pub fn with_custom_fields<T: AsRef<str>, U: AsRef<[u8]>>(
+        self,
+        fields: impl IntoIterator<Item = (T, U)>,
+    ) -> Self {
+        self.set_custom_fields(fields);
+        self
+    }
+
+    /// Adds fields that will be passed to journald with every log entry.
     ///
     /// The input values of this function are interpreted as `(field, value)` pairs.
     ///
@@ -213,7 +321,7 @@ impl Layer {
     ///     .unwrap()
     ///     .with_custom_fields([("SYSLOG_FACILITY", "17")]);
     /// ```
-    ///
+    #[cfg(not(feature = "dynamic-fields"))]
     pub fn with_custom_fields<T: AsRef<str>, U: AsRef<[u8]>>(
         mut self,
         fields: impl IntoIterator<Item = (T, U)>,
@@ -224,6 +332,83 @@ impl Layer {
             })
         }
         self
+    }
+
+    /// Dynamically sets custom fields that will be passed to journald with every log entry.
+    ///
+    /// This method replaces any previously set custom fields. It can be called at any time
+    /// to update the fields that are included with subsequent log entries.
+    ///
+    /// This is useful for injecting context that changes during the lifetime of the application,
+    /// such as request IDs, user session identifiers, or other dynamic metadata.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use tracing_journald::Layer;
+    /// let layer = Layer::new().unwrap();
+    /// let handle = layer.clone();
+    ///
+    /// // Register layer with subscriber...
+    ///
+    /// // Later, when context becomes available:
+    /// handle.set_custom_fields([
+    ///     ("REQUEST_ID", "abc-123"),
+    ///     ("USER_ID", "user-456"),
+    /// ]);
+    ///
+    /// // All subsequent log entries will include REQUEST_ID and USER_ID
+    ///
+    /// // When context is no longer relevant:
+    /// handle.clear_custom_fields();
+    /// ```
+    #[cfg(feature = "dynamic-fields")]
+    pub fn set_custom_fields<T: AsRef<str>, U: AsRef<[u8]>>(
+        &self,
+        fields: impl IntoIterator<Item = (T, U)>,
+    ) {
+        let mut buf = Vec::new();
+        for (name, value) in fields {
+            put_field_length_encoded(&mut buf, name.as_ref(), |b| {
+                b.extend_from_slice(value.as_ref())
+            })
+        }
+        *self.additional_fields_write() = buf;
+    }
+
+    /// Clears all custom fields.
+    ///
+    /// After calling this method, subsequent log entries will not include any custom fields
+    /// (until [`set_custom_fields`] is called again).
+    ///
+    /// [`set_custom_fields`]: Layer::set_custom_fields
+    #[cfg(feature = "dynamic-fields")]
+    pub fn clear_custom_fields(&self) {
+        self.additional_fields_write().clear();
+    }
+
+    /// Read the additional fields, recovering from a poisoned lock.
+    ///
+    /// If a thread panicked while holding the write lock, this will still return the data,
+    /// ensuring logging continues to work.
+    #[cfg(feature = "dynamic-fields")]
+    fn additional_fields_read(&self) -> RwLockReadGuard<'_, Vec<u8>> {
+        match self.additional_fields.read() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
+
+    /// Write to the additional fields, recovering from a poisoned lock.
+    ///
+    /// If a thread panicked while holding the lock, this will still return the data,
+    /// ensuring dynamic field updates continue to work.
+    #[cfg(feature = "dynamic-fields")]
+    fn additional_fields_write(&self) -> RwLockWriteGuard<'_, Vec<u8>> {
+        match self.additional_fields.write() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
     }
 
     /// Returns the syslog identifier in use.
@@ -347,6 +532,9 @@ where
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
+        #[cfg(feature = "dynamic-fields")]
+        buf.extend_from_slice(&self.additional_fields_read());
+        #[cfg(not(feature = "dynamic-fields"))]
         buf.extend_from_slice(&self.additional_fields);
 
         event.record(&mut EventVisitor::new(
