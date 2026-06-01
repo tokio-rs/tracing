@@ -1228,12 +1228,7 @@ macro_rules! enabled {
                 fields: $($fields)*
             };
             let interest = __CALLSITE.interest();
-            if !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest) {
-                let meta = __CALLSITE.metadata();
-                $crate::dispatcher::get_default(|current| current.enabled(meta))
-            } else {
-                false
-            }
+            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
         } else {
             false
         }
