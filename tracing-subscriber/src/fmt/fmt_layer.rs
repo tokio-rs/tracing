@@ -74,6 +74,7 @@ pub struct Layer<
     is_ansi: bool,
     ansi_sanitization: bool,
     log_internal_errors: bool,
+    max_buf_capacity: Option<usize>,
     _inner: PhantomData<fn(S)>,
 }
 
@@ -125,6 +126,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -156,6 +158,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -190,6 +193,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             make_writer,
             _inner: self._inner,
         }
@@ -296,6 +300,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             make_writer: TestWriter::default(),
             _inner: self._inner,
         }
@@ -376,6 +381,17 @@ impl<S, N, E, W> Layer<S, N, E, W> {
         }
     }
 
+    /// Sets the maximum capacity (in bytes) retained by the thread-local
+    /// formatting buffer between events. After formatting, if the buffer
+    /// capacity exceeds `max_capacity` it is shrunk back. By default there
+    /// is no limit and the buffer retains whatever capacity it grew to.
+    pub fn with_buf_capacity_limit(self, max_capacity: usize) -> Self {
+        Self {
+            max_buf_capacity: Some(max_capacity),
+            ..self
+        }
+    }
+
     /// Updates the [`MakeWriter`] by applying a function to the existing [`MakeWriter`].
     ///
     /// This sets the [`MakeWriter`] that the layer being built will use to write events.
@@ -406,6 +422,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             make_writer: f(self.make_writer),
             _inner: self._inner,
         }
@@ -439,6 +456,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -453,6 +471,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -583,6 +602,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -599,6 +619,7 @@ where
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -631,6 +652,7 @@ where
             is_ansi: false,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -699,6 +721,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -731,6 +754,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
             is_ansi: self.is_ansi,
             ansi_sanitization: self.ansi_sanitization,
             log_internal_errors: self.log_internal_errors,
+            max_buf_capacity: self.max_buf_capacity,
             _inner: self._inner,
         }
     }
@@ -750,6 +774,7 @@ impl<S> Default for Layer<S> {
             is_ansi: ansi,
             ansi_sanitization: true,
             log_internal_errors: false,
+            max_buf_capacity: None,
             _inner: PhantomData,
         }
     }
@@ -1064,6 +1089,9 @@ where
             }
 
             buf.clear();
+            if let Some(max_cap) = self.max_buf_capacity {
+                buf.shrink_to(max_cap);
+            }
         });
     }
 
@@ -1710,6 +1738,42 @@ mod test {
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
              fake time span3{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
             actual.as_str()
+        );
+    }
+
+    #[test]
+    fn buf_capacity_limit_does_not_break_formatting() {
+        // Verify that setting a buf capacity limit still produces correct output
+        // for both small and large events.
+        let make_writer = MockMakeWriter::default();
+        let subscriber = crate::fmt::Subscriber::builder()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_buf_capacity_limit(256)
+            .finish();
+
+        with_default(subscriber, || {
+            // A large event that exceeds the 256-byte limit
+            let big = "x".repeat(1024);
+            tracing::info!(big_field = big.as_str(), "large event");
+
+            // A small event afterwards -- this verifies that the buffer was
+            // usable after being shrunk.
+            tracing::info!("small event");
+        });
+
+        let actual = make_writer.get_string();
+        assert!(
+            actual.contains("large event"),
+            "large event should have been written, got: {}",
+            actual
+        );
+        assert!(
+            actual.contains("small event"),
+            "small event should have been written after buf shrink, got: {}",
+            actual
         );
     }
 }
