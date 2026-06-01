@@ -4,6 +4,7 @@ use lru::LruCache;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::hash::Hasher;
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
@@ -90,7 +91,7 @@ struct Key {
 struct State {
     min_verbosity: Level,
     epoch: usize,
-    cache: LruCache<Key, u64, ahash::RandomState>,
+    cache: Option<LruCache<Key, u64, ahash::RandomState>>,
 }
 
 impl State {
@@ -98,7 +99,8 @@ impl State {
         State {
             epoch,
             min_verbosity: config.min_verbosity,
-            cache: LruCache::new(config.lru_cache_size),
+            cache: NonZeroUsize::new(config.lru_cache_size)
+                .map(|size| LruCache::with_hasher(size, ahash::RandomState::new())),
         }
     }
 }
@@ -161,6 +163,7 @@ pub(crate) fn configure(new_config: Option<InterestCacheConfig>) {
 pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool) -> bool {
     STATE.with(|state| {
         let mut state = state.borrow_mut();
+        let state = &mut *state;
 
         // If the interest cache in core was rebuilt we need to reset the cache here too.
         let epoch = interest_cache_epoch();
@@ -169,9 +172,10 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         }
 
         let level = metadata.level();
-        if state.cache.cap() == 0 || level < state.min_verbosity {
-            return callback();
-        }
+        let cache = match &mut state.cache {
+            Some(cache) if level >= state.min_verbosity => cache,
+            _ => return callback(),
+        };
 
         let target = metadata.target();
 
@@ -201,7 +205,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
             level_and_length: level as usize | target.len().wrapping_shl(3),
         };
 
-        if let Some(&cached) = state.cache.get(&key) {
+        if let Some(&cached) = cache.get(&key) {
             // And here we make sure that the target actually matches.
             //
             // This is just a hash of the target string, so theoretically we're not guaranteed
@@ -223,7 +227,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         }
 
         let interest = callback();
-        state.cache.put(key, target_hash | interest as u64);
+        cache.put(key, target_hash | interest as u64);
 
         interest
     })
