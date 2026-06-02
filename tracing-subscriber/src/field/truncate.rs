@@ -140,4 +140,21 @@ mod test {
             );
         });
     }
+
+    #[test]
+    fn make_ext_truncated_combinator() {
+        use crate::field::MakeExt;
+        // Going through the MakeExt convenience wrapper must produce the same
+        // truncation as constructing Truncated::new directly.
+        let make = MakeDebug.truncated(4);
+
+        TestAttrs1::with(|attrs| {
+            let mut s = String::new();
+            {
+                let mut v = make.make_visitor(&mut s);
+                attrs.record(&mut v);
+            }
+            assert_eq!(s.as_str(), "question=\"life\"tricky=truecan_you_do_it=true");
+        });
+    }
 }

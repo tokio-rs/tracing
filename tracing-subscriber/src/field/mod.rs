@@ -154,6 +154,15 @@ where
     {
         delimited::Delimited::new(delimiter, self)
     }
+
+    /// Wraps `self` so that string field values longer than `max_len`
+    /// characters are truncated before being forwarded to the wrapped visitor.
+    ///
+    /// Truncation is counted in [`char`]s rather than bytes, so the truncated
+    /// value is always valid UTF-8.
+    fn truncated(self, max_len: usize) -> truncate::Truncated<Self> {
+        truncate::Truncated::new(self, max_len)
+    }
 }
 
 // === impl RecordFields ===
