@@ -705,6 +705,7 @@ use core::any::TypeId;
 feature! {
     #![feature = "alloc"]
     use alloc::boxed::Box;
+    use core::cmp::Reverse;
     use core::ops::{Deref, DerefMut};
 }
 
@@ -1828,17 +1829,11 @@ feature! {
         }
 
         fn max_level_hint(&self) -> Option<LevelFilter> {
-            // Default to `OFF` if there are no inner layers.
-            let mut max_level = LevelFilter::OFF;
-            for l in self {
-                // NOTE(eliza): this is slightly subtle: if *any* layer
-                // returns `None`, we have to return `None`, assuming there is
-                // no max level hint, since that particular layer cannot
-                // provide a hint.
-                let hint = l.max_level_hint()?;
-                max_level = core::cmp::max(hint, max_level);
-            }
-            Some(max_level)
+            // NOTE(eliza): if *any* layer returns `None`, we have to return `None`, assuming there
+            // is no max level hint, since that particular layer cannot provide a hint.
+            let max_opt_level = self.iter().map(|l| l.max_level_hint().map(Reverse)).min();
+            // If Vec is empty, this will shortcircuit with `None`, which is desired.
+            Some(max_opt_level??.0)
         }
 
         fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
