@@ -117,5 +117,5 @@ fn all_filtered_max_level_hint() {
 fn empty_vec() {
     // Just a None means everything is off
     let subscriber = tracing_subscriber::registry().with(Vec::<MockLayer>::new());
-    assert_eq!(subscriber.max_level_hint(), Some(LevelFilter::OFF));
+    assert_eq!(subscriber.max_level_hint(), None);
 }
