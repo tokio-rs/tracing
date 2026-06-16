@@ -612,11 +612,11 @@ impl Inner {
             max_files,
         };
 
+        let filename = inner.join_date(&now);
         if let Some(max_files) = max_files {
-            inner.prune_old_logs(max_files);
+            inner.prune_old_logs(max_files, &filename);
         }
 
-        let filename = inner.join_date(&now);
         let writer = RwLock::new(create_writer(
             inner.log_directory.as_ref(),
             &filename,
@@ -652,7 +652,7 @@ impl Inner {
         }
     }
 
-    fn prune_old_logs(&self, max_files: usize) {
+    fn prune_old_logs(&self, max_files: usize, current_filename: &str) {
         let files = fs::read_dir(&self.log_directory).map(|dir| {
             dir.filter_map(|entry| {
                 let entry = entry.ok()?;
@@ -706,15 +706,33 @@ impl Inner {
                 return;
             }
         };
-        if files.len() < max_files {
+        // Never delete the file we're about to write to. If it already exists
+        // (e.g. the application restarted within the current rotation period),
+        // the writer will append to it rather than create a new file, so remove
+        // it from the deletion candidates here. Whether it exists yet or not, it
+        // occupies exactly one of the `max_files` slots once the writer is open
+        // — hence the `+ 1` below. See
+        // https://github.com/tokio-rs/tracing/issues/3496.
+        if let Some(idx) = files
+            .iter()
+            .position(|(entry, _)| entry.file_name().to_str() == Some(current_filename))
+        {
+            files.swap_remove(idx);
+        }
+
+        // Delete the oldest candidates so that, together with the current file,
+        // at most `max_files` remain. `saturating_sub` guards `max_files == 0`,
+        // which the builder maps to `None`, so it never actually reaches here.
+        let delete_count = (files.len() + 1).saturating_sub(max_files);
+        if delete_count == 0 {
             return;
         }
 
-        // sort the files by their creation timestamps.
+        // sort the remaining candidates by their creation timestamps.
         files.sort_by_key(|(_, created_at)| *created_at);
 
-        // delete files, so that (n-1) files remain, because we will create another log file
-        for (file, _) in files.iter().take(files.len() - (max_files - 1)) {
+        // delete the oldest `delete_count` files.
+        for (file, _) in files.iter().take(delete_count) {
             if let Err(error) = fs::remove_file(file.path()) {
                 eprintln!(
                     "Failed to remove old log file {}: {}",
@@ -729,7 +747,7 @@ impl Inner {
         let filename = self.join_date(&now);
 
         if let Some(max_files) = self.max_files {
-            self.prune_old_logs(max_files);
+            self.prune_old_logs(max_files, &filename);
         }
 
         match create_writer(
@@ -1327,6 +1345,63 @@ mod test {
                 x => panic!("unexpected date {}", x),
             }
         }
+    }
+
+    #[test]
+    fn test_max_log_files_keeps_files_on_restart() {
+        // Regression test for https://github.com/tokio-rs/tracing/issues/3496:
+        // when the application restarts within the same rotation period, the
+        // current period's log file already exists, so startup pruning must NOT
+        // delete an extra file.
+        let format = format_description::parse(
+            "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+             sign:mandatory]:[offset_minute]:[offset_second]",
+        )
+        .unwrap();
+
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+
+        // Mimic an application that has been retaining `max_files` (3) hourly
+        // files, the newest of which is the *current* period (12:00).
+        for hour in ["10", "11", "12"] {
+            let path = directory
+                .path()
+                .join(format!("restart.2020-02-01-{}", hour));
+            fs::write(&path, format!("contents {}\n", hour)).expect("failed to write file");
+        }
+
+        // Restart at 12:30 — same hour as the newest existing file, so the
+        // writer appends to "restart.2020-02-01-12" rather than creating a new
+        // file. Startup pruning must therefore retain all three files.
+        let now = OffsetDateTime::parse("2020-02-01 12:30:00 +00:00:00", &format).unwrap();
+        let (_state, _writer) = Inner::new(
+            now,
+            Rotation::HOURLY,
+            directory.path(),
+            Some("restart".to_string()),
+            None,
+            None,
+            Some(3),
+        )
+        .expect("failed to create rolling file appender");
+
+        let mut names = fs::read_dir(directory.path())
+            .expect("failed to read directory")
+            .map(|e| e.expect("dir entry").file_name().into_string().unwrap())
+            .collect::<Vec<_>>();
+        names.sort();
+
+        // Buggy behaviour deletes the oldest ("…-10"), leaving only two files.
+        assert_eq!(
+            names,
+            vec![
+                "restart.2020-02-01-10".to_string(),
+                "restart.2020-02-01-11".to_string(),
+                "restart.2020-02-01-12".to_string(),
+            ],
+            "startup prune must not delete a file when the current period's \
+             log file already exists (#3496)",
+        );
     }
 
     #[test]
