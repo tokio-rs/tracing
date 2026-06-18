@@ -314,7 +314,13 @@ impl Subscriber for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert_ne!(
+        // If the reference count was zero, the span has already been closed and
+        // this clone would resurrect it. This only happens through incorrect API
+        // usage, most commonly holding a span open across an `.await` point (see
+        // issue #3514). It produces incorrect traces, but it must not abort the
+        // program, so this is only a debug assertion: release builds tolerate the
+        // resurrected span rather than panicking.
+        debug_assert_ne!(
             refs, 0,
             "tried to clone a span ({:?}) that already closed.\n\
              This error message may indicate that a Span was held open across an \
@@ -902,6 +908,45 @@ mod tests {
             drop(span3);
 
             state.assert_closed_in_order(["child", "parent", "grandparent"]);
+        });
+    }
+
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3514.
+    //
+    // A span whose reference count has already reached zero can still be cloned
+    // via `Span::current`, for example when a span is incorrectly held open
+    // across an `.await` point. This used to abort the process via `assert_ne!`;
+    // it is now a `debug_assert_ne!`, so release builds tolerate the (incorrect
+    // but non-fatal) resurrected span instead of panicking, while debug builds
+    // still surface the misuse.
+    #[test]
+    fn clone_span_with_zero_ref_count_does_not_abort_in_release() {
+        let dispatch = dispatcher::Dispatch::new(Registry::default());
+        dispatcher::with_default(&dispatch, || {
+            let span = tracing::info_span!("held across await");
+            let id = span.id().expect("a registry span must have an ID");
+            // Dropping the only handle brings the reference count to zero. With
+            // a bare `Registry` (no layers), the slab entry is not cleared, so
+            // the span data remains reachable with a zero reference count: the
+            // exact state that triggers #3514.
+            drop(span);
+
+            let cloned =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| dispatch.clone_span(&id)));
+
+            if cfg!(debug_assertions) {
+                // Debug builds keep the assertion to surface the misuse.
+                assert!(
+                    cloned.is_err(),
+                    "cloning a closed span should hit the debug assertion in debug builds",
+                );
+            } else {
+                // Release builds must not panic; the clone returns the same ID.
+                assert_eq!(
+                    cloned.expect("cloning a closed span must not panic in release builds"),
+                    id,
+                );
+            }
         });
     }
 }
