@@ -314,12 +314,12 @@ impl Subscriber for Registry {
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
         let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        // If the reference count was zero, the span has already been closed and
-        // this clone would resurrect it. This only happens through incorrect API
-        // usage, most commonly holding a span open across an `.await` point (see
-        // issue #3514). It produces incorrect traces, but it must not abort the
-        // program, so this is only a debug assertion: release builds tolerate the
-        // resurrected span rather than panicking.
+        // A zero reference count here means the span was already closed, which
+        // can only happen through incorrect API usage, most commonly holding a
+        // span open across an `.await` point (see issue #3514). That is a bug in
+        // the caller, but it must not abort the program, so this is a debug
+        // assertion rather than a hard one: debug builds surface the misuse,
+        // while release builds keep running instead of panicking.
         debug_assert_ne!(
             refs, 0,
             "tried to clone a span ({:?}) that already closed.\n\
@@ -916,9 +916,12 @@ mod tests {
     // A span whose reference count has already reached zero can still be cloned
     // via `Span::current`, for example when a span is incorrectly held open
     // across an `.await` point. This used to abort the process via `assert_ne!`;
-    // it is now a `debug_assert_ne!`, so release builds tolerate the (incorrect
-    // but non-fatal) resurrected span instead of panicking, while debug builds
-    // still surface the misuse.
+    // it is now a `debug_assert_ne!`, so release builds keep running instead of
+    // panicking, while debug builds still surface the misuse.
+    //
+    // Note: only the release branch below distinguishes this fix from the old
+    // `assert_ne!` -- under `cargo test` (debug) both panic, so this must be run
+    // with `cargo test --release` to exercise the non-aborting path.
     #[test]
     fn clone_span_with_zero_ref_count_does_not_abort_in_release() {
         let dispatch = dispatcher::Dispatch::new(Registry::default());
