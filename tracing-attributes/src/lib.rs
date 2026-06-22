@@ -482,11 +482,13 @@ mod expand;
 /// [`tracing::field::valuable`] implementation, by writing `ret(Valuable)`:
 ///
 /// ```
+/// # #[cfg(all(tracing_unstable, feature = "valuable"))] {
 /// # use tracing_attributes::instrument;
 /// #[instrument(ret(Valuable))]
 /// fn my_function() -> i32 {
 ///     42
 /// }
+/// # }
 /// ```
 /// **Note**: To enable support for [`valuable`] you must first enable unstable tracing features.
 /// See [unstable features] documentation of the `tracing` crate.
@@ -531,12 +533,14 @@ mod expand;
 /// [`Valuable` trait] using the experimental [`valuable`] support by writing `err(Valuable)`:
 ///
 /// ```
+/// # #[cfg(all(tracing_unstable, feature = "valuable"))] {
 /// # use tracing_attributes::instrument;
 /// # use std::error::Error;
 /// #[instrument(err(Valuable))]
 /// fn my_function(arg: usize) -> Result<(), &'static dyn Error> {
 ///     Ok(())
 /// }
+/// # }
 /// ```
 ///
 /// **Note**: this requires enabling both the `valuable` cargo feature and [unstable features]
