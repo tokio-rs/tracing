@@ -402,13 +402,16 @@ mod valuable {
         handle.assert_finished();
     }
 
+    #[derive(Debug)]
+    struct NotValuable;
+
     #[instrument(err(Valuable), ret(Debug))]
-    fn ret_dbg_err_valuable_ok() -> Result<u8, String> {
-        Ok(10)
+    fn ret_dbg_err_valuable_ok() -> Result<NotValuable, String> {
+        Ok(NotValuable)
     }
 
     #[test]
-    fn test_ret_dbg_err_valuabe_ok() {
+    fn test_ret_dbg_err_valuable_ok() {
         let span = expect::span()
             .named("ret_dbg_err_valuable_ok")
             .at_level(Level::INFO);
@@ -419,7 +422,7 @@ mod valuable {
             .event(
                 expect::event()
                     .with_fields(
-                        expect::field("return").with_value(&tracing::field::valuable(&10u8)),
+                        expect::field("return").with_value(&tracing::field::debug(&NotValuable)),
                     )
                     .at_level(Level::INFO),
             )
@@ -438,7 +441,7 @@ mod valuable {
     }
 
     #[test]
-    fn test_ret_dbg_err_valuabe_err() {
+    fn test_ret_dbg_err_valuable_err() {
         let span = expect::span()
             .named("ret_dbg_err_valuable_err")
             .at_level(Level::INFO);
