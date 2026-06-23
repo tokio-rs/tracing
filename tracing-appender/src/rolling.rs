@@ -800,14 +800,38 @@ fn create_writer(
     })?;
 
     if let Some(symlink_name) = latest_symlink_name {
-        let symlink_path = directory.join(symlink_name);
-        let _ = symlink::remove_symlink_file(&symlink_path);
-        symlink::symlink_file(path, symlink_path).map_err(InitError::ctx(
-            "failed to create symlink to latest log file",
-        ))?;
+        update_latest_symlink(directory, &path, symlink_name)?;
     }
 
     Ok(new_file)
+}
+
+/// Updates the "latest" symbolic link to point at the most recent log file.
+///
+/// Symbolic links are only available on some platforms. On targets where they
+/// are not supported (such as `wasm32`), the `symlink` crate is not a
+/// dependency and this is a no-op, so the `latest_symlink` builder option has
+/// no effect there.
+#[cfg(any(unix, windows, target_os = "redox"))]
+fn update_latest_symlink(
+    directory: &Path,
+    target: &Path,
+    symlink_name: &str,
+) -> Result<(), InitError> {
+    let symlink_path = directory.join(symlink_name);
+    let _ = symlink::remove_symlink_file(&symlink_path);
+    symlink::symlink_file(target, symlink_path).map_err(InitError::ctx(
+        "failed to create symlink to latest log file",
+    ))
+}
+
+#[cfg(not(any(unix, windows, target_os = "redox")))]
+fn update_latest_symlink(
+    _directory: &Path,
+    _target: &Path,
+    _symlink_name: &str,
+) -> Result<(), InitError> {
+    Ok(())
 }
 
 fn parse_date_from_filename(
@@ -1362,6 +1386,7 @@ mod test {
         );
     }
 
+    #[cfg(any(unix, windows, target_os = "redox"))]
     #[test]
     fn test_latest_symlink() {
         use std::sync::{Arc, Mutex};
