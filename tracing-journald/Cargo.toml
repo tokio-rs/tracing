@@ -15,15 +15,19 @@ categories = [
 keywords = ["tracing", "journald"]
 rust-version = "1.65.0"
 
+[features]
+msg-formatter = ["dep:tracing-log"]
+
 [dependencies]
 libc = "0.2.126"
-tracing-core = { path = "../tracing-core", version = "0.1.28" }
-tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", default-features = false, features = ["registry"] }
+tracing-core = { path = "../tracing-core", version = "0.1.36" }
+tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.22", default-features = false, features = ["registry"] }
+tracing-log = { path = "../tracing-log", version = "0.2.0", features = ["log-tracer"], optional = true }
 
 [dev-dependencies]
 serde_json = "1.0.82"
 serde = { version = "1.0.140", features = ["derive"] }
-tracing = { path = "../tracing", version = "0.1.35" }
+tracing = { path = "../tracing", version = "0.1.44" }
 
 [lints]
 workspace = true
