@@ -36,7 +36,7 @@ proc-macro = true
 async-await = []
 
 # Enable experimental support for valuable crate
-valuable = ["tracing/valuable"]
+valuable = []
 
 [dependencies]
 proc-macro2 = "1.0.60"
@@ -52,7 +52,7 @@ syn = { version = "2.0", default-features = false, features = [
 quote = "1.0.20"
 
 [dev-dependencies]
-tracing = { path = "../tracing", version = "0.1.42" }
+tracing = { path = "../tracing", version = "0.1.42", features = ["valuable"] }
 tracing-mock = { path = "../tracing-mock" }
 tokio-test = "0.4.2"
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", features = [
