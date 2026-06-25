@@ -957,7 +957,12 @@ where
             let span = ctx.span(id).expect("Span not found, this is a bug");
             let mut extensions = span.extensions_mut();
             if let Some(timings) = extensions.get_mut::<Timings>() {
-                timings.entered_count -= 1;
+                // `entered_count` can already be 0 here if span-event
+                // configuration was toggled (e.g. via `reload`) so that this
+                // span was entered while bookkeeping was disabled, then exited
+                // after it was re-enabled. Saturate instead of underflowing
+                // (which panics in debug builds). See #3529.
+                timings.entered_count = timings.entered_count.saturating_sub(1);
                 if timings.entered_count == 0 {
                     let now = Instant::now();
                     timings.busy += (now - timings.last).as_nanos() as u64;
@@ -981,13 +986,24 @@ where
             let extensions = span.extensions();
             if let Some(timing) = extensions.get::<Timings>() {
                 let Timings {
-                    busy,
+                    mut busy,
                     mut idle,
                     last,
                     entered_count,
                 } = *timing;
-                debug_assert_eq!(entered_count, 0);
-                idle += (Instant::now() - last).as_nanos() as u64;
+                // A span can still be "entered" at close time if span-event
+                // configuration was toggled (e.g. via `reload`) so that its
+                // `on_exit` bookkeeping was skipped while it was entered.
+                // Previously this path asserted `entered_count == 0`, which
+                // panicked in debug builds (see #3529). Instead, attribute the
+                // final interval to whichever state the span is actually in:
+                // busy if it is still entered, idle otherwise.
+                let now = Instant::now();
+                if entered_count == 0 {
+                    idle += (now - last).as_nanos() as u64;
+                } else {
+                    busy += (now - last).as_nanos() as u64;
+                }
 
                 let t_idle = field::display(TimingDisplay(idle));
                 let t_busy = field::display(TimingDisplay(busy));
@@ -1710,6 +1726,94 @@ mod test {
              fake time span1{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n\
              fake time span3{x=42}: tracing_subscriber::fmt::fmt_layer::test: exit\n",
             actual.as_str()
+        );
+    }
+
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3529:
+    // disabling span events via a `reload` handle while a span is entered must
+    // not panic when that span is later closed. The span is entered while
+    // bookkeeping is on (so `entered_count` becomes 1), span events are
+    // disabled before it exits (so the decrement is skipped), then re-enabled
+    // before close. Previously `on_close` hit `debug_assert_eq!(entered_count,
+    // 0)` and panicked in debug builds.
+    #[test]
+    fn reload_span_events_while_entered_does_not_panic() {
+        let make_writer = MockMakeWriter::default();
+
+        let inner_layer = fmt::Layer::default()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::FULL);
+
+        let (reloadable_layer, reload_handle) = crate::reload::Layer::new(inner_layer);
+        let reload = reloadable_layer.with_subscriber(Registry::default());
+
+        with_default(reload, || {
+            let span = tracing::info_span!("span");
+            let entered = span.enter();
+
+            // Disable span events while the span is still entered: `on_exit`
+            // bookkeeping is now skipped, leaving `entered_count` non-zero.
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::NONE));
+            drop(entered);
+
+            // Re-enable so `on_close` runs its timing path against the
+            // still-"entered" span.
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::FULL));
+            drop(span);
+        });
+
+        let actual = sanitize_timings(make_writer.get_string());
+        assert!(
+            actual.contains("close"),
+            "expected a close event to be emitted, got: {:?}",
+            actual
+        );
+    }
+
+    // Companion regression test for https://github.com/tokio-rs/tracing/issues/3529:
+    // the reverse toggle order must not underflow `entered_count`. The span is
+    // created while bookkeeping is on (so the `Timings` extension is attached),
+    // span events are disabled before it is entered (so the increment is
+    // skipped), then re-enabled before it exits. Previously `on_exit` computed
+    // `0 - 1`, which panicked on overflow in debug builds.
+    #[test]
+    fn reload_span_events_before_enter_does_not_underflow() {
+        let make_writer = MockMakeWriter::default();
+
+        let inner_layer = fmt::Layer::default()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime)
+            .with_span_events(FmtSpan::FULL);
+
+        let (reloadable_layer, reload_handle) = crate::reload::Layer::new(inner_layer);
+        let reload = reloadable_layer.with_subscriber(Registry::default());
+
+        with_default(reload, || {
+            // Create the span while bookkeeping is on so `Timings` is attached.
+            let span = tracing::info_span!("span");
+
+            // Disable span events before entering: `on_enter` skips the
+            // `entered_count` increment.
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::NONE));
+            let entered = span.enter();
+
+            // Re-enable before exit: `on_exit` now decrements an
+            // `entered_count` of 0.
+            let _ = reload_handle.modify(|s| s.set_span_events(FmtSpan::FULL));
+            drop(entered);
+            drop(span);
+        });
+
+        let actual = sanitize_timings(make_writer.get_string());
+        assert!(
+            actual.contains("close"),
+            "expected a close event to be emitted, got: {:?}",
+            actual
         );
     }
 }
