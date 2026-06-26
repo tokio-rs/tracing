@@ -430,10 +430,14 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        // If the extensions lock was poisoned by a panic while another access
-        // to this span's extensions was in progress, recover the guard rather
-        // than panicking again. A second panic here — for example, while
-        // unwinding from the first — would abort the process. See #812.
+        // If the extensions lock was poisoned by a panic while another access to
+        // this span's extensions was in progress, recover the guard rather than
+        // panicking again: a second panic here — e.g. while unwinding from the
+        // first — would abort the process (see #812). Recovering is sound because
+        // the extensions are a plain typemap whose lock can only be poisoned
+        // *after* a completed map mutation (`ExtensionsMut::insert`'s assertion,
+        // or a stored value's `Drop`), so the recovered map is always
+        // structurally consistent.
         Extensions::new(self.inner.extensions.read().unwrap_or_else(|l| l.into_inner()))
     }
 
@@ -920,6 +924,10 @@ mod tests {
     // must not panic *again*, because a second panic during unwinding aborts the
     // process. The accessors recover the poisoned guard instead, so the original
     // panic unwinds normally and can be caught.
+    //
+    // This only reproduces under the std `RwLock`, which poisons on panic; the
+    // `parking_lot` backend never poisons, so the scenario cannot double-panic
+    // there and this test passes trivially.
     #[test]
     fn poisoned_span_extensions_do_not_double_panic() {
         struct Marker;
