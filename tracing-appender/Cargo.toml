@@ -24,7 +24,7 @@ rust-version = "1.63.0"
 crossbeam-channel = "0.5.6"
 time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 parking_lot = { optional = true, version = "0.12.1" }
-symlink = "0.1.0"
+symlink = { git = "https://gitlab.com/chris-morgan/symlink", rev = "dcc8849be3e8599c398361a487d22829307bef14"}
 thiserror = "2"
 
 [dependencies.tracing-subscriber]
