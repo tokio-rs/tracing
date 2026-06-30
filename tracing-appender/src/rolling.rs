@@ -802,7 +802,7 @@ fn create_writer(
     if let Some(symlink_name) = latest_symlink_name {
         let symlink_path = directory.join(symlink_name);
         let _ = symlink::remove_symlink_file(&symlink_path);
-        symlink::symlink_file(path, symlink_path).map_err(InitError::ctx(
+        symlink::symlink_file(filename, symlink_path).map_err(InitError::ctx(
             "failed to create symlink to latest log file",
         ))?;
     }
