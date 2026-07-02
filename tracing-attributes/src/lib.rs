@@ -297,7 +297,7 @@ mod expand;
 /// // Suppose we want to record both the inputs to the calculation *and* its result...
 /// #[instrument(fields(result))]
 /// pub fn do_calculation(input_1: usize, input_2: usize) -> usize {
-///     // Rerform the calculation.
+///     // Perform the calculation.
 ///     let result = input_1 + input_2;
 ///
 ///     // Record the result as part of the current span.
