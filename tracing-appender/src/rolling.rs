@@ -410,6 +410,42 @@ pub fn weekly(
     RollingFileAppender::new(Rotation::WEEKLY, directory, file_name_prefix)
 }
 
+/// Creates a monthly-rotating file appender. The logs will rotate every first day of the month at midnight UTC.
+///
+/// The appender returned by `rolling::monthly` can be used with `non_blocking` to create
+/// a non-blocking, monthly file appender.
+///
+/// A `RollingFileAppender` has a fixed rotation whose frequency is
+/// defined by [`Rotation`]. The `directory` and `file_name_prefix` arguments
+/// determine the location and file name's _prefix_ of the log file.
+/// `RollingFileAppender` automatically appends the current date in UTC.
+///
+/// # Examples
+///
+/// ``` rust
+/// # #[clippy::allow(needless_doctest_main)]
+/// fn main () {
+/// # fn doc() {
+///     let appender = tracing_appender::rolling::monthly("/some/path", "rolling.log");
+///     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(appender);
+///
+///     let subscriber = tracing_subscriber::fmt().with_writer(non_blocking_appender);
+///
+///     tracing::subscriber::with_default(subscriber.finish(), || {
+///         tracing::event!(tracing::Level::INFO, "Hello");
+///     });
+/// # }
+/// }
+/// ```
+///
+/// This will result in a log file located at `/some/path/rolling.log.yyyy-MM-dd`.
+pub fn monthly(
+    directory: impl AsRef<Path>,
+    file_name_prefix: impl AsRef<Path>,
+) -> RollingFileAppender {
+    RollingFileAppender::new(Rotation::MONTHLY, directory, file_name_prefix)
+}
+
 /// Creates a non-rolling file appender.
 ///
 /// The appender returned by `rolling::never` can be used with `non_blocking` to create
@@ -477,6 +513,14 @@ pub fn never(directory: impl AsRef<Path>, file_name: impl AsRef<Path>) -> Rollin
 /// # }
 /// ```
 ///
+/// ### Monthly Rotation
+/// ```rust
+/// # fn docs() {
+/// use tracing_appender::rolling::Rotation;
+/// let rotation = tracing_appender::rolling::Rotation::MONTHLY;
+/// # }
+/// ```
+///
 /// ### No Rotation
 /// ```rust
 /// # fn docs() {
@@ -493,6 +537,7 @@ enum RotationKind {
     Hourly,
     Daily,
     Weekly,
+    Monthly,
     Never,
 }
 
@@ -505,6 +550,8 @@ impl Rotation {
     pub const DAILY: Self = Self(RotationKind::Daily);
     /// Provides a weekly rotation that rotates every Sunday at midnight UTC.
     pub const WEEKLY: Self = Self(RotationKind::Weekly);
+    /// Provides a monthly rotation that rotates every first day of the month at midnight UTC.
+    pub const MONTHLY: Self = Self(RotationKind::Monthly);
     /// Provides a rotation that never rotates.
     pub const NEVER: Self = Self(RotationKind::Never);
 
@@ -515,6 +562,14 @@ impl Rotation {
             Rotation::HOURLY => *current_date + Duration::hours(1),
             Rotation::DAILY => *current_date + Duration::days(1),
             Rotation::WEEKLY => *current_date + Duration::weeks(1),
+            Rotation::MONTHLY => {
+                let month = current_date.month();
+                let year_offset = matches!(month, time::Month::December) as i32;
+                current_date.replace_date(
+                    Date::from_calendar_date(current_date.year() + year_offset, month.next(), 1)
+                        .unwrap(),
+                )
+            }
             Rotation::NEVER => return None,
         };
         Some(self.round_date(unrounded_next_date))
@@ -550,6 +605,11 @@ impl Rotation {
                 let date = date - Duration::days(days_since_sunday.into());
                 date.replace_time(zero_time)
             }
+            Rotation::MONTHLY => {
+                let zero_time = Time::from_hms(0, 0, 0)
+                    .expect("Invalid time; this is a bug in tracing-appender");
+                date.replace_day(1).unwrap().replace_time(zero_time)
+            }
             // Rotation::NEVER is impossible to round.
             Rotation::NEVER => {
                 unreachable!("Rotation::NEVER is impossible to round.")
@@ -563,6 +623,7 @@ impl Rotation {
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
             Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
             Rotation::WEEKLY => format_description::parse("[year]-[month]-[day]"),
+            Rotation::MONTHLY => format_description::parse("[year]-[month]-[day]"),
             Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
@@ -895,6 +956,11 @@ mod test {
     }
 
     #[test]
+    fn write_monthly_log() {
+        test_appender(Rotation::MONTHLY, "monthly.log");
+    }
+
+    #[test]
     fn write_never_log() {
         test_appender(Rotation::NEVER, "never.log");
     }
@@ -922,6 +988,12 @@ mod test {
         let next = Rotation::WEEKLY.next_date(&now).unwrap();
         assert!(now_rounded < next);
 
+        // per-month basis
+        let now = OffsetDateTime::now_utc();
+        let now_rounded = Rotation::MONTHLY.round_date(now);
+        let next = Rotation::MONTHLY.next_date(&now).unwrap();
+        assert!(now_rounded < next);
+
         // never
         let now = OffsetDateTime::now_utc();
         let next = Rotation::NEVER.next_date(&now);
@@ -946,6 +1018,13 @@ mod test {
         let directory = tempfile::tempdir().expect("failed to create tempdir");
 
         let test_cases = vec![
+            TestCase {
+                expected: "my_prefix.2025-02-01.log",
+                rotation: Rotation::MONTHLY,
+                prefix: Some("my_prefix"),
+                suffix: Some("log"),
+                now: OffsetDateTime::parse("2025-02-17 10:01:00 +00:00:00", &format).unwrap(),
+            },
             TestCase {
                 expected: "my_prefix.2025-02-16.log",
                 rotation: Rotation::WEEKLY,
