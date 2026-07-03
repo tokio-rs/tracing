@@ -327,3 +327,73 @@ fn test_err_warn_info() {
     with_default(subscriber, || err_warn_info().ok());
     handle.assert_finished();
 }
+
+// Behaves similar to anyhow::Error.
+struct ChainedError;
+
+impl std::fmt::Display for ChainedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            write!(f, "outer: inner cause")
+        } else {
+            write!(f, "outer")
+        }
+    }
+}
+
+impl std::fmt::Debug for ChainedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            f.debug_struct("ChainedError")
+                .field("msg", &"outer")
+                .field("cause", &"inner cause")
+                .finish()
+        } else {
+            write!(f, "ChainedError(outer)")
+        }
+    }
+}
+
+#[instrument(err(DisplayAlternate))]
+fn err_display_alternate() -> Result<u8, ChainedError> {
+    Err(ChainedError)
+}
+
+#[test]
+fn test_err_display_alternate() {
+    let span = expect::span().named("err_display_alternate");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::ERROR).with_fields(
+            expect::field("error").with_value(&tracing::field::display_alternate(ChainedError)),
+        ))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || err_display_alternate().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err(DebugAlternate))]
+fn err_debug_alternate() -> Result<u8, ChainedError> {
+    Err(ChainedError)
+}
+
+#[test]
+fn test_err_debug_alternate() {
+    let span = expect::span().named("err_debug_alternate");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::ERROR).with_fields(
+            expect::field("error").with_value(&tracing::field::debug_alternate(ChainedError)),
+        ))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || err_debug_alternate().ok());
+    handle.assert_finished();
+}
