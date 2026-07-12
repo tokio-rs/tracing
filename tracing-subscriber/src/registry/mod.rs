@@ -151,6 +151,32 @@ pub trait LookupSpan<'a> {
             std::any::type_name::<Self>()
         )
     }
+
+    /// Registers a [`Filter`] for [per-layer filtering] with this
+    /// [`Subscriber`], using a shared reference.
+    ///
+    /// This method is similar to [`register_filter`], but takes `&self`
+    /// instead of `&mut self`. It is intended for use in cases where
+    /// filters must be registered after the subscriber has already been
+    /// constructed, such as when reloading a [`Layer`] dynamically.
+    ///
+    /// # Panics
+    ///
+    /// If this `Subscriber` does not support [per-layer filtering].
+    ///
+    /// [`Filter`]: crate::layer::Filter
+    /// [per-layer filtering]: crate::layer::Layer#per-layer-filtering
+    /// [`Subscriber`]: tracing_core::Subscriber
+    /// [`Layer`]: crate::layer::Layer
+    /// [`register_filter`]: Self::register_filter
+    #[cfg(feature = "registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "registry")))]
+    fn register_filter_immut(&self) -> FilterId {
+        panic!(
+            "{} does not currently support filters",
+            std::any::type_name::<Self>()
+        )
+    }
 }
 
 /// A stored representation of data associated with a span.
