@@ -23,6 +23,7 @@ categories = [
 keywords = ["logging", "tracing", "metrics", "async"]
 edition = "2018"
 rust-version = "1.65.0"
+include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 tracing-core = { path = "../tracing-core", version = "0.1.36", default-features = false }
