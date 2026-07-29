@@ -942,7 +942,7 @@ mod test {
             now: OffsetDateTime,
         }
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1023,7 +1023,7 @@ mod test {
 
     #[test]
     fn test_path_concatenation() {
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1150,7 +1150,7 @@ mod test {
         use std::sync::{Arc, Mutex};
         use tracing_subscriber::prelude::*;
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1233,7 +1233,7 @@ mod test {
         use std::sync::{Arc, Mutex};
         use tracing_subscriber::prelude::*;
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1370,7 +1370,7 @@ mod test {
     fn test_latest_symlink() {
         use std::sync::{Arc, Mutex};
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
