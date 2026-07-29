@@ -559,11 +559,15 @@ impl Rotation {
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
         match *self {
-            Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
-            Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
-            Rotation::DAILY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::WEEKLY => format_description::parse("[year]-[month]-[day]"),
-            Rotation::NEVER => format_description::parse("[year]-[month]-[day]"),
+            Rotation::MINUTELY => {
+                format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]-[minute]")
+            }
+            Rotation::HOURLY => {
+                format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]")
+            }
+            Rotation::DAILY => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
+            Rotation::WEEKLY => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
+            Rotation::NEVER => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
         }
         .expect("Unable to create a formatter; this is a bug in tracing-appender")
     }
@@ -938,7 +942,7 @@ mod test {
             now: OffsetDateTime,
         }
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1019,7 +1023,7 @@ mod test {
 
     #[test]
     fn test_path_concatenation() {
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1146,7 +1150,7 @@ mod test {
         use std::sync::{Arc, Mutex};
         use tracing_subscriber::prelude::*;
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1229,7 +1233,7 @@ mod test {
         use std::sync::{Arc, Mutex};
         use tracing_subscriber::prelude::*;
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
@@ -1366,7 +1370,7 @@ mod test {
     fn test_latest_symlink() {
         use std::sync::{Arc, Mutex};
 
-        let format = format_description::parse(
+        let format = format_description::parse_borrowed::<2>(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
         )
