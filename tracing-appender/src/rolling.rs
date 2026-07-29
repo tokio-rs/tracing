@@ -559,8 +559,12 @@ impl Rotation {
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
         match *self {
-            Rotation::MINUTELY => format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]-[minute]"),
-            Rotation::HOURLY => format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]"),
+            Rotation::MINUTELY => {
+                format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]-[minute]")
+            }
+            Rotation::HOURLY => {
+                format_description::parse_borrowed::<2>("[year]-[month]-[day]-[hour]")
+            }
             Rotation::DAILY => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
             Rotation::WEEKLY => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
             Rotation::NEVER => format_description::parse_borrowed::<2>("[year]-[month]-[day]"),
