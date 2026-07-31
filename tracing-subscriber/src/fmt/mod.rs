@@ -1340,7 +1340,7 @@ mod test {
         }
     }
 
-    impl<'a> MakeWriter<'a> for MockMakeWriter {
+    impl<'a, S> MakeWriter<'a, S> for MockMakeWriter {
         type Writer = MockWriter;
 
         fn make_writer(&'a self) -> Self::Writer {

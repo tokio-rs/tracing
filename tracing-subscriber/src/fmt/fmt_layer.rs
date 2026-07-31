@@ -760,7 +760,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: for<'writer> MakeWriter<'writer> + 'static,
+    W: for<'writer> MakeWriter<'writer, S> + 'static,
 {
     #[inline]
     fn make_ctx<'a>(&'a self, ctx: Context<'a, S>, event: &'a Event<'a>) -> FmtContext<'a, S, N> {
@@ -869,7 +869,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<S, N> + 'static,
-    W: for<'writer> MakeWriter<'writer> + 'static,
+    W: for<'writer> MakeWriter<'writer, S> + 'static,
 {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
@@ -1034,11 +1034,12 @@ where
                 }
             };
 
-            let ctx = self.make_ctx(ctx, event);
+            let mut writer = self.make_writer.make_writer_for_event(event, &ctx);
+            let fmt_ctx = self.make_ctx(ctx, event);
             if self
                 .fmt_event
                 .format_event(
-                    &ctx,
+                    &fmt_ctx,
                     format::Writer::new(&mut buf)
                         .with_ansi(self.is_ansi)
                         .with_ansi_sanitization(self.ansi_sanitization),
@@ -1046,7 +1047,6 @@ where
                 )
                 .is_ok()
             {
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let res = io::Write::write_all(&mut writer, buf.as_bytes());
                 if self.log_internal_errors {
                     if let Err(e) = res {
@@ -1056,7 +1056,6 @@ where
             } else if self.log_internal_errors {
                 let err_msg = format!("Unable to format the following event. Name: {}; Fields: {:?}\n",
                     event.metadata().name(), event.fields());
-                let mut writer = self.make_writer.make_writer_for(event.metadata());
                 let res = io::Write::write_all(&mut writer, err_msg.as_bytes());
                 if let Err(e) = res {
                     eprintln!("[tracing-subscriber] Unable to write an \"event formatting error\" to the Writer for this Subscriber! Error: {}\n", e);
@@ -1295,18 +1294,21 @@ impl Timings {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fmt::{
-        self,
-        format::{self, test::MockTime, Format},
-        layer::Layer as _,
-        test::{MockMakeWriter, MockWriter},
-        time,
-    };
     use crate::Registry;
+    use crate::{
+        fmt::{
+            self,
+            format::{self, test::MockTime, Format},
+            layer::Layer as _,
+            test::{MockMakeWriter, MockWriter},
+            time,
+        },
+        layer::SubscriberExt,
+    };
     use alloc::{string::ToString, vec, vec::Vec};
     use format::FmtSpan;
     use regex::Regex;
-    use tracing::subscriber::with_default;
+    use tracing::{field::Visit, subscriber::with_default};
     use tracing_core::dispatcher::Dispatch;
 
     #[test]
@@ -1542,7 +1544,7 @@ mod test {
             make_writer2: MockMakeWriter,
         }
 
-        impl<'a> MakeWriter<'a> for MakeByTarget {
+        impl<'a, S> MakeWriter<'a, S> for MakeByTarget {
             type Writer = MockWriter;
 
             fn make_writer(&'a self) -> Self::Writer {
@@ -1594,6 +1596,170 @@ mod test {
             "fake time writer1_span{x=42}: hello writer2!\n\
              fake time writer1_span{x=42}:writer2_span: close timing timing\n",
             actual.as_str()
+        );
+    }
+
+    #[test]
+    fn make_writer_based_on_span() {
+        struct MakeByDynamicId {
+            make_writer1: MockMakeWriter,
+            make_writer2: MockMakeWriter,
+        }
+
+        impl MakeByDynamicId {
+            fn make_by_id(&self, id: Option<i64>) -> MockWriter {
+                match id {
+                    Some(2) => self.make_writer2.make_writer(),
+                    _ => self.make_writer1.make_writer(),
+                }
+            }
+        }
+
+        #[derive(Default)]
+        struct IdExtractor {
+            id: Option<i64>,
+        }
+
+        impl Visit for IdExtractor {
+            fn record_debug(&mut self, _field: &field::Field, _value: &dyn core::fmt::Debug) {}
+
+            fn record_i64(&mut self, field: &field::Field, value: i64) {
+                if field.name() == "id" {
+                    self.id = Some(value);
+                }
+            }
+        }
+
+        /// Captures the span value that specifies, which writer to use
+        /// and inserts it into the spans extensions.
+        struct CaptureIdLayer<S>(PhantomData<S>);
+
+        #[derive(Clone, Copy)]
+        struct WriterIdExt {
+            id: i64,
+        }
+
+        impl<S> crate::layer::Layer<S> for CaptureIdLayer<S>
+        where
+            S: Subscriber + for<'b> LookupSpan<'b>,
+        {
+            fn on_new_span(
+                &self,
+                attrs: &tracing_core::span::Attributes<'_>,
+                id: &tracing_core::span::Id,
+                ctx: Context<'_, S>,
+            ) {
+                let span = ctx.span(id).unwrap();
+                let mut extractor = IdExtractor::default();
+                attrs.record(&mut extractor);
+                if let Some(id) = extractor.id {
+                    span.extensions_mut().insert(WriterIdExt { id });
+                }
+            }
+
+            fn on_follows_from(
+                &self,
+                span: &tracing_core::span::Id,
+                follows: &tracing_core::span::Id,
+                ctx: Context<'_, S>,
+            ) {
+                let lhs = ctx.span(span).unwrap();
+                let rhs = ctx.span(follows).unwrap();
+                if rhs.extensions().get::<WriterIdExt>().is_some() {
+                    return;
+                }
+                let exts = lhs.extensions();
+                if let Some(ext) = exts.get::<WriterIdExt>().cloned() {
+                    // Derive.
+                    rhs.extensions_mut().insert(ext);
+                }
+            }
+        }
+
+        impl<'a, S> MakeWriter<'a, S> for MakeByDynamicId
+        where
+            S: Subscriber + for<'b> LookupSpan<'b>,
+        {
+            type Writer = MockWriter;
+
+            fn make_writer(&'a self) -> Self::Writer {
+                self.make_writer1.make_writer()
+            }
+
+            fn make_writer_for_event(
+                &'a self,
+                event: &Event<'_>,
+                ctx: &Context<'_, S>,
+            ) -> Self::Writer {
+                let mut extractor = IdExtractor::default();
+                event.record(&mut extractor);
+                if extractor.id.is_some() {
+                    return self.make_by_id(extractor.id);
+                };
+                // Check for the id in the spans.
+                for span in ctx
+                    .event_scope(event)
+                    .into_iter()
+                    .flat_map(|s| s.into_iter())
+                {
+                    if let Some(write) = span.extensions().get::<WriterIdExt>() {
+                        return self.make_by_id(Some(write.id));
+                    }
+                }
+                self.make_by_id(None)
+            }
+        }
+
+        let make_writer1 = MockMakeWriter::default();
+        let make_writer2 = MockMakeWriter::default();
+
+        let make_writer = MakeByDynamicId {
+            make_writer1: make_writer1.clone(),
+            make_writer2: make_writer2.clone(),
+        };
+
+        let subscriber = crate::registry()
+            .with(
+                crate::fmt::layer()
+                    .with_writer(make_writer)
+                    .with_level(false)
+                    .with_target(false)
+                    .with_ansi(false)
+                    .with_timer(MockTime),
+            )
+            .with(CaptureIdLayer(PhantomData));
+
+        let id1 = || 1;
+        let id2 = || 2;
+        with_default(subscriber, || {
+            tracing::info!(id = id2(), "hello to 1!");
+            let span1 = tracing::info_span!("writer1_span", id = id1());
+            let _e = span1.enter();
+            tracing::info!("hello from 1");
+            let span2 = tracing::info_span!("writer2_span", id = id2());
+            let _e = span2.enter();
+            tracing::warn!("hello from 2");
+            tracing::info!(id = id1(), "another hello from 1");
+
+            let span3 = tracing::info_span!(parent: None, "follow_span");
+            // Followed span inherits writer.
+            span3.follows_from(&span1);
+            let _e = span3.enter();
+            tracing::warn!("followed");
+        });
+
+        let actual = sanitize_timings(make_writer1.get_string());
+        assert_eq!(
+            "fake time writer1_span{id=1}: hello from 1\n\
+            fake time writer1_span{id=1}:writer2_span{id=2}: another hello from 1 id=1\n\
+            fake time follow_span: followed\n",
+            actual.as_str(),
+        );
+        let actual = sanitize_timings(make_writer2.get_string());
+        assert_eq!(
+            "fake time hello to 1! id=2\n\
+            fake time writer1_span{id=1}:writer2_span{id=2}: hello from 2\n",
+            actual.as_str(),
         );
     }
 
