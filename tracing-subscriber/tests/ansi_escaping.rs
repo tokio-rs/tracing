@@ -31,7 +31,7 @@ impl std::io::Write for TestWriter {
     }
 }
 
-impl<'a> MakeWriter<'a> for TestWriter {
+impl<'a, S> MakeWriter<'a, S> for TestWriter {
     type Writer = TestWriter;
 
     fn make_writer(&'a self) -> Self::Writer {
@@ -155,7 +155,7 @@ fn test_json_ansi_escaping() {
     );
 }
 
-/// Test that pretty formatter properly escapes ANSI sequences  
+/// Test that pretty formatter properly escapes ANSI sequences
 #[cfg(feature = "ansi")]
 #[test]
 fn test_pretty_ansi_escaping() {
