@@ -579,14 +579,49 @@ pub fn instrument(
 ) -> proc_macro::TokenStream {
     let args = syn::parse_macro_input!(args as attr::InstrumentArgs);
     // Cloning a `TokenStream` is cheap since it's reference counted internally.
-    instrument_precise(args.clone(), item.clone())
-        .unwrap_or_else(|_err| instrument_speculative(args, item))
+    instrument_precise(args.clone(), item.clone(), ExpansionKind::Instrument)
+        .unwrap_or_else(|_err| instrument_speculative(args, item, ExpansionKind::Instrument))
+}
+
+/// Emits an event when a function returns, without creating a new span.
+///
+/// This attribute accepts the same `ret` and `err` arguments as
+/// [`#[instrument]`][instrument]. It is useful when a function should emit a
+/// return-value event in the caller's current span rather than creating and
+/// entering a span of its own.
+///
+/// `const fn` cannot be annotated with `trace_return`.
+#[proc_macro_attribute]
+pub fn trace_return(
+    args: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let args = syn::parse_macro_input!(args as attr::TraceReturnArgs);
+    instrument_precise(
+        args.clone().into(),
+        item.clone(),
+        ExpansionKind::TraceReturn,
+    )
+    .unwrap_or_else(|_err| instrument_speculative(args.into(), item, ExpansionKind::TraceReturn))
+}
+
+#[derive(Clone, Copy)]
+enum ExpansionKind {
+    Instrument,
+    TraceReturn,
+}
+
+impl ExpansionKind {
+    fn creates_span(self) -> bool {
+        matches!(self, Self::Instrument)
+    }
 }
 
 /// Instrument the function, without parsing the function body (instead using the raw tokens).
 fn instrument_speculative(
     args: attr::InstrumentArgs,
     item: proc_macro::TokenStream,
+    kind: ExpansionKind,
 ) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as MaybeItemFn);
     let instrumented_function_name = input.sig.ident.to_string();
@@ -595,6 +630,7 @@ fn instrument_speculative(
         args,
         instrumented_function_name.as_str(),
         None,
+        kind.creates_span(),
     )
     .into()
 }
@@ -604,21 +640,31 @@ fn instrument_speculative(
 fn instrument_precise(
     args: attr::InstrumentArgs,
     item: proc_macro::TokenStream,
+    kind: ExpansionKind,
 ) -> Result<proc_macro::TokenStream, syn::Error> {
     let input = syn::parse::<ItemFn>(item)?;
     let instrumented_function_name = input.sig.ident.to_string();
 
     if input.sig.constness.is_some() {
-        return Ok(quote! {
-            compile_error!("the `#[instrument]` attribute may not be used with `const fn`s")
-        }
-        .into());
+        let message = match kind {
+            ExpansionKind::Instrument => {
+                "the `#[instrument]` attribute may not be used with `const fn`s"
+            }
+            ExpansionKind::TraceReturn => {
+                "the `#[trace_return]` attribute may not be used with `const fn`s"
+            }
+        };
+        return Ok(quote! { compile_error!(#message) }.into());
     }
 
     // check for async_trait-like patterns in the block, and instrument
     // the future instead of the wrapper
     if let Some(async_like) = expand::AsyncInfo::from_fn(&input) {
-        return async_like.gen_async(args, instrumented_function_name.as_str());
+        return async_like.gen_async(
+            args,
+            instrumented_function_name.as_str(),
+            kind.creates_span(),
+        );
     }
 
     let input = MaybeItemFn::from(input);
@@ -628,6 +674,7 @@ fn instrument_precise(
         args,
         instrumented_function_name.as_str(),
         None,
+        kind.creates_span(),
     )
     .into())
 }

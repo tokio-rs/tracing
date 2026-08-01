@@ -971,7 +971,7 @@ pub use self::span::Span;
 #[cfg(feature = "attributes")]
 #[cfg_attr(docsrs, doc(cfg(feature = "attributes")))]
 #[doc(inline)]
-pub use tracing_attributes::instrument;
+pub use tracing_attributes::{instrument, trace_return};
 
 #[macro_use]
 mod macros;
