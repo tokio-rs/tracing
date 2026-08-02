@@ -261,7 +261,7 @@ impl std::io::Write for NonBlocking {
     }
 }
 
-impl<'a> MakeWriter<'a> for NonBlocking {
+impl<'a, S> MakeWriter<'a, S> for NonBlocking {
     type Writer = NonBlocking;
 
     fn make_writer(&'a self) -> Self::Writer {

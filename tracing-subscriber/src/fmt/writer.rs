@@ -9,7 +9,9 @@ use std::{
     print,
     sync::{Mutex, MutexGuard},
 };
-use tracing_core::Metadata;
+use tracing_core::{Event, Metadata};
+
+use crate::{layer::Context, Registry};
 
 /// A type that can create [`io::Write`] instances.
 ///
@@ -95,7 +97,7 @@ use tracing_core::Metadata;
 /// [`Metadata`]: tracing_core::Metadata
 /// [levels]: tracing_core::Level
 /// [targets]: tracing_core::Metadata::target
-pub trait MakeWriter<'a> {
+pub trait MakeWriter<'a, S = Registry> {
     /// The concrete [`io::Write`] implementation returned by [`make_writer`].
     ///
     /// [`io::Write`]: std::io::Write
@@ -176,7 +178,7 @@ pub trait MakeWriter<'a> {
     ///     }
     /// }
     ///
-    /// impl<'a> MakeWriter<'a> for MyMakeWriter {
+    /// impl<'a, S> MakeWriter<'a, S> for MyMakeWriter {
     ///     type Writer = StdioLock<'a>;
     ///
     ///     fn make_writer(&'a self) -> Self::Writer {
@@ -208,6 +210,22 @@ pub trait MakeWriter<'a> {
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         let _ = meta;
         self.make_writer()
+    }
+
+    /// Returns a [`Writer`] for writing data from the span or event represented
+    /// by the provided [`Event`] in the specified context.
+    ///
+    /// By default, this calls [`make_writer_for`] with the event's metadata.
+    /// Implementations may override this method to provide event-specific
+    /// behavior.
+    ///
+    /// For example, an implementation might route event data based on a dynamic
+    /// value attached to the event, such as a query ID in a serving system.
+    ///
+    /// [`Writer`]: MakeWriter::Writer
+    /// [`make_writer_for`]: Self::make_writer_for
+    fn make_writer_for_event(&'a self, event: &Event<'_>, _ctx: &Context<'_, S>) -> Self::Writer {
+        self.make_writer_for(event.metadata())
     }
 }
 
@@ -545,8 +563,8 @@ pub struct TestWriter {
 ///
 /// [`Subscriber`]: tracing::Subscriber
 /// [`io::Write`]: std::io::Write
-pub struct BoxMakeWriter {
-    inner: Box<dyn for<'a> MakeWriter<'a, Writer = Box<dyn Write + 'a>> + Send + Sync>,
+pub struct BoxMakeWriter<S = Registry> {
+    inner: Box<dyn for<'a> MakeWriter<'a, S, Writer = Box<dyn Write + 'a>> + Send + Sync>,
     name: &'static str,
 }
 
@@ -679,7 +697,7 @@ pub(in crate::fmt) struct WriteAdaptor<'a> {
     fmt_write: &'a mut dyn fmt::Write,
 }
 
-impl<'a, F, W> MakeWriter<'a> for F
+impl<'a, S, F, W> MakeWriter<'a, S> for F
 where
     F: Fn() -> W,
     W: io::Write,
@@ -691,7 +709,7 @@ where
     }
 }
 
-impl<'a, W> MakeWriter<'a> for Arc<W>
+impl<'a, S, W> MakeWriter<'a, S> for Arc<W>
 where
     &'a W: io::Write + 'a,
 {
@@ -701,7 +719,7 @@ where
     }
 }
 
-impl<'a> MakeWriter<'a> for std::fs::File {
+impl<'a, S> MakeWriter<'a, S> for std::fs::File {
     type Writer = &'a std::fs::File;
     fn make_writer(&'a self) -> Self::Writer {
         self
@@ -738,7 +756,7 @@ impl io::Write for TestWriter {
     }
 }
 
-impl<'a> MakeWriter<'a> for TestWriter {
+impl<'a, S> MakeWriter<'a, S> for TestWriter {
     type Writer = Self;
 
     fn make_writer(&'a self) -> Self::Writer {
@@ -748,12 +766,15 @@ impl<'a> MakeWriter<'a> for TestWriter {
 
 // === impl BoxMakeWriter ===
 
-impl BoxMakeWriter {
+impl<S> BoxMakeWriter<S>
+where
+    S: 'static,
+{
     /// Constructs a `BoxMakeWriter` wrapping a type implementing [`MakeWriter`].
     ///
     pub fn new<M>(make_writer: M) -> Self
     where
-        M: for<'a> MakeWriter<'a> + Send + Sync + 'static,
+        M: for<'a> MakeWriter<'a, S> + Send + Sync + 'static,
     {
         Self {
             inner: Box::new(Boxed(make_writer)),
@@ -762,7 +783,7 @@ impl BoxMakeWriter {
     }
 }
 
-impl fmt::Debug for BoxMakeWriter {
+impl<S> fmt::Debug for BoxMakeWriter<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("BoxMakeWriter")
             .field(&format_args!("<{}>", self.name))
@@ -770,7 +791,7 @@ impl fmt::Debug for BoxMakeWriter {
     }
 }
 
-impl<'a> MakeWriter<'a> for BoxMakeWriter {
+impl<'a, S> MakeWriter<'a, S> for BoxMakeWriter<S> {
     type Writer = Box<dyn Write + 'a>;
 
     #[inline]
@@ -782,13 +803,19 @@ impl<'a> MakeWriter<'a> for BoxMakeWriter {
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         self.inner.make_writer_for(meta)
     }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        self.inner.make_writer_for_event(event, ctx)
+    }
 }
 
 struct Boxed<M>(M);
 
-impl<'a, M> MakeWriter<'a> for Boxed<M>
+impl<'a, M, S> MakeWriter<'a, S> for Boxed<M>
 where
-    M: MakeWriter<'a>,
+    M: MakeWriter<'a, S>,
+    S: 'static,
 {
     type Writer = Box<dyn Write + 'a>;
 
@@ -801,11 +828,16 @@ where
         let w = self.0.make_writer_for(meta);
         Box::new(w)
     }
+
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        let w = self.0.make_writer_for_event(event, ctx);
+        Box::new(w)
+    }
 }
 
 // === impl Mutex/MutexGuardWriter ===
 
-impl<'a, W> MakeWriter<'a> for Mutex<W>
+impl<'a, S, W> MakeWriter<'a, S> for Mutex<W>
 where
     W: io::Write + 'a,
 {
@@ -941,7 +973,7 @@ impl<M> WithMaxLevel<M> {
     }
 }
 
-impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMaxLevel<M> {
+impl<'a, S, M: MakeWriter<'a, S>> MakeWriter<'a, S> for WithMaxLevel<M> {
     type Writer = OptionalWriter<M::Writer>;
 
     #[inline]
@@ -954,6 +986,14 @@ impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMaxLevel<M> {
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         if meta.level() <= &self.level {
             return OptionalWriter::some(self.make.make_writer_for(meta));
+        }
+        OptionalWriter::none()
+    }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        if event.metadata().level() <= &self.level {
+            return OptionalWriter::some(self.make.make_writer_for_event(event, ctx));
         }
         OptionalWriter::none()
     }
@@ -974,7 +1014,7 @@ impl<M> WithMinLevel<M> {
     }
 }
 
-impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMinLevel<M> {
+impl<'a, S, M: MakeWriter<'a, S>> MakeWriter<'a, S> for WithMinLevel<M> {
     type Writer = OptionalWriter<M::Writer>;
 
     #[inline]
@@ -990,14 +1030,23 @@ impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for WithMinLevel<M> {
         }
         OptionalWriter::none()
     }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        if event.metadata().level() >= &self.level {
+            return OptionalWriter::some(self.make.make_writer_for_event(event, ctx));
+        }
+        OptionalWriter::none()
+    }
 }
 
 // ==== impl WithFilter ===
 
 impl<M, F> WithFilter<M, F> {
     /// Wraps `make` with the provided `filter`, returning a [`MakeWriter`] that
-    /// will call `make.make_writer_for()` when `filter` returns `true` for a
-    /// span or event's [`Metadata`], and returns a [`sink`] otherwise.
+    /// will call `make.make_writer_for()` (or `make.make_writer_for_event`) when
+    /// `filter` returns `true` for a span or event's [`Metadata`], and returns a
+    /// [`sink`] otherwise.
     ///
     /// See [`MakeWriterExt::with_filter`] for details.
     ///
@@ -1011,9 +1060,9 @@ impl<M, F> WithFilter<M, F> {
     }
 }
 
-impl<'a, M, F> MakeWriter<'a> for WithFilter<M, F>
+impl<'a, S, M, F> MakeWriter<'a, S> for WithFilter<M, F>
 where
-    M: MakeWriter<'a>,
+    M: MakeWriter<'a, S>,
     F: Fn(&Metadata<'_>) -> bool,
 {
     type Writer = OptionalWriter<M::Writer>;
@@ -1027,6 +1076,15 @@ where
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         if (self.filter)(meta) {
             OptionalWriter::some(self.make.make_writer_for(meta))
+        } else {
+            OptionalWriter::none()
+        }
+    }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        if (self.filter)(event.metadata()) {
+            OptionalWriter::some(self.make.make_writer_for_event(event, ctx))
         } else {
             OptionalWriter::none()
         }
@@ -1048,10 +1106,10 @@ impl<A, B> Tee<A, B> {
     }
 }
 
-impl<'a, A, B> MakeWriter<'a> for Tee<A, B>
+impl<'a, S, A, B> MakeWriter<'a, S> for Tee<A, B>
 where
-    A: MakeWriter<'a>,
-    B: MakeWriter<'a>,
+    A: MakeWriter<'a, S>,
+    B: MakeWriter<'a, S>,
 {
     type Writer = Tee<A::Writer, B::Writer>;
 
@@ -1063,6 +1121,14 @@ where
     #[inline]
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         Tee::new(self.a.make_writer_for(meta), self.b.make_writer_for(meta))
+    }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        Tee::new(
+            self.a.make_writer_for_event(event, ctx),
+            self.b.make_writer_for_event(event, ctx),
+        )
     }
 }
 
@@ -1126,10 +1192,10 @@ impl<A, B> OrElse<A, B> {
     }
 }
 
-impl<'a, A, B, W> MakeWriter<'a> for OrElse<A, B>
+impl<'a, S, A, B, W> MakeWriter<'a, S> for OrElse<A, B>
 where
-    A: MakeWriter<'a, Writer = OptionalWriter<W>>,
-    B: MakeWriter<'a>,
+    A: MakeWriter<'a, S, Writer = OptionalWriter<W>>,
+    B: MakeWriter<'a, S>,
     W: io::Write,
 {
     type Writer = EitherWriter<W, B::Writer>;
@@ -1147,6 +1213,14 @@ where
         match self.inner.make_writer_for(meta) {
             EitherWriter::A(writer) => EitherWriter::A(writer),
             EitherWriter::B(_) => EitherWriter::B(self.or_else.make_writer_for(meta)),
+        }
+    }
+
+    #[inline]
+    fn make_writer_for_event(&'a self, event: &Event<'_>, ctx: &Context<'_, S>) -> Self::Writer {
+        match self.inner.make_writer_for_event(event, ctx) {
+            EitherWriter::A(writer) => EitherWriter::A(writer),
+            EitherWriter::B(_) => EitherWriter::B(self.or_else.make_writer_for_event(event, ctx)),
         }
     }
 }
