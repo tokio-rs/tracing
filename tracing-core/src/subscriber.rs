@@ -709,6 +709,11 @@ where
     S: Subscriber + ?Sized,
 {
     #[inline]
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        self.as_ref().on_register_dispatch(subscriber);
+    }
+
+    #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
     }
@@ -793,6 +798,11 @@ impl<S> Subscriber for Arc<S>
 where
     S: Subscriber + ?Sized,
 {
+    #[inline]
+    fn on_register_dispatch(&self, subscriber: &Dispatch) {
+        self.as_ref().on_register_dispatch(subscriber);
+    }
+
     #[inline]
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.as_ref().register_callsite(metadata)
