@@ -85,7 +85,7 @@ use quote::TokenStreamExt;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::token::Brace;
-use syn::{Attribute, ItemFn, Signature, Visibility};
+use syn::{Attribute, FnModifiers, ItemFn, Signature, Visibility};
 
 mod attr;
 mod expand;
@@ -642,6 +642,7 @@ struct MaybeItemFn {
     sig: Signature,
     brace_token: Brace,
     block: TokenStream,
+    modifiers: FnModifiers,
 }
 
 impl MaybeItemFn {
@@ -675,6 +676,7 @@ impl Parse for MaybeItemFn {
             sig,
             brace_token,
             block,
+            modifiers: FnModifiers::default(), // TODO: do we need to parse these instead?
         })
     }
 }
@@ -686,6 +688,7 @@ impl From<ItemFn> for MaybeItemFn {
             vis,
             sig,
             block,
+            modifiers,
         }: ItemFn,
     ) -> Self {
         let (outer_attrs, inner_attrs) = attrs
@@ -700,6 +703,7 @@ impl From<ItemFn> for MaybeItemFn {
             sig,
             brace_token: block.brace_token,
             block: block_tokens,
+            modifiers,
         }
     }
 }
