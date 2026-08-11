@@ -37,7 +37,7 @@ async-await = []
 
 [dependencies]
 proc-macro2 = "1.0.60"
-syn = { version = "2.0", default-features = false, features = [
+syn = { version = "^3.0.3", default-features = false, features = [
     "full",
     "parsing",
     "printing",
