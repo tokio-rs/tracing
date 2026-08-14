@@ -446,12 +446,11 @@ impl<'writer> Writer<'writer> {
         }
     }
 
-    // TODO(eliza): consider making this a public API?
-    pub(crate) fn with_ansi(self, is_ansi: bool) -> Self {
+    pub fn with_ansi(self, is_ansi: bool) -> Self {
         Self { is_ansi, ..self }
     }
 
-    pub(crate) fn with_ansi_sanitization(self, ansi_sanitization: bool) -> Self {
+    pub fn with_ansi_sanitization(self, ansi_sanitization: bool) -> Self {
         Self {
             ansi_sanitization,
             ..self
@@ -547,7 +546,7 @@ impl<'writer> Writer<'writer> {
         self.ansi_sanitization
     }
 
-    pub(in crate::fmt::format) fn bold(&self) -> Style {
+    pub fn bold(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -558,7 +557,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn dimmed(&self) -> Style {
+    pub fn dimmed(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
@@ -569,7 +568,7 @@ impl<'writer> Writer<'writer> {
         Style::new()
     }
 
-    pub(in crate::fmt::format) fn italic(&self) -> Style {
+    pub fn italic(&self) -> Style {
         #[cfg(feature = "ansi")]
         {
             if self.is_ansi {
