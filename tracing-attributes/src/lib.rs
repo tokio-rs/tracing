@@ -528,8 +528,8 @@ mod expand;
 ///
 /// It also works with [async-trait](https://crates.io/crates/async-trait)
 /// (a crate that allows defining async functions in traits,
-/// something not currently possible in Rust),
-/// and hopefully most libraries that exhibit similar behaviors:
+/// which was not possible before Rust 1.75 and is currently not possible in `dyn Trait`), and
+/// hopefully most libraries that exhibit similar behaviors:
 ///
 /// ```
 /// # use tracing::instrument;
