@@ -677,12 +677,13 @@ impl LevelFilter {
     const INFO_USIZE: usize = LevelInner::Info as usize;
     const DEBUG_USIZE: usize = LevelInner::Debug as usize;
     const TRACE_USIZE: usize = LevelInner::Trace as usize;
-    // Using the value of the last variant + 1 ensures that we match the value
-    // for `Option::None` as selected by the niche optimization for
-    // `LevelFilter`. If this is the case, converting a `usize` value into a
-    // `LevelFilter` (in `LevelFilter::current`) will be an identity conversion,
-    // rather than generating a lookup table.
-    const OFF_USIZE: usize = LevelInner::Error as usize + 1;
+    // Dynamically determining the value for `Option::None` at compile time
+    // via `core::mem::transmute` ensures that we always match the exact representation
+    // selected by the compiler's niche optimization for `LevelFilter` on any
+    // Rust version. This guarantees that converting a `usize` value into a
+    // `LevelFilter` (in `LevelFilter::current`) is always a zero-cost identity
+    // conversion, rather than generating a lookup table.
+    const OFF_USIZE: usize = unsafe { core::mem::transmute(LevelFilter::OFF) };
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
     /// currently active [`Subscriber`] will enable.
@@ -886,11 +887,10 @@ impl std::error::Error for ParseLevelFilterError {}
 //    `Option<Level>`) compiles down to a single integer value. This is
 //    necessary for storing the global max in an `AtomicUsize`, and for ensuring
 //    that we use fast integer-integer comparisons, as mentioned previously. In
-//    order to ensure this, we exploit the niche optimization. The niche
-//    optimization for `Option<{enum with a numeric repr}>` will choose
-//    `(HIGHEST_DISCRIMINANT_VALUE + 1)` as the representation for `None`.
-//    Therefore, the integer representation of `LevelFilter::OFF` (which is
-//    `None`) will be the number 5. `OFF` must compare higher than every other
+//    order to ensure this, we exploit the niche optimization. The exact raw
+//    representation selected by `rustc` for `Option::None` may vary across
+//    compiler versions, so `LevelFilter::OFF_USIZE` is determined dynamically
+//    via `core::mem::transmute`. `OFF` must compare higher than every other
 //    level in order for it to filter as expected. Since we want to use a single
 //    `cmp` instruction, we can't special-case the integer value of `OFF` to
 //    compare higher, as that will generate more code. Instead, we need it to be
@@ -911,7 +911,7 @@ impl std::error::Error for ParseLevelFilterError {}
 impl PartialEq<LevelFilter> for Level {
     #[inline(always)]
     fn eq(&self, other: &LevelFilter) -> bool {
-        self.0 as usize == filter_as_usize(&other.0)
+        self.0 as usize == filter_as_usize_sort_key(other.0)
     }
 }
 
@@ -952,42 +952,44 @@ impl Ord for Level {
 impl PartialOrd<LevelFilter> for Level {
     #[inline(always)]
     fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
-        Some(filter_as_usize(&other.0).cmp(&(self.0 as usize)))
+        Some(filter_as_usize_sort_key(other.0).cmp(&(self.0 as usize)))
     }
 
     #[inline(always)]
     fn lt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) < (self.0 as usize)
+        filter_as_usize_sort_key(other.0) < (self.0 as usize)
     }
 
     #[inline(always)]
     fn le(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) <= (self.0 as usize)
+        filter_as_usize_sort_key(other.0) <= (self.0 as usize)
     }
 
     #[inline(always)]
     fn gt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) > (self.0 as usize)
+        filter_as_usize_sort_key(other.0) > (self.0 as usize)
     }
 
     #[inline(always)]
     fn ge(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) >= (self.0 as usize)
+        filter_as_usize_sort_key(other.0) >= (self.0 as usize)
     }
 }
 
 #[inline(always)]
-fn filter_as_usize(x: &Option<Level>) -> usize {
+fn filter_as_usize_sort_key(x: Option<Level>) -> usize {
     match x {
-        Some(Level(f)) => *f as usize,
-        None => LevelFilter::OFF_USIZE,
+        Some(Level(f)) => f as usize,
+        // The niche optimization for LevelFilter::OFF isn't guaranteed
+        // to be the last variant + 1, so we explicitly return that for sorting here.
+        None => if const { LevelFilter::OFF_USIZE > LevelInner::Error as usize } { LevelFilter::OFF_USIZE } else { LevelInner::Error as usize + 1 },
     }
 }
 
 impl PartialEq<Level> for LevelFilter {
     #[inline(always)]
     fn eq(&self, other: &Level) -> bool {
-        filter_as_usize(&self.0) == other.0 as usize
+        filter_as_usize_sort_key(self.0) == other.0 as usize
     }
 }
 
@@ -999,56 +1001,56 @@ impl PartialOrd for LevelFilter {
 
     #[inline(always)]
     fn lt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) < filter_as_usize(&self.0)
+        filter_as_usize_sort_key(other.0) < filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn le(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) <= filter_as_usize(&self.0)
+        filter_as_usize_sort_key(other.0) <= filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn gt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) > filter_as_usize(&self.0)
+        filter_as_usize_sort_key(other.0) > filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn ge(&self, other: &LevelFilter) -> bool {
-        filter_as_usize(&other.0) >= filter_as_usize(&self.0)
+        filter_as_usize_sort_key(other.0) >= filter_as_usize_sort_key(self.0)
     }
 }
 
 impl Ord for LevelFilter {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        filter_as_usize(&other.0).cmp(&filter_as_usize(&self.0))
+        filter_as_usize_sort_key(other.0).cmp(&filter_as_usize_sort_key(self.0))
     }
 }
 
 impl PartialOrd<Level> for LevelFilter {
     #[inline(always)]
     fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
-        Some((other.0 as usize).cmp(&filter_as_usize(&self.0)))
+        Some((other.0 as usize).cmp(&filter_as_usize_sort_key(self.0)))
     }
 
     #[inline(always)]
     fn lt(&self, other: &Level) -> bool {
-        (other.0 as usize) < filter_as_usize(&self.0)
+        (other.0 as usize) < filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn le(&self, other: &Level) -> bool {
-        (other.0 as usize) <= filter_as_usize(&self.0)
+        (other.0 as usize) <= filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn gt(&self, other: &Level) -> bool {
-        (other.0 as usize) > filter_as_usize(&self.0)
+        (other.0 as usize) > filter_as_usize_sort_key(self.0)
     }
 
     #[inline(always)]
     fn ge(&self, other: &Level) -> bool {
-        (other.0 as usize) >= filter_as_usize(&self.0)
+        (other.0 as usize) >= filter_as_usize_sort_key(self.0)
     }
 }
 
@@ -1101,7 +1103,7 @@ mod tests {
     #[test]
     fn level_filter_reprs() {
         let mapping = [
-            (LevelFilter::OFF, LevelInner::Error as usize + 1),
+            (LevelFilter::OFF, LevelFilter::OFF_USIZE),
             (LevelFilter::ERROR, LevelInner::Error as usize),
             (LevelFilter::WARN, LevelInner::Warn as usize),
             (LevelFilter::INFO, LevelInner::Info as usize),
@@ -1118,5 +1120,42 @@ mod tests {
             };
             assert_eq!(expected, repr, "repr changed for {:?}", filter)
         }
+    }
+
+    #[test]
+    fn level_filter_ordering() {
+        assert!(LevelFilter::OFF < LevelFilter::ERROR);
+        assert!(LevelFilter::OFF < LevelFilter::WARN);
+        assert!(LevelFilter::OFF < LevelFilter::INFO);
+        assert!(LevelFilter::OFF < LevelFilter::DEBUG);
+        assert!(LevelFilter::OFF < LevelFilter::TRACE);
+
+        assert!(LevelFilter::OFF < Level::ERROR);
+        assert!(LevelFilter::OFF < Level::WARN);
+        assert!(LevelFilter::OFF < Level::INFO);
+        assert!(LevelFilter::OFF < Level::DEBUG);
+        assert!(LevelFilter::OFF < Level::TRACE);
+
+        assert!(LevelFilter::ERROR < LevelFilter::WARN);
+        assert!(LevelFilter::WARN < LevelFilter::INFO);
+        assert!(LevelFilter::INFO < LevelFilter::DEBUG);
+        assert!(LevelFilter::DEBUG < LevelFilter::TRACE);
+
+        assert!(Level::ERROR < LevelFilter::WARN);
+        assert!(Level::WARN < LevelFilter::INFO);
+        assert!(Level::INFO < LevelFilter::DEBUG);
+        assert!(Level::DEBUG < LevelFilter::TRACE);
+
+        assert!(LevelFilter::ERROR > LevelFilter::OFF);
+        assert!(LevelFilter::WARN > LevelFilter::OFF);
+        assert!(LevelFilter::INFO > LevelFilter::OFF);
+        assert!(LevelFilter::DEBUG > LevelFilter::OFF);
+        assert!(LevelFilter::TRACE > LevelFilter::OFF);
+
+        assert!(Level::ERROR > LevelFilter::OFF);
+        assert!(Level::WARN > LevelFilter::OFF);
+        assert!(Level::INFO > LevelFilter::OFF);
+        assert!(Level::DEBUG > LevelFilter::OFF);
+        assert!(Level::TRACE > LevelFilter::OFF);
     }
 }
