@@ -802,7 +802,7 @@ fn create_writer(
     if let Some(symlink_name) = latest_symlink_name {
         let symlink_path = directory.join(symlink_name);
         let _ = symlink::remove_symlink_file(&symlink_path);
-        symlink::symlink_file(path, symlink_path).map_err(InitError::ctx(
+        symlink::symlink_file(filename, symlink_path).map_err(InitError::ctx(
             "failed to create symlink to latest log file",
         ))?;
     }
@@ -1359,6 +1359,42 @@ mod test {
         assert_eq!(
             created,
             Some(SystemTime::UNIX_EPOCH + Duration::seconds(1580551260))
+        );
+    }
+
+    #[test]
+    fn test_latest_symlink_with_relative_directory() {
+        let directory = tempfile::tempdir_in(".").expect("failed to create tempdir");
+        let relative_directory = PathBuf::from(
+            directory
+                .path()
+                .file_name()
+                .expect("tempdir should have a filename"),
+        );
+        assert!(!relative_directory.is_absolute());
+
+        let (_state, writer) = Inner::new(
+            OffsetDateTime::UNIX_EPOCH,
+            Rotation::NEVER,
+            &relative_directory,
+            Some("app.log".to_string()),
+            None,
+            Some("latest.log".to_string()),
+            None,
+        )
+        .unwrap();
+
+        writer
+            .write()
+            .write_all(b"test\n")
+            .expect("failed to write");
+        writer.write().flush().expect("failed to flush");
+
+        let symlink_path = relative_directory.join("latest.log");
+        assert!(symlink_path.is_symlink(), "latest.log should be a symlink");
+        assert_eq!(
+            fs::read_to_string(&symlink_path).expect("failed to read through relative symlink"),
+            "test\n"
         );
     }
 
