@@ -1014,6 +1014,18 @@ pub mod __macro_support {
         interest.is_always() || crate::dispatcher::get_default(|default| default.enabled(meta))
     }
 
+    #[cfg(feature = "log")]
+    #[inline(always)]
+    pub fn __level_to_log(level: crate::Level) -> crate::log::Level {
+        match level {
+            crate::Level::ERROR => crate::log::Level::Error,
+            crate::Level::WARN => crate::log::Level::Warn,
+            crate::Level::INFO => crate::log::Level::Info,
+            crate::Level::DEBUG => crate::log::Level::Debug,
+            _ => crate::log::Level::Trace,
+        }
+    }
+
     /// /!\ WARNING: This is *not* a stable API! /!\
     /// This function, and all code contained in the `__macro_support` module, is
     /// a *private* API of `tracing`. It is exposed publicly because it is used
