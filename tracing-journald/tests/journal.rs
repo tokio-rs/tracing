@@ -177,6 +177,27 @@ fn simple_message() {
     });
 }
 
+#[cfg(feature = "tracing-log")]
+#[test]
+fn log_bridge_message() {
+    with_journald(|| {
+        let _ = tracing_log::LogTracer::init();
+
+        info_span!("log_bridge", test.name = "log_bridge_message").in_scope(|| {
+            log::info!(target: "log_bridge_target", "Hello Log");
+        });
+
+        let message = retry_read_one_line_from_journal("log_bridge_message");
+        assert_eq!(message["MESSAGE"], "Hello Log");
+        assert_eq!(message["PRIORITY"], "5");
+        assert_eq!(message["TARGET"], "log_bridge_target");
+        assert_eq!(message["CODE_FILE"], file!());
+        assert!(message.contains_key("CODE_LINE"));
+        assert!(!message.contains_key("LOG_TARGET"));
+        assert!(!message.contains_key("LOG_FILE"));
+    });
+}
+
 #[test]
 fn custom_priorities() {
     fn check_message(level: &str, priority: &str) {

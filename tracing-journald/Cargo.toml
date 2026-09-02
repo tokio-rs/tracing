@@ -15,12 +15,18 @@ categories = [
 keywords = ["tracing", "journald"]
 rust-version = "1.65.0"
 
+[features]
+default = ["tracing-log"]
+tracing-log = ["dep:tracing-log"]
+
 [dependencies]
 libc = "0.2.126"
 tracing-core = { path = "../tracing-core", version = "0.1.28" }
+tracing-log = { path = "../tracing-log", version = "0.2.0", optional = true, default-features = false, features = ["log-tracer", "std"] }
 tracing-subscriber = { path = "../tracing-subscriber", version = "0.3.0", default-features = false, features = ["registry"] }
 
 [dev-dependencies]
+log = "0.4.17"
 serde_json = "1.0.82"
 serde = { version = "1.0.140", features = ["derive"] }
 tracing = { path = "../tracing", version = "0.1.35" }
