@@ -584,7 +584,7 @@ impl Span {
             let values = attrs.values();
             span.log(
                 target,
-                level_to_log!(*meta.level()),
+                crate::__macro_support::level_to_log(*meta.level()),
                 format_args!("++ {};{}", meta.name(), crate::log::LogValueSet { values, is_first: false }),
             );
         }}
@@ -1239,7 +1239,7 @@ impl Span {
                 };
                 self.log(
                     target,
-                    level_to_log!(*_meta.level()),
+                    crate::__macro_support::level_to_log(*_meta.level()),
                     format_args!("{};{}", _meta.name(), crate::log::LogValueSet { values, is_first: false }),
                 );
             }}
@@ -1344,7 +1344,7 @@ impl Span {
     #[inline]
     fn log(&self, target: &str, level: log::Level, message: fmt::Arguments<'_>) {
         if let Some(meta) = self.meta {
-            if level_to_log!(*meta.level()) <= log::max_level() {
+            if crate::__macro_support::level_to_log(*meta.level()) <= log::max_level() {
                 let logger = log::logger();
                 let log_meta = log::Metadata::builder().level(level).target(target).build();
                 if logger.enabled(&log_meta) {

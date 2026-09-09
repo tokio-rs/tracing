@@ -1128,6 +1128,17 @@ pub mod __macro_support {
         }
     }
 
+    #[cfg(feature = "log")]
+    pub const fn level_to_log(level: crate::Level) -> crate::log::Level {
+        match level {
+            crate::Level::ERROR => crate::log::Level::Error,
+            crate::Level::WARN => crate::log::Level::Warn,
+            crate::Level::INFO => crate::log::Level::Info,
+            crate::Level::DEBUG => crate::log::Level::Debug,
+            _ => crate::log::Level::Trace
+        }
+    }
+
     static CALLSITE: crate::callsite::DefaultCallsite =
         crate::callsite::DefaultCallsite::new(&META);
     static META: crate::Metadata<'static> = crate::metadata! {
