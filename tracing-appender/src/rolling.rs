@@ -702,7 +702,9 @@ impl Inner {
         let mut files = match files {
             Ok(files) => files,
             Err(error) => {
-                eprintln!("Error reading the log directory/files: {}", error);
+                if error.kind() != io::ErrorKind::NotFound {
+                    eprintln!("Error reading the log directory/files: {}", error);
+                }
                 return;
             }
         };
@@ -1423,5 +1425,22 @@ mod test {
         // Verify the symlink is functional
         let content = fs::read_to_string(&symlink_path).expect("failed to read through symlink");
         assert_eq!("test\n", content);
+    }
+
+    #[test]
+    fn test_prune_old_logs_nonexistent_directory() {
+        let tempdir = tempfile::tempdir().expect("failed to create tempdir");
+        let non_existent_dir = tempdir.path().join("logs_non_existent");
+
+        let appender = RollingFileAppender::builder()
+            .rotation(Rotation::DAILY)
+            .max_log_files(2)
+            .filename_suffix("log")
+            .build(&non_existent_dir);
+
+        assert!(
+            appender.is_ok(),
+            "creating appender with max_log_files in nonexistent dir should succeed"
+        );
     }
 }
