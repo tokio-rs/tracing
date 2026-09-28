@@ -1327,14 +1327,14 @@ impl field::Visit for DefaultVisitor<'_> {
                 "{}{}{:?}",
                 self.writer.italic().paint(&name[2..]),
                 self.writer.dimmed().paint("="),
-                value
+                EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
             ),
             name => write!(
                 self.writer,
                 "{}{}{:?}",
                 self.writer.italic().paint(name),
                 self.writer.dimmed().paint("="),
-                value
+                EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
             ),
         };
     }
