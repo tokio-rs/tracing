@@ -359,11 +359,15 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     }
 
     /// Sets whether to write errors from [`FormatEvent`] to the writer.
-    /// Defaults to true.
+    /// Defaults to `true`.
     ///
-    /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
-    /// the writer. These errors are unlikely and will only occur if there is a
-    /// bug in the `FormatEvent` implementation or its dependencies.
+    /// By default, [`fmt::layer()`] and [`fmt::Subscriber::builder()`] write any
+    /// `FormatEvent`-internal errors to the writer. These errors are unlikely
+    /// and will only occur if there is a bug in the `FormatEvent` implementation
+    /// or its dependencies.
+    ///
+    /// [`fmt::layer()`]: crate::fmt::layer
+    /// [`fmt::Subscriber::builder()`]: crate::fmt::Subscriber
     ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
@@ -749,7 +753,7 @@ impl<S> Default for Layer<S> {
             make_writer: io::stdout,
             is_ansi: ansi,
             ansi_sanitization: true,
-            log_internal_errors: false,
+            log_internal_errors: true,
             _inner: PhantomData,
         }
     }
@@ -1377,6 +1381,43 @@ mod test {
             .with_ansi(false)
             .with_timer(MockTime)
             .finish();
+
+        with_default(subscriber, || {
+            tracing::info!(?AlwaysError);
+        });
+        let actual = sanitize_timings(make_writer.get_string());
+
+        // Only assert the start because the line number and callsite may change.
+        let expected = concat!(
+            "Unable to format the following event. Name: event ",
+            file!(),
+            ":"
+        );
+        assert!(
+            actual.as_str().starts_with(expected),
+            "\nactual = {}\nshould start with expected = {}\n",
+            actual,
+            expected
+        );
+    }
+
+    #[test]
+    fn format_error_logged_by_default_layer() {
+        struct AlwaysError;
+
+        impl std::fmt::Debug for AlwaysError {
+            fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                Err(std::fmt::Error)
+            }
+        }
+
+        let make_writer = MockMakeWriter::default();
+        let layer = fmt::Layer::default()
+            .with_writer(make_writer.clone())
+            .with_level(false)
+            .with_ansi(false)
+            .with_timer(MockTime);
+        let subscriber = layer.with_subscriber(Registry::default());
 
         with_default(subscriber, || {
             tracing::info!(?AlwaysError);
