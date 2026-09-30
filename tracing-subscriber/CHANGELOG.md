@@ -1,3 +1,12 @@
+# Unreleased
+
+### Fixed
+
+- `fmt`: enable `log_internal_errors` by default on `fmt::Layer`, matching
+  `SubscriberBuilder` and the setter docs ([#3620])
+
+[#3620]: https://github.com/tokio-rs/tracing/issues/3620
+
 # 0.3.23 (March 13, 2026)
 
 ### Fixed
