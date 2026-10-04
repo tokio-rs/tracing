@@ -901,8 +901,7 @@ where
 
     /// Called before [`on_event`], to determine if `on_event` should be called.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="ignore" style="white-space:normal;font:inherit;">
+    /// <div class="warning">
     ///
     /// **Note**: This method determines whether an event is globally enabled,
     /// *not* whether the individual `Layer` will be notified about the
@@ -911,7 +910,7 @@ where
     /// notified about certain events but do not wish to globally disable them
     /// should ignore those events in their [on_event][Self::on_event].
     ///
-    /// </pre></div>
+    /// </div>
     ///
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
