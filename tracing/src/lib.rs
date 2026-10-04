@@ -1048,25 +1048,35 @@ pub mod __macro_support {
     #[cfg(feature = "log")]
     pub fn __tracing_log(
         meta: &Metadata<'static>,
-        logger: &'static dyn log::Log,
-        log_meta: log::Metadata<'_>,
+        level: crate::Level,
         values: &tracing_core::field::ValueSet<'_>,
     ) {
-        logger.log(
-            &crate::log::Record::builder()
-                .file(meta.file())
-                .module_path(meta.module_path())
-                .line(meta.line())
-                .metadata(log_meta)
-                .args(format_args!(
-                    "{}",
-                    crate::log::LogValueSet {
-                        values,
-                        is_first: true
-                    }
-                ))
-                .build(),
-        );
+        use crate::log;
+        let level = crate::level_to_log!(level);
+        if level <= log::max_level() {
+            let log_meta = log::Metadata::builder()
+                .level(level)
+                .target(meta.target())
+                .build();
+            let logger = log::logger();
+            if logger.enabled(&log_meta) {
+                logger.log(
+                    &crate::log::Record::builder()
+                        .file(meta.file())
+                        .module_path(meta.module_path())
+                        .line(meta.line())
+                        .metadata(log_meta)
+                        .args(format_args!(
+                            "{}",
+                            crate::log::LogValueSet {
+                                values,
+                                is_first: true
+                            }
+                        ))
+                        .build(),
+                );
+            }
+        }
     }
 
     /// Implementation detail used for constructing FieldSet names from raw
