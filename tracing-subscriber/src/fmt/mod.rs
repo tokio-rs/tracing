@@ -661,7 +661,7 @@ where
     /// and will only occur if there is a bug in the `FormatEvent` implementation
     /// or its dependencies.
     ///
-    /// [`fmt::layer()`]: crate::fmt::layer
+    /// [`fmt::layer()`]: fn@crate::fmt::layer
     /// [`fmt::Subscriber::builder()`]: crate::fmt::Subscriber
     ///
     /// If writing to the writer fails, the error message is printed to stderr
