@@ -1012,7 +1012,9 @@ pub mod __macro_support {
     /// Breaking changes to this module may occur in small-numbered versions
     /// without warning.
     pub fn __is_enabled(meta: &Metadata<'static>, interest: Interest) -> bool {
-        interest.is_always() || crate::dispatcher::get_default(|default| default.enabled(meta))
+        !interest.is_never()
+            && (interest.is_always()
+                || crate::dispatcher::get_default(|default| default.enabled(meta)))
     }
 
     /// /!\ WARNING: This is *not* a stable API! /!\
