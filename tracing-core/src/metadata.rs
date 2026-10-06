@@ -683,7 +683,15 @@ impl LevelFilter {
     // Rust version. This guarantees that converting a `usize` value into a
     // `LevelFilter` (in `LevelFilter::current`) is always a zero-cost identity
     // conversion, rather than generating a lookup table.
-    const OFF_USIZE: usize = unsafe { core::mem::transmute(LevelFilter::OFF) };
+    // SAFETY:
+    // 1. Any bit pattern of `usize::BITS` bits is a valid usize
+    // 2. `LevelFilter` is `repr(transparent)` so its repr is the same as `Option<Level>`
+    // 3. `Level` is made up of a single `LevelInner`, which is `repr(usize)`. Because this
+    //    compiles, we know that `LevelFilter` has the same size as usize, which means that the
+    //    `Option` wrapper on `Level` and the `Level` wrapping `LevelInner` must both take up no
+    //    extra bits for padding or anything else, which means that we won't be reading
+    //    uninitialized memory by doing this transmute.
+    const OFF_USIZE: usize = const { unsafe { core::mem::transmute(LevelFilter::OFF) } };
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
     /// currently active [`Subscriber`] will enable.
@@ -911,7 +919,7 @@ impl std::error::Error for ParseLevelFilterError {}
 impl PartialEq<LevelFilter> for Level {
     #[inline(always)]
     fn eq(&self, other: &LevelFilter) -> bool {
-        self.0 as usize == filter_as_usize_sort_key(other.0)
+        self.0 as usize == filter_as_usize(other.0)
     }
 }
 
@@ -952,51 +960,44 @@ impl Ord for Level {
 impl PartialOrd<LevelFilter> for Level {
     #[inline(always)]
     fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
-        Some(filter_as_usize_sort_key(other.0).cmp(&(self.0 as usize)))
+        Some(filter_as_usize(other.0).cmp(&(self.0 as usize)))
     }
 
     #[inline(always)]
     fn lt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) < (self.0 as usize)
+        filter_as_usize(other.0) < (self.0 as usize)
     }
 
     #[inline(always)]
     fn le(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) <= (self.0 as usize)
+        filter_as_usize(other.0) <= (self.0 as usize)
     }
 
     #[inline(always)]
     fn gt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) > (self.0 as usize)
+        filter_as_usize(other.0) > (self.0 as usize)
     }
 
     #[inline(always)]
     fn ge(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) >= (self.0 as usize)
+        filter_as_usize(other.0) >= (self.0 as usize)
     }
 }
 
 #[inline(always)]
-fn filter_as_usize_sort_key(x: Option<Level>) -> usize {
-    const USE_NATIVE_SORT: bool = LevelFilter::OFF_USIZE > LevelInner::Error as usize;
+fn filter_as_usize(x: Option<Level>) -> usize {
     match x {
         Some(Level(f)) => f as usize,
-        // The niche optimization for LevelFilter::OFF isn't guaranteed
-        // to be the last variant + 1, so we explicitly return that for sorting here.
-        None => {
-            if USE_NATIVE_SORT {
-                LevelFilter::OFF_USIZE
-            } else {
-                LevelInner::Error as usize + 1
-            }
-        }
+        // OFF_USIZE is guaranteed to always be the last one as long as all the lowest `usize`
+        // values are taken up by the different `LevelInner` variants (as is the case when writing this)
+        None => LevelFilter::OFF_USIZE,
     }
 }
 
 impl PartialEq<Level> for LevelFilter {
     #[inline(always)]
     fn eq(&self, other: &Level) -> bool {
-        filter_as_usize_sort_key(self.0) == other.0 as usize
+        filter_as_usize(self.0) == other.0 as usize
     }
 }
 
@@ -1008,56 +1009,56 @@ impl PartialOrd for LevelFilter {
 
     #[inline(always)]
     fn lt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) < filter_as_usize_sort_key(self.0)
+        filter_as_usize(other.0) < filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn le(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) <= filter_as_usize_sort_key(self.0)
+        filter_as_usize(other.0) <= filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn gt(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) > filter_as_usize_sort_key(self.0)
+        filter_as_usize(other.0) > filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn ge(&self, other: &LevelFilter) -> bool {
-        filter_as_usize_sort_key(other.0) >= filter_as_usize_sort_key(self.0)
+        filter_as_usize(other.0) >= filter_as_usize(self.0)
     }
 }
 
 impl Ord for LevelFilter {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        filter_as_usize_sort_key(other.0).cmp(&filter_as_usize_sort_key(self.0))
+        filter_as_usize(other.0).cmp(&filter_as_usize(self.0))
     }
 }
 
 impl PartialOrd<Level> for LevelFilter {
     #[inline(always)]
     fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
-        Some((other.0 as usize).cmp(&filter_as_usize_sort_key(self.0)))
+        Some((other.0 as usize).cmp(&filter_as_usize(self.0)))
     }
 
     #[inline(always)]
     fn lt(&self, other: &Level) -> bool {
-        (other.0 as usize) < filter_as_usize_sort_key(self.0)
+        (other.0 as usize) < filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn le(&self, other: &Level) -> bool {
-        (other.0 as usize) <= filter_as_usize_sort_key(self.0)
+        (other.0 as usize) <= filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn gt(&self, other: &Level) -> bool {
-        (other.0 as usize) > filter_as_usize_sort_key(self.0)
+        (other.0 as usize) > filter_as_usize(self.0)
     }
 
     #[inline(always)]
     fn ge(&self, other: &Level) -> bool {
-        (other.0 as usize) >= filter_as_usize_sort_key(self.0)
+        (other.0 as usize) >= filter_as_usize(self.0)
     }
 }
 
