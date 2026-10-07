@@ -184,11 +184,7 @@ impl StaticDirective {
             }
         }
 
-        if !self.field_names.is_empty() {
-            return false;
-        }
-
-        true
+        self.field_names.is_empty()
     }
 }
 

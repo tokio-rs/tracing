@@ -52,14 +52,16 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
-//!  **Warning**: In asynchronous code that uses async/await syntax,
-//!  `Span::enter` may produce incorrect traces if the returned drop
-//!  guard is held across an await point. See
-//!  [the method documentation][Span#in-asynchronous-code] for details.
+//! **Warning**: In asynchronous code that uses async/await syntax,
+//! `Span::enter` may produce incorrect traces if the returned drop
+//! guard is held across an await point. See
+//! [the method documentation][Span#in-asynchronous-code] for details.
 //!
-//! </pre></div>
+//! </pre>
+//! </div>
 //!
 //! ## Events
 //!
@@ -929,7 +931,6 @@
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
-    no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
