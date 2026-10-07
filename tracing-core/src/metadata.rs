@@ -691,7 +691,7 @@ impl LevelFilter {
     //    `Option` wrapper on `Level` and the `Level` wrapping `LevelInner` must both take up no
     //    extra bits for padding or anything else, which means that we won't be reading
     //    uninitialized memory by doing this transmute.
-    const OFF_USIZE: usize = const { unsafe { core::mem::transmute(LevelFilter::OFF) } };
+    const OFF_USIZE: usize = unsafe { core::mem::transmute(LevelFilter::OFF) };
 
     /// Returns a `LevelFilter` that matches the most verbose [`Level`] that any
     /// currently active [`Subscriber`] will enable.
