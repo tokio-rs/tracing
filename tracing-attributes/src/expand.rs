@@ -102,6 +102,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
 
     let mut result = quote!(
         #(#outer_attrs) *
+        #[allow(clippy::print_stdout, clippy::print_stderr)]
         #vis #constness #asyncness #unsafety #abi #fn_token #ident
         #lt_token #gen_params #gt_token
     );
