@@ -321,11 +321,16 @@ where
             }
 
             let ext = span.extensions();
-            let fields = &ext
-                .get::<FormattedFields<N>>()
-                .expect("Unable to find FormattedFields in extensions; this is a bug");
-            if !fields.is_empty() {
-                write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+            // `FormattedFields` is normally inserted by the layer's
+            // `on_new_span` hook, but the formatter can also be invoked
+            // for spans that were created before this layer was installed
+            // (for example when a `reload::Layer` is swapped in at
+            // runtime). In that case we have no formatted fields to
+            // print, so skip the "with ..." segment instead of panicking.
+            if let Some(fields) = ext.get::<FormattedFields<N>>() {
+                if !fields.is_empty() {
+                    write!(writer, " {} {}", dimmed.paint("with"), fields)?;
+                }
             }
             writer.write_char('\n')?;
         }
