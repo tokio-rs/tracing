@@ -1,3 +1,6 @@
+#[cfg(feature = "local-time")]
+use super::ClockKind;
+
 use super::{RollingFileAppender, Rotation};
 use std::{io, path::Path};
 use thiserror::Error;
@@ -12,6 +15,8 @@ pub struct Builder {
     pub(super) suffix: Option<String>,
     pub(super) latest_symlink: Option<String>,
     pub(super) max_files: Option<usize>,
+    #[cfg(feature = "local-time")]
+    pub(super) clock: ClockKind,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -56,6 +61,8 @@ impl Builder {
             suffix: None,
             latest_symlink: None,
             max_files: None,
+            #[cfg(feature = "local-time")]
+            clock: ClockKind::Utc,
         }
     }
 
@@ -263,6 +270,77 @@ impl Builder {
         let latest_symlink = if name.is_empty() { None } else { Some(name) };
         Self {
             latest_symlink,
+            ..self
+        }
+    }
+
+    /// Configures the appender to use the system's local timezone for rotation
+    /// scheduling and log file naming.
+    ///
+    /// By default, [`RollingFileAppender`] uses UTC for both rotation boundaries
+    /// and the date/time stamps embedded in file names. This means that, for example,
+    /// a daily-rotating appender rolls over at midnight *UTC*, which may fall in the
+    /// middle of a day in other time zones. Calling this method switches the appender
+    /// to local time so that rotation boundaries and file name date/time stamps align
+    /// with the local time.
+    ///
+    /// # Caveats
+    ///
+    /// Determining the local UTC offset may fail on some platforms. When the offset
+    /// cannot be determined, the appender **silently falls back to UTC**.
+    ///
+    /// # Examples
+    /// ```
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .rotation(Rotation::DAILY)
+    ///     .use_local_time()
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    #[cfg(feature = "local-time")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "local-time")))]
+    #[must_use]
+    pub fn use_local_time(self) -> Self {
+        Self {
+            clock: ClockKind::Local,
+            ..self
+        }
+    }
+
+    /// Configures the appender to use UTC for rotation scheduling and log file naming.
+    ///
+    /// This is the default behavior. This method is provided as an explicit opt-in
+    /// for readability, or to override a previously set [`use_local_time`] call.
+    ///
+    /// [`use_local_time`]: Self::use_local_time
+    ///
+    /// # Examples
+    /// ```
+    /// use tracing_appender::rolling::{RollingFileAppender, Rotation};
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .rotation(Rotation::DAILY)
+    ///     .use_utc() // explictly use UTC (the default)
+    ///     // ...
+    ///     .build("/var/log")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender)
+    /// # }
+    /// ```
+    ///
+    #[cfg(feature = "local-time")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "local-time")))]
+    #[must_use]
+    pub fn use_utc(self) -> Self {
+        Self {
+            clock: ClockKind::Utc,
             ..self
         }
     }
