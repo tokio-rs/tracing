@@ -22,7 +22,7 @@ keywords = [
     "testing"
 ]
 edition = "2018"
-rust-version = "1.65.0"
+rust-version = "1.71.0"
 
 [dependencies]
 tracing = { path = "../tracing", version = "0.1.43", features = ["std", "attributes"], default-features = false }
