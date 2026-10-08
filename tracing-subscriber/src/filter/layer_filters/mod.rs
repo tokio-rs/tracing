@@ -1074,7 +1074,7 @@ impl fmt::Debug for FilterMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alt = f.alternate();
         let mut s = f.debug_struct("FilterMap");
-        s.field("disabled_by", &format_args!("{:?}", &FmtBitset(self.bits)));
+        s.field("disabled_by", &format_args!("{:?}", FmtBitset(self.bits)));
 
         if alt {
             s.field("bits", &format_args!("{:b}", self.bits));

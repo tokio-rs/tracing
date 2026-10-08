@@ -19,7 +19,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting libraries
 //! and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.65+][msrv]*
+//! *Compiler support: [requires `rustc` 1.71+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! # Core Concepts
@@ -52,14 +52,16 @@
 //! The [`span` module][span]'s documentation provides further details on how to
 //! use spans.
 //!
-//! <div class="example-wrap" style="display:inline-block"><pre class="compile_fail" style="white-space:normal;font:inherit;">
+//! <div class="example-wrap" style="display:inline-block">
+//! <pre class="compile_fail" style="white-space:normal;font:inherit;">
 //!
-//!  **Warning**: In asynchronous code that uses async/await syntax,
-//!  `Span::enter` may produce incorrect traces if the returned drop
-//!  guard is held across an await point. See
-//!  [the method documentation][Span#in-asynchronous-code] for details.
+//! **Warning**: In asynchronous code that uses async/await syntax,
+//! `Span::enter` may produce incorrect traces if the returned drop
+//! guard is held across an await point. See
+//! [the method documentation][Span#in-asynchronous-code] for details.
 //!
-//! </pre></div>
+//! </pre>
+//! </div>
 //!
 //! ## Events
 //!
@@ -873,7 +875,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.65. The current Tracing version is not guaranteed to build on
+//! version is 1.71. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -929,7 +931,6 @@
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
-    no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
@@ -1012,6 +1013,18 @@ pub mod __macro_support {
     /// without warning.
     pub fn __is_enabled(meta: &Metadata<'static>, interest: Interest) -> bool {
         interest.is_always() || crate::dispatcher::get_default(|default| default.enabled(meta))
+    }
+
+    #[cfg(feature = "log")]
+    #[inline(always)]
+    pub fn __level_to_log(level: crate::Level) -> crate::log::Level {
+        match level {
+            crate::Level::ERROR => crate::log::Level::Error,
+            crate::Level::WARN => crate::log::Level::Warn,
+            crate::Level::INFO => crate::log::Level::Info,
+            crate::Level::DEBUG => crate::log::Level::Debug,
+            _ => crate::log::Level::Trace,
+        }
     }
 
     /// /!\ WARNING: This is *not* a stable API! /!\

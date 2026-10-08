@@ -558,6 +558,9 @@ impl Rotation {
     }
 
     fn date_format(&self) -> Vec<format_description::FormatItem<'static>> {
+        // To support MSRV 1.65, we can't update the `time` dependency,
+        // but newer versions of `time` deprecate the `parse` fn
+        #[allow(deprecated)]
         match *self {
             Rotation::MINUTELY => format_description::parse("[year]-[month]-[day]-[hour]-[minute]"),
             Rotation::HOURLY => format_description::parse("[year]-[month]-[day]-[hour]"),
@@ -834,6 +837,9 @@ fn parse_date_from_filename(
 
 #[cfg(test)]
 mod test {
+    // To support MSRV 1.65, we can't update the `time` dependency, but newer versions of `time` deprecate the `parse` fn
+    #![allow(deprecated)]
+
     use super::*;
     use std::fs;
     use std::io::Write;

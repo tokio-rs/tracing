@@ -140,7 +140,8 @@ pub trait Callsite: Sync {
     /// that share the same callsite [`Identifier`] but otherwise differ in any
     /// way (e.g., have different `name`s).
     ///
-    /// </pre></div>
+    /// </pre>
+    /// </div>
     ///
     /// [metadata]: super::metadata::Metadata
     fn metadata(&self) -> &Metadata<'_>;
