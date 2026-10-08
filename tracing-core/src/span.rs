@@ -14,7 +14,7 @@ use crate::{field, Metadata};
 ///
 /// [`Subscriber`]: super::subscriber::Subscriber
 /// [`new_span`]: super::subscriber::Subscriber::new_span
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(NonZeroU64);
 
 /// Attributes provided to a `Subscriber` describing a new span when it is
