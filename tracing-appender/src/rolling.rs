@@ -704,6 +704,10 @@ impl Inner {
 
         let mut files = match files {
             Ok(files) => files,
+            // On the first run the log directory doesn't exist yet (it is
+            // created when the initial writer is opened), so there is nothing
+            // to prune. Don't report that as an error.
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return,
             Err(error) => {
                 eprintln!("Error reading the log directory/files: {}", error);
                 return;
@@ -903,6 +907,39 @@ mod test {
     #[test]
     fn write_never_log() {
         test_appender(Rotation::NEVER, "never.log");
+    }
+
+    #[test]
+    fn first_run_with_max_files_into_missing_dir() {
+        // Regression test: with `max_files` set, `prune_old_logs` runs before
+        // the log directory is created on the first run. Building the appender
+        // against a directory that doesn't exist yet should still succeed and
+        // write the first log file (previously it printed a spurious
+        // "Error reading the log directory/files" to stderr).
+        let dir = tempfile::tempdir().expect("failed to create tempdir");
+        let missing = dir.path().join("does-not-exist-yet");
+        assert!(!missing.exists());
+
+        let (state, writer) = Inner::new(
+            OffsetDateTime::now_utc(),
+            Rotation::NEVER,
+            &missing,
+            Some("first_run".to_string()),
+            None,
+            None,
+            Some(2),
+        )
+        .expect("Inner::new should succeed when the log directory is missing");
+
+        let mut appender = RollingFileAppender {
+            state,
+            writer,
+            now: Box::new(OffsetDateTime::now_utc),
+        };
+        write_to_log(&mut appender, "hello");
+        assert!(find_str_in_log(&missing, "hello"));
+
+        dir.close().expect("failed to close tempdir");
     }
 
     #[test]
