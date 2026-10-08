@@ -24,7 +24,6 @@ rust-version = "1.63.0"
 crossbeam-channel = "0.5.6"
 time = { version = "0.3.2", default-features = false, features = ["formatting", "parsing"] }
 parking_lot = { optional = true, version = "0.12.1" }
-symlink = "0.1.0"
 thiserror = "2"
 
 [dependencies.tracing-subscriber]
@@ -32,6 +31,13 @@ path = "../tracing-subscriber"
 version = "0.3.18"
 default-features = false
 features = ["fmt", "std"]
+
+# Symbolic links (used by the `latest_symlink` builder option) are only
+# available on some platforms, so the `symlink` dependency is gated to those
+# targets. On others (such as `wasm32`) the option is a no-op and the crate
+# still builds.
+[target.'cfg(any(unix, windows, target_os = "redox"))'.dependencies]
+symlink = "0.1.0"
 
 [dev-dependencies]
 criterion = { version = "0.3.6", default-features = false }
