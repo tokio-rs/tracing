@@ -2701,6 +2701,48 @@ macro_rules! error {
     );
 }
 
+/// Constructs an event after every n times.
+///
+/// This functions similarly to the [`event!`] macro. See [the top-level
+/// documentation][lib] for details on the syntax accepted by
+/// this macro.
+///
+/// [`event!`]: crate::event!
+/// [lib]: crate#using-the-macros
+///
+/// # Examples
+///
+/// ```rust
+/// use tracing::warn;
+/// use tracing::log_every_n;
+///
+/// # fn main() {
+///
+/// let warn_description = "Invalid Input";
+/// let input = &[0x27, 0x45];
+///
+/// log_every_n!(3, warn!(?input, warning = warn_description));
+/// log_every_n!(3, warn!(
+///     target: "input_events",
+///     warning = warn_description,
+///     "Received warning for input: {:?}", input,
+/// ));
+/// log_every_n!(3, warn!(name: "invalid", ?input));
+/// # }
+/// ```
+#[macro_export]
+macro_rules! log_every_n {
+    ($n:expr, $($log:tt)*) => {
+        {
+            static __COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let val = __COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if val % $n == 0 {
+                $($log)*
+            }
+        }
+    };
+}
+
 /// Constructs a new static callsite for a span or event.
 #[doc(hidden)]
 #[macro_export]
