@@ -327,6 +327,9 @@ where
             if !fields.is_empty() {
                 write!(writer, " {} {}", dimmed.paint("with"), fields)?;
             }
+            if !self.display_span_list {
+                break;
+            }
             writer.write_char('\n')?;
         }
 
