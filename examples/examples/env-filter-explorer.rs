@@ -157,7 +157,7 @@ impl io::Write for LogWidget {
     }
 }
 
-impl<'a> MakeWriter<'a> for LogWidget {
+impl<'a, S> MakeWriter<'a, S> for LogWidget {
     type Writer = Self;
 
     fn make_writer(&'a self) -> Self::Writer {

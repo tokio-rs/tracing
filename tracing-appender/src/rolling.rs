@@ -240,7 +240,7 @@ impl io::Write for RollingFileAppender {
     }
 }
 
-impl<'a> tracing_subscriber::fmt::writer::MakeWriter<'a> for RollingFileAppender {
+impl<'a, S> tracing_subscriber::fmt::writer::MakeWriter<'a, S> for RollingFileAppender {
     type Writer = RollingWriter<'a>;
     fn make_writer(&'a self) -> Self::Writer {
         let now = self.now();
