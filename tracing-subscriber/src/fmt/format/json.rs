@@ -323,6 +323,17 @@ where
                     .serialize_entry("threadId", &format!("{:?}", std::thread::current().id()))?;
             }
 
+            #[cfg(feature = "tokio-task-id")]
+            if self.display_tokio_task_id {
+                let current_tokio_task_id = tokio::task::try_id();
+                match current_tokio_task_id {
+                    Some(id) => {
+                        serializer.serialize_entry("tokioTaskId", &format!("{:?}", id))?;
+                    }
+                    None => {}
+                }
+            }
+
             serializer.end()
         };
 
