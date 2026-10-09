@@ -31,10 +31,8 @@ macro_rules! span {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl)
-                && { interest = __CALLSITE.interest(); !interest.is_never() }
-                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
+                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest())
             {
                 let meta = __CALLSITE.metadata();
                 // span with explicit parent
@@ -62,10 +60,8 @@ macro_rules! span {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let mut interest = $crate::subscriber::Interest::never();
             if $crate::level_enabled!($lvl)
-                && { interest = __CALLSITE.interest(); !interest.is_never() }
-                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
+                && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest())
             {
                 let meta = __CALLSITE.metadata();
                 // span with contextual parent
@@ -624,10 +620,8 @@ macro_rules! event {
             fields: $($fields)*
         };
 
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
@@ -677,10 +671,8 @@ macro_rules! event {
             level: $lvl,
             fields: $($fields)*
         };
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 let meta = __CALLSITE.metadata();
@@ -734,10 +726,8 @@ macro_rules! event {
             fields: $($fields)*
         };
 
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
@@ -787,10 +777,8 @@ macro_rules! event {
             fields: $($fields)*
         };
 
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 $crate::__tracing_log!(
@@ -839,10 +827,8 @@ macro_rules! event {
             level: $lvl,
             fields: $($fields)*
         };
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 let meta = __CALLSITE.metadata();
@@ -894,10 +880,8 @@ macro_rules! event {
             level: $lvl,
             fields: $($fields)*
         };
-        let enabled = $crate::level_enabled!($lvl) && {
-            let interest = __CALLSITE.interest();
-            !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest)
-        };
+        let enabled = $crate::level_enabled!($lvl)
+            && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), __CALLSITE.interest());
         if enabled {
             (|value_set: $crate::field::ValueSet| {
                 let meta = __CALLSITE.metadata();
@@ -1227,9 +1211,8 @@ macro_rules! enabled {
                 level: $lvl,
                 fields: $($fields)*
             };
-            let interest = __CALLSITE.interest();
-            if !interest.is_never() && $crate::__macro_support::__is_enabled(__CALLSITE.metadata(), interest) {
-                let meta = __CALLSITE.metadata();
+            let meta = __CALLSITE.metadata();
+            if $crate::__macro_support::__is_enabled(meta, __CALLSITE.interest()) {
                 $crate::dispatcher::get_default(|current| current.enabled(meta))
             } else {
                 false
