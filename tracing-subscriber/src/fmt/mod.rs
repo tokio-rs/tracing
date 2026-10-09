@@ -654,11 +654,15 @@ where
     }
 
     /// Sets whether to write errors from [`FormatEvent`] to the writer.
-    /// Defaults to true.
+    /// Defaults to `true`.
     ///
-    /// By default, `fmt::Layer` will write any `FormatEvent`-internal errors to
-    /// the writer. These errors are unlikely and will only occur if there is a
-    /// bug in the `FormatEvent` implementation or its dependencies.
+    /// By default, [`fmt::layer()`] and [`fmt::Subscriber::builder()`] write any
+    /// `FormatEvent`-internal errors to the writer. These errors are unlikely
+    /// and will only occur if there is a bug in the `FormatEvent` implementation
+    /// or its dependencies.
+    ///
+    /// [`fmt::layer()`]: fn@crate::fmt::layer
+    /// [`fmt::Subscriber::builder()`]: crate::fmt::Subscriber
     ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
