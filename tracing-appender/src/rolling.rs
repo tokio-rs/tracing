@@ -132,6 +132,14 @@ impl RollingFileAppender {
     ///
     /// Additional parameters can be configured using [`RollingFileAppender::builder`].
     ///
+    /// # Panics
+    ///
+    /// Panics if the appender cannot be initialized, for example, if the log
+    /// directory or the log file cannot be created, or if `filename_prefix` is not
+    /// valid UTF-8. To handle these errors instead, use
+    /// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+    /// `Result`.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -277,6 +285,14 @@ impl fmt::Debug for RollingFileAppender {
 /// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender`
 /// adds the current date, hour, and minute to the log file in UTC.
 ///
+/// # Panics
+///
+/// Panics if the appender cannot be initialized, for example, if the log
+/// directory or the log file cannot be created, or if `file_name_prefix` is not
+/// valid UTF-8. To handle these errors instead, use
+/// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+/// `Result`.
+///
 /// # Examples
 ///
 /// ``` rust
@@ -311,6 +327,14 @@ pub fn minutely(
 /// The directory of the log file is specified with the `directory` argument.
 /// `file_name_prefix` specifies the _prefix_ of the log file. `RollingFileAppender`
 /// adds the current date and hour to the log file in UTC.
+///
+/// # Panics
+///
+/// Panics if the appender cannot be initialized, for example, if the log
+/// directory or the log file cannot be created, or if `file_name_prefix` is not
+/// valid UTF-8. To handle these errors instead, use
+/// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+/// `Result`.
 ///
 /// # Examples
 ///
@@ -348,6 +372,14 @@ pub fn hourly(
 /// arguments determine the location and file name's _prefix_ of the log file.
 /// `RollingFileAppender` automatically appends the current date in UTC.
 ///
+/// # Panics
+///
+/// Panics if the appender cannot be initialized, for example, if the log
+/// directory or the log file cannot be created, or if `file_name_prefix` is not
+/// valid UTF-8. To handle these errors instead, use
+/// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+/// `Result`.
+///
 /// # Examples
 ///
 /// ``` rust
@@ -384,6 +416,14 @@ pub fn daily(
 /// determine the location and file name's _prefix_ of the log file.
 /// `RollingFileAppender` automatically appends the current date in UTC.
 ///
+/// # Panics
+///
+/// Panics if the appender cannot be initialized, for example, if the log
+/// directory or the log file cannot be created, or if `file_name_prefix` is not
+/// valid UTF-8. To handle these errors instead, use
+/// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+/// `Result`.
+///
 /// # Examples
 ///
 /// ``` rust
@@ -417,6 +457,14 @@ pub fn weekly(
 ///
 /// The location of the log file will be specified the `directory` passed in.
 /// `file_name` specifies the complete name of the log file (no date or time is appended).
+///
+/// # Panics
+///
+/// Panics if the appender cannot be initialized, for example, if the log
+/// directory or the log file cannot be created, or if `file_name` is not
+/// valid UTF-8. To handle these errors instead, use
+/// [`RollingFileAppender::builder`], whose [`Builder::build`] method returns a
+/// `Result`.
 ///
 /// # Examples
 ///
