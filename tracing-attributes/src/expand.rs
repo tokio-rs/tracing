@@ -275,6 +275,18 @@ fn gen_block<B: ToTokens>(
                 FormatMode::Debug => Some(quote!(
                     ::tracing::event!(target: #target, #level_tokens, error = ?e)
                 )),
+                FormatMode::DisplayAlternate => {
+                    let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                    Some(quote!(
+                        ::tracing::event!(target: #target, #level_tokens, error = #pound %e)
+                    ))
+                }
+                FormatMode::DebugAlternate => {
+                    let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                    Some(quote!(
+                        ::tracing::event!(target: #target, #level_tokens, error = #pound ?e)
+                    ))
+                }
             }
         }
         _ => None,
@@ -290,6 +302,18 @@ fn gen_block<B: ToTokens>(
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
                     ::tracing::event!(target: #target, #level_tokens, return = ?x)
                 )),
+                FormatMode::DisplayAlternate => {
+                    let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                    Some(quote!(
+                        ::tracing::event!(target: #target, #level_tokens, return = #pound %x)
+                    ))
+                }
+                FormatMode::DebugAlternate => {
+                    let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                    Some(quote!(
+                        ::tracing::event!(target: #target, #level_tokens, return = #pound ?x)
+                    ))
+                }
             }
         }
         _ => None,

@@ -363,6 +363,14 @@ pub struct DisplayValue<T: fmt::Display>(T);
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
 
+/// A `Value` which serializes using the alternate form of `fmt::Display`.
+#[derive(Clone)]
+pub struct DisplayValueAlternate<T: fmt::Display>(T);
+
+/// A `Value` which serializes using the alternate form of `fmt::Debug`.
+#[derive(Clone)]
+pub struct DebugValueAlternate<T: fmt::Debug>(T);
+
 /// Wraps a type implementing `fmt::Display` as a `Value` that can be
 /// recorded using its `Display` implementation.
 pub fn display<T>(t: T) -> DisplayValue<T>
@@ -379,6 +387,24 @@ where
     T: fmt::Debug,
 {
     DebugValue(t)
+}
+
+/// Wraps a type implementing `fmt::Display` as a `Value` that will be
+/// recorded using the alternate form.
+pub fn display_alternate<T>(t: T) -> DisplayValueAlternate<T>
+where
+    T: fmt::Display,
+{
+    DisplayValueAlternate(t)
+}
+
+/// Wraps a type implementing `fmt::Debug` as a `Value` that will be
+/// recorded using the alternate form.
+pub fn debug_alternate<T>(t: T) -> DebugValueAlternate<T>
+where
+    T: fmt::Debug,
+{
+    DebugValueAlternate(t)
 }
 
 /// Wraps a type implementing [`Valuable`] as a `Value` that
@@ -753,6 +779,50 @@ where
 impl<T: fmt::Debug> fmt::Debug for DebugValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+// ===== impl DisplayValueAlternate =====
+
+impl<T: fmt::Display> crate::sealed::Sealed for DisplayValueAlternate<T> {}
+
+impl<T> Value for DisplayValueAlternate<T>
+where
+    T: fmt::Display,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_debug(key, self)
+    }
+}
+
+impl<T: fmt::Display> fmt::Debug for DisplayValueAlternate<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#}", self.0)
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for DisplayValueAlternate<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#}", self.0)
+    }
+}
+
+// ===== impl DebugValueAlternate =====
+
+impl<T: fmt::Debug> crate::sealed::Sealed for DebugValueAlternate<T> {}
+
+impl<T> Value for DebugValueAlternate<T>
+where
+    T: fmt::Debug,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_debug(key, self)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for DebugValueAlternate<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#?}", self.0)
     }
 }
 
