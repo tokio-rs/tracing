@@ -15,7 +15,7 @@
 //! * [`WithSubscriber`] allows a `tracing` [`Subscriber`] to be attached to a
 //!   future, sink, stream, or executor.
 //!
-//! *Compiler support: [requires `rustc` 1.65+][msrv]*
+//! *Compiler support: [requires `rustc` 1.71+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -59,7 +59,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.65. The current Tracing version is not guaranteed to build on
+//! version is 1.71. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -84,7 +84,6 @@
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
-    no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
