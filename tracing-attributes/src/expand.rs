@@ -84,10 +84,18 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
             return __tracing_attr_fake_return;
         }
     };
+
+    // Ensure that we use the user-written {} to surround the user-written block
+    // for better proc-macro token spans for compiler error messages.
+    let mut innermost_block_tokens = TokenStream::new();
+    brace_token.surround(&mut innermost_block_tokens, |tokens| {
+        block.to_tokens(tokens);
+    });
+
     let block = quote! {
         {
             #fake_return_edge
-            { #block }
+            #innermost_block_tokens
         }
     };
 
