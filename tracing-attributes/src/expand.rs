@@ -275,6 +275,10 @@ fn gen_block<B: ToTokens>(
                 FormatMode::Debug => Some(quote!(
                     ::tracing::event!(target: #target, #level_tokens, error = ?e)
                 )),
+                #[cfg(all(tracing_unstable, feature = "valuable"))]
+                FormatMode::Valuable => Some(quote!(::tracing::event!(
+                    target: #target, #level_tokens, error = ::tracing::field::valuable(&e),
+                ))),
             }
         }
         _ => None,
@@ -290,6 +294,10 @@ fn gen_block<B: ToTokens>(
                 FormatMode::Default | FormatMode::Debug => Some(quote!(
                     ::tracing::event!(target: #target, #level_tokens, return = ?x)
                 )),
+                #[cfg(all(tracing_unstable, feature = "valuable"))]
+                FormatMode::Valuable => Some(quote!(::tracing::event!(
+                    target: #target, #level_tokens, return = ::tracing::field::valuable(&x),
+                ))),
             }
         }
         _ => None,
