@@ -375,3 +375,57 @@ fn spans_field_collision() {
         assert_eq!(message["SPAN_FIELD"], vec!["foo1", "foo2", "foo3"]);
     });
 }
+
+#[test]
+fn message_formatter_basic() {
+    use tracing_core::Metadata;
+    use tracing_journald::MessageFormatter;
+
+    struct TestFormatter;
+
+    impl MessageFormatter for TestFormatter {
+        fn format_message(&self, message: &str, metadata: &Metadata<'_>) -> String {
+            format!("[{}] {}", metadata.level(), message)
+        }
+    }
+
+    let layer = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_message_formatter(TestFormatter);
+
+    with_journald_layer(layer, || {
+        info!(test.name = "message_formatter_basic", "Hello World");
+
+        let message = retry_read_one_line_from_journal("message_formatter_basic");
+        assert_eq!(message["MESSAGE"], "[INFO] Hello World");
+        assert_eq!(message["PRIORITY"], "5");
+    });
+}
+
+#[test]
+fn message_formatter_with_metadata() {
+    use tracing_core::Metadata;
+    use tracing_journald::MessageFormatter;
+
+    struct DetailedFormatter;
+
+    impl MessageFormatter for DetailedFormatter {
+        fn format_message(&self, message: &str, metadata: &Metadata<'_>) -> String {
+            format!("{} [{}]: {}", metadata.target(), metadata.level(), message)
+        }
+    }
+
+    let layer = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_message_formatter(DetailedFormatter);
+
+    with_journald_layer(layer, || {
+        error!(test.name = "message_formatter_with_metadata", "Something went wrong");
+
+        let message = retry_read_one_line_from_journal("message_formatter_with_metadata");
+        assert_eq!(message["MESSAGE"], "journal [ERROR]: Something went wrong");
+        assert_eq!(message["PRIORITY"], "3");
+    });
+}
