@@ -1,0 +1,11 @@
+error: expected only a single transform argument
+ --> tests/ui/fail/err.rs:7:33
+  |
+7 | #[instrument(err(Display, |x| x,,,,,))]
+  |                                 ^
+
+error: expected an expression
+  --> tests/ui/fail/err.rs:12:18
+   |
+12 | #[instrument(ret(,,,,,Display, |x| x))]
+   |                  ^

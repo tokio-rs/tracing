@@ -306,3 +306,53 @@ fn test_dbg_warn() {
     with_default(subscriber, ret_dbg_warn);
     handle.assert_finished();
 }
+
+#[instrument(ret(Display, |x| x))]
+fn ret_closure_display() -> i32 {
+    42
+}
+
+#[test]
+fn test_ret_closure_display() {
+    let span = expect::span().named("ret_closure_display");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            expect::event()
+                .with_fields(expect::field("return").with_value(&tracing::field::display(42)))
+                .at_level(Level::INFO),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, ret_closure_display);
+    handle.assert_finished();
+}
+
+#[instrument(ret(level = "warn", |x| x + 1))]
+fn ret_closure_level() -> i32 {
+    42
+}
+
+#[test]
+fn test_ret_closure_level() {
+    let span = expect::span().named("ret_closure_level");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(
+            expect::event()
+                .with_fields(expect::field("return").with_value(&43))
+                .at_level(Level::WARN),
+        )
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+
+    with_default(subscriber, ret_closure_level);
+    handle.assert_finished();
+}
