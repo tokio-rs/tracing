@@ -430,11 +430,21 @@ impl<'a> SpanData<'a> for Data<'a> {
     }
 
     fn extensions(&self) -> Extensions<'_> {
-        Extensions::new(self.inner.extensions.read().expect("Mutex poisoned"))
+        // If the extensions lock was poisoned by a panic while another access to
+        // this span's extensions was in progress, recover the guard rather than
+        // panicking again: a second panic here — e.g. while unwinding from the
+        // first — would abort the process (see #812). Recovering is sound because
+        // the extensions are a plain typemap whose lock can only be poisoned
+        // *after* a completed map mutation (`ExtensionsMut::insert`'s assertion,
+        // or a stored value's `Drop`), so the recovered map is always
+        // structurally consistent.
+        Extensions::new(self.inner.extensions.read().unwrap_or_else(|l| l.into_inner()))
     }
 
     fn extensions_mut(&self) -> ExtensionsMut<'_> {
-        ExtensionsMut::new(self.inner.extensions.write().expect("Mutex poisoned"))
+        // Recover from lock poisoning rather than double-panicking; see the
+        // comment in `extensions` above and #812.
+        ExtensionsMut::new(self.inner.extensions.write().unwrap_or_else(|l| l.into_inner()))
     }
 
     #[inline]
@@ -903,5 +913,66 @@ mod tests {
 
             state.assert_closed_in_order(["child", "parent", "grandparent"]);
         });
+    }
+
+    // Regression test for https://github.com/tokio-rs/tracing/issues/812.
+    //
+    // If a panic occurs while a span's extensions are borrowed (for example,
+    // `ExtensionsMut::insert` panicking on a duplicate type), the extensions
+    // `RwLock` is poisoned. A subsequent access to that span's extensions — such
+    // as a layer's `on_exit`/`on_close` running as the first panic unwinds —
+    // must not panic *again*, because a second panic during unwinding aborts the
+    // process. The accessors recover the poisoned guard instead, so the original
+    // panic unwinds normally and can be caught.
+    //
+    // This only reproduces under the std `RwLock`, which poisons on panic; the
+    // `parking_lot` backend never poisons, so the scenario cannot double-panic
+    // there and this test passes trivially.
+    #[test]
+    fn poisoned_span_extensions_do_not_double_panic() {
+        struct Marker;
+
+        struct PoisonLayer;
+        impl<S> Layer<S> for PoisonLayer
+        where
+            S: Subscriber + for<'a> LookupSpan<'a>,
+        {
+            fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+                // The second time the same span is entered, `Marker` is already
+                // present, so `insert` panics while holding the write guard,
+                // poisoning the lock.
+                let span = ctx.span(id).expect("span must exist");
+                span.extensions_mut().insert(Marker);
+            }
+
+            fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {
+                // Re-borrow the (now poisoned) extensions while unwinding from
+                // the `on_enter` panic. Before the fix this double-panicked and
+                // aborted the process.
+                let span = ctx.span(id).expect("span must exist");
+                let _ = span.extensions();
+            }
+        }
+
+        let subscriber = PoisonLayer.with_subscriber(Registry::default());
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_default(subscriber, || {
+                let span = tracing::info_span!("poisoned");
+                span.in_scope(|| {
+                    // Entering the same span again triggers the duplicate-insert
+                    // panic in `on_enter`.
+                    span.in_scope(|| {});
+                });
+            });
+        }));
+
+        // The duplicate-insert panic must propagate and be caught here. If the
+        // poisoned-lock access in `on_exit` had panicked again, the process
+        // would have aborted instead of reaching this assertion.
+        assert!(
+            result.is_err(),
+            "the duplicate-insert panic should unwind and be caught, not abort"
+        );
     }
 }
