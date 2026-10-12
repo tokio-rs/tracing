@@ -339,3 +339,109 @@ fn ansi_sanitization_can_be_disabled_for_pretty_messages() {
         "Pretty formatter message should pass through when sanitization is disabled"
     );
 }
+
+/// Test that ANSI escape sequences in non-message field values are sanitized,
+/// not just in the message.
+#[test]
+fn test_field_ansi_escaping() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .without_time()
+        .with_target(false)
+        .with_level(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        let malicious_path = "\x1b]0;PWNED\x07\x1b[2J";
+        tracing::info!(path = %malicious_path, "field value");
+    });
+
+    let output = writer.get_output();
+
+    assert!(
+        output.contains("field value"),
+        "Event should be logged: {}",
+        output
+    );
+    assert!(
+        !output.contains('\x1b'),
+        "Field output should not contain raw ESC characters: {}",
+        output
+    );
+    assert!(
+        output.contains("\\x1b"),
+        "ESC in field value should be escaped as \\x1b: {}",
+        output
+    );
+}
+
+/// Test that ANSI escape sequences in `r#`-prefixed field values are sanitized.
+#[test]
+fn test_r_hash_field_ansi_escaping() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .without_time()
+        .with_target(false)
+        .with_level(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        let malicious = "\x1b[2J\x1b[H";
+        tracing::info!(r#type = %malicious, "raw keyword field");
+    });
+
+    let output = writer.get_output();
+
+    assert!(
+        output.contains("raw keyword field"),
+        "Event should be logged: {}",
+        output
+    );
+    assert!(
+        !output.contains('\x1b'),
+        "r# field output should not contain raw ESC characters: {}",
+        output
+    );
+    assert!(
+        output.contains("\\x1b"),
+        "ESC in r# field value should be escaped: {}",
+        output
+    );
+}
+
+/// Test that ANSI escape sequences in non-message field values are sanitized
+/// by the pretty format as well.
+#[cfg(feature = "ansi")]
+#[test]
+fn test_pretty_field_ansi_escaping() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .pretty()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .without_time()
+        .with_target(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        let malicious = "\x1b[2J\x1b[H";
+        tracing::info!(path = %malicious, "pretty field value");
+    });
+
+    let output = writer.get_output();
+
+    assert!(
+        output.contains("pretty field value"),
+        "Event should be logged: {}",
+        output
+    );
+    assert!(
+        !output.contains('\x1b'),
+        "Pretty field output should not contain raw ESC characters: {}",
+        output
+    );
+}
