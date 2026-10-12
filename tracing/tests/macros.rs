@@ -614,6 +614,12 @@ fn trace() {
     trace!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     trace!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     trace!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3407:
+    // a dotted field name as the *first* field after `name:` must be accepted.
+    trace!(name: "foo", bar.baz = 2, quux = false);
+    trace!(name: "foo", target: "foo_events", bar.baz = 2, quux = false);
+    trace!(name: "foo", parent: ::core::option::Option::None, bar.baz = 2, quux = false);
+    trace!(name: "foo", bar.baz = 2, "message {}", 1);
     trace!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     trace!(target: "foo_events", foo = 3, bar.baz = 3,);
     trace!(target: "foo_events", "foo");
@@ -682,6 +688,12 @@ fn debug() {
     debug!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     debug!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     debug!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3407:
+    // a dotted field name as the *first* field after `name:` must be accepted.
+    debug!(name: "foo", bar.baz = 2, quux = false);
+    debug!(name: "foo", target: "foo_events", bar.baz = 2, quux = false);
+    debug!(name: "foo", parent: ::core::option::Option::None, bar.baz = 2, quux = false);
+    debug!(name: "foo", bar.baz = 2, "message {}", 1);
     debug!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     debug!(target: "foo_events", foo = 3, bar.baz = 3,);
     debug!(target: "foo_events", "foo");
@@ -750,6 +762,12 @@ fn info() {
     info!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     info!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     info!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3407:
+    // a dotted field name as the *first* field after `name:` must be accepted.
+    info!(name: "foo", bar.baz = 2, quux = false);
+    info!(name: "foo", target: "foo_events", bar.baz = 2, quux = false);
+    info!(name: "foo", parent: ::core::option::Option::None, bar.baz = 2, quux = false);
+    info!(name: "foo", bar.baz = 2, "message {}", 1);
     info!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     info!(target: "foo_events", foo = 3, bar.baz = 3,);
     info!(target: "foo_events", "foo");
@@ -818,6 +836,12 @@ fn warn() {
     warn!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     warn!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     warn!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3407:
+    // a dotted field name as the *first* field after `name:` must be accepted.
+    warn!(name: "foo", bar.baz = 2, quux = false);
+    warn!(name: "foo", target: "foo_events", bar.baz = 2, quux = false);
+    warn!(name: "foo", parent: ::core::option::Option::None, bar.baz = 2, quux = false);
+    warn!(name: "foo", bar.baz = 2, "message {}", 1);
     warn!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     warn!(target: "foo_events", foo = 3, bar.baz = 3,);
     warn!(target: "foo_events", "foo");
@@ -886,6 +910,12 @@ fn error() {
     error!(name: "foo", foo = 3, bar.baz = 2, quux = false);
     error!(name: "foo", target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     error!(name: "foo", parent: ::core::option::Option::None, foo = 3, bar.baz = 2, quux = false);
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3407:
+    // a dotted field name as the *first* field after `name:` must be accepted.
+    error!(name: "foo", bar.baz = 2, quux = false);
+    error!(name: "foo", target: "foo_events", bar.baz = 2, quux = false);
+    error!(name: "foo", parent: ::core::option::Option::None, bar.baz = 2, quux = false);
+    error!(name: "foo", bar.baz = 2, "message {}", 1);
     error!(target: "foo_events", foo = 3, bar.baz = 2, quux = false);
     error!(target: "foo_events", foo = 3, bar.baz = 3,);
     error!(target: "foo_events", "foo");
