@@ -42,12 +42,12 @@ fn none_interest_cache() {
         tracing::debug!(target: "always_interesting", x="bar");
     }
 
-    // The `None` filter is unchanging and performs no filtering, so it should
-    // be cacheable and always be interested in events. The filter fn is a
-    // non-dynamic filter fn, which means the result can be cached per callsite.
-    // The filter fn should only need to be called once, and the `Option` filter
-    // should not interfere in the caching of that result.
-    assert_eq!(times_filtered.load(Ordering::Relaxed), 1);
+    // Per-layer filters cap callsite interest at `sometimes` (#2519, #3516), so
+    // an accepted callsite is re-evaluated on every dispatch: once during
+    // `register_callsite` plus once per event. The `None` filter must not
+    // degrade caching any further than that (e.g. by forcing a callsite
+    // re-registration).
+    assert_eq!(times_filtered.load(Ordering::Relaxed), 3);
     handle_none.assert_finished();
     handle_filter_fn.assert_finished();
 }

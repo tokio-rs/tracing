@@ -12,11 +12,7 @@ fn layer_filter_interests_are_cached() {
     let seen = Arc::new(Mutex::new(HashMap::new()));
     let seen2 = seen.clone();
     let filter = filter::filter_fn(move |meta| {
-        *seen
-            .lock()
-            .unwrap()
-            .entry(meta.callsite())
-            .or_insert(0usize) += 1;
+        *seen.lock().unwrap().entry(*meta.level()).or_insert(0usize) += 1;
         meta.level() == &Level::INFO
     });
 
@@ -39,29 +35,31 @@ fn layer_filter_interests_are_cached() {
         tracing::error!("hello error");
     }
 
-    events();
-    {
-        let lock = seen2.lock().unwrap();
-        for (callsite, &count) in lock.iter() {
+    // Per-layer filters cap callsite interest at `sometimes` (#2519, #3516),
+    // so a callsite the filter accepts is re-evaluated on each dispatch.
+    // Callsites the filter rejects still cache `Interest::never` and are
+    // seen exactly once (during `register_callsite`).
+    let assert_seen = |dispatches: usize| {
+        let seen = seen2.lock().unwrap();
+        for (&level, &count) in seen.iter() {
+            let expected = if level == Level::INFO {
+                1 + dispatches
+            } else {
+                1
+            };
             assert_eq!(
-                count, 1,
-                "callsite {:?} should have been seen 1 time (after first set of events)",
-                callsite
+                count, expected,
+                "the {level:?} callsite should have been seen {expected} times \
+                 after {dispatches} dispatches",
             );
         }
-    }
+    };
 
     events();
-    {
-        let lock = seen2.lock().unwrap();
-        for (callsite, &count) in lock.iter() {
-            assert_eq!(
-                count, 1,
-                "callsite {:?} should have been seen 1 time (after second set of events)",
-                callsite
-            );
-        }
-    }
+    assert_seen(1);
+
+    events();
+    assert_seen(2);
 
     handle.assert_finished();
 }
