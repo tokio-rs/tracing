@@ -49,6 +49,10 @@ pub(crate) fn send_one_fd_to<P: AsRef<Path>>(
 
     addr.sun_family = AF_UNIX as _;
     unsafe {
+        #[allow(
+            clippy::unnecessary_cast,
+            reason = "sun_path is a [c_char; _], where c_char is u8 on some platforms and i8 on others, so we need to cast it in some places and not others."
+        )]
         std::ptr::copy_nonoverlapping(
             path_bytes.as_ptr(),
             addr.sun_path.as_mut_ptr() as *mut u8,

@@ -101,13 +101,13 @@ impl Parse for InstrumentArgs {
                 let target = input.parse::<StrArg<kw::target>>()?.value;
                 args.target = Some(target);
             } else if lookahead.peek(kw::parent) {
-                if args.target.is_some() {
+                if args.parent.is_some() {
                     return Err(input.error("expected only a single `parent` argument"));
                 }
                 let parent = input.parse::<ExprArg<kw::parent>>()?;
                 args.parent = Some(parent.value);
             } else if lookahead.peek(kw::follows_from) {
-                if args.target.is_some() {
+                if args.follows_from.is_some() {
                     return Err(input.error("expected only a single `follows_from` argument"));
                 }
                 let follows_from = input.parse::<ExprArg<kw::follows_from>>()?;

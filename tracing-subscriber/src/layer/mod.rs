@@ -901,7 +901,8 @@ where
 
     /// Called before [`on_event`], to determine if `on_event` should be called.
     ///
-    /// <div class="warning">
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="ignore" style="white-space:normal;font:inherit;">
     ///
     /// **Note**: This method determines whether an event is globally enabled,
     /// *not* whether the individual `Layer` will be notified about the
@@ -910,6 +911,7 @@ where
     /// notified about certain events but do not wish to globally disable them
     /// should ignore those events in their [on_event][Self::on_event].
     ///
+    /// </pre>
     /// </div>
     ///
     /// See [the trait-level documentation] for more information on filtering
@@ -1429,7 +1431,7 @@ feature! {
         /// multiple invocations of this method. However, note that changes in the
         /// maximum level will **only** be reflected after the callsite [`Interest`]
         /// cache is rebuilt, by calling the
-        /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+        /// [`tracing_core::callsite::rebuild_interest_cache`] function.
         /// Therefore, if the `Filter will change the value returned by this
         /// method, it is responsible for ensuring that
         /// [`rebuild_interest_cache`][rebuild] is called after the value of the max

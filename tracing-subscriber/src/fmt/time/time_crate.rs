@@ -6,18 +6,20 @@ use time::{format_description::well_known, formatting::Formattable, OffsetDateTi
 ///
 /// To format the current [UTC time] instead, use the [`UtcTime`] type.
 ///
-/// <div class="warning">
+/// <div class="example-wrap" style="display:inline-block">
+/// <pre class="compile_fail" style="white-space:normal;font:inherit;">
 ///
-/// **Warning**: The [`time` crate](https://docs.rs/time/0.3/time/) must be compiled
-/// with `--cfg unsound_local_offset` in order to use local timestamps. When this cfg
-/// is not enabled, local timestamps cannot be recorded, and events will be logged
-/// without timestamps.
+/// <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/"><code>time</code>
+/// crate</a> must be compiled with <code>--cfg unsound_local_offset</code> in order to use
+/// local timestamps. When this cfg is not enabled, local timestamps cannot be recorded, and
+/// events will be logged without timestamps.
 ///
 /// Alternatively, [`OffsetTime`] can log with a local offset if it is initialized early.
 ///
-/// See the [`time` documentation](https://docs.rs/time/0.3.4/time/#feature-flags)
-/// for more details.
+/// See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags"><code>time</code>
+/// documentation</a> for more details.
 ///
+/// </pre>
 /// </div>
 ///
 /// [local time]: time::OffsetDateTime::now_local
@@ -97,16 +99,19 @@ impl<F: Formattable> LocalTime<F> {
     /// type that implements the [`Formattable`] trait.
     ///
     ///
-    /// <div class="warning">
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
     ///
-    /// **Warning**: The [`time` crate](https://docs.rs/time/0.3/time/) must be compiled
-    /// with `--cfg unsound_local_offset` in order to use local timestamps. When this cfg
-    /// is not enabled, local timestamps cannot be recorded, and events will be logged
-    /// without timestamps.
+    /// <strong>Warning</strong>: The <a href = "https://docs.rs/time/0.3/time/">
+    /// <code>time</code> crate</a> must be compiled with <code>--cfg
+    /// unsound_local_offset</code> in order to use local timestamps. When this
+    /// cfg is not enabled, local timestamps cannot be recorded, and
+    /// events will be logged without timestamps.
     ///
-    /// See the [`time` documentation](https://docs.rs/time/0.3.4/time/#feature-flags)
-    /// for more details.
+    /// See the <a href="https://docs.rs/time/0.3.4/time/#feature-flags">
+    /// <code>time</code> documentation</a> for more details.
     ///
+    /// </pre>
     /// </div>
     ///
     /// Typically, the format will be a format description string, or one of the
