@@ -1,0 +1,11 @@
+error: expected only a single `parent` argument
+ --> tests/ui/fail/duplicate_args.rs:1:38
+  |
+1 | #[tracing::instrument(parent = None, parent = None)]
+  |                                      ^^^^^^
+
+error: expected only a single `follows_from` argument
+ --> tests/ui/fail/duplicate_args.rs:4:63
+  |
+4 | #[tracing::instrument(follows_from = [tracing::Span::none()], follows_from = [tracing::Span::none()])]
+  |                                                               ^^^^^^^^^^^^

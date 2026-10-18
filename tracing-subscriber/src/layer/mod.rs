@@ -911,7 +911,8 @@ where
     /// notified about certain events but do not wish to globally disable them
     /// should ignore those events in their [on_event][Self::on_event].
     ///
-    /// </pre></div>
+    /// </pre>
+    /// </div>
     ///
     /// See [the trait-level documentation] for more information on filtering
     /// with `Layer`s.
@@ -1430,7 +1431,7 @@ feature! {
         /// multiple invocations of this method. However, note that changes in the
         /// maximum level will **only** be reflected after the callsite [`Interest`]
         /// cache is rebuilt, by calling the
-        /// [`tracing_core::callsite::rebuild_interest_cache`][rebuild] function.
+        /// [`tracing_core::callsite::rebuild_interest_cache`] function.
         /// Therefore, if the `Filter will change the value returned by this
         /// method, it is responsible for ensuring that
         /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
