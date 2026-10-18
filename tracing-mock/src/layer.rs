@@ -76,7 +76,7 @@
 //!
 //! ```should_panic
 //! use tracing_mock::{expect, layer};
-//! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};  
+//! use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 //!
 //! let span = expect::span()
 //!     .named("my_span");
@@ -1104,7 +1104,7 @@ impl fmt::Debug for MockLayer {
         }
 
         if let Ok(current) = self.current.try_lock() {
-            s.field("current", &format_args!("{:?}", &current));
+            s.field("current", &format_args!("{:?}", current));
         } else {
             s.field("current", &format_args!("<locked>"));
         }

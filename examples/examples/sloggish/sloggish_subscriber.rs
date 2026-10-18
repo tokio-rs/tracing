@@ -256,7 +256,7 @@ impl Subscriber for SloggishSubscriber {
             "{timestamp} {level} {target}",
             timestamp = humantime::format_rfc3339_seconds(SystemTime::now()),
             level = ColorLevel(event.metadata().level()),
-            target = &event.metadata().target(),
+            target = event.metadata().target(),
         )
         .unwrap();
         let mut visitor = Event {
