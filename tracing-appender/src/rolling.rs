@@ -110,6 +110,7 @@ struct Inner {
     rotation: Rotation,
     next_date: AtomicUsize,
     max_files: Option<usize>,
+    file_mode: u32,
 }
 
 // === impl RollingFileAppender ===
@@ -201,6 +202,7 @@ impl RollingFileAppender {
             ref suffix,
             ref latest_symlink,
             ref max_files,
+            ref file_mode,
         } = builder;
         let directory = directory.as_ref().to_path_buf();
         let now = OffsetDateTime::now_utc();
@@ -212,6 +214,7 @@ impl RollingFileAppender {
             suffix.clone(),
             latest_symlink.clone(),
             *max_files,
+            *file_mode,
         )?;
         Ok(Self {
             state,
@@ -643,6 +646,7 @@ impl Inner {
         log_filename_suffix: Option<String>,
         log_latest_symlink_name: Option<String>,
         max_files: Option<usize>,
+        file_mode: u32,
     ) -> Result<(Self, RwLock<File>), builder::InitError> {
         let log_directory = directory.as_ref().to_path_buf();
         let date_format = rotation.date_format();
@@ -661,6 +665,7 @@ impl Inner {
             ),
             rotation,
             max_files,
+            file_mode,
         };
 
         if let Some(max_files) = max_files {
@@ -672,6 +677,7 @@ impl Inner {
             inner.log_directory.as_ref(),
             &filename,
             inner.log_latest_symlink_name.as_deref(),
+            inner.file_mode,
         )?);
         Ok((inner, writer))
     }
@@ -787,6 +793,7 @@ impl Inner {
             &self.log_directory,
             &filename,
             self.log_latest_symlink_name.as_deref(),
+            self.file_mode,
         ) {
             Ok(new_file) => {
                 if let Err(err) = file.flush() {
@@ -832,14 +839,30 @@ impl Inner {
     }
 }
 
+// The mode only applies when the file is created; existing files keep their
+// permissions.
+fn set_create_mode(open_options: &mut OpenOptions, mode: u32) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        open_options.mode(mode);
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (open_options, mode);
+    }
+}
+
 fn create_writer(
     directory: &Path,
     filename: &str,
     latest_symlink_name: Option<&str>,
+    file_mode: u32,
 ) -> Result<File, InitError> {
     let path = directory.join(filename);
     let mut open_options = OpenOptions::new();
     open_options.append(true).create(true);
+    set_create_mode(&mut open_options, file_mode);
 
     let new_file = open_options.open(&path).or_else(|_| {
         if let Some(parent) = path.parent() {
@@ -953,6 +976,31 @@ mod test {
         test_appender(Rotation::NEVER, "never.log");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn log_files_are_not_accessible_by_other_users() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let directory = tempfile::tempdir().expect("failed to create tempdir");
+        let mut appender = RollingFileAppender::builder()
+            .rotation(Rotation::NEVER)
+            .filename_prefix("mode.log")
+            .build(directory.path())
+            .expect("failed to initialize appender");
+        write_to_log(&mut appender, "Hello");
+
+        let log_file = std::fs::read_dir(directory.path())
+            .expect("failed to read log directory")
+            .map(|entry| entry.expect("failed to read directory entry").path())
+            .find(|path| path.is_file())
+            .expect("no log file was created");
+        let mode = std::fs::metadata(log_file)
+            .expect("failed to read log file metadata")
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o077, 0, "log file is accessible by group or others");
+    }
+
     #[test]
     fn test_rotations() {
         // per-minute basis
@@ -1054,6 +1102,7 @@ mod test {
                 test_case.suffix.map(ToString::to_string),
                 None,
                 None,
+                0o600,
             )
             .unwrap();
             let path = inner.join_date(&test_case.now);
@@ -1103,6 +1152,7 @@ mod test {
                 suffix.map(ToString::to_string),
                 None,
                 None,
+                0o600,
             )
             .unwrap();
             let path = inner.join_date(&now);
@@ -1216,6 +1266,7 @@ mod test {
             None,
             None,
             None,
+            0o600,
         )
         .unwrap();
 
@@ -1299,6 +1350,7 @@ mod test {
             None,
             None,
             Some(2),
+            0o600,
         )
         .unwrap();
 
@@ -1436,6 +1488,7 @@ mod test {
             None,
             Some("latest.log".to_string()),
             None,
+            0o600,
         )
         .unwrap();
 

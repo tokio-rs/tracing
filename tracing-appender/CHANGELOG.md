@@ -1,3 +1,17 @@
+# Unreleased
+
+### Added
+
+- Add `Builder::file_mode` to configure the permissions of newly created log
+  files on Unix.
+
+### Changed
+
+- Log files created by `RollingFileAppender` are now created with mode `0o600`
+  on Unix instead of the default `0o666 & !umask` (typically `0o644`), so they
+  are no longer readable by other users. Use `Builder::file_mode` to select a
+  different mode.
+
 # 0.2.5 (April 17, 2026)
 
 ### Added

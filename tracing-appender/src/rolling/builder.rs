@@ -12,6 +12,7 @@ pub struct Builder {
     pub(super) suffix: Option<String>,
     pub(super) latest_symlink: Option<String>,
     pub(super) max_files: Option<usize>,
+    pub(super) file_mode: u32,
 }
 
 /// Errors returned by [`Builder::build`].
@@ -43,11 +44,13 @@ impl Builder {
     /// | [`filename_prefix`] | `""` | By default, log file names will not have a prefix. |
     /// | [`filename_suffix`] | `""` | By default, log file names will not have a suffix. |
     /// | [`max_log_files`] | `None` | By default, there is no limit for maximum log file count. |
+    /// | [`file_mode`] | `0o600` | Unix only. By default, log files are readable and writable only by their owner. |
     ///
     /// [`rotation`]: Self::rotation
     /// [`filename_prefix`]: Self::filename_prefix
     /// [`filename_suffix`]: Self::filename_suffix
     /// [`max_log_files`]: Self::max_log_files
+    /// [`file_mode`]: Self::file_mode
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -56,6 +59,7 @@ impl Builder {
             suffix: None,
             latest_symlink: None,
             max_files: None,
+            file_mode: 0o600,
         }
     }
 
@@ -263,6 +267,38 @@ impl Builder {
         let latest_symlink = if name.is_empty() { None } else { Some(name) };
         Self {
             latest_symlink,
+            ..self
+        }
+    }
+
+    /// Sets the Unix file mode used when creating log files.
+    ///
+    /// The mode is applied only when a file is created; existing files keep
+    /// their current permissions. The process's umask is still applied, so the
+    /// resulting mode is `mode & !umask`. This has no effect on non-Unix
+    /// platforms.
+    ///
+    /// By default, this is `0o600`, so log files are readable and writable
+    /// only by their owner.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_appender::rolling::RollingFileAppender;
+    ///
+    /// # fn docs() {
+    /// let appender = RollingFileAppender::builder()
+    ///     .file_mode(0o640) // log files are readable by the owner's group
+    ///     // ...
+    ///     .build("/var/log/myapp")
+    ///     .expect("failed to initialize rolling file appender");
+    /// # drop(appender);
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn file_mode(self, mode: u32) -> Self {
+        Self {
+            file_mode: mode,
             ..self
         }
     }
