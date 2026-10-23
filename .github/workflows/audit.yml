@@ -1,8 +1,21 @@
 name: Security audit
 
 on:
+  push:
+    paths:
+      - '**/Cargo.toml'
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
   schedule:
     - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+  # `rustsec/audit-check` opens an issue when a scheduled run finds a
+  # vulnerability, and writes a check run for push and pull request events.
+  issues: write
+  checks: write
 
 env:
   # Disable incremental compilation.
@@ -30,6 +43,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/audit-check@v1
+      # This workspace does not commit a `Cargo.lock`, and
+      # `rustsec/audit-check` passes an explicit `--file ./Cargo.lock` to
+      # `cargo audit`, which does not generate a missing lockfile.
+      - run: cargo generate-lockfile
+      - uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

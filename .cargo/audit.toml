@@ -12,5 +12,43 @@ ignore = [
     #
     # TODO: when `tracing-futures` drops support for `tokio` 0.1, we can remove
     # the `ignore` for this warning, as we will no longer pull `net2`.
-    "RUSTSEC-2020-0016"
+    "RUSTSEC-2020-0016",
+
+    # The following advisories only affect the `tokio` 0.1 compatibility
+    # stack, which is pulled in by the optional dependencies of
+    # `tracing-futures` and by the examples. It is never enabled for users of
+    # a published crate unless they explicitly opt into the legacy `futures`
+    # 0.1 / `tokio` 0.1 support, which cannot be upgraded without breaking
+    # that API. Some of these are soundness or data-race advisories, and they
+    # remain reachable through that opt-in feature until it is removed.
+    "RUSTSEC-2021-0124", # tokio 0.1: data race on oneshot channel
+    "RUSTSEC-2022-0041", # crossbeam-utils 0.7: AtomicCell unsoundness on 32-bit
+    "RUSTSEC-2020-0070", # lock_api 0.3: lock guard data race
+    "RUSTSEC-2023-0045", # memoffset 0.5: uninitialized memory read
+    "RUSTSEC-2026-0050", # tokio-uds is unmaintained
+    "RUSTSEC-2026-0051", # tokio-threadpool is unmaintained
+    "RUSTSEC-2026-0052", # tokio-sync is unmaintained
+    "RUSTSEC-2026-0054", # tokio-current-thread is unmaintained
+    "RUSTSEC-2026-0056", # tokio-codec is unmaintained
+    "RUSTSEC-2026-0057", # tokio-reactor is unmaintained
+    "RUSTSEC-2026-0058", # tokio-io is unmaintained
+    "RUSTSEC-2026-0059", # tokio-tcp is unmaintained
+    "RUSTSEC-2026-0060", # tokio-timer is unmaintained
+    "RUSTSEC-2026-0061", # tokio-fs is unmaintained
+    "RUSTSEC-2026-0063", # tokio-executor is unmaintained
+    "RUSTSEC-2026-0064", # tokio-udp is unmaintained
+
+    # `lru` 0.16 is used by `tracing-log`'s `interest-cache` feature, and `lru`
+    # 0.12 by the `ratatui` dev-dependency of the examples. Fixing this
+    # advisory requires `lru` 0.18, which needs Rust 1.85; the workspace MSRV
+    # is 1.71. The advisory only concerns `LruCache::pop()`, which the interest
+    # cache never calls.
+    "RUSTSEC-2026-0253", # lru: use-after-free in pop()
+
+    # These advisories only affect dev-dependencies of the `examples` crate.
+    # Upgrading `hyper` to 1.x or `ratatui` to 0.30 requires rewriting the
+    # examples against the new APIs, so they are not upgraded here.
+    "RUSTSEC-2026-0258", # h2 0.3 via hyper 0.14: unbounded empty DATA frames
+    "RUSTSEC-2026-0002", # lru 0.12 via ratatui 0.29: IterMut unsoundness
+    "RUSTSEC-2024-0436", # paste is unmaintained, via ratatui 0.29
 ]
