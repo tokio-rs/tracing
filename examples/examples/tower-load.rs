@@ -30,7 +30,7 @@ use futures::{
 };
 use http::{header, Method, Request, Response, StatusCode};
 use hyper::{server::conn::AddrStream, Body, Client, Server};
-use rand::Rng;
+use rand::RngExt;
 use std::{
     error::Error,
     fmt,
@@ -304,9 +304,9 @@ impl std::error::Error for WrongMethod {}
 
 fn gen_uri(authority: &str) -> (usize, String) {
     static ALPHABET: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let mut rng = rand::thread_rng();
-    let idx = rng.gen_range(0, ALPHABET.len() + 1);
-    let len = rng.gen_range(0, 26);
+    let mut rng = rand::rng();
+    let idx = rng.random_range(0..ALPHABET.len() + 1);
+    let len = rng.random_range(0..26);
     let letter = ALPHABET.get(idx..=idx).unwrap_or("");
     (len, format!("http://{}/{}", authority, letter))
 }
@@ -326,7 +326,7 @@ async fn load_gen(addr: SocketAddr) -> Result<(), Err> {
         let mut svc = svc.clone().ready_oneshot().await?;
 
         let f = async move {
-            let sleep = rand::thread_rng().gen_range(0, 25);
+            let sleep = rand::rng().random_range(0..25);
             time::sleep(Duration::from_millis(sleep)).await;
 
             let (len, uri) = gen_uri(&authority);

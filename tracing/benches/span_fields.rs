@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use tracing::{span, Level};
 
 mod shared;
@@ -14,7 +15,7 @@ fn bench(c: &mut Criterion) {
                 baz = 3,
                 quuux = tracing::field::debug(0.99)
             );
-            criterion::black_box(span)
+            black_box(span)
         })
     });
 }

@@ -1,3 +1,12 @@
+# Unreleased
+
+### Changed
+
+- Updated the `lru` dependency used by the `interest-cache` feature to 0.16.4,
+  fixing [RUSTSEC-2026-0002].
+
+[RUSTSEC-2026-0002]: https://rustsec.org/advisories/RUSTSEC-2026-0002.html
+
 # 0.2.0 (October 24th, 2023)
 
 This release contains two breaking changes: the removal of the `env_logger`

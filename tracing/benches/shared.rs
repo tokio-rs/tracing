@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use criterion::{black_box, measurement::WallTime, Bencher};
+use criterion::{measurement::WallTime, Bencher};
+use std::hint::black_box;
 use tracing::{field, span, Event, Id, Metadata};
 
 use std::{

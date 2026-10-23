@@ -4,6 +4,7 @@ use lru::LruCache;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::hash::Hasher;
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
@@ -90,7 +91,9 @@ struct Key {
 struct State {
     min_verbosity: Level,
     epoch: usize,
-    cache: LruCache<Key, u64, ahash::RandomState>,
+    // A zero-sized cache is represented by `None`, as `LruCache` cannot be
+    // constructed with a capacity of zero.
+    cache: Option<LruCache<Key, u64, ahash::RandomState>>,
 }
 
 impl State {
@@ -98,7 +101,8 @@ impl State {
         State {
             epoch,
             min_verbosity: config.min_verbosity,
-            cache: LruCache::new(config.lru_cache_size),
+            cache: NonZeroUsize::new(config.lru_cache_size)
+                .map(|cap| LruCache::with_hasher(cap, ahash::RandomState::new())),
         }
     }
 }
@@ -169,7 +173,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         }
 
         let level = metadata.level();
-        if state.cache.cap() == 0 || level < state.min_verbosity {
+        if state.cache.is_none() || level < state.min_verbosity {
             return callback();
         }
 
@@ -201,7 +205,7 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
             level_and_length: level as usize | target.len().wrapping_shl(3),
         };
 
-        if let Some(&cached) = state.cache.get(&key) {
+        if let Some(&cached) = state.cache.as_mut().and_then(|cache| cache.get(&key)) {
             // And here we make sure that the target actually matches.
             //
             // This is just a hash of the target string, so theoretically we're not guaranteed
@@ -223,7 +227,9 @@ pub(crate) fn try_cache(metadata: &Metadata<'_>, callback: impl FnOnce() -> bool
         }
 
         let interest = callback();
-        state.cache.put(key, target_hash | interest as u64);
+        if let Some(cache) = state.cache.as_mut() {
+            cache.put(key, target_hash | interest as u64);
+        }
 
         interest
     })

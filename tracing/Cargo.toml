@@ -31,7 +31,7 @@ tracing-attributes = { path = "../tracing-attributes", version = "0.1.31", optio
 pin-project-lite = "0.2.9"
 
 [dev-dependencies]
-criterion = { version = "0.3.6", default-features = false }
+criterion = { version = "0.8.2", default-features = false }
 futures = { version = "0.3.21", default-features = false }
 log = "0.4.17"
 tracing-mock = { path = "../tracing-mock" }
