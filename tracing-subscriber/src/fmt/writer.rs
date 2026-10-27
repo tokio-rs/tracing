@@ -670,11 +670,10 @@ pub struct ArcWriter<W>(Arc<W>);
 /// A bridge between `fmt::Write` and `io::Write`.
 ///
 /// This is used by the timestamp formatting implementation for the `time`
-/// crate and by the JSON formatter. In both cases, this is needed because
-/// `tracing-subscriber`'s `FormatEvent`/`FormatTime` traits expect a
-/// `fmt::Write` implementation, while `serde_json::Serializer` and `time`'s
-/// `format_into` methods expect an `io::Write`.
-#[cfg(any(feature = "json", feature = "time"))]
+/// crate. This is needed because `tracing-subscriber`'s `FormatTime` trait
+/// expects a `fmt::Write` implementation, while `time`'s `format_into`
+/// methods expect an `io::Write`.
+#[cfg(feature = "time")]
 pub(in crate::fmt) struct WriteAdaptor<'a> {
     fmt_write: &'a mut dyn fmt::Write,
 }
@@ -1186,13 +1185,13 @@ where
 
 // === impl WriteAdaptor ===
 
-#[cfg(any(feature = "json", feature = "time"))]
+#[cfg(feature = "time")]
 impl<'a> WriteAdaptor<'a> {
     pub(in crate::fmt) fn new(fmt_write: &'a mut dyn fmt::Write) -> Self {
         Self { fmt_write }
     }
 }
-#[cfg(any(feature = "json", feature = "time"))]
+#[cfg(feature = "time")]
 impl io::Write for WriteAdaptor<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s =
@@ -1210,7 +1209,7 @@ impl io::Write for WriteAdaptor<'_> {
     }
 }
 
-#[cfg(any(feature = "json", feature = "time"))]
+#[cfg(feature = "time")]
 impl fmt::Debug for WriteAdaptor<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("WriteAdaptor { .. }")
