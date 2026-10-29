@@ -797,14 +797,14 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+impl<T, F, W, E> SubscriberBuilder<format::JsonFields, format::Format<format::Json<E>, T>, F, W> {
     /// Sets the json subscriber being built to flatten event metadata.
     ///
     /// See [`format::Json`] for details.
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json<E>, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.flatten_event(flatten_event),
@@ -818,7 +818,7 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json<E>, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_current_span(display_current_span),
@@ -832,10 +832,25 @@ impl<T, F, W> SubscriberBuilder<format::JsonFields, format::Format<format::Json,
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json, T>, F, W> {
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json<E>, T>, F, W> {
         SubscriberBuilder {
             filter: self.filter,
             inner: self.inner.with_span_list(display_span_list),
+        }
+    }
+
+    /// Sets an [`ExtraFields`](format::ExtraFields) implementation that will
+    /// be called for each event to inject additional key-value entries into
+    /// the JSON output.
+    ///
+    /// See [`format::Json::with_extra_fields`] for details.
+    pub fn with_extra_fields<E2: format::ExtraFields>(
+        self,
+        extra_fields: E2,
+    ) -> SubscriberBuilder<format::JsonFields, format::Format<format::Json<E2>, T>, F, W> {
+        SubscriberBuilder {
+            filter: self.filter,
+            inner: self.inner.with_extra_fields(extra_fields),
         }
     }
 }

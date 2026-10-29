@@ -638,14 +638,14 @@ where
 
 #[cfg(feature = "json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+impl<S, T, W, E> Layer<S, format::JsonFields, format::Format<format::Json<E>, T>, W> {
     /// Sets the JSON layer being built to flatten event metadata.
     ///
     /// See [`format::Json`][super::format::Json]
     pub fn flatten_event(
         self,
         flatten_event: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json<E>, T>, W> {
         Layer {
             fmt_event: self.fmt_event.flatten_event(flatten_event),
             fmt_fields: format::JsonFields::new(),
@@ -660,7 +660,7 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     pub fn with_current_span(
         self,
         display_current_span: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json<E>, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_current_span(display_current_span),
             fmt_fields: format::JsonFields::new(),
@@ -675,11 +675,32 @@ impl<S, T, W> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
     pub fn with_span_list(
         self,
         display_span_list: bool,
-    ) -> Layer<S, format::JsonFields, format::Format<format::Json, T>, W> {
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json<E>, T>, W> {
         Layer {
             fmt_event: self.fmt_event.with_span_list(display_span_list),
             fmt_fields: format::JsonFields::new(),
             ..self
+        }
+    }
+
+    /// Sets an [`ExtraFields`](format::ExtraFields) implementation that will
+    /// be called for each event to inject additional key-value entries into
+    /// the JSON output.
+    ///
+    /// See [`format::Json::with_extra_fields`] for details.
+    pub fn with_extra_fields<E2: format::ExtraFields>(
+        self,
+        extra_fields: E2,
+    ) -> Layer<S, format::JsonFields, format::Format<format::Json<E2>, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_extra_fields(extra_fields),
+            fmt_fields: format::JsonFields::new(),
+            fmt_span: self.fmt_span,
+            make_writer: self.make_writer,
+            is_ansi: self.is_ansi,
+            log_internal_errors: self.log_internal_errors,
+            _inner: self._inner,
+            ansi_sanitization: self.ansi_sanitization,
         }
     }
 }
