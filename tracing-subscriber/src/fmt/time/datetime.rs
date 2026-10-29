@@ -221,24 +221,37 @@ pub(crate) struct DateTime {
 
 impl fmt::Display for DateTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.year > 9999 {
-            write!(f, "+{}", self.year)?;
-        } else if self.year < 0 {
-            write!(f, "{:05}", self.year)?;
+        // This is printed for every event by default, and `write!` with
+        // padded integers was most of its cost, so fill in the digits by hand.
+        let mut buf = *b"0000-00-00T00:00:00.000000Z";
+        let start = if (0..=9999).contains(&self.year) {
+            write_digits(&mut buf[..4], self.year as u32);
+            0
         } else {
-            write!(f, "{:04}", self.year)?;
-        }
+            if self.year > 9999 {
+                write!(f, "+{}", self.year)?;
+            } else {
+                write!(f, "{:05}", self.year)?;
+            }
+            4
+        };
 
-        write!(
-            f,
-            "-{:02}-{:02}T{:02}:{:02}:{:02}.{:06}Z",
-            self.month,
-            self.day,
-            self.hour,
-            self.minute,
-            self.second,
-            self.nanos / 1_000
-        )
+        write_digits(&mut buf[5..7], self.month.into());
+        write_digits(&mut buf[8..10], self.day.into());
+        write_digits(&mut buf[11..13], self.hour.into());
+        write_digits(&mut buf[14..16], self.minute.into());
+        write_digits(&mut buf[17..19], self.second.into());
+        write_digits(&mut buf[20..26], self.nanos / 1_000);
+
+        f.write_str(core::str::from_utf8(&buf[start..]).map_err(|_| fmt::Error)?)
+    }
+}
+
+/// Writes `n` as zero-padded decimal digits filling all of `buf`.
+fn write_digits(buf: &mut [u8], mut n: u32) {
+    for digit in buf.iter_mut().rev() {
+        *digit = b'0' + (n % 10) as u8;
+        n /= 10;
     }
 }
 
@@ -402,6 +415,8 @@ mod tests {
         case("1900-01-01T00:00:00.000000Z", -2208988800, 0);
         case("1899-12-31T23:59:59.000000Z", -2208988801, 0);
         case("2345-06-07T08:09:01.000000Z", 11847456541, 0);
+        case("9999-12-31T23:59:59.999999Z", 253402300799, 999_999);
+        case("+10000-01-01T00:00:00.000000Z", 253402300800, 0);
 
         // Skipping pre-1601 dates on Windows: as of Rust 1.94, SystemTime
         // subtraction panics when the result would be before the Windows
