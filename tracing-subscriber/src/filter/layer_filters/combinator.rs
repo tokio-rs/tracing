@@ -133,8 +133,13 @@ where
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
-        // If either hint is `None`, return `None`. Otherwise, return the most restrictive.
-        cmp::min(self.a.max_level_hint(), self.b.max_level_hint())
+        // An `And` never enables more than either of its filters, so a hint
+        // on one side bounds the whole filter even when the other has none.
+        // If both have a hint, return the most restrictive.
+        match (self.a.max_level_hint(), self.b.max_level_hint()) {
+            (Some(a), Some(b)) => Some(cmp::min(a, b)),
+            (hint, None) | (None, hint) => hint,
+        }
     }
 
     #[inline]
@@ -538,5 +543,59 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Not").field(&self.a).finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        filter::{filter_fn, FilterExt, LevelFilter},
+        layer::Filter,
+        registry::Registry,
+    };
+
+    fn hint<F: Filter<Registry>>(filter: F) -> Option<LevelFilter> {
+        filter.max_level_hint()
+    }
+
+    #[test]
+    fn and_keeps_the_hint_of_one_side() {
+        let unhinted = || filter_fn(|meta| meta.is_event());
+        assert_eq!(
+            hint(LevelFilter::INFO.and(unhinted())),
+            Some(LevelFilter::INFO)
+        );
+        assert_eq!(
+            hint(unhinted().and(LevelFilter::INFO)),
+            Some(LevelFilter::INFO)
+        );
+    }
+
+    #[test]
+    fn and_takes_the_most_restrictive_hint() {
+        assert_eq!(
+            hint(LevelFilter::INFO.and(LevelFilter::DEBUG)),
+            Some(LevelFilter::INFO)
+        );
+        assert_eq!(
+            hint(LevelFilter::DEBUG.and(LevelFilter::OFF)),
+            Some(LevelFilter::OFF)
+        );
+    }
+
+    #[test]
+    fn and_without_hints_has_no_hint() {
+        let unhinted = || filter_fn(|meta| meta.is_event());
+        assert_eq!(hint(unhinted().and(unhinted())), None);
+    }
+
+    #[test]
+    fn or_without_a_hint_on_one_side_has_no_hint() {
+        let unhinted = || filter_fn(|meta| meta.is_event());
+        assert_eq!(hint(LevelFilter::INFO.or(unhinted())), None);
+        assert_eq!(
+            hint(LevelFilter::INFO.or(LevelFilter::DEBUG)),
+            Some(LevelFilter::DEBUG)
+        );
     }
 }
