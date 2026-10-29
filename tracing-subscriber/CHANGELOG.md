@@ -1,3 +1,11 @@
+# Unreleased
+
+### Added
+
+- Add an opt-in field formatter wrapper for truncating long field values ([#2474])
+
+[#2474]: https://github.com/tokio-rs/tracing/issues/2474
+
 # 0.3.23 (March 13, 2026)
 
 ### Fixed
