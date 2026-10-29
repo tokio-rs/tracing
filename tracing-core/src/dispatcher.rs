@@ -466,6 +466,18 @@ impl Dispatch {
         }
     }
 
+    /// Returns `true` if this is the static no-op dispatch returned by
+    /// [`Dispatch::none`], which is also what [`get_default`] yields while no
+    /// dispatcher has been set.
+    #[inline]
+    #[cfg(feature = "std")]
+    fn is_global_no_subscriber(&self) -> bool {
+        match self.subscriber {
+            Kind::Global(subscriber) => subscriber.is::<NoSubscriber>(),
+            Kind::Scoped(_) => false,
+        }
+    }
+
     /// Returns a `Dispatch` that forwards to the given [`Subscriber`].
     ///
     /// [`Subscriber`]: super::subscriber::Subscriber
@@ -839,6 +851,11 @@ impl State {
     /// the previous value.
     #[inline]
     fn set_default(new_dispatch: Dispatch) -> DefaultGuard {
+        // Setting the no-op dispatch that `get_default` hands out while no
+        // dispatcher has been set (e.g. to propagate "the current default" to
+        // a worker thread) does not set a dispatcher, so it must not turn off
+        // the `log` fallback for the whole process.
+        let is_none = new_dispatch.is_global_no_subscriber();
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
@@ -846,7 +863,9 @@ impl State {
             })
             .ok()
             .flatten();
-        EXISTS.store(true, Ordering::Release);
+        if !is_none {
+            EXISTS.store(true, Ordering::Release);
+        }
         SCOPED_COUNT.fetch_add(1, Ordering::Release);
         DefaultGuard(prior)
     }
