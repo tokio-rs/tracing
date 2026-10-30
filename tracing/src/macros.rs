@@ -3219,17 +3219,111 @@ macro_rules! level_to_log {
     };
 }
 
+/// This is a replacement for `::core::stringify!` that removes the `r#` raw identifier prefix so
+/// that you can do something like `info!(future.r#await = "whatever")` and it'll print out
+/// `future.await = "whatever"`
+///
+/// To do this, we just have all the raw identifiers as the first arms in the macro to directly turn
+/// them into de-`r#`-ed strs. We specifically don't match `crate`, `self`, `Self`, and `super`
+/// since they can't be used as raw identifiers (as proven by this doc test):
+///
+/// ```rust,compile_fail
+/// # fn main() {
+///     tracing::info!(r#crate = "nope!");
+/// # }
+/// ```
+///
+/// ```rust,compile_fail
+/// # fn main() {
+///     tracing::info!(r#self = "nope!");
+/// # }
+/// ```
+///
+/// ```rust,compile_fail
+/// # fn main() {
+///     tracing::info!(r#Self = "nope!");
+/// # }
+/// ```
+///
+/// ```rust,compile_fail
+/// # fn main() {
+///     tracing::info!(r#super = "nope!");
+/// # }
+/// ```
+///
+/// and, to show that it works:
+///
+/// ```rust
+/// # fn main() {
+///     tracing::info!(what.r#await.is.r#ref.r#ref = "yes!");
+/// # }
+/// ```
+///
+/// You can find more information about the reserved identifiers here:
+/// <https://doc.rust-lang.org/reference/identifiers.html#grammar-RAW_IDENTIFIER>
+/// <https://doc.rust-lang.org/reference/keywords.html#r-lex.keywords.strict>
+/// <https://doc.rust-lang.org/reference/keywords.html#r-lex.keywords.reserved>
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __tracing_stringify {
-    ($($k:ident).+) => {{
-        const NAME: $crate::__macro_support::FieldName<{
-            $crate::__macro_support::FieldName::len($crate::__macro_support::stringify!($($k).+))
-        }> = $crate::__macro_support::FieldName::new($crate::__macro_support::stringify!($($k).+));
-        NAME.as_str()
-    }};
+    (_) => { "_" };
+    (r#as) => { "as" };
+    (r#async) => { "async" };
+    (r#await) => { "await" };
+    (r#break) => { "break" };
+    (r#const) => { "const" };
+    (r#continue) => { "continue" };
+    // crate cannot be a raw identifier
+    (r#dyn) => { "dyn" };
+    (r#else) => { "else" };
+    (r#enum) => { "enum" };
+    (r#extern) => { "extern" };
+    (r#false) => { "false" };
+    (r#fn) => { "fn" };
+    (r#for) => { "for" };
+    (r#if) => { "if" };
+    (r#impl) => { "impl" };
+    (r#in) => { "in" };
+    (r#let) => { "let" };
+    (r#loop) => { "loop" };
+    (r#match) => { "match" };
+    (r#mod) => { "mod" };
+    (r#move) => { "move" };
+    (r#mut) => { "mut" };
+    (r#pub) => { "pub" };
+    (r#ref) => { "ref" };
+    (r#return) => { "return" };
+    // self cannot be a raw identifier
+    // Self cannot be a raw identifier
+    (r#static) => { "static" };
+    (r#struct) => { "struct" };
+    // super cannot be a raw identifier
+    (r#trait) => { "trait" };
+    (r#true) => { "true" };
+    (r#type) => { "type" };
+    (r#unsafe) => { "unsafe" };
+    (r#use) => { "use" };
+    (r#where) => { "where" };
+    (r#while) => { "while" };
+    (r#abstract) => { "abstract" };
+    (r#become) => { "become" };
+    (r#box) => { "box" };
+    (r#do) => { "do" };
+    (r#final) => { "final" };
+    (r#gen) => { "gen" };
+    (r#macro) => { "macro" };
+    (r#override) => { "override" };
+    (r#priv) => { "priv" };
+    (r#try) => { "try" };
+    (r#typeof) => { "typeof" };
+    (r#unsized) => { "unsized" };
+    (r#virtual) => { "virtual" };
+    (r#yield) => { "yield" };
+    ($k:ident) => { $crate::__macro_support::stringify!($k) };
+    ($k:ident$(.$ks:ident)+) => {
+        $crate::__macro_support::concat!($crate::__tracing_stringify!($k), $(".", $crate::__tracing_stringify!($ks),)+)
+    }
 }
-
 #[cfg(not(feature = "log"))]
 #[doc(hidden)]
 #[macro_export]
