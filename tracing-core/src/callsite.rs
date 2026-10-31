@@ -406,7 +406,7 @@ impl Callsites {
     /// This also re-computes the max level hint.
     fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder<'_>) {
         let mut max_level = LevelFilter::OFF;
-        dispatchers.for_each(|dispatch| {
+        let consulted = dispatchers.for_each(|dispatch| {
             // If the subscriber did not provide a max level hint, assume
             // that it may enable every level.
             let level_hint = dispatch.max_level_hint().unwrap_or(LevelFilter::TRACE);
@@ -418,7 +418,13 @@ impl Callsites {
         self.for_each(|callsite| {
             rebuild_callsite_interest(callsite, &dispatchers);
         });
-        LevelFilter::set_max(max_level);
+        dispatchers.with_current(|current| {
+            LevelFilter::set_max(if current && consulted {
+                max_level
+            } else {
+                LevelFilter::TRACE
+            });
+        });
     }
 
     /// Push a `dyn Callsite` trait object to the callsite registry.
@@ -494,7 +500,7 @@ fn rebuild_callsite_interest(
     let meta = callsite.metadata();
 
     let mut interest = None;
-    dispatchers.for_each(|dispatch| {
+    let consulted = dispatchers.for_each(|dispatch| {
         let this_interest = dispatch.register_callsite(meta);
         interest = match interest.take() {
             None => Some(this_interest),
@@ -503,7 +509,13 @@ fn rebuild_callsite_interest(
     });
 
     let interest = interest.unwrap_or_else(Interest::never);
-    callsite.set_interest(interest)
+    dispatchers.with_current(|current| {
+        callsite.set_interest(if current && consulted {
+            interest
+        } else {
+            Interest::sometimes()
+        });
+    });
 }
 
 mod private {
@@ -528,7 +540,9 @@ mod dispatchers {
     static LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
 
     pub(super) enum Rebuilder<'a> {
-        JustOne,
+        JustOne(dispatcher::Dispatch),
+        Empty,
+        Unavailable,
         Read(RwLockReadGuard<'a, Vec<dispatcher::Registrar>>),
         Write(RwLockWriteGuard<'a, Vec<dispatcher::Registrar>>),
     }
@@ -542,7 +556,16 @@ mod dispatchers {
 
         pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
             if self.has_just_one.load(Ordering::SeqCst) {
-                return Rebuilder::JustOne;
+                return match LOCKED_DISPATCHERS.try_read() {
+                    Ok(vec) if vec.len() <= 1 => {
+                        match vec.first().and_then(dispatcher::Registrar::upgrade) {
+                            Some(dispatch) => Rebuilder::JustOne(dispatch),
+                            None => Rebuilder::Empty,
+                        }
+                    }
+                    Ok(vec) => Rebuilder::Read(vec),
+                    Err(_) => Rebuilder::Unavailable,
+                };
             }
             Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
         }
@@ -558,17 +581,34 @@ mod dispatchers {
     }
 
     impl Rebuilder<'_> {
-        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
+        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) -> bool {
             let iter = match self {
-                Rebuilder::JustOne => {
-                    dispatcher::get_default(f);
-                    return;
+                Rebuilder::JustOne(dispatch) => {
+                    return dispatcher::get_current(|_| f(dispatch)).is_some();
                 }
+                Rebuilder::Empty => return true,
+                Rebuilder::Unavailable => return false,
                 Rebuilder::Read(vec) => vec.iter(),
                 Rebuilder::Write(vec) => vec.iter(),
             };
             iter.filter_map(dispatcher::Registrar::upgrade)
-                .for_each(|dispatch| f(&dispatch))
+                .for_each(|dispatch| f(&dispatch));
+            true
+        }
+
+        pub(super) fn with_current(&self, f: impl FnOnce(bool)) {
+            match self {
+                Rebuilder::JustOne(_) => match LOCKED_DISPATCHERS.try_read() {
+                    Ok(vec) => f(vec.len() == 1),
+                    Err(_) => f(false),
+                },
+                Rebuilder::Empty => match LOCKED_DISPATCHERS.try_read() {
+                    Ok(vec) => f(vec.iter().all(|d| d.upgrade().is_none())),
+                    Err(_) => f(false),
+                },
+                Rebuilder::Unavailable => f(false),
+                _ => f(true),
+            }
         }
     }
 }
@@ -600,7 +640,12 @@ mod dispatchers {
 
     impl Rebuilder<'_> {
         #[inline]
-        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
+        pub(super) fn with_current(&self, f: impl FnOnce(bool)) {
+            f(true)
+        }
+
+        #[inline]
+        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) -> bool {
             if let Some(dispatch) = self.0 {
                 // we are rebuilding the interest cache because a new dispatcher
                 // is about to be set. on `no_std`, this should only happen
@@ -612,6 +657,7 @@ mod dispatchers {
                 // on no_std, there can only ever be one dispatcher
                 dispatcher::get_default(f)
             }
+            true
         }
     }
 }
