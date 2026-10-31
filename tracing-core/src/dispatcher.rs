@@ -376,9 +376,10 @@ impl SetGlobalDefaultError {
 ///
 /// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(feature = "std")]
-pub fn get_default<T, F>(mut f: F) -> T
+#[inline(always)]
+pub fn get_default<T, F>(f: F) -> T
 where
-    F: FnMut(&Dispatch) -> T,
+    F: FnOnce(&Dispatch) -> T,
 {
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped dispatcher has been set; just use the global
@@ -386,6 +387,25 @@ where
         return f(get_global());
     }
 
+    get_default_slow(into_mut(f))
+}
+
+// Converts a FnOnce into a FnMut that panics if called more than once.
+// Used internally to bridge get_default (FnOnce) with get_default_slow (FnMut).
+fn into_mut<T, F>(f: F) -> impl FnMut(&Dispatch) -> T
+where
+    F: FnOnce(&Dispatch) -> T,
+{
+    let mut f = Some(f);
+    move |d| f.take().expect("closure called more than once")(d)
+}
+
+#[cfg(feature = "std")]
+#[inline(never)]
+fn get_default_slow<T, F>(mut f: F) -> T
+where
+    F: FnMut(&Dispatch) -> T,
+{
     CURRENT_STATE
         .try_with(|state| {
             if let Some(entered) = state.enter() {
@@ -435,11 +455,11 @@ pub fn get_current<T>(f: impl FnOnce(&Dispatch) -> T) -> Option<T> {
 ///
 /// [dispatcher]: super::dispatcher::Dispatch
 #[cfg(not(feature = "std"))]
-pub fn get_default<T, F>(mut f: F) -> T
+pub fn get_default<T, F>(f: F) -> T
 where
-    F: FnMut(&Dispatch) -> T,
+    F: FnOnce(&Dispatch) -> T,
 {
-    f(&get_global())
+    f(get_global())
 }
 
 #[inline]
