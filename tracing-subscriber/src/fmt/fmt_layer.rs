@@ -570,6 +570,20 @@ where
         }
     }
 
+    /// Sets whether or not the [tokio task ID] of the current tokio task is displayed
+    /// when formatting events.
+    ///
+    /// [tokio task ID]: tokio::task::Id
+    pub fn with_tokio_task_ids(
+        self,
+        display_tokio_task_id: bool,
+    ) -> Layer<S, N, format::Format<L, T>, W> {
+        Layer {
+            fmt_event: self.fmt_event.with_tokio_task_ids(display_tokio_task_id),
+            ..self
+        }
+    }
+
     /// Sets the layer being built to use a [less verbose formatter][super::format::Compact].
     pub fn compact(self) -> Layer<S, N, format::Format<format::Compact, T>, W>
     where
