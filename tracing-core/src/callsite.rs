@@ -404,7 +404,7 @@ impl Callsites {
     /// Rebuild `Interest`s for all callsites in the registry.
     ///
     /// This also re-computes the max level hint.
-    fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder<'_>) {
+    fn rebuild_interest(&self, dispatchers: dispatchers::Rebuilder) {
         let mut max_level = LevelFilter::OFF;
         dispatchers.for_each(|dispatch| {
             // If the subscriber did not provide a max level hint, assume
@@ -418,7 +418,13 @@ impl Callsites {
         self.for_each(|callsite| {
             rebuild_callsite_interest(callsite, &dispatchers);
         });
-        LevelFilter::set_max(max_level);
+        dispatchers.with_current(|current| {
+            LevelFilter::set_max(if current {
+                max_level
+            } else {
+                LevelFilter::TRACE
+            });
+        });
     }
 
     /// Push a `dyn Callsite` trait object to the callsite registry.
@@ -489,21 +495,28 @@ pub(crate) fn register_dispatch(dispatch: &Dispatch) {
 
 fn rebuild_callsite_interest(
     callsite: &'static dyn Callsite,
-    dispatchers: &dispatchers::Rebuilder<'_>,
+    dispatchers: &dispatchers::Rebuilder,
 ) {
     let meta = callsite.metadata();
 
-    let mut interest = None;
-    dispatchers.for_each(|dispatch| {
-        let this_interest = dispatch.register_callsite(meta);
-        interest = match interest.take() {
-            None => Some(this_interest),
-            Some(that_interest) => Some(that_interest.and(this_interest)),
-        }
+    let interest = dispatchers::enter().map(|_registering| {
+        let mut interest = None;
+        dispatchers.for_each(|dispatch| {
+            let this_interest = dispatch.register_callsite(meta);
+            interest = match interest.take() {
+                None => Some(this_interest),
+                Some(that_interest) => Some(that_interest.and(this_interest)),
+            }
+        });
+        interest.unwrap_or_else(Interest::never)
     });
 
-    let interest = interest.unwrap_or_else(Interest::never);
-    callsite.set_interest(interest)
+    dispatchers.with_current(|current| {
+        callsite.set_interest(match interest {
+            Some(interest) if current => interest,
+            _ => Interest::sometimes(),
+        });
+    });
 }
 
 mod private {
@@ -516,59 +529,83 @@ mod private {
 mod dispatchers {
     use crate::dispatcher;
     use alloc::vec::Vec;
-    use std::sync::{
-        atomic::{AtomicBool, Ordering},
-        RwLock, RwLockReadGuard, RwLockWriteGuard,
-    };
+    use std::{cell::Cell, sync::RwLock};
 
-    pub(super) struct Dispatchers {
-        has_just_one: AtomicBool,
+    pub(super) struct Dispatchers(());
+
+    struct Registry {
+        generation: u64,
+        dispatchers: Vec<dispatcher::Registrar>,
     }
 
-    static LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
+    pub(super) struct Rebuilder {
+        generation: u64,
+        dispatchers: Vec<dispatcher::Dispatch>,
+    }
 
-    pub(super) enum Rebuilder<'a> {
-        JustOne,
-        Read(RwLockReadGuard<'a, Vec<dispatcher::Registrar>>),
-        Write(RwLockWriteGuard<'a, Vec<dispatcher::Registrar>>),
+    pub(super) struct Registering(());
+
+    static REGISTRY: RwLock<Registry> = RwLock::new(Registry {
+        generation: 0,
+        dispatchers: Vec::new(),
+    });
+
+    std::thread_local! {
+        static REGISTERING: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(super) fn enter() -> Option<Registering> {
+        match REGISTERING.try_with(|registering| registering.replace(true)) {
+            Ok(false) => Some(Registering(())),
+            _ => None,
+        }
     }
 
     impl Dispatchers {
         pub(super) const fn new() -> Self {
-            Self {
-                has_just_one: AtomicBool::new(true),
-            }
+            Self(())
         }
 
-        pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
-            if self.has_just_one.load(Ordering::SeqCst) {
-                return Rebuilder::JustOne;
-            }
-            Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
+        pub(super) fn rebuilder(&self) -> Rebuilder {
+            REGISTRY.read().unwrap().snapshot()
         }
 
-        pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder<'_> {
-            let mut dispatchers = LOCKED_DISPATCHERS.write().unwrap();
-            dispatchers.retain(|d| d.upgrade().is_some());
-            dispatchers.push(dispatch.registrar());
-            self.has_just_one
-                .store(dispatchers.len() <= 1, Ordering::SeqCst);
-            Rebuilder::Write(dispatchers)
+        pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder {
+            let mut registry = REGISTRY.write().unwrap();
+            registry.dispatchers.retain(|d| d.upgrade().is_some());
+            registry.dispatchers.push(dispatch.registrar());
+            registry.generation += 1;
+            registry.snapshot()
         }
     }
 
-    impl Rebuilder<'_> {
-        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
-            let iter = match self {
-                Rebuilder::JustOne => {
-                    dispatcher::get_default(f);
-                    return;
-                }
-                Rebuilder::Read(vec) => vec.iter(),
-                Rebuilder::Write(vec) => vec.iter(),
-            };
-            iter.filter_map(dispatcher::Registrar::upgrade)
-                .for_each(|dispatch| f(&dispatch))
+    impl Registry {
+        fn snapshot(&self) -> Rebuilder {
+            Rebuilder {
+                generation: self.generation,
+                dispatchers: self
+                    .dispatchers
+                    .iter()
+                    .filter_map(dispatcher::Registrar::upgrade)
+                    .collect(),
+            }
+        }
+    }
+
+    impl Rebuilder {
+        pub(super) fn for_each(&self, f: impl FnMut(&dispatcher::Dispatch)) {
+            self.dispatchers.iter().for_each(f)
+        }
+
+        pub(super) fn with_current(&self, f: impl FnOnce(bool)) {
+            let registry = REGISTRY.read().unwrap();
+            f(registry.generation == self.generation)
+        }
+    }
+
+    impl Drop for Registering {
+        fn drop(&mut self) {
+            let _ = REGISTERING.try_with(|registering| registering.set(false));
         }
     }
 }
@@ -578,30 +615,37 @@ mod dispatchers {
     use crate::dispatcher;
 
     pub(super) struct Dispatchers(());
-    pub(super) struct Rebuilder<'a>(Option<&'a dispatcher::Dispatch>);
+    pub(super) struct Rebuilder(Option<dispatcher::Dispatch>);
+    pub(super) struct Registering(());
+
+    pub(super) fn enter() -> Option<Registering> {
+        Some(Registering(()))
+    }
 
     impl Dispatchers {
         pub(super) const fn new() -> Self {
             Self(())
         }
 
-        pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
+        pub(super) fn rebuilder(&self) -> Rebuilder {
             Rebuilder(None)
         }
 
-        pub(super) fn register_dispatch<'dispatch>(
-            &self,
-            dispatch: &'dispatch dispatcher::Dispatch,
-        ) -> Rebuilder<'dispatch> {
+        pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder {
             // nop; on no_std, there can only ever be one dispatcher
-            Rebuilder(Some(dispatch))
+            Rebuilder(Some(dispatch.clone()))
         }
     }
 
-    impl Rebuilder<'_> {
+    impl Rebuilder {
+        #[inline]
+        pub(super) fn with_current(&self, f: impl FnOnce(bool)) {
+            f(true)
+        }
+
         #[inline]
         pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
-            if let Some(dispatch) = self.0 {
+            if let Some(dispatch) = &self.0 {
                 // we are rebuilding the interest cache because a new dispatcher
                 // is about to be set. on `no_std`, this should only happen
                 // once, because the new dispatcher will be the global default.
