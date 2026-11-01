@@ -21,6 +21,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
     args: InstrumentArgs,
     instrumented_function_name: &str,
     self_type: Option<&TypePath>,
+    with_span: bool,
 ) -> proc_macro2::TokenStream {
     // these are needed ahead of time, as ItemFn contains the function body _and_
     // isn't representable inside a quote!/quote_spanned! macro
@@ -98,6 +99,7 @@ pub(crate) fn gen_function<'a, B: ToTokens + 'a>(
         args,
         instrumented_function_name,
         self_type,
+        with_span,
     );
 
     let mut result = quote!(
@@ -131,6 +133,7 @@ fn gen_block<B: ToTokens>(
     mut args: InstrumentArgs,
     instrumented_function_name: &str,
     self_type: Option<&TypePath>,
+    with_span: bool,
 ) -> proc_macro2::TokenStream {
     // generate the span's name
     let span_name = args
@@ -262,6 +265,7 @@ fn gen_block<B: ToTokens>(
 
         ))
     })();
+    let span = with_span.then_some(span);
 
     let target = args.target();
 
@@ -344,24 +348,31 @@ fn gen_block<B: ToTokens>(
             ),
         };
 
-        return quote!(
-            let __tracing_attr_span = #span;
-            let __tracing_instrument_future = #mk_fut;
-            #[allow(clippy::implicit_return)]
-            if !__tracing_attr_span.is_disabled() {
-                #follows_from
-                ::tracing::Instrument::instrument(
-                    __tracing_instrument_future,
-                    __tracing_attr_span
-                )
-                .await
-            } else {
+        return match span {
+            Some(span) => quote!(
+                let __tracing_attr_span = #span;
+                let __tracing_instrument_future = #mk_fut;
+                #[allow(clippy::implicit_return)]
+                if !__tracing_attr_span.is_disabled() {
+                    #follows_from
+                    ::tracing::Instrument::instrument(
+                        __tracing_instrument_future,
+                        __tracing_attr_span
+                    )
+                    .await
+                } else {
+                    __tracing_instrument_future.await
+                }
+            ),
+            None => quote!(
+                let __tracing_instrument_future = #mk_fut;
+                #[allow(clippy::implicit_return)]
                 __tracing_instrument_future.await
-            }
-        );
+            ),
+        };
     }
 
-    let span = quote!(
+    let span = span.map(|span| quote!(
         // These variables are left uninitialized and initialized only
         // if the tracing level is statically enabled at this point.
         // While the tracing level is also checked at span creation
@@ -379,7 +390,7 @@ fn gen_block<B: ToTokens>(
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
         }
-    );
+    ));
 
     match (err_event, ret_event) {
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
@@ -708,6 +719,7 @@ impl<'block> AsyncInfo<'block> {
         self,
         args: InstrumentArgs,
         instrumented_function_name: &str,
+        with_span: bool,
     ) -> Result<proc_macro::TokenStream, syn::Error> {
         // let's rewrite some statements!
         let mut out_stmts: Vec<TokenStream> = self
@@ -736,6 +748,7 @@ impl<'block> AsyncInfo<'block> {
                         args,
                         instrumented_function_name,
                         self.self_type.as_ref(),
+                        with_span,
                     )
                 }
                 // `async move { ... }`, optionally pinned
@@ -750,6 +763,7 @@ impl<'block> AsyncInfo<'block> {
                         args,
                         instrumented_function_name,
                         None,
+                        with_span,
                     );
                     let async_attrs = &async_expr.attrs;
                     if pinned_box {
