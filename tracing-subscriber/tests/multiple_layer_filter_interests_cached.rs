@@ -70,11 +70,16 @@ fn multiple_layer_filter_interests_are_cached() {
         tracing::error!("hello error");
     }
 
+    // Per-layer filters cap callsite interest at `sometimes` (#2519, #3516), so
+    // callsites that *any* filter accepts are re-evaluated by *every* filter on
+    // each dispatch. Only callsites rejected by all filters cache as `never`.
+    // We therefore only assert "seen once" for levels that every filter rejects
+    // (here: TRACE and DEBUG).
     events();
     {
         let lock = seen_info.lock().unwrap();
         for (&level, &count) in lock.iter() {
-            if level == Level::INFO {
+            if level <= Level::INFO {
                 continue;
             }
             assert_eq!(
@@ -86,7 +91,7 @@ fn multiple_layer_filter_interests_are_cached() {
 
         let lock = seen_warn.lock().unwrap();
         for (&level, &count) in lock.iter() {
-            if level == Level::INFO {
+            if level <= Level::INFO {
                 continue;
             }
             assert_eq!(
@@ -101,7 +106,7 @@ fn multiple_layer_filter_interests_are_cached() {
     {
         let lock = seen_info.lock().unwrap();
         for (&level, &count) in lock.iter() {
-            if level == Level::INFO {
+            if level <= Level::INFO {
                 continue;
             }
             assert_eq!(
@@ -113,7 +118,7 @@ fn multiple_layer_filter_interests_are_cached() {
 
         let lock = seen_warn.lock().unwrap();
         for (&level, &count) in lock.iter() {
-            if level == Level::INFO {
+            if level <= Level::INFO {
                 continue;
             }
             assert_eq!(
