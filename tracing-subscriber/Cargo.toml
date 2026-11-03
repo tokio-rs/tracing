@@ -61,7 +61,7 @@ time = { version = "0.3.2", features = ["formatting"], optional = true }
 serde_json = { version = "1.0.82", optional = true }
 tracing-serde = { path = "../tracing-serde", version = "0.2.0", optional = true }
 
-# can be used separately to support deserialization
+# can be used separately to support EnvFilter deserialization
 serde = { version = "1.0.140", optional = true }
 
 # opt-in deps
