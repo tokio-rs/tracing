@@ -136,7 +136,6 @@
 
 use error::Error;
 use error::Kind;
-use once_cell::sync::Lazy;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -146,6 +145,7 @@ use std::io::Write;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span;
@@ -157,7 +157,7 @@ use tracing_subscriber::Layer;
 
 mod error;
 
-static START: Lazy<Instant> = Lazy::new(Instant::now);
+static START: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 thread_local! {
     static LAST_EVENT: Cell<Instant> = Cell::new(*START);
