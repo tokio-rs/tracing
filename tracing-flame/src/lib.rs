@@ -10,7 +10,7 @@
 //! issues bottlenecks in an application. For more details, see Brendan Gregg's [post]
 //! on flamegraphs.
 //!
-//! *Compiler support: [requires `rustc` 1.71+][msrv]*
+//! *Compiler support: [requires `rustc` 1.85+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //! [post]: http://www.brendangregg.com/flamegraphs.html
@@ -95,7 +95,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.71. The current Tracing version is not guaranteed to build on
+//! version is 1.85. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -136,7 +136,6 @@
 
 use error::Error;
 use error::Kind;
-use once_cell::sync::Lazy;
 use std::cell::Cell;
 use std::fmt;
 use std::fmt::Write as _;
@@ -146,6 +145,7 @@ use std::io::Write;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::span;
@@ -157,7 +157,7 @@ use tracing_subscriber::Layer;
 
 mod error;
 
-static START: Lazy<Instant> = Lazy::new(Instant::now);
+static START: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 thread_local! {
     static LAST_EVENT: Cell<Instant> = Cell::new(*START);

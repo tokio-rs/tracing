@@ -16,7 +16,7 @@
 //! tracing-subscriber = "0.3"
 //! ```
 //!
-//! *Compiler support: [requires `rustc` 1.71+][msrv]*
+//! *Compiler support: [requires `rustc` 1.85+][msrv]*
 //!
 //! [msrv]: super#supported-rust-versions
 //!
