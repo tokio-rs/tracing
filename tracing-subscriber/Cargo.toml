@@ -32,6 +32,7 @@ fmt = ["registry", "std"]
 ansi = ["fmt", "nu-ansi-term"]
 registry = ["sharded-slab", "thread_local", "std"]
 json = ["tracing-serde", "serde", "serde_json"]
+serde = ["dep:serde"]
 valuable = ["tracing-core/valuable", "valuable_crate", "valuable-serde", "tracing-serde/valuable"]
 # Enables support for local time when using the `time` crate timestamp
 # formatters.
@@ -58,8 +59,10 @@ time = { version = "0.3.2", features = ["formatting"], optional = true }
 
 # only required by the json feature
 serde_json = { version = "1.0.82", optional = true }
-serde = { version = "1.0.140", optional = true }
 tracing-serde = { path = "../tracing-serde", version = "0.2.0", optional = true }
+
+# can be used separately to support deserialization
+serde = { version = "1.0.140", optional = true }
 
 # opt-in deps
 parking_lot = { version = "0.12.1", optional = true }
