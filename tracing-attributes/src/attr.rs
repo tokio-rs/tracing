@@ -179,28 +179,32 @@ impl Parse for EventArgs {
         let content;
         let _ = syn::parenthesized!(content in input);
         let mut result = Self::default();
-        let mut parse_one_arg =
-            || {
-                let lookahead = content.lookahead1();
-                if lookahead.peek(kw::level) {
-                    if result.level.is_some() {
-                        return Err(content.error("expected only a single `level` argument"));
-                    }
-                    result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
-                    return Err(content.error("expected only a single format argument"));
-                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
-                    match ident.to_string().as_str() {
-                        "Debug" => result.mode = FormatMode::Debug,
-                        "Display" => result.mode = FormatMode::Display,
-                        _ => return Err(syn::Error::new(
+        let mut parse_one_arg = || {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::level) {
+                if result.level.is_some() {
+                    return Err(content.error("expected only a single `level` argument"));
+                }
+                result.level = Some(content.parse()?);
+            } else if result.mode != FormatMode::default() {
+                return Err(content.error("expected only a single format argument"));
+            } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                match ident.to_string().as_str() {
+                    "Debug" => result.mode = FormatMode::Debug,
+                    "Display" => result.mode = FormatMode::Display,
+                    "DisplayAlternate" => result.mode = FormatMode::DisplayAlternate,
+                    "DebugAlternate" => result.mode = FormatMode::DebugAlternate,
+                    _ => {
+                        return Err(syn::Error::new(
                             ident.span(),
-                            "unknown event formatting mode, expected either `Debug` or `Display`",
-                        )),
+                            "unknown event formatting mode, expected `Debug`, `Display`, \
+                             `DebugAlternate`, or `DisplayAlternate`",
+                        ))
                     }
                 }
-                Ok(())
-            };
+            }
+            Ok(())
+        };
         parse_one_arg()?;
         if !content.is_empty() {
             if content.lookahead1().peek(Token![,]) {
@@ -301,6 +305,8 @@ pub(crate) enum FormatMode {
     Default,
     Display,
     Debug,
+    DisplayAlternate,
+    DebugAlternate,
 }
 
 #[derive(Clone, Debug)]
@@ -317,6 +323,8 @@ pub(crate) struct Field {
 pub(crate) enum FieldKind {
     Debug,
     Display,
+    DebugAlternate,
+    DisplayAlternate,
     Value,
 }
 
@@ -356,7 +364,18 @@ impl ToTokens for Fields {
 impl Parse for Field {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut kind = FieldKind::Value;
-        if input.peek(Token![%]) {
+        if input.peek(Token![#]) {
+            input.parse::<Token![#]>()?;
+            if input.peek(Token![%]) {
+                input.parse::<Token![%]>()?;
+                kind = FieldKind::DisplayAlternate;
+            } else if input.peek(Token![?]) {
+                input.parse::<Token![?]>()?;
+                kind = FieldKind::DebugAlternate;
+            } else {
+                return Err(input.error("expected `%` or `?` after `#`"));
+            }
+        } else if input.peek(Token![%]) {
             input.parse::<Token![%]>()?;
             kind = FieldKind::Display;
         } else if input.peek(Token![?]) {
@@ -377,7 +396,18 @@ impl Parse for Field {
         };
         let value = if input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
-            if input.peek(Token![%]) {
+            if input.peek(Token![#]) {
+                input.parse::<Token![#]>()?;
+                if input.peek(Token![%]) {
+                    input.parse::<Token![%]>()?;
+                    kind = FieldKind::DisplayAlternate;
+                } else if input.peek(Token![?]) {
+                    input.parse::<Token![?]>()?;
+                    kind = FieldKind::DebugAlternate;
+                } else {
+                    return Err(input.error("expected `%` or `?` after `#`"));
+                }
+            } else if input.peek(Token![%]) {
                 input.parse::<Token![%]>()?;
                 kind = FieldKind::Display;
             } else if input.peek(Token![?]) {
@@ -420,6 +450,14 @@ impl ToTokens for FieldKind {
         match self {
             FieldKind::Debug => tokens.extend(quote! { ? }),
             FieldKind::Display => tokens.extend(quote! { % }),
+            FieldKind::DebugAlternate => {
+                let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                tokens.extend(quote! { #pound ? });
+            }
+            FieldKind::DisplayAlternate => {
+                let pound = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                tokens.extend(quote! { #pound % });
+            }
             _ => {}
         }
     }

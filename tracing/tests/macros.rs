@@ -492,6 +492,24 @@ fn event() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
+fn alternate_format_sigils() {
+    let foo = 1;
+    event!(Level::DEBUG, bar = #%foo);
+    event!(Level::DEBUG, bar = #?foo);
+    event!(Level::DEBUG, #%foo);
+    event!(Level::DEBUG, #?foo);
+    span!(Level::DEBUG, "test", bar = #%foo);
+    span!(Level::DEBUG, "test", bar = #?foo);
+    span!(Level::DEBUG, "test", #%foo);
+    span!(Level::DEBUG, "test", #?foo);
+    info!(bar = #%foo);
+    info!(bar = #?foo);
+    info!(#%foo);
+    info!(#?foo);
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
 fn enabled() {
     enabled!(Level::DEBUG, foo, bar.baz, quux,);
     enabled!(Level::DEBUG, message);
