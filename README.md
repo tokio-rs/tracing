@@ -422,6 +422,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
 - [`tracing-subscriber-reload-arcswap`] provides a lock-free alternative to `tracing_subscriber::reload::Layer` using `arc-swap`.
 - [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
+- [`tracing-oslog`] provides a layer for reporting traces to Apple's logging framework.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -468,6 +469,7 @@ please let us know!)
 [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
 [`tracing-subscriber-reload-arcswap`]: https://crates.io/crates/tracing-subscriber-reload-arcswap
 [`clippy-tracing`]: https://crates.io/crates/clippy-tracing
+[`tracing-oslog`]: https://crates.io/crates/tracing-oslog
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
