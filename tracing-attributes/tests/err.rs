@@ -327,3 +327,67 @@ fn test_err_warn_info() {
     with_default(subscriber, || err_warn_info().ok());
     handle.assert_finished();
 }
+
+fn as_dyn_error(e: &TryFromIntError) -> &(dyn std::error::Error + 'static) {
+    e
+}
+
+#[instrument(err(|e| as_dyn_error(e)))]
+fn err_closure() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_closure() {
+    let span = expect::span().named("err_closure");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || err_closure().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err(Debug, |e| e))]
+fn err_closure_debug() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_closure_debug() {
+    let span = expect::span().named("err_closure_debug");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::ERROR))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || err_closure_debug().ok());
+    handle.assert_finished();
+}
+
+#[instrument(err(level = "info", |e| as_dyn_error(e)))]
+fn err_closure_level() -> Result<u8, TryFromIntError> {
+    u8::try_from(1234)
+}
+
+#[test]
+fn test_err_closure_level() {
+    let span = expect::span().named("err_closure_level");
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(span.clone())
+        .enter(span.clone())
+        .event(expect::event().at_level(Level::INFO))
+        .exit(span.clone())
+        .drop_span(span)
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || err_closure_level().ok());
+    handle.assert_finished();
+}
