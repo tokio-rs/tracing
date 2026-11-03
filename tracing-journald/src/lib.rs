@@ -47,6 +47,8 @@ use tracing_core::{
     span::{Attributes, Id, Record},
     Field, Level, Metadata, Subscriber,
 };
+#[cfg(feature = "tracing-log")]
+use tracing_log::NormalizeEvent;
 use tracing_subscriber::{layer::Context, registry::LookupSpan};
 
 #[cfg(target_os = "linux")]
@@ -342,8 +344,14 @@ where
         }
 
         // Record event fields
-        self.put_priority(&mut buf, event.metadata());
-        put_metadata(&mut buf, event.metadata(), None);
+        #[cfg(feature = "tracing-log")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "tracing-log")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "tracing-log"))]
+        let meta = event.metadata();
+        self.put_priority(&mut buf, meta);
+        put_metadata(&mut buf, meta, None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
@@ -416,6 +424,11 @@ impl<'a> EventVisitor<'a> {
 
 impl Visit for EventVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
+        // Skip fields that are actually log metadata that have already been handled
+        #[cfg(feature = "tracing-log")]
+        if field.name().starts_with("log.") {
+            return;
+        }
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {
             buf.extend_from_slice(value.as_bytes())
@@ -423,6 +436,10 @@ impl Visit for EventVisitor<'_> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        #[cfg(feature = "tracing-log")]
+        if field.name().starts_with("log.") {
+            return;
+        }
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {
             write!(buf, "{:?}", value).unwrap()
