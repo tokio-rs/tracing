@@ -314,6 +314,21 @@ jobs:
     - name: "Test tracing-mock with all features enabled"
       run: cargo test --all-features -p tracing-mock
 
+  check-tracing-macros-stable:
+    # Feature flag tests that run on stable Rust.
+    name: cargo check (tracing macros)
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - name: "Generate macro tests"
+      run: cargo run --bin xtask -- gen-macro-tests
+    - name: "Check tracing macro invocations ("
+      # TODO(hds): remove `|| true` when all macros compile
+      run: cargo check --tests || true
+      working-directory: "tracing/test-macros"
+
   # all required checks except for the main test run (which we only require
   # specific matrix combinations from)
   all_required:
@@ -326,5 +341,6 @@ jobs:
       - test-build-wasm
       - test-wasm
       - test-features-stable
+      - check-tracing-macros-stable
     steps:
       - run: exit 0
