@@ -125,6 +125,8 @@ struct DataInner {
     filter_map: FilterMap,
     metadata: &'static Metadata<'static>,
     parent: Option<Id>,
+    // Retained only after cleanup is scheduled, until outstanding data guards release.
+    close_dispatch: std::sync::Mutex<Option<Dispatch>>,
     ref_count: AtomicUsize,
     // The span's `Extensions` typemap. Allocations for the `HashMap` backing
     // this are pooled and reused in place.
@@ -408,6 +410,17 @@ impl Drop for CloseGuard<'_> {
             // `on_close` call. If the span is closing, it's okay to remove the
             // span.
             if c == 1 && self.is_closing {
+                // A data guard can defer Clear until after this close scope ends.
+                // Capture ownership only when cleanup is actually scheduled.
+                if let Some(span) = self.registry.get(&self.id) {
+                    if span.parent.is_some() {
+                        *span
+                            .close_dispatch
+                            .lock()
+                            .unwrap_or_else(|error| error.into_inner()) =
+                            dispatcher::current_span_close_dispatch();
+                    }
+                }
                 self.registry.spans.clear(id_to_idx(&self.id));
             }
         });
@@ -484,6 +497,7 @@ impl Default for DataInner {
             filter_map: FilterMap::new(),
             metadata: &NULL_METADATA,
             parent: None,
+            close_dispatch: std::sync::Mutex::new(None),
             ref_count: AtomicUsize::new(0),
             extensions: RwLock::new(ExtensionsInner::new()),
         }
@@ -510,7 +524,13 @@ impl Clear for DataInner {
             // we must call `try_close` on the entire subscriber stack, rather
             // than just on the registry. If the registry called `try_close` on
             // itself directly, the layers wouldn't see the close notification.
-            let subscriber = dispatcher::get_default(Dispatch::clone);
+            let subscriber = self
+                .close_dispatch
+                .get_mut()
+                .unwrap_or_else(|error| error.into_inner())
+                .take()
+                .or_else(dispatcher::current_span_close_dispatch)
+                .unwrap_or_else(|| dispatcher::get_default(Dispatch::clone));
             if let Some(parent) = self.parent.take() {
                 let _ = subscriber.try_close(parent);
             }
