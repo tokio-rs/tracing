@@ -441,6 +441,39 @@ where
             self.state = self.serializer.serialize_entry(field.name(), &value)
         }
     }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        if self.state.is_ok() {
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &format_args!("{}", value))
+        }
+        if let (Ok(()), Some(source)) = (&self.state, value.source()) {
+            self.state = self.serializer.serialize_entry(
+                &format_args!("{}.sources", field.name()),
+                &SerializeErrorSources(source),
+            )
+        }
+    }
+}
+
+/// Serializes an error and each of its sources, in order, as a sequence of
+/// their messages.
+struct SerializeErrorSources<'a>(&'a (dyn std::error::Error + 'static));
+
+impl Serialize for SerializeErrorSources<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut sources = serializer.serialize_seq(None)?;
+        let mut current = Some(self.0);
+        while let Some(error) = current {
+            sources.serialize_element(&format_args!("{}", error))?;
+            current = error.source();
+        }
+        sources.end()
+    }
 }
 
 /// Implements `tracing_core::field::Visit` for some `serde::ser::SerializeStruct`.
