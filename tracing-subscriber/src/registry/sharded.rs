@@ -313,17 +313,13 @@ impl Subscriber for Registry {
         // always at least 1. The only synchronization necessary is between
         // calls to `try_close`: we have to ensure that all threads have
         // dropped their refs to the span before the span is closed.
-        let refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
-        assert_ne!(
-            refs, 0,
-            "tried to clone a span ({:?}) that already closed.\n\
-             This error message may indicate that a Span was held open across an \
-             await point.\nSee the documentation \
-             (https://docs.rs/tracing/latest/tracing/span/struct.EnteredSpan.html#in-asynchronous-code) \
-             for more details.\n\
-            ",
-            id
-        );
+        //
+        // If the reference count was already zero, the span has been closed and
+        // this clone resurrects it. This only happens through incorrect API
+        // usage, such as holding a span open across an `.await` point (see issue
+        // #3514). It may produce incorrect traces, but it must not abort the
+        // program, so we deliberately tolerate it rather than panicking.
+        span.ref_count.fetch_add(1, Ordering::Relaxed);
         id.clone()
     }
 
@@ -902,6 +898,31 @@ mod tests {
             drop(span3);
 
             state.assert_closed_in_order(["child", "parent", "grandparent"]);
+        });
+    }
+
+    // Regression test for https://github.com/tokio-rs/tracing/issues/3514.
+    //
+    // Cloning a span whose reference count has already reached zero must not
+    // panic. That state arises through incorrect API usage, such as holding a
+    // span open across an `.await` point; here it is reproduced directly by
+    // dropping a span's only handle and then cloning its ID, which keeps the
+    // behavior under test explicit rather than relying on an actual await.
+    #[test]
+    fn clone_span_with_zero_ref_count_does_not_panic() {
+        let dispatch = dispatcher::Dispatch::new(Registry::default());
+        dispatcher::with_default(&dispatch, || {
+            let span = tracing::info_span!("span");
+            let id = span.id().expect("a registry span must have an ID");
+            // Dropping the only handle brings the reference count to zero. With
+            // a bare `Registry` (no layers), the slab entry is not cleared, so
+            // the span data remains reachable with a zero reference count: the
+            // exact state that triggers #3514.
+            drop(span);
+
+            // Cloning the now-closed span must not panic, and must return the
+            // same ID.
+            assert_eq!(dispatch.clone_span(&id), id);
         });
     }
 }
