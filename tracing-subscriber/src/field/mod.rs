@@ -11,6 +11,10 @@ use tracing_core::{
 pub mod debug;
 pub mod delimited;
 pub mod display;
+feature! {
+    #![feature = "alloc"]
+    pub mod truncate;
+}
 
 /// Creates new [visitors].
 ///
@@ -152,6 +156,24 @@ where
         Self::Visitor: VisitFmt,
     {
         delimited::Delimited::new(delimiter, self)
+    }
+
+    /// Wraps `self` so that any string or `fmt::Debug` field value longer than
+    /// `max_len` characters is truncated and followed by `...`.
+    ///
+    /// For example:
+    /// ```rust
+    /// use tracing_subscriber::field::MakeExt;
+    /// use tracing_subscriber::fmt::format::DefaultFields;
+    ///
+    /// tracing_subscriber::fmt()
+    ///     .fmt_fields(DefaultFields::new().truncated(100))
+    ///     .init();
+    /// ```
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    fn truncated(self, max_len: usize) -> truncate::Truncated<Self> {
+        truncate::Truncated::new(max_len, self)
     }
 }
 
