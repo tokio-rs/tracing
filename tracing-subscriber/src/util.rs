@@ -30,18 +30,19 @@ where
     /// Sets `self` as the [default subscriber] in the current scope, returning a
     /// guard that will unset it when dropped.
     ///
-    /// If the "tracing-log" feature flag is enabled, this will also initialize
-    /// a [`log`] compatibility layer. This allows the subscriber to consume
-    /// `log::Record`s as though they were `tracing` `Event`s.
+    /// Note that this does *not* install the global [`log`] compatibility layer,
+    /// even if the "tracing-log" feature is enabled. Installing the `log`
+    /// logger is a one-time, global operation; doing it here would make a later
+    /// call to [`init`](Self::init) or [`try_init`](Self::try_init) fail with a
+    /// [`log::SetLoggerError`]. To also forward `log` records to the subscriber,
+    /// use [`init`](Self::init) or [`try_init`](Self::try_init), or call
+    /// [`tracing_log::LogTracer::init`] separately.
     ///
     /// [default subscriber]: https://docs.rs/tracing/0.1.21/tracing/dispatcher/index.html#setting-the-default-subscriber
     /// [`log`]: https://crates.io/log
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn set_default(self) -> dispatcher::DefaultGuard {
-        #[cfg(feature = "tracing-log")]
-        let _ = tracing_log::LogTracer::init();
-
         dispatcher::set_default(&self.into())
     }
 
