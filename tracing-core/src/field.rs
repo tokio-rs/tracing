@@ -1336,7 +1336,7 @@ mod test {
     fn record_error() {
         let fields = TEST_META_1.fields();
         let err: Box<dyn std::error::Error + Send + Sync + 'static> =
-            std::io::Error::new(std::io::ErrorKind::Other, "lol").into();
+            std::io::Error::other("lol").into();
         let values = &[
             (&fields.field("foo").unwrap(), Some(&err as &dyn Value)),
             (&fields.field("bar").unwrap(), Some(&Empty as &dyn Value)),
