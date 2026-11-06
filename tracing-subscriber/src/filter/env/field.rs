@@ -404,7 +404,7 @@ impl MatchDebug {
         // Try to "write" the value's `fmt::Debug` output to a `Matcher`. This
         // returns an error if the `fmt::Debug` implementation wrote any
         // characters that did not match the expected pattern.
-        write!(matcher, "{:?}", d).is_ok()
+        write!(matcher, "{:?}", d).is_ok() && matcher.pattern.is_empty()
     }
 }
 
