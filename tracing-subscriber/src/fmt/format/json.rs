@@ -115,7 +115,7 @@ impl Json {
 }
 
 struct SerializableContext<'a, 'b, Span, N>(
-    &'b crate::layer::Context<'a, Span>,
+    &'b crate::registry::SpanRef<'a, Span>,
     std::marker::PhantomData<N>,
 )
 where
@@ -134,10 +134,8 @@ where
         use serde::ser::SerializeSeq;
         let mut serializer = serializer_o.serialize_seq(None)?;
 
-        if let Some(leaf_span) = self.0.lookup_current() {
-            for span in leaf_span.scope().from_root() {
-                serializer.serialize_element(&SerializableSpan(&span, self.1))?;
-            }
+        for span in self.0.scope().from_root() {
+            serializer.serialize_element(&SerializableSpan(&span, self.1))?;
         }
 
         serializer.end()
@@ -294,11 +292,13 @@ where
                 }
             }
 
-            if self.format.display_span_list && current_span.is_some() {
-                serializer.serialize_entry(
-                    "spans",
-                    &SerializableContext(&ctx.ctx, format_field_marker),
-                )?;
+            if self.format.display_span_list {
+                if let Some(ref span) = current_span {
+                    serializer.serialize_entry(
+                        "spans",
+                        &SerializableContext(span, format_field_marker),
+                    )?;
+                }
             }
 
             if self.display_thread_name {
