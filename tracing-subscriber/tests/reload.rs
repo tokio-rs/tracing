@@ -160,3 +160,51 @@ fn reload_filter() {
         assert_eq!(FILTER2_CALLS.load(Ordering::SeqCst), 1);
     })
 }
+
+/// Regression test for <https://github.com/tokio-rs/tracing/issues/2325>.
+///
+/// A per-layer-filter layer (created via `with_filter`) wrapped in
+/// `reload::Layer` must still report itself as per-layer-filtered. Otherwise
+/// the `Layered` wrapper fails to aggregate the per-layer-filter `Interest`s
+/// and reports `Interest::sometimes` for callsites that are actually disabled,
+/// causing the `tracing` macros to evaluate format arguments for disabled
+/// spans/events (a performance bug: the args are computed only to be dropped).
+#[test]
+fn reload_does_not_evaluate_args_for_disabled_callsite() {
+    struct NopLayer;
+    impl<S: Subscriber> tracing_subscriber::Layer<S> for NopLayer {
+        fn register_callsite(&self, _m: &Metadata<'_>) -> Interest {
+            Interest::never()
+        }
+        fn enabled(&self, _m: &Metadata<'_>, _: layer::Context<'_, S>) -> bool {
+            false
+        }
+    }
+
+    static ARGS_EVALUATED: AtomicUsize = AtomicUsize::new(0);
+
+    // A per-layer filter that disables everything.
+    let filter = tracing_subscriber::filter::filter_fn(|_meta| false);
+    let layer = NopLayer.with_filter(filter);
+    let (layer, _handle) = Layer::new(layer);
+
+    let dispatcher =
+        tracing_core::Dispatch::new(tracing_subscriber::registry().with(layer));
+
+    tracing_core::dispatcher::with_default(&dispatcher, || {
+        // The format-arg block increments the counter if it is evaluated.
+        tracing::debug!("{:?}", {
+            ARGS_EVALUATED.fetch_add(1, Ordering::SeqCst);
+            42
+        });
+
+        // The callsite is disabled by the per-layer filter, so the format
+        // args must NOT be evaluated, even though the layer is wrapped in
+        // `reload`.
+        assert_eq!(
+            ARGS_EVALUATED.load(Ordering::SeqCst),
+            0,
+            "format args were evaluated for a disabled callsite wrapped in reload (issue #2325)"
+        );
+    });
+}
