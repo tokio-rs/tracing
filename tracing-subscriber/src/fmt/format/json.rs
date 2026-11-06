@@ -561,6 +561,9 @@ impl field::Visit for JsonVisitor<'_> {
                 .collect::<serde_json::Value>();
             self.values
                 .insert(format!("{}.sources", field.name()).into(), sources);
+        } else {
+            self.values
+                .remove(format!("{}.sources", field.name()).as_str());
         }
     }
 }
