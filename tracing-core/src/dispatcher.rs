@@ -187,6 +187,7 @@ std::thread_local! {
             can_enter: Cell::new(true),
         }
     };
+    static CURRENT_SPAN_CLOSE: RefCell<Option<Dispatch>> = const { RefCell::new(None) };
 }
 
 static EXISTS: AtomicBool = AtomicBool::new(false);
@@ -234,6 +235,31 @@ struct Entered<'a>(&'a State);
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
 pub struct DefaultGuard(Option<Dispatch>);
+
+#[cfg(feature = "std")]
+struct SpanCloseGuard(Option<Dispatch>);
+
+#[cfg(feature = "std")]
+impl Drop for SpanCloseGuard {
+    fn drop(&mut self) {
+        // Restore ownership before dropping a dispatcher that may itself close spans.
+        let previous = CURRENT_SPAN_CLOSE.try_with(|current| current.replace(self.0.take()));
+        drop(previous);
+    }
+}
+
+/// Returns the dispatcher whose subscriber is currently closing a span.
+///
+/// Recursive parent closes must use this owner without changing the default
+/// dispatcher or re-enabling tracing from inside subscriber callbacks.
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub fn current_span_close_dispatch() -> Option<Dispatch> {
+    CURRENT_SPAN_CLOSE
+        .try_with(|current| current.borrow().clone())
+        .ok()
+        .flatten()
+}
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -697,6 +723,10 @@ impl Dispatch {
     /// [`try_close`]: super::subscriber::Subscriber::try_close
     /// [`new_span`]: super::subscriber::Subscriber::new_span
     pub fn try_close(&self, id: span::Id) -> bool {
+        #[cfg(feature = "std")]
+        let _close_guard = CURRENT_SPAN_CLOSE
+            .try_with(|current| SpanCloseGuard(current.replace(Some(self.clone()))))
+            .ok();
         self.subscriber().try_close(id)
     }
 
