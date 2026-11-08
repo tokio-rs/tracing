@@ -429,6 +429,7 @@ impl FromStr for Targets {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.split(',')
+            .filter(|s| !s.is_empty())
             .map(StaticDirective::from_str)
             .collect::<Result<_, _>>()
             .map(Self)
@@ -716,6 +717,20 @@ mod tests {
             "crate1::mod1=1,crate1::mod2=2,crate1::mod2::mod3=3,crate2=4,\
              crate3=5,crate3::mod2::mod1=0",
         )
+    }
+
+    #[test]
+    fn parse_skips_empty_directives() {
+        assert_eq!(
+            expect_parse("info,"),
+            Targets::new().with_default(LevelFilter::INFO)
+        );
+        assert_eq!(
+            expect_parse("crate1=debug,,crate2=warn"),
+            Targets::new()
+                .with_target("crate1", LevelFilter::DEBUG)
+                .with_target("crate2", LevelFilter::WARN)
+        );
     }
 
     #[test]
