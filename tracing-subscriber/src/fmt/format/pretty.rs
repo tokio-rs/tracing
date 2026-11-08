@@ -495,14 +495,14 @@ impl field::Visit for PrettyVisitor<'_> {
                 bold.prefix(),
                 &name[2..],
                 bold.infix(self.style),
-                value
+                EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
             )),
             name => self.write_padded(&format_args!(
                 "{}{}{}: {:?}",
                 bold.prefix(),
                 name,
                 bold.infix(self.style),
-                value
+                EscapeGuard::new(value, self.writer.sanitizes_ansi_escapes())
             )),
         };
     }
