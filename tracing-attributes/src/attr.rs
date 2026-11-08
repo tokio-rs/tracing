@@ -317,6 +317,7 @@ pub(crate) struct Field {
 pub(crate) enum FieldKind {
     Debug,
     Display,
+    DisplayAlt,
     Value,
 }
 
@@ -362,7 +363,11 @@ impl Parse for Field {
         } else if input.peek(Token![?]) {
             input.parse::<Token![?]>()?;
             kind = FieldKind::Debug;
-        };
+        } else if input.peek(Token![#]) {
+            input.parse::<Token![#]>()?;
+            input.parse::<Token![%]>()?;
+            kind = FieldKind::DisplayAlt;
+        }
         // Parse name as either an expr between braces or a dotted identifier.
         let name = if input.peek(syn::token::Brace) {
             let content;
@@ -383,7 +388,11 @@ impl Parse for Field {
             } else if input.peek(Token![?]) {
                 input.parse::<Token![?]>()?;
                 kind = FieldKind::Debug;
-            };
+            } else if input.peek(Token![#]) {
+                input.parse::<Token![#]>()?;
+                input.parse::<Token![%]>()?;
+                kind = FieldKind::DisplayAlt;
+            }
             Some(input.parse()?)
         } else {
             None
@@ -420,6 +429,7 @@ impl ToTokens for FieldKind {
         match self {
             FieldKind::Debug => tokens.extend(quote! { ? }),
             FieldKind::Display => tokens.extend(quote! { % }),
+            FieldKind::DisplayAlt => tokens.extend(quote! { #% }),
             _ => {}
         }
     }
