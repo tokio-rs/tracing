@@ -18,7 +18,7 @@ impl NoOpWriter {
     }
 }
 
-impl MakeWriter<'_> for NoOpWriter {
+impl<S> MakeWriter<'_, S> for NoOpWriter {
     type Writer = NoOpWriter;
 
     fn make_writer(&self) -> Self::Writer {
