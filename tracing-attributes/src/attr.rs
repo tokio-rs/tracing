@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use syn::{punctuated::Punctuated, Expr, Ident, LitInt, LitStr, Path, Token};
+use syn::{punctuated::Punctuated, Expr, ExprClosure, Ident, LitInt, LitStr, Path, Token};
 
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
@@ -13,6 +13,15 @@ use syn::token::Brace;
 pub(crate) struct EventArgs {
     level: Option<Level>,
     pub(crate) mode: FormatMode,
+    /// Optional callable to transform the recorded value before it is emitted.
+    /// It takes one argument (the error or return value) by reference and
+    /// returns the value that should be recorded in its place. This may be a
+    /// closure (`|err| ...`) or a path to a function (`some::func`); a function
+    /// path is preferable when the transform returns a reference borrowed from
+    /// its argument, since `fn` lifetime elision ties the output lifetime to the
+    /// input, whereas a closure infers two independent lifetimes and fails to
+    /// compile.
+    pub(crate) transform: Option<Expr>,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -187,9 +196,25 @@ impl Parse for EventArgs {
                         return Err(content.error("expected only a single `level` argument"));
                     }
                     result.level = Some(content.parse()?);
-                } else if result.mode != FormatMode::default() {
-                    return Err(content.error("expected only a single format argument"));
-                } else if let Some(ident) = content.parse::<Option<Ident>>()? {
+                } else if lookahead.peek(Token![|]) || lookahead.peek(Token![||]) {
+                    if result.transform.is_some() {
+                        return Err(content.error("expected only a single transform argument"));
+                    }
+                    let closure: ExprClosure = content.parse()?;
+                    if closure.inputs.len() != 1 {
+                        return Err(syn::Error::new_spanned(
+                            closure.inputs,
+                            "expected closure with exactly one argument",
+                        ));
+                    }
+                    result.transform = Some(Expr::Closure(closure));
+                } else if content.peek(Ident) && !content.peek2(Token![::]) {
+                    // A bare ident is a format mode (`Debug`/`Display`); a path
+                    // (`foo::bar`) falls through to the transform branch below.
+                    if result.mode != FormatMode::default() {
+                        return Err(content.error("expected only a single format argument"));
+                    }
+                    let ident: Ident = content.parse()?;
                     match ident.to_string().as_str() {
                         "Debug" => result.mode = FormatMode::Debug,
                         "Display" => result.mode = FormatMode::Display,
@@ -198,14 +223,23 @@ impl Parse for EventArgs {
                             "unknown event formatting mode, expected either `Debug` or `Display`",
                         )),
                     }
+                } else {
+                    // A path (or other callable expression) to use as the
+                    // transform, e.g. `err(some::func)`.
+                    if result.transform.is_some() {
+                        return Err(content.error("expected only a single transform argument"));
+                    }
+                    result.transform = Some(content.parse()?);
                 }
                 Ok(())
             };
-        parse_one_arg()?;
-        if !content.is_empty() {
+        while !content.is_empty() {
+            parse_one_arg()?;
+            if content.is_empty() {
+                break;
+            }
             if content.lookahead1().peek(Token![,]) {
                 let _ = content.parse::<Token![,]>()?;
-                parse_one_arg()?;
             } else {
                 return Err(content.error("expected `,` or `)`"));
             }
