@@ -21,26 +21,30 @@ struct EscapingWriter<'a, 'b> {
 
 impl<'a, 'b> fmt::Write for EscapingWriter<'a, 'b> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        // Stream the string character by character, escaping ANSI and C1 control sequences
-        for ch in s.chars() {
+        // Escape ANSI and C1 control sequences, but pass the text between them
+        // through in one call: writing char by char is slow on long messages.
+        let mut start = 0;
+        for (idx, ch) in s.char_indices() {
             match ch {
                 // C0 control characters that can be used in terminal escape sequences
-                '\x1b' => self.inner.write_str("\\x1b")?, // ESC
-                '\x07' => self.inner.write_str("\\x07")?, // BEL
-                '\x08' => self.inner.write_str("\\x08")?, // BS
-                '\x0c' => self.inner.write_str("\\x0c")?, // FF
-                '\x7f' => self.inner.write_str("\\x7f")?, // DEL
+                // (ESC, BEL, BS, FF, DEL)
+                '\x1b' | '\x07' | '\x08' | '\x0c' | '\x7f' => {
+                    self.inner.write_str(&s[start..idx])?;
+                    write!(self.inner, "\\x{:02x}", ch as u32)?
+                }
 
                 // C1 control characters (\x80-\x9f) - 8-bit control codes
                 // These can be used as alternative escape sequences in some terminals
-                ch if ch as u32 >= 0x80 && ch as u32 <= 0x9f => {
+                '\u{80}'..='\u{9f}' => {
+                    self.inner.write_str(&s[start..idx])?;
                     write!(self.inner, "\\u{{{:x}}}", ch as u32)?
                 }
 
-                _ => self.inner.write_char(ch)?,
+                _ => continue,
             }
+            start = idx + ch.len_utf8();
         }
-        Ok(())
+        self.inner.write_str(&s[start..])
     }
 }
 

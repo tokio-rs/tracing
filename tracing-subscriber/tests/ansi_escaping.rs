@@ -290,6 +290,30 @@ fn test_c1_control_characters_escaping() {
     );
 }
 
+/// Test that the text around escaped characters is kept intact, including
+/// multi-byte characters right next to them.
+#[test]
+fn ansi_escaping_keeps_surrounding_text() {
+    let writer = TestWriter::new();
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(writer.clone())
+        .with_ansi(false)
+        .without_time()
+        .with_target(false)
+        .with_level(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        let input = "\x1b[31mstart ü\x07日本\u{9b}\u{9b}end😀\x7f";
+        tracing::info!("{}", input);
+    });
+
+    assert_eq!(
+        writer.get_output(),
+        "\\x1b[31mstart ü\\x07日本\\u{9b}\\u{9b}end😀\\x7f\n"
+    );
+}
+
 /// Test that sanitization can be disabled via `with_ansi_sanitization(false)`,
 /// allowing trusted ANSI sequences in messages to pass through.
 #[test]
