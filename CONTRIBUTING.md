@@ -443,6 +443,9 @@ When releasing a new version of a crate, follow these steps:
    breaking API changes, determine if those changes can be made without breaking
    existing APIs. If so, resolve those issues. Otherwise, if it is necessary to
    make a breaking release, update the version numbers to reflect this.
+   1. Validate SemVer with
+      [`cargo-semver-checks`](https://crates.io/crates/cargo-semver-checks):
+      `cargo semver-checks -p <NAME OF CRATE>`
 6. **Open a pull request with your changes.** Once that pull request has been
    approved by a maintainer and the pull request has been merged, continue to
    the next step.
