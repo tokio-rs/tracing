@@ -22,7 +22,7 @@
 //! * `release_max_level_trace`
 //!
 //! These features control the value of the `STATIC_MAX_LEVEL` constant. The
-//! instrumentation macros macros check this value before recording an event or
+//! instrumentation macros check this value before recording an event or
 //! constructing a span. By default, no levels are disabled.
 //!
 //! For example, a crate can disable trace level instrumentation in debug builds
