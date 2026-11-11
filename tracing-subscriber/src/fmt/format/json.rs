@@ -8,6 +8,7 @@ use crate::{
     registry::LookupSpan,
 };
 use alloc::{
+    borrow::Cow,
     collections::BTreeMap,
     fmt::{self, Write},
     format,
@@ -407,7 +408,7 @@ impl<'a> FormatFields<'a> for JsonFields {
         // then, we could store fields as JSON values, and add to them
         // without having to parse and re-serialize.
         let mut new = String::new();
-        let map: BTreeMap<&'_ str, serde_json::Value> =
+        let map: BTreeMap<Cow<'_, str>, serde_json::Value> =
             serde_json::from_str(current).map_err(|_| fmt::Error)?;
         let mut v = JsonVisitor::new(&mut new);
         v.values = map;
@@ -424,7 +425,7 @@ impl<'a> FormatFields<'a> for JsonFields {
 /// [visitor]: crate::field::Visit
 /// [`MakeVisitor`]: crate::field::MakeVisitor
 pub struct JsonVisitor<'a> {
-    values: BTreeMap<&'a str, serde_json::Value>,
+    values: BTreeMap<Cow<'a, str>, serde_json::Value>,
     writer: &'a mut dyn Write,
 }
 
@@ -462,7 +463,7 @@ impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
             let mut ser_map = serializer.serialize_map(None)?;
 
             for (k, v) in self.values {
-                ser_map.serialize_entry(k, &v)?;
+                ser_map.serialize_entry(&k, &v)?;
             }
 
             ser_map.end()
@@ -494,42 +495,42 @@ impl field::Visit for JsonVisitor<'_> {
             }
         };
 
-        self.values.insert(field.name(), value);
+        self.values.insert(field.name().into(),value);
     }
 
     /// Visit a double precision floating point value.
     fn record_f64(&mut self, field: &Field, value: f64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     /// Visit a signed 64-bit integer value.
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     /// Visit an unsigned 64-bit integer value.
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     /// Visit a boolean value.
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     /// Visit a string value.
     fn record_str(&mut self, field: &Field, value: &str) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     fn record_bytes(&mut self, field: &Field, value: &[u8]) {
         self.values
-            .insert(field.name(), serde_json::Value::from(value));
+            .insert(field.name().into(),serde_json::Value::from(value));
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -539,13 +540,28 @@ impl field::Visit for JsonVisitor<'_> {
             name if name.starts_with("log.") => (),
             name if name.starts_with("r#") => {
                 self.values
-                    .insert(&name[2..], serde_json::Value::from(format!("{:?}", value)));
+                    .insert(name[2..].into(), serde_json::Value::from(format!("{:?}", value)));
             }
             name => {
                 self.values
-                    .insert(name, serde_json::Value::from(format!("{:?}", value)));
+                    .insert(name.into(), serde_json::Value::from(format!("{:?}", value)));
             }
         };
+    }
+
+    #[cfg(feature = "std")]
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.values.insert(
+            field.name().into(),
+            serde_json::Value::from(format!("{}", value)),
+        );
+        if let Some(source) = value.source() {
+            let sources = core::iter::successors(Some(source), |error| error.source())
+                .map(|error| serde_json::Value::from(format!("{}", error)))
+                .collect::<serde_json::Value>();
+            self.values
+                .insert(format!("{}.sources", field.name()).into(), sources);
+        }
     }
 }
 #[cfg(test)]
@@ -710,6 +726,76 @@ mod test {
             .with_current_span(true)
             .with_span_list(true);
         test_json(expected, subscriber, || {
+            tracing::info!("some json test");
+        });
+    }
+
+    #[derive(Debug)]
+    struct ReadPageError(std::io::Error);
+
+    impl fmt::Display for ReadPageError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("the page is unreadable")
+        }
+    }
+
+    impl std::error::Error for ReadPageError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            Some(&self.0)
+        }
+    }
+
+    fn read_page_error() -> ReadPageError {
+        ReadPageError(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "the connection was reset",
+        ))
+    }
+
+    #[test]
+    fn json_event_error_sources() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\",\"error\":\"the page is unreadable\",\"error.sources\":[\"the connection was reset\"]}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let error = read_page_error();
+            tracing::info!(error = &error as &dyn std::error::Error, "some json test");
+        });
+    }
+
+    #[test]
+    fn json_event_error_without_sources() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\",\"error\":\"the connection was reset\"}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let error = read_page_error().0;
+            tracing::info!(error = &error as &dyn std::error::Error, "some json test");
+        });
+    }
+
+    #[test]
+    fn json_span_error_sources() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"error\":\"the page is unreadable\",\"error.sources\":[\"the connection was reset\"],\"name\":\"json_span\"},\"spans\":[{\"error\":\"the page is unreadable\",\"error.sources\":[\"the connection was reset\"],\"name\":\"json_span\"}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"some json test\"}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let error = read_page_error();
+            let span = tracing::span!(
+                tracing::Level::INFO,
+                "json_span",
+                error = &error as &dyn std::error::Error
+            );
+            let _guard = span.enter();
             tracing::info!("some json test");
         });
     }
