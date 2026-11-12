@@ -1,3 +1,9 @@
+# Unreleased
+
+### Fixed
+
+- `FieldSet::contains` no longer treats a field index equal to `len()` as contained
+
 # 0.1.36 (December 18, 2025)
 
 - Fix `record_all` panic ([#3432])

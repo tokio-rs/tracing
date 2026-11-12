@@ -906,7 +906,7 @@ impl FieldSet {
     /// of those callsites are not equivalent.
     /// </pre></div>
     pub fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite() && field.i <= self.len()
+        field.callsite() == self.callsite() && field.i < self.len()
     }
 
     /// Returns an iterator over the `Field`s in this `FieldSet`.
@@ -1229,6 +1229,18 @@ mod test {
         ];
         let valueset = fields.value_set(values);
         assert!(valueset.is_empty());
+    }
+
+    #[test]
+    fn fieldset_contains_rejects_index_equal_to_len() {
+        let abc = FieldSet::new(&["a", "b", "c"], crate::identify_callsite!(&TEST_CALLSITE_1));
+        let ab = FieldSet::new(&["a", "b"], crate::identify_callsite!(&TEST_CALLSITE_1));
+        let c = abc.field("c").unwrap();
+        assert!(abc.contains(&c));
+        assert!(!ab.contains(&c), "index == len must not be treated as contained");
+        let a = ab.field("a").unwrap();
+        assert!(ab.contains(&a));
+        assert!(abc.contains(&a));
     }
 
     #[test]
