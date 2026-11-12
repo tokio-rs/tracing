@@ -221,7 +221,17 @@ thread_local! {
 impl Subscriber for Registry {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         if self.has_per_layer_filters() {
-            return FilterState::take_interest().unwrap_or_else(Interest::always);
+            // `Filtered::on_new_span`/`on_event` reads the thread-local
+            // `FilterState` written by `Filtered::enabled`. If a callsite
+            // caches `Interest::always`, the macros skip `enabled()`
+            // entirely and `on_new_span`/`on_event` reads whatever the
+            // *previous* `enabled()` call (for unrelated metadata, e.g. a
+            // bare `dispatch.enabled()` from `LogTracer`) left there —
+            // see #2519, #3516. Cap at `sometimes` so `enabled()` always
+            // runs and `FilterState` is always fresh for `did_enable`.
+            return FilterState::take_interest()
+                .filter(|i| !i.is_always())
+                .unwrap_or_else(Interest::sometimes);
         }
 
         Interest::always()
