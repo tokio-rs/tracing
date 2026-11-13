@@ -527,8 +527,22 @@ mod dispatchers {
 
     static LOCKED_DISPATCHERS: RwLock<Vec<dispatcher::Registrar>> = RwLock::new(Vec::new());
 
-    pub(super) enum Rebuilder<'a> {
-        JustOne,
+    pub(super) struct Rebuilder<'a> {
+        // NOTE: the lock is declared before `dispatchers` so that it is
+        // released before the upgraded dispatchers are dropped. If one of them
+        // holds the last reference to its subscriber, the subscriber's `Drop`
+        // runs at that point, and it may register a callsite (for example, by
+        // emitting an event), which takes this lock again.
+        _lock: Option<Lock<'a>>,
+        /// The live dispatchers, upgraded once for the whole rebuild. `None`
+        /// means there is only one dispatcher: the current default.
+        dispatchers: Option<Vec<dispatcher::Dispatch>>,
+    }
+
+    /// Held only to keep the list of dispatchers from changing while the
+    /// interest cache is rebuilt.
+    #[allow(dead_code)] // the guards are never read, only dropped
+    enum Lock<'a> {
         Read(RwLockReadGuard<'a, Vec<dispatcher::Registrar>>),
         Write(RwLockWriteGuard<'a, Vec<dispatcher::Registrar>>),
     }
@@ -542,33 +556,50 @@ mod dispatchers {
 
         pub(super) fn rebuilder(&self) -> Rebuilder<'_> {
             if self.has_just_one.load(Ordering::SeqCst) {
-                return Rebuilder::JustOne;
+                return Rebuilder {
+                    _lock: None,
+                    dispatchers: None,
+                };
             }
-            Rebuilder::Read(LOCKED_DISPATCHERS.read().unwrap())
+            let lock = LOCKED_DISPATCHERS.read().unwrap();
+            let dispatchers = lock
+                .iter()
+                .filter_map(dispatcher::Registrar::upgrade)
+                .collect();
+            Rebuilder {
+                _lock: Some(Lock::Read(lock)),
+                dispatchers: Some(dispatchers),
+            }
         }
 
         pub(super) fn register_dispatch(&self, dispatch: &dispatcher::Dispatch) -> Rebuilder<'_> {
-            let mut dispatchers = LOCKED_DISPATCHERS.write().unwrap();
-            dispatchers.retain(|d| d.upgrade().is_some());
-            dispatchers.push(dispatch.registrar());
-            self.has_just_one
-                .store(dispatchers.len() <= 1, Ordering::SeqCst);
-            Rebuilder::Write(dispatchers)
+            let mut lock = LOCKED_DISPATCHERS.write().unwrap();
+            let mut dispatchers = Vec::with_capacity(lock.len() + 1);
+            // Keep the upgraded dispatchers alive until the lock is released,
+            // rather than dropping them here, while it is held.
+            lock.retain(|registrar| match registrar.upgrade() {
+                Some(dispatch) => {
+                    dispatchers.push(dispatch);
+                    true
+                }
+                None => false,
+            });
+            lock.push(dispatch.registrar());
+            dispatchers.push(dispatch.clone());
+            self.has_just_one.store(lock.len() <= 1, Ordering::SeqCst);
+            Rebuilder {
+                _lock: Some(Lock::Write(lock)),
+                dispatchers: Some(dispatchers),
+            }
         }
     }
 
     impl Rebuilder<'_> {
-        pub(super) fn for_each(&self, mut f: impl FnMut(&dispatcher::Dispatch)) {
-            let iter = match self {
-                Rebuilder::JustOne => {
-                    dispatcher::get_default(f);
-                    return;
-                }
-                Rebuilder::Read(vec) => vec.iter(),
-                Rebuilder::Write(vec) => vec.iter(),
-            };
-            iter.filter_map(dispatcher::Registrar::upgrade)
-                .for_each(|dispatch| f(&dispatch))
+        pub(super) fn for_each(&self, f: impl FnMut(&dispatcher::Dispatch)) {
+            match self.dispatchers {
+                None => dispatcher::get_default(f),
+                Some(ref dispatchers) => dispatchers.iter().for_each(f),
+            }
         }
     }
 }
