@@ -64,7 +64,7 @@
 //! [`Filter` trait]: crate::layer::Filter
 //! [`Layer` type]: Layer
 //! [`Layer` trait]: super::layer::Layer
-use crate::layer;
+use crate::{filter, layer};
 use crate::sync::RwLock;
 
 use core::any::TypeId;
@@ -196,7 +196,21 @@ where
         // is reloaded, because all `NoneLayerMarker` pointers that we return
         // actually point to the global static singleton `NoneLayerMarker`,
         // rather than to a field inside the lock.
-        if id == TypeId::of::<layer::NoneLayerMarker>() {
+        //
+        // The per-layer-filter (PLF) marker is also forwarded. A `reload::Layer`
+        // wrapping a per-layer-filter layer (e.g. a `Filtered` layer from
+        // `with_filter`) must report itself as per-layer-filtered to the
+        // `Layered` wrapper; otherwise `Layered` fails to aggregate the
+        // per-layer-filter `Interest`s and reports `Interest::sometimes` for
+        // callsites that are actually disabled, causing the `tracing` macros
+        // to evaluate format arguments for disabled spans/events (issue #2325).
+        //
+        // The pointer returned for the PLF marker points to a field inside the
+        // `Arc<RwLock<L>>`, which is stable for the lifetime of this
+        // `reload::Layer`. The marker is only ever used to test
+        // `Option::is_some` (never dereferenced for its value) by the PLF
+        // detection helpers, so forwarding it is safe.
+        if id == TypeId::of::<layer::NoneLayerMarker>() || filter::is_plf_downcast_marker(id) {
             unsafe { return try_lock!(self.inner.read(), else return None).downcast_raw(id) }
         }
 
