@@ -84,7 +84,7 @@ impl<S> Layer<S> {
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
+// This needs to be a separate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -161,7 +161,7 @@ where
     }
 }
 
-// This needs to be a seperate impl block because they place different bounds on the type parameters.
+// This needs to be a separate impl block because they place different bounds on the type parameters.
 impl<S, N, E, W> Layer<S, N, E, W> {
     /// Sets the [`MakeWriter`] that the layer being built will use to write events.
     ///
