@@ -85,6 +85,11 @@ where
     V: VisitFmt,
     D: AsRef<str>,
 {
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.delimit();
+        self.inner.record_f64(field, value);
+    }
+
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.delimit();
         self.inner.record_i64(field, value);
@@ -95,6 +100,16 @@ where
         self.inner.record_u64(field, value);
     }
 
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        self.delimit();
+        self.inner.record_i128(field, value);
+    }
+
+    fn record_u128(&mut self, field: &Field, value: u128) {
+        self.delimit();
+        self.inner.record_u128(field, value);
+    }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.delimit();
         self.inner.record_bool(field, value);
@@ -103,6 +118,17 @@ where
     fn record_str(&mut self, field: &Field, value: &str) {
         self.delimit();
         self.inner.record_str(field, value);
+    }
+
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        self.delimit();
+        self.inner.record_bytes(field, value);
+    }
+
+    #[cfg(feature = "std")]
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.delimit();
+        self.inner.record_error(field, value);
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
@@ -180,5 +206,101 @@ mod test {
                 "question=None; question.answer=42; tricky=true; can_you_do_it=false"
             );
         });
+    }
+
+    /// `VisitDelimited` is a transparent wrapper: it should insert a delimiter
+    /// and then forward the value to the inner visitor *unchanged*. If it
+    /// forwards by way of the `Visit` trait's default methods, the inner
+    /// visitor receives a `record_debug` call instead of the typed one, and any
+    /// type-specific formatting it implements (such as `record_error`, which
+    /// renders the error's `source` chain) is silently lost.
+    #[test]
+    fn delimited_visitor_forwards_typed_values() {
+        use std::error::Error;
+        use std::vec::Vec;
+
+        /// Records the name of each `Visit` method it receives.
+        struct Recorder {
+            calls: Vec<&'static str>,
+            writer: String,
+        }
+
+        impl Recorder {
+            fn new() -> Self {
+                Self {
+                    calls: Vec::new(),
+                    writer: String::new(),
+                }
+            }
+        }
+
+        impl Visit for Recorder {
+            fn record_f64(&mut self, _: &Field, _: f64) {
+                self.calls.push("f64")
+            }
+            fn record_i64(&mut self, _: &Field, _: i64) {
+                self.calls.push("i64")
+            }
+            fn record_u64(&mut self, _: &Field, _: u64) {
+                self.calls.push("u64")
+            }
+            fn record_i128(&mut self, _: &Field, _: i128) {
+                self.calls.push("i128")
+            }
+            fn record_u128(&mut self, _: &Field, _: u128) {
+                self.calls.push("u128")
+            }
+            fn record_bool(&mut self, _: &Field, _: bool) {
+                self.calls.push("bool")
+            }
+            fn record_str(&mut self, _: &Field, _: &str) {
+                self.calls.push("str")
+            }
+            fn record_bytes(&mut self, _: &Field, _: &[u8]) {
+                self.calls.push("bytes")
+            }
+            fn record_error(&mut self, _: &Field, _: &(dyn Error + 'static)) {
+                self.calls.push("error")
+            }
+            fn record_debug(&mut self, _: &Field, _: &dyn fmt::Debug) {
+                self.calls.push("debug")
+            }
+        }
+
+        impl VisitOutput<fmt::Result> for Recorder {
+            fn finish(self) -> fmt::Result {
+                Ok(())
+            }
+        }
+
+        impl VisitFmt for Recorder {
+            fn writer(&mut self) -> &mut dyn fmt::Write {
+                &mut self.writer
+            }
+        }
+
+        let err: std::io::Error = std::io::Error::new(std::io::ErrorKind::Other, "lol");
+
+        let calls = TestAttrs1::with(|attrs| {
+            let field = attrs.fields().field("question").unwrap();
+            let mut visitor = VisitDelimited::new(", ", Recorder::new());
+            visitor.record_f64(&field, 1.0);
+            visitor.record_i64(&field, 1);
+            visitor.record_u64(&field, 1);
+            visitor.record_i128(&field, 1);
+            visitor.record_u128(&field, 1);
+            visitor.record_bool(&field, true);
+            visitor.record_str(&field, "s");
+            visitor.record_bytes(&field, b"b");
+            visitor.record_error(&field, &err);
+            let calls = visitor.inner.calls.clone();
+            visitor.finish().unwrap();
+            calls
+        });
+
+        assert_eq!(
+            calls,
+            ["f64", "i64", "u64", "i128", "u128", "bool", "str", "bytes", "error"]
+        );
     }
 }
