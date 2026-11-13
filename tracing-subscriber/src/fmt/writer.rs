@@ -1200,7 +1200,7 @@ impl io::Write for WriteAdaptor<'_> {
 
         self.fmt_write
             .write_str(s)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         Ok(s.len())
     }
