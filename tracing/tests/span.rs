@@ -968,6 +968,17 @@ fn contextual_child() {
     handle.assert_finished();
 }
 
+struct TypeWithAlt;
+impl std::fmt::Display for TypeWithAlt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            "Yes, this one".fmt(f)
+        } else {
+            "Nope".fmt(f)
+        }
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
 fn display_shorthand() {
@@ -983,6 +994,26 @@ fn display_shorthand() {
         .run_with_handle();
     with_default(subscriber, || {
         tracing::span!(Level::TRACE, "my_span", my_field = %"hello world");
+    });
+
+    handle.assert_finished();
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[test]
+fn display_alt_shorthand() {
+    let (subscriber, handle) = subscriber::mock()
+        .new_span(
+            expect::span().named("my_span").with_fields(
+                expect::field("my_field")
+                    .with_value(&display("Yes, this one"))
+                    .only(),
+            ),
+        )
+        .only()
+        .run_with_handle();
+    with_default(subscriber, || {
+        tracing::span!(Level::TRACE, "my_span", my_field = #%TypeWithAlt);
     });
 
     handle.assert_finished();
@@ -1010,20 +1041,21 @@ fn debug_shorthand() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[test]
-fn both_shorthands() {
+fn all_shorthands() {
     let (subscriber, handle) = subscriber::mock()
         .new_span(
             expect::span().named("my_span").with_fields(
                 expect::field("display_field")
                     .with_value(&display("hello world"))
                     .and(expect::field("debug_field").with_value(&debug("hello world")))
+                    .and(expect::field("display_alt_field").with_value(&display("Yes, this one")))
                     .only(),
             ),
         )
         .only()
         .run_with_handle();
     with_default(subscriber, || {
-        tracing::span!(Level::TRACE, "my_span", display_field = %"hello world", debug_field = ?"hello world");
+        tracing::span!(Level::TRACE, "my_span", display_field = %"hello world", debug_field = ?"hello world", display_alt_field = #%TypeWithAlt);
     });
 
     handle.assert_finished();

@@ -375,7 +375,27 @@
 //! # }
 //! ```
 //!
-//! The `%` and `?` sigils may also be used with local variable shorthand:
+//! The `#%` sigil operates similarly, but indicates that the value should be
+//! recorded using its [`fmt::Display`] implementation in alternate mode (like `{:#}`):
+//! ```
+//! # use tracing::{event, Level};
+//! # fn main() {
+//! # #[derive(Debug)]
+//! # struct MyStruct {
+//! #     field: &'static str,
+//! # }
+//! #
+//! # let my_struct = MyStruct {
+//! #     field: "Hello world!"
+//! # };
+//! // `my_struct.field` will be recorded using its `fmt::Display` implementation in alternate mode.
+//! event!(Level::TRACE, greeting = #%my_struct.field);
+//! // is equivalent to:
+//! event!(Level::TRACE, greeting = tracing::field::display_alt(&my_struct.field));
+//! # }
+//! ```
+//!
+//! The `%` and `?` and `#%` sigils may also be used with local variable shorthand:
 //!
 //! ```
 //! # use tracing::{event, Level};

@@ -359,6 +359,13 @@ pub trait Value: crate::sealed::Sealed {
 #[derive(Clone)]
 pub struct DisplayValue<T: fmt::Display>(T);
 
+/// A `Value` which serializes using `fmt::Display` in alternate mode (`{:#}`).
+///
+/// Uses `record_debug` in the `Value` implementation to
+/// avoid an unnecessary evaluation.
+#[derive(Clone)]
+pub struct DisplayAltValue<T: fmt::Display>(T);
+
 /// A `Value` which serializes as a string using `fmt::Debug`.
 #[derive(Clone)]
 pub struct DebugValue<T: fmt::Debug>(T);
@@ -370,6 +377,15 @@ where
     T: fmt::Display,
 {
     DisplayValue(t)
+}
+
+/// Wraps a type implementing `fmt::Display` as a `Value` that can be
+/// recorded using its `Display` implementation alternate mode (`{:#}`).
+pub fn display_alt<T>(t: T) -> DisplayAltValue<T>
+where
+    T: fmt::Display,
+{
+    DisplayAltValue(t)
 }
 
 /// Wraps a type implementing `fmt::Debug` as a `Value` that can be
@@ -734,6 +750,31 @@ impl<T: fmt::Display> fmt::Debug for DisplayValue<T> {
 impl<T: fmt::Display> fmt::Display for DisplayValue<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+// ===== impl DisplayAltValue =====
+
+impl<T: fmt::Display> crate::sealed::Sealed for DisplayAltValue<T> {}
+
+impl<T> Value for DisplayAltValue<T>
+where
+    T: fmt::Display,
+{
+    fn record(&self, key: &Field, visitor: &mut dyn Visit) {
+        visitor.record_debug(key, self)
+    }
+}
+
+impl<T: fmt::Display> fmt::Debug for DisplayAltValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for DisplayAltValue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#}", self.0)
     }
 }
 
