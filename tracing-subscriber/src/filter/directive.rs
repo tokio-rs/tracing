@@ -412,7 +412,7 @@ impl fmt::Display for ParseError {
         match self.kind {
             ParseErrorKind::Other(None) => f.pad("invalid filter directive"),
             ParseErrorKind::Other(Some(msg)) => write!(f, "invalid filter directive: {}", msg),
-            ParseErrorKind::Level(ref l) => l.fmt(f),
+            ParseErrorKind::Level(..) => f.pad("invalid filter directive: invalid level filter"),
             #[cfg(feature = "std")]
             ParseErrorKind::Field(ref e) => write!(f, "invalid field filter: {}", e),
         }
@@ -448,5 +448,41 @@ impl From<level::ParseError> for ParseError {
         Self {
             kind: ParseErrorKind::Level(l),
         }
+    }
+}
+
+#[cfg(all(test, feature = "std", feature = "env-filter"))]
+mod parse_error_tests {
+    use super::*;
+    use alloc::format;
+    use crate::EnvFilter;
+    use std::error::Error;
+
+    #[test]
+    fn level_parse_error_display_differs_from_source() {
+        let err = EnvFilter::try_new("my_crate=loud").unwrap_err();
+        let outer = format!("{err}");
+        let source = err.source().expect("level parse errors should have a source");
+        let inner = format!("{source}");
+        assert_ne!(outer, inner, "outer Display should not duplicate the source Display");
+        assert!(
+            inner.contains("error parsing level filter"),
+            "source should retain the detailed level parse message"
+        );
+    }
+
+    #[test]
+    fn valid_directive_still_parses() {
+        EnvFilter::try_new("my_crate=debug").expect("valid directives should parse");
+    }
+
+    #[test]
+    fn other_parse_error_variant_unchanged() {
+        let err = ParseError::msg("string must not be empty");
+        assert_eq!(
+            format!("{err}"),
+            "invalid filter directive: string must not be empty"
+        );
+        assert!(err.source().is_none());
     }
 }
