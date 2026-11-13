@@ -896,14 +896,20 @@ impl FieldSet {
 
     /// Returns `true` if `self` contains the given `field`.
     ///
+    /// This checks that `field` comes from the same callsite as `self` and that
+    /// its index is less than the number of fields in `self`. The name of the
+    /// field is not compared, so a `Field` taken from another `FieldSet` built
+    /// from the same callsite is contained as long as its index is in range.
+    ///
     /// <div class="example-wrap" style="display:inline-block">
     /// <pre class="ignore" style="white-space:normal;font:inherit;">
-    /// <strong>Note</strong>: If <code>field</code> shares a name with a field
-    /// in this <code>FieldSet</code>, but was created by a <code>FieldSet</code>
-    /// with a different callsite, this <code>FieldSet</code> does <em>not</em>
-    /// contain it. This is so that if two separate span callsites define a field
-    /// named "foo", the <code>Field</code> corresponding to "foo" for each
-    /// of those callsites are not equivalent.
+    /// <strong>Note</strong>: The name of <code>field</code> is never compared.
+    /// A <code>Field</code> from a different callsite is not contained, even if
+    /// it shares a name with a field in this <code>FieldSet</code>, and neither
+    /// is a <code>Field</code> whose index is out of range. This is so that if
+    /// two separate span callsites define a field named "foo", the
+    /// <code>Field</code> corresponding to "foo" for each of those callsites
+    /// are not equivalent.
     /// </pre></div>
     pub fn contains(&self, field: &Field) -> bool {
         field.callsite() == self.callsite() && field.i < self.len()
