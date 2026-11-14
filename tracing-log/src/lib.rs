@@ -14,7 +14,7 @@
 //! - [`LogTracer`], a [`log::Log`] implementation that consumes [`log::Record`]s
 //!   and outputs them as [`tracing::Event`].
 //!
-//! *Compiler support: [requires `rustc` 1.71+][msrv]*
+//! *Compiler support: [requires `rustc` 1.85+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -75,7 +75,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.71. The current Tracing version is not guaranteed to build on
+//! version is 1.85. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -121,8 +121,8 @@
     unused_parens,
     while_true
 )]
-use once_cell::sync::Lazy;
 
+use std::sync::LazyLock;
 use std::{fmt, io};
 
 use tracing_core::{
@@ -321,11 +321,11 @@ log_cs!(
     ErrorCallsite
 );
 
-static TRACE_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&TRACE_CS));
-static DEBUG_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&DEBUG_CS));
-static INFO_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&INFO_CS));
-static WARN_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&WARN_CS));
-static ERROR_FIELDS: Lazy<Fields> = Lazy::new(|| Fields::new(&ERROR_CS));
+static TRACE_FIELDS: LazyLock<Fields> = LazyLock::new(|| Fields::new(&TRACE_CS));
+static DEBUG_FIELDS: LazyLock<Fields> = LazyLock::new(|| Fields::new(&DEBUG_CS));
+static INFO_FIELDS: LazyLock<Fields> = LazyLock::new(|| Fields::new(&INFO_CS));
+static WARN_FIELDS: LazyLock<Fields> = LazyLock::new(|| Fields::new(&WARN_CS));
+static ERROR_FIELDS: LazyLock<Fields> = LazyLock::new(|| Fields::new(&ERROR_CS));
 
 fn level_to_cs(level: Level) -> (&'static dyn Callsite, &'static Fields) {
     match level {

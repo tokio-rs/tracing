@@ -1,11 +1,10 @@
 use ahash::AHasher;
 use log::{Level, Metadata};
 use lru::LruCache;
-use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 /// The interest cache configuration.
 #[derive(Debug)]
@@ -141,7 +140,7 @@ static SENTINEL_METADATA: tracing_core::Metadata<'static> = tracing_core::Metada
     tracing_core::metadata::Kind::EVENT,
 );
 
-static CONFIG: Lazy<Mutex<InterestCacheConfig>> = Lazy::new(|| {
+static CONFIG: LazyLock<Mutex<InterestCacheConfig>> = LazyLock::new(|| {
     tracing_core::callsite::register(&SENTINEL_CALLSITE);
     Mutex::new(InterestCacheConfig::disabled())
 });
@@ -235,7 +234,7 @@ mod tests {
 
     fn lock_for_test() -> impl Drop {
         // We need to make sure only one test runs at a time.
-        static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+        const LOCK: Mutex<()> = Mutex::new(());
 
         match LOCK.lock() {
             Ok(guard) => guard,
