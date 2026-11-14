@@ -374,7 +374,11 @@ fn gen_block<B: ToTokens>(
         // regression in case the level is enabled.
         let __tracing_attr_span;
         let __tracing_attr_guard;
-        if ::tracing::level_enabled!(#level) || ::tracing::if_log_enabled!(#level, {true} else {false}) {
+        if ::tracing::level_enabled!(#level) || {
+            let mut log_enabled = false;
+            ::tracing::if_log_enabled!(#level, { log_enabled = true; })
+            log_enabled
+        } {
             __tracing_attr_span = #span;
             #follows_from
             __tracing_attr_guard = __tracing_attr_span.enter();
