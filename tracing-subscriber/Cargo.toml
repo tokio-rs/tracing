@@ -57,7 +57,7 @@ nu-ansi-term = { version = "0.50.0", optional = true }
 time = { version = "0.3.2", features = ["formatting"], optional = true }
 
 # only required by the json feature
-serde_json = { version = "1.0.82", optional = true }
+serde_json = { version = "1.0.82", optional = true, features = ["raw_value"] }
 serde = { version = "1.0.140", optional = true }
 tracing-serde = { path = "../tracing-serde", version = "0.2.0", optional = true }
 

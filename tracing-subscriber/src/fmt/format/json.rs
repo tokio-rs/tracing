@@ -13,7 +13,7 @@ use alloc::{
     vec::Vec,
 };
 use serde::ser::{SerializeMap, Serializer as _};
-use serde_json::Serializer;
+use serde_json::{value::RawValue, Serializer};
 use tracing_core::{
     field::{self, Field},
     span::Record,
@@ -166,6 +166,17 @@ where
             .get::<FormattedFields<N>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
+        // Borrowing keys and raw values skips building a `Value` tree for every
+        // span on every event. A key with escapes can't be borrowed and takes
+        // the slow path below.
+        if let Ok(fields) = serde_json::from_str::<BTreeMap<&str, &RawValue>>(data) {
+            for (key, value) in fields {
+                serializer.serialize_entry(key, value)?;
+            }
+            serializer.serialize_entry("name", self.0.metadata().name())?;
+            return serializer.end();
+        }
+
         // TODO: let's _not_ do this, but this resolves
         // https://github.com/tokio-rs/tracing/issues/391.
         // We should probably rework this to use a `serde_json::Value` or something
@@ -238,7 +249,8 @@ where
 
         // serde_json writes one token at a time. Collecting them here and
         // writing once avoids a UTF-8 check and a dynamic call per token.
-        let mut buf = Vec::new();
+        // Starting at 512 bytes fits a typical line without regrowing.
+        let mut buf = Vec::with_capacity(512);
         let mut visit = || {
             let mut serializer = Serializer::new(&mut buf);
 
@@ -821,6 +833,21 @@ mod test {
             span.record("street", "Hauptstraße");
             let _guard = span.enter();
             tracing::info!("日本 \"quoted\"\n😀");
+        });
+    }
+
+    #[test]
+    fn json_span_field_key_with_escape() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"a\\\"b\":1,\"name\":\"json_span\"},\"spans\":[{\"a\\\"b\":1,\"name\":\"json_span\"}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"hi\"}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let span = tracing::info_span!("json_span", "a\"b" = 1);
+            let _guard = span.enter();
+            tracing::info!("hi");
         });
     }
 
