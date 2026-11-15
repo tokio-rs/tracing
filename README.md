@@ -422,6 +422,7 @@ are not maintained by the `tokio` project. These include:
 - [`tracing-cloudwatch`] provides a layer that sends events to AWS CloudWatch Logs.
 - [`tracing-subscriber-reload-arcswap`] provides a lock-free alternative to `tracing_subscriber::reload::Layer` using `arc-swap`.
 - [`clippy-tracing`] provides a tool to add, remove and check for `tracing::instrument`.
+- [`llm-budget`] provides a layer that prices spans carrying OpenTelemetry GenAI token usage (`gen_ai.usage.*`) and records their USD cost, with an optional spend cap.
 
 (if you're the maintainer of a `tracing` ecosystem crate not in this list,
 please let us know!)
@@ -468,6 +469,7 @@ please let us know!)
 [`tracing-cloudwatch`]: https://crates.io/crates/tracing-cloudwatch
 [`tracing-subscriber-reload-arcswap`]: https://crates.io/crates/tracing-subscriber-reload-arcswap
 [`clippy-tracing`]: https://crates.io/crates/clippy-tracing
+[`llm-budget`]: https://crates.io/crates/llm-budget
 
 **Note:** that some of the ecosystem crates are currently unreleased and
 undergoing active development. They may be less stable than `tracing` and
