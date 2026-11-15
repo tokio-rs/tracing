@@ -1,10 +1,7 @@
 use super::{Format, FormatEvent, FormatFields, FormatTime, Writer};
 use crate::{
     field::{RecordFields, VisitOutput},
-    fmt::{
-        fmt_layer::{FmtContext, FormattedFields},
-        writer::WriteAdaptor,
-    },
+    fmt::fmt_layer::{FmtContext, FormattedFields},
     registry::LookupSpan,
 };
 use alloc::{
@@ -13,9 +10,10 @@ use alloc::{
     fmt::{self, Write},
     format,
     string::String,
+    vec::Vec,
 };
 use serde::ser::{SerializeMap, Serializer as _};
-use serde_json::Serializer;
+use serde_json::{value::RawValue, Serializer};
 use tracing_core::{
     field::{self, Field},
     span::Record,
@@ -168,6 +166,17 @@ where
             .get::<FormattedFields<N>>()
             .expect("Unable to find FormattedFields in extensions; this is a bug");
 
+        // Borrowing keys and raw values skips building a `Value` tree for every
+        // span on every event. A key with escapes can't be borrowed and takes
+        // the slow path below.
+        if let Ok(fields) = serde_json::from_str::<BTreeMap<&str, &RawValue>>(data) {
+            for (key, value) in fields {
+                serializer.serialize_entry(key, value)?;
+            }
+            serializer.serialize_entry("name", self.0.metadata().name())?;
+            return serializer.end();
+        }
+
         // TODO: let's _not_ do this, but this resolves
         // https://github.com/tokio-rs/tracing/issues/391.
         // We should probably rework this to use a `serde_json::Value` or something
@@ -238,8 +247,12 @@ where
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
 
+        // serde_json writes one token at a time. Collecting them here and
+        // writing once avoids a UTF-8 check and a dynamic call per token.
+        // Starting at 512 bytes fits a typical line without regrowing.
+        let mut buf = Vec::with_capacity(512);
         let mut visit = || {
-            let mut serializer = Serializer::new(WriteAdaptor::new(&mut writer));
+            let mut serializer = Serializer::new(&mut buf);
 
             let mut serializer = serializer.serialize_map(None)?;
 
@@ -328,6 +341,7 @@ where
         };
 
         visit().map_err(|_| fmt::Error)?;
+        writer.write_str(core::str::from_utf8(&buf).map_err(|_| fmt::Error)?)?;
         writeln!(writer)
     }
 }
@@ -458,11 +472,13 @@ impl crate::field::VisitFmt for JsonVisitor<'_> {
 
 impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
     fn finish(self) -> fmt::Result {
+        let mut buf = Vec::new();
+        let values = self.values;
         let inner = || {
-            let mut serializer = Serializer::new(WriteAdaptor::new(self.writer));
+            let mut serializer = Serializer::new(&mut buf);
             let mut ser_map = serializer.serialize_map(None)?;
 
-            for (k, v) in self.values {
+            for (k, v) in values {
                 ser_map.serialize_entry(&k, &v)?;
             }
 
@@ -470,10 +486,10 @@ impl crate::field::VisitOutput<fmt::Result> for JsonVisitor<'_> {
         };
 
         if inner().is_err() {
-            Err(fmt::Error)
-        } else {
-            Ok(())
+            return Err(fmt::Error);
         }
+        self.writer
+            .write_str(core::str::from_utf8(&buf).map_err(|_| fmt::Error)?)
     }
 }
 
@@ -797,6 +813,41 @@ mod test {
             );
             let _guard = span.enter();
             tracing::info!("some json test");
+        });
+    }
+
+    #[test]
+    fn json_non_ascii() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"city\":\"Zürich\",\"street\":\"Hauptstraße\",\"name\":\"json_span\"},\"spans\":[{\"city\":\"Zürich\",\"street\":\"Hauptstraße\",\"name\":\"json_span\"}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"日本 \\\"quoted\\\"\\n😀\"}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let span = tracing::info_span!(
+                "json_span",
+                city = "Zürich",
+                street = tracing::field::Empty
+            );
+            span.record("street", "Hauptstraße");
+            let _guard = span.enter();
+            tracing::info!("日本 \"quoted\"\n😀");
+        });
+    }
+
+    #[test]
+    fn json_span_field_key_with_escape() {
+        let expected =
+        "{\"timestamp\":\"fake time\",\"level\":\"INFO\",\"span\":{\"a\\\"b\":1,\"name\":\"json_span\"},\"spans\":[{\"a\\\"b\":1,\"name\":\"json_span\"}],\"target\":\"tracing_subscriber::fmt::format::json::test\",\"fields\":{\"message\":\"hi\"}}\n";
+        let subscriber = subscriber()
+            .flatten_event(false)
+            .with_current_span(true)
+            .with_span_list(true);
+        test_json(expected, subscriber, || {
+            let span = tracing::info_span!("json_span", "a\"b" = 1);
+            let _guard = span.enter();
+            tracing::info!("hi");
         });
     }
 
