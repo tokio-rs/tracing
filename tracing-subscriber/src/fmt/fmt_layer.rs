@@ -367,7 +367,7 @@ impl<S, N, E, W> Layer<S, N, E, W> {
     /// or its dependencies.
     ///
     /// [`fmt::layer()`]: fn@crate::fmt::layer
-    /// [`fmt::Subscriber::builder()`]: crate::fmt::Subscriber
+    /// [`fmt::Subscriber::builder()`]: crate::fmt::Subscriber::builder
     ///
     /// If writing to the writer fails, the error message is printed to stderr
     /// as a fallback.
