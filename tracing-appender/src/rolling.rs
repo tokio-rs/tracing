@@ -978,7 +978,7 @@ mod test {
 
         dir.close().expect("failed to close tempdir");
     }
-    
+
     #[test]
     fn test_rotations() {
         // per-minute basis
