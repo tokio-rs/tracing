@@ -1364,28 +1364,53 @@ mod test {
         re.replace_all(s.as_str(), "timing").to_string()
     }
 
-    #[test]
-    fn format_error_print_to_stderr() {
-        struct AlwaysError;
+    struct AlwaysError;
 
-        impl std::fmt::Debug for AlwaysError {
-            fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                Err(std::fmt::Error)
-            }
+    impl std::fmt::Debug for AlwaysError {
+        fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            Err(std::fmt::Error)
         }
+    }
 
+    /// Builds a subscriber with `build`, emits an event whose `Debug` impl
+    /// always fails, and returns what the format layer wrote to its writer.
+    fn format_error_output<S>(build: impl FnOnce(MockMakeWriter) -> S) -> String
+    where
+        S: Subscriber + Send + Sync + 'static,
+    {
         let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime)
-            .finish();
-
+        let subscriber = build(make_writer.clone());
         with_default(subscriber, || {
             tracing::info!(?AlwaysError);
         });
-        let actual = sanitize_timings(make_writer.get_string());
+        sanitize_timings(make_writer.get_string())
+    }
+
+    fn layer_format_error_output() -> String {
+        format_error_output(|make_writer| {
+            fmt::Layer::default()
+                .with_writer(make_writer)
+                .with_level(false)
+                .with_ansi(false)
+                .with_timer(MockTime)
+                .with_subscriber(Registry::default())
+        })
+    }
+
+    fn builder_format_error_output() -> String {
+        format_error_output(|make_writer| {
+            crate::fmt::Subscriber::builder()
+                .with_writer(make_writer)
+                .with_level(false)
+                .with_ansi(false)
+                .with_timer(MockTime)
+                .finish()
+        })
+    }
+
+    #[test]
+    fn format_error_print_to_stderr() {
+        let actual = builder_format_error_output();
 
         // Only assert the start because the line number and callsite may change.
         let expected = concat!(
@@ -1403,26 +1428,7 @@ mod test {
 
     #[test]
     fn format_error_logged_by_default_layer() {
-        struct AlwaysError;
-
-        impl std::fmt::Debug for AlwaysError {
-            fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                Err(std::fmt::Error)
-            }
-        }
-
-        let make_writer = MockMakeWriter::default();
-        let layer = fmt::Layer::default()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime);
-        let subscriber = layer.with_subscriber(Registry::default());
-
-        with_default(subscriber, || {
-            tracing::info!(?AlwaysError);
-        });
-        let actual = sanitize_timings(make_writer.get_string());
+        let actual = layer_format_error_output();
 
         // Only assert the start because the line number and callsite may change.
         let expected = concat!(
@@ -1448,63 +1454,18 @@ mod test {
         // event behaved differently depending on which path built the
         // subscriber. This pins the two paths to the same default so the
         // divergence cannot silently return.
-        struct AlwaysError;
+        let via_layer = layer_format_error_output();
+        let via_builder = builder_format_error_output();
 
-        impl std::fmt::Debug for AlwaysError {
-            fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                Err(std::fmt::Error)
-            }
-        }
-
-        const PREFIX: &str = "Unable to format the following event.";
-
-        // Path 1: `fmt::layer()` / `Layer::default()`.
-        let make_writer = MockMakeWriter::default();
-        let layer = fmt::Layer::default()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime);
-        let subscriber = layer.with_subscriber(Registry::default());
-        with_default(subscriber, || {
-            tracing::info!(?AlwaysError);
-        });
-        let via_layer = sanitize_timings(make_writer.get_string());
-        assert!(
-            via_layer.starts_with(PREFIX),
-            "fmt::layer() path should log the internal error by default, got: {:?}",
-            via_layer
-        );
-
-        // Path 2: `fmt::Subscriber::builder()`.
-        let make_writer = MockMakeWriter::default();
-        let subscriber = crate::fmt::Subscriber::builder()
-            .with_writer(make_writer.clone())
-            .with_level(false)
-            .with_ansi(false)
-            .with_timer(MockTime)
-            .finish();
-        with_default(subscriber, || {
-            tracing::info!(?AlwaysError);
-        });
-        let via_builder = sanitize_timings(make_writer.get_string());
-        assert!(
-            via_builder.starts_with(PREFIX),
-            "fmt::Subscriber::builder() path should log the internal error by default, got: {:?}",
-            via_builder
+        assert_eq!(
+            via_layer, via_builder,
+            "the `fmt::layer()` and `fmt::Subscriber::builder()` paths should log the same \
+             internal error by default"
         );
     }
 
     #[test]
     fn format_error_ignore_if_log_internal_errors_is_false() {
-        struct AlwaysError;
-
-        impl std::fmt::Debug for AlwaysError {
-            fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                Err(std::fmt::Error)
-            }
-        }
-
         let make_writer = MockMakeWriter::default();
         let subscriber = crate::fmt::Subscriber::builder()
             .with_writer(make_writer.clone())
