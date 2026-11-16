@@ -6,7 +6,7 @@
 //!
 //! Note that this macro is also re-exported by the main `tracing` crate.
 //!
-//! *Compiler support: [requires `rustc` 1.65+][msrv]*
+//! *Compiler support: [requires `rustc` 1.71+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -41,7 +41,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.65. The current Tracing version is not guaranteed to build on
+//! version is 1.71. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -67,7 +67,6 @@
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
-    no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
@@ -85,7 +84,7 @@ use quote::TokenStreamExt;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::token::Brace;
-use syn::{Attribute, ItemFn, Signature, Visibility};
+use syn::{Attribute, FnModifiers, ItemFn, Signature, Visibility};
 
 mod attr;
 mod expand;
@@ -642,6 +641,8 @@ struct MaybeItemFn {
     sig: Signature,
     brace_token: Brace,
     block: TokenStream,
+    #[allow(dead_code)]
+    modifiers: FnModifiers,
 }
 
 impl MaybeItemFn {
@@ -675,6 +676,7 @@ impl Parse for MaybeItemFn {
             sig,
             brace_token,
             block,
+            modifiers: FnModifiers::default(), // TODO: do we need to parse these instead?
         })
     }
 }
@@ -686,6 +688,7 @@ impl From<ItemFn> for MaybeItemFn {
             vis,
             sig,
             block,
+            modifiers,
         }: ItemFn,
     ) -> Self {
         let (outer_attrs, inner_attrs) = attrs
@@ -700,6 +703,7 @@ impl From<ItemFn> for MaybeItemFn {
             sig,
             brace_token: block.brace_token,
             block: block_tokens,
+            modifiers,
         }
     }
 }

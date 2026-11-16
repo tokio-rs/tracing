@@ -906,7 +906,7 @@ impl FieldSet {
     /// of those callsites are not equivalent.
     /// </pre></div>
     pub fn contains(&self, field: &Field) -> bool {
-        field.callsite() == self.callsite() && field.i <= self.len()
+        field.callsite() == self.callsite() && field.i < self.len()
     }
 
     /// Returns an iterator over the `Field`s in this `FieldSet`.
@@ -1167,7 +1167,7 @@ mod private {
 #[cfg(test)]
 mod test {
     use alloc::{borrow::ToOwned, boxed::Box, string::String};
-    use std::format;
+    use std::{format, string::ToString};
 
     use super::*;
     use crate::metadata::{Kind, Level, Metadata};
@@ -1240,6 +1240,21 @@ mod test {
         assert_eq!(bar.index(), 1);
         let baz = fields.field("baz").unwrap();
         assert_eq!(baz.index(), 2);
+    }
+
+    #[test]
+    fn field_set_does_not_contain_fields_of_a_larger_field_set() {
+        let fields = TEST_META_1.fields();
+        let subset = FieldSet {
+            names: &["foo", "bar"],
+            callsite: fields.callsite(),
+        };
+
+        assert!(subset.contains(&subset.field("foo").unwrap()));
+        assert!(subset.contains(&subset.field("bar").unwrap()));
+
+        // `baz` has index 2, which is exactly this set's length.
+        assert!(!subset.contains(&fields.field("baz").unwrap()));
     }
 
     #[test]
@@ -1367,6 +1382,6 @@ mod test {
             use core::fmt::Write;
             write!(&mut result, "{:?}", value).unwrap();
         });
-        assert_eq!(result, format!("{}", r#"[61 62 63]" "[c0 ff ee]"#));
+        assert_eq!(result, r#"[61 62 63]" "[c0 ff ee]"#.to_string());
     }
 }

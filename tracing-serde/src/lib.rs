@@ -32,7 +32,7 @@
 //! The `tracing` crate provides the APIs necessary for instrumenting
 //! libraries and applications to emit trace data.
 //!
-//! *Compiler support: [requires `rustc` 1.65+][msrv]*
+//! *Compiler support: [requires `rustc` 1.71+][msrv]*
 //!
 //! [msrv]: #supported-rust-versions
 //!
@@ -148,7 +148,7 @@
 //! ## Supported Rust Versions
 //!
 //! Tracing is built against the latest stable release. The minimum supported
-//! version is 1.65. The current Tracing version is not guaranteed to build on
+//! version is 1.71. The current Tracing version is not guaranteed to build on
 //! Rust versions earlier than the minimum supported version.
 //!
 //! Tracing follows the same compiler support policies as the rest of the Tokio
@@ -177,7 +177,6 @@
     dead_code,
     improper_ctypes,
     non_shorthand_field_patterns,
-    no_mangle_generic_items,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
@@ -441,6 +440,39 @@ where
         if self.state.is_ok() {
             self.state = self.serializer.serialize_entry(field.name(), &value)
         }
+    }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        if self.state.is_ok() {
+            self.state = self
+                .serializer
+                .serialize_entry(field.name(), &format_args!("{}", value))
+        }
+        if let (Ok(()), Some(source)) = (&self.state, value.source()) {
+            self.state = self.serializer.serialize_entry(
+                &format_args!("{}.sources", field.name()),
+                &SerializeErrorSources(source),
+            )
+        }
+    }
+}
+
+/// Serializes an error and each of its sources, in order, as a sequence of
+/// their messages.
+struct SerializeErrorSources<'a>(&'a (dyn std::error::Error + 'static));
+
+impl Serialize for SerializeErrorSources<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut sources = serializer.serialize_seq(None)?;
+        let mut current = Some(self.0);
+        while let Some(error) = current {
+            sources.serialize_element(&format_args!("{}", error))?;
+            current = error.source();
+        }
+        sources.end()
     }
 }
 
