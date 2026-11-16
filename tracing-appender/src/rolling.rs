@@ -912,7 +912,7 @@ mod test {
         test_appender(Rotation::NEVER, "never.log");
     }
 
-        #[test]
+    #[test]
     fn first_run_with_max_files_into_missing_dir_does_not_warn() {
         // Regression test for #3612: with `max_files` set, building the
         // appender against a directory that doesn't exist yet used to print
@@ -978,6 +978,7 @@ mod test {
 
         dir.close().expect("failed to close tempdir");
     }
+    
     #[test]
     fn test_rotations() {
         // per-minute basis
