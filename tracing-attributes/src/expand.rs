@@ -376,7 +376,7 @@ fn gen_block<B: ToTokens>(
         let __tracing_attr_guard;
         if ::tracing::level_enabled!(#level) || {
             let mut log_enabled = false;
-            ::tracing::if_log_enabled!(#level, { log_enabled = true; })
+            ::tracing::if_log_enabled!(#level, log_enabled = true;);
             log_enabled
         } {
             __tracing_attr_span = #span;
