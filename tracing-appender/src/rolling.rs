@@ -616,6 +616,13 @@ impl Inner {
         };
 
         if let Some(max_files) = max_files {
+            // On the very first run the log directory may not exist yet. Create
+            // it before pruning so that `prune_old_logs` doesn't report a
+            // spurious "Error reading the log directory" (it would be created
+            // by `create_writer` moments later anyway). A missing directory at
+            // any later point is still reported, since it's unexpected there.
+            fs::create_dir_all(&inner.log_directory)
+                .map_err(InitError::ctx("failed to create log directory"))?;
             inner.prune_old_logs(max_files);
         }
 
@@ -704,10 +711,6 @@ impl Inner {
 
         let mut files = match files {
             Ok(files) => files,
-            // On the first run the log directory doesn't exist yet (it is
-            // created when the initial writer is opened), so there is nothing
-            // to prune. Don't report that as an error.
-            Err(error) if error.kind() == io::ErrorKind::NotFound => return,
             Err(error) => {
                 eprintln!("Error reading the log directory/files: {}", error);
                 return;
@@ -909,39 +912,72 @@ mod test {
         test_appender(Rotation::NEVER, "never.log");
     }
 
-    #[test]
-    fn first_run_with_max_files_into_missing_dir() {
-        // Regression test: with `max_files` set, `prune_old_logs` runs before
-        // the log directory is created on the first run. Building the appender
-        // against a directory that doesn't exist yet should still succeed and
-        // write the first log file (previously it printed a spurious
-        // "Error reading the log directory/files" to stderr).
+        #[test]
+    fn first_run_with_max_files_into_missing_dir_does_not_warn() {
+        // Regression test for #3612: with `max_files` set, building the
+        // appender against a directory that doesn't exist yet used to print
+        // "Error reading the log directory/files" to stderr. libtest captures
+        // stderr in-process, so we re-run this test in a child process and
+        // inspect the child's stderr instead.
+        const CHILD_ENV: &str = "TRACING_APPENDER_TEST_MISSING_DIR";
+
+        if let Some(missing) = std::env::var_os(CHILD_ENV) {
+            // Child process: build the appender and write one line.
+            let missing = std::path::PathBuf::from(missing);
+            let (state, writer) = Inner::new(
+                OffsetDateTime::now_utc(),
+                Rotation::NEVER,
+                &missing,
+                Some("first_run".to_string()),
+                None,
+                None,
+                Some(2),
+            )
+            .expect("Inner::new should succeed when the log directory is missing");
+            let mut appender = RollingFileAppender {
+                state,
+                writer,
+                now: Box::new(OffsetDateTime::now_utc),
+            };
+            write_to_log(&mut appender, "hello");
+            return;
+        }
+
         let dir = tempfile::tempdir().expect("failed to create tempdir");
         let missing = dir.path().join("does-not-exist-yet");
         assert!(!missing.exists());
 
-        let (state, writer) = Inner::new(
-            OffsetDateTime::now_utc(),
-            Rotation::NEVER,
-            &missing,
-            Some("first_run".to_string()),
-            None,
-            None,
-            Some(2),
+        // libtest names tests by their path *without* the crate name.
+        let test_name = concat!(
+            module_path!(),
+            "::first_run_with_max_files_into_missing_dir_does_not_warn"
         )
-        .expect("Inner::new should succeed when the log directory is missing");
+        .split_once("::")
+        .expect("module path should include the crate name")
+        .1;
+        let output = std::process::Command::new(
+            std::env::current_exe().expect("failed to get test binary path"),
+        )
+        .args([test_name, "--exact", "--nocapture", "--test-threads=1"])
+        .env(CHILD_ENV, &missing)
+        .output()
+        .expect("failed to run child test process");
 
-        let mut appender = RollingFileAppender {
-            state,
-            writer,
-            now: Box::new(OffsetDateTime::now_utc),
-        };
-        write_to_log(&mut appender, "hello");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "child test process failed:\n{}",
+            stderr
+        );
+        assert!(
+            !stderr.contains("Error reading the log directory"),
+            "unexpected warning on first run:\n{}",
+            stderr
+        );
         assert!(find_str_in_log(&missing, "hello"));
 
         dir.close().expect("failed to close tempdir");
     }
-
     #[test]
     fn test_rotations() {
         // per-minute basis
