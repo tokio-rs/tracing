@@ -40,6 +40,8 @@
 #[cfg(unix)]
 use std::os::unix::net::UnixDatagram;
 use std::{fmt, io, io::Write};
+#[cfg(feature = "msg-formatter")]
+use tracing_log::NormalizeEvent;
 
 use tracing_core::{
     event::Event,
@@ -53,6 +55,21 @@ use tracing_subscriber::{layer::Context, registry::LookupSpan};
 mod memfd;
 #[cfg(target_os = "linux")]
 mod socket;
+
+/// A trait for formatting log messages with access to the message and metadata.
+///
+/// Implement this trait to provide custom message formatting logic.
+pub trait MessageFormatter: Send + Sync {
+    /// Format a message with access to its content and metadata.
+    ///
+    /// # Arguments
+    /// * `message` - The original message content
+    /// * `metadata` - The event metadata containing level, target, file, line, etc.
+    ///
+    /// # Returns
+    /// The formatted message as a `String`
+    fn format_message(&self, message: &str, metadata: &Metadata<'_>) -> String;
+}
 
 /// Sends events and their fields to journald
 ///
@@ -88,6 +105,7 @@ pub struct Layer {
     syslog_identifier: String,
     additional_fields: Vec<u8>,
     priority_mappings: PriorityMappings,
+    message_formatter: Option<Box<dyn MessageFormatter>>,
 }
 
 #[cfg(unix)]
@@ -116,6 +134,7 @@ impl Layer {
                     .unwrap_or_default(),
                 additional_fields: Vec::new(),
                 priority_mappings: PriorityMappings::new(),
+                message_formatter: None,
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -168,6 +187,34 @@ impl Layer {
     /// ```
     pub fn with_priority_mappings(mut self, mappings: PriorityMappings) -> Self {
         self.priority_mappings = mappings;
+        self
+    }
+
+    /// Sets a custom message formatter for log messages.
+    ///
+    /// The formatter will receive the message content and event metadata,
+    /// allowing you to customize how messages appear in journald logs.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use tracing_journald::{Layer, MessageFormatter};
+    /// use tracing_core::Metadata;
+    ///
+    /// struct MyFormatter;
+    ///
+    /// impl MessageFormatter for MyFormatter {
+    ///     fn format_message(&self, message: &str, metadata: &Metadata<'_>) -> String {
+    ///         format!("[{}] {}", metadata.level(), message)
+    ///     }
+    /// }
+    ///
+    /// let layer = Layer::new()
+    ///     .unwrap()
+    ///     .with_message_formatter(MyFormatter);
+    /// ```
+    pub fn with_message_formatter(mut self, formatter: impl MessageFormatter + 'static) -> Self {
+        self.message_formatter = Some(Box::new(formatter));
         self
     }
 
@@ -341,9 +388,16 @@ where
             buf.extend_from_slice(&fields.0);
         }
 
+        #[cfg(feature = "msg-formatter")]
+        let normalized_meta = event.normalized_metadata();
+        #[cfg(feature = "msg-formatter")]
+        let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+        #[cfg(not(feature = "msg-formatter"))]
+        let meta = event.metadata();
+
         // Record event fields
-        self.put_priority(&mut buf, event.metadata());
-        put_metadata(&mut buf, event.metadata(), None);
+        self.put_priority(&mut buf, meta);
+        put_metadata(&mut buf, meta, None);
         put_field_length_encoded(&mut buf, "SYSLOG_IDENTIFIER", |buf| {
             write!(buf, "{}", self.syslog_identifier).unwrap()
         });
@@ -352,6 +406,8 @@ where
         event.record(&mut EventVisitor::new(
             &mut buf,
             self.field_prefix.as_deref(),
+            meta,
+            self.message_formatter.as_deref(),
         ));
 
         // At this point we can't handle the error anymore so just ignore it.
@@ -396,11 +452,23 @@ impl Visit for SpanVisitor<'_> {
 struct EventVisitor<'a> {
     buf: &'a mut Vec<u8>,
     prefix: Option<&'a str>,
+    metadata: &'a Metadata<'a>,
+    formatter: Option<&'a dyn MessageFormatter>,
 }
 
 impl<'a> EventVisitor<'a> {
-    fn new(buf: &'a mut Vec<u8>, prefix: Option<&'a str>) -> Self {
-        Self { buf, prefix }
+    fn new(
+        buf: &'a mut Vec<u8>,
+        prefix: Option<&'a str>,
+        metadata: &'a Metadata<'a>,
+        formatter: Option<&'a dyn MessageFormatter>,
+    ) -> Self {
+        Self {
+            buf,
+            prefix,
+            metadata,
+            formatter,
+        }
     }
 
     fn put_prefix(&mut self, field: &Field) {
@@ -412,21 +480,41 @@ impl<'a> EventVisitor<'a> {
             }
         }
     }
+
+    fn format_message(&mut self, formatter: &dyn MessageFormatter, field: &Field, value: &str) {
+        let formatted = formatter.format_message(value, self.metadata);
+        put_field_length_encoded(self.buf, field.name(), |buf| {
+            buf.extend_from_slice(formatted.as_bytes())
+        });
+    }
 }
 
 impl Visit for EventVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
         self.put_prefix(field);
-        put_field_length_encoded(self.buf, field.name(), |buf| {
-            buf.extend_from_slice(value.as_bytes())
-        });
+
+        // Apply custom formatter to message field if available
+        if let (Some(formatter), "message") = (self.formatter, field.name()) {
+            self.format_message(formatter, field, value);
+        } else {
+            put_field_length_encoded(self.buf, field.name(), |buf| {
+                buf.extend_from_slice(value.as_bytes())
+            });
+        }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         self.put_prefix(field);
-        put_field_length_encoded(self.buf, field.name(), |buf| {
-            write!(buf, "{:?}", value).unwrap()
-        });
+
+        // Apply custom formatter to message field if available
+        if let (Some(formatter), "message") = (self.formatter, field.name()) {
+            let message = format!("{:?}", value);
+            self.format_message(formatter, field, &message);
+        } else {
+            put_field_length_encoded(self.buf, field.name(), |buf| {
+                write!(buf, "{:?}", value).unwrap()
+            });
+        }
     }
 }
 
