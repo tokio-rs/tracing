@@ -1083,20 +1083,15 @@ where
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let (a, b) = impl_tee!(self.write(buf));
-        Ok(std::cmp::max(a, b))
+        // Both writers must consume the same bytes before reporting success.
+        self.write_all(buf)?;
+        Ok(buf.len())
     }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         impl_tee!(self.flush());
         Ok(())
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
-        let (a, b) = impl_tee!(self.write_vectored(bufs));
-        Ok(std::cmp::max(a, b))
     }
 
     #[inline]
