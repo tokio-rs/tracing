@@ -253,3 +253,23 @@ feature! {
 mod sealed {
     pub trait Sealed<A = ()> {}
 }
+
+pub use usdt::register_probes;
+
+#[usdt::provider(provider = "tracing_subscriber")]
+mod usdt_provider {
+    fn filterstate__set(id: String, enabled: u8) {}
+    fn filterstate__did__enable(id: String, enabled: u8) {}
+    fn filterstate__add__interest(interest: String) {}
+
+    fn filtered__register__callsite(id: String, callsite: u64, target: String, loc: String, filter_interest: String) {}
+    fn filtered__enabled(id: String, callsite: u64, filter_enabled: u8, layer_enabled: i8) {}
+
+    fn filtered__event_enabled(id: String, callsite: u64, filter_enabled: u8, layer_enabled: i8) {}
+    fn filtered__on__event(id: String, callsite: u64, enabled: u8) {}
+
+    fn filtered__on__new__span(id: String, callsite: u64, span_id: u64, enabled: u8) {}
+    fn filtered__on__enter(id: String, span_id: u64, enabled: u8) {}
+    fn filtered__on__exit(id: String, span_id: u64, enabled: u8) {}
+    fn filtered__on__close(id: String, span_id: u64, enabled: u8) {}
+}
