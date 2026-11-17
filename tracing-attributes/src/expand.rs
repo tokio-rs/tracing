@@ -268,14 +268,21 @@ fn gen_block<B: ToTokens>(
     let err_event = match args.err_args {
         Some(event_args) => {
             let level_tokens = event_args.level(Level::Error);
-            match event_args.mode {
-                FormatMode::Default | FormatMode::Display => Some(quote!(
-                    ::tracing::event!(target: #target, #level_tokens, error = %e)
-                )),
-                FormatMode::Debug => Some(quote!(
-                    ::tracing::event!(target: #target, #level_tokens, error = ?e)
-                )),
-            }
+            let value = match &event_args.transform {
+                Some(closure) => quote!((#closure)(&e)),
+                None => quote!(e),
+            };
+            // With a closure and no explicit format, record the transformed
+            // value via its `Value` impl (no `?`/`%` prefix) so consumers like
+            // `tracing-opentelemetry` can downcast it.
+            let error = match (&event_args.transform, &event_args.mode) {
+                (Some(_), FormatMode::Default) => value,
+                (None, FormatMode::Default) | (_, FormatMode::Display) => quote!(%#value),
+                (_, FormatMode::Debug) => quote!(?#value),
+            };
+            Some(quote!(
+                ::tracing::event!(target: #target, #level_tokens, error = #error)
+            ))
         }
         _ => None,
     };
@@ -283,14 +290,20 @@ fn gen_block<B: ToTokens>(
     let ret_event = match args.ret_args {
         Some(event_args) => {
             let level_tokens = event_args.level(args_level);
-            match event_args.mode {
-                FormatMode::Display => Some(quote!(
-                    ::tracing::event!(target: #target, #level_tokens, return = %x)
-                )),
-                FormatMode::Default | FormatMode::Debug => Some(quote!(
-                    ::tracing::event!(target: #target, #level_tokens, return = ?x)
-                )),
-            }
+            let value = match &event_args.transform {
+                Some(closure) => quote!((#closure)(&x)),
+                None => quote!(x),
+            };
+            // With a closure and no explicit format, record the transformed
+            // value via its `Value` impl.
+            let ret = match (&event_args.transform, &event_args.mode) {
+                (Some(_), FormatMode::Default) => value,
+                (_, FormatMode::Display) => quote!(%#value),
+                (None, FormatMode::Default) | (_, FormatMode::Debug) => quote!(?#value),
+            };
+            Some(quote!(
+                ::tracing::event!(target: #target, #level_tokens, return = #ret)
+            ))
         }
         _ => None,
     };
@@ -384,7 +397,7 @@ fn gen_block<B: ToTokens>(
     match (err_event, ret_event) {
         (Some(err_event), Some(ret_event)) => quote_spanned! {block.span()=>
             #span
-            #[allow(clippy::redundant_closure_call)]
+            #[allow(clippy::redundant_closure_call, clippy::redundant_closure)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => {
@@ -399,7 +412,7 @@ fn gen_block<B: ToTokens>(
         },
         (Some(err_event), None) => quote_spanned!(block.span()=>
             #span
-            #[allow(clippy::redundant_closure_call)]
+            #[allow(clippy::redundant_closure_call, clippy::redundant_closure)]
             match (move || #block)() {
                 #[allow(clippy::unit_arg)]
                 Ok(x) => Ok(x),
@@ -411,7 +424,7 @@ fn gen_block<B: ToTokens>(
         ),
         (None, Some(ret_event)) => quote_spanned!(block.span()=>
             #span
-            #[allow(clippy::redundant_closure_call)]
+            #[allow(clippy::redundant_closure_call, clippy::redundant_closure)]
             let x = (move || #block)();
             #ret_event;
             x
