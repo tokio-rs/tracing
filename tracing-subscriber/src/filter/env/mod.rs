@@ -202,7 +202,7 @@ pub struct EnvFilter {
     has_dynamics: bool,
     by_id: RwLock<HashMap<span::Id, directive::SpanMatcher>>,
     by_cs: RwLock<HashMap<callsite::Identifier, directive::CallsiteMatcher>>,
-    scope: ThreadLocal<RefCell<Vec<LevelFilter>>>,
+    scope: ThreadLocal<RefCell<Vec<(span::Id, LevelFilter)>>>,
     regex: bool,
 }
 
@@ -517,7 +517,7 @@ impl EnvFilter {
 
             let enabled_by_scope = {
                 let scope = self.scope.get_or_default().borrow();
-                for filter in &*scope {
+                for (_, filter) in &*scope {
                     if filter >= level {
                         return true;
                     }
@@ -585,11 +585,12 @@ impl EnvFilter {
         if !self.has_dynamics {
             return;
         }
-        // XXX: This is where _we_ could push IDs to the stack instead, and use
-        // that to allow changing the filter while a span is already entered.
-        // But that might be much less efficient...
+        // Cache the level on entry so `enabled` doesn't need to lock `by_id`.
         if let Some(span) = try_lock!(self.by_id.read()).get(id) {
-            self.scope.get_or_default().borrow_mut().push(span.level());
+            self.scope
+                .get_or_default()
+                .borrow_mut()
+                .push((id.clone(), span.level()));
         }
     }
 
@@ -603,7 +604,11 @@ impl EnvFilter {
             return;
         }
         if self.cares_about_span(id) {
-            self.scope.get_or_default().borrow_mut().pop();
+            let mut scope = self.scope.get_or_default().borrow_mut();
+            // Spans may be exited out of order or entered more than once.
+            if let Some(idx) = scope.iter().rposition(|(span, _)| span == id) {
+                scope.remove(idx);
+            }
         }
     }
 
