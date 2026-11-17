@@ -171,6 +171,46 @@ impl EventArgs {
     }
 }
 
+#[derive(Clone, Default, Debug)]
+pub(crate) struct TraceReturnArgs {
+    pub(crate) err_args: Option<EventArgs>,
+    pub(crate) ret_args: Option<EventArgs>,
+    parse_warnings: Vec<syn::Error>,
+}
+
+impl Parse for TraceReturnArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let mut args = Self::default();
+        while !input.is_empty() {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(kw::err) {
+                let _ = input.parse::<kw::err>()?;
+                args.err_args = Some(EventArgs::parse(input)?);
+            } else if lookahead.peek(kw::ret) {
+                let _ = input.parse::<kw::ret>()?;
+                args.ret_args = Some(EventArgs::parse(input)?);
+            } else if lookahead.peek(Token![,]) {
+                let _ = input.parse::<Token![,]>()?;
+            } else {
+                args.parse_warnings.push(lookahead.error());
+                let _ = input.parse::<proc_macro2::TokenTree>();
+            }
+        }
+        Ok(args)
+    }
+}
+
+impl From<TraceReturnArgs> for InstrumentArgs {
+    fn from(args: TraceReturnArgs) -> Self {
+        Self {
+            err_args: args.err_args,
+            ret_args: args.ret_args,
+            parse_warnings: args.parse_warnings,
+            ..Self::default()
+        }
+    }
+}
+
 impl Parse for EventArgs {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         if !input.peek(syn::token::Paren) {
