@@ -255,10 +255,7 @@ where
 
             let current_span = if self.format.display_current_span || self.format.display_span_list
             {
-                event
-                    .parent()
-                    .and_then(|id| ctx.span(id))
-                    .or_else(|| ctx.lookup_current())
+                ctx.parent_span()
             } else {
                 None
             };
