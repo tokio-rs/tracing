@@ -851,6 +851,13 @@ fn create_writer(
     })?;
 
     if let Some(symlink_name) = latest_symlink_name {
+        // Relative symlink targets are resolved from the link's directory,
+        // rather than the current directory used to open the log file.
+        let path = if path.is_absolute() {
+            path
+        } else {
+            fs::canonicalize(path).map_err(InitError::ctx("failed to resolve log file path"))?
+        };
         let symlink_path = directory.join(symlink_name);
         let _ = symlink::remove_symlink_file(&symlink_path);
         symlink::symlink_file(path, symlink_path).map_err(InitError::ctx(
