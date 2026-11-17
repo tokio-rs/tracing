@@ -771,6 +771,17 @@ impl FromStr for EnvFilter {
     }
 }
 
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for EnvFilter {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let str = alloc::string::String::deserialize(d)?;
+        EnvFilter::from_str(&str).map_err(serde::de::Error::custom)
+    }
+}
+
 impl<S> From<S> for EnvFilter
 where
     S: AsRef<str>,
