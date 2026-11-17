@@ -340,7 +340,30 @@ impl Builder {
         filter
     }
 
-    fn env_var_name(&self) -> &str {
+    /// Returns the name of the environment variable read by the
+    /// [`from_env`], [`from_env_lossy`], and [`try_from_env`] methods.
+    ///
+    /// If a custom name was configured via [`with_env_var`], that name is
+    /// returned. Otherwise, the default of [`EnvFilter::DEFAULT_ENV`]
+    /// (`RUST_LOG`) is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tracing_subscriber::filter::EnvFilter;
+    ///
+    /// let builder = EnvFilter::builder();
+    /// assert_eq!(builder.env_var_name(), EnvFilter::DEFAULT_ENV);
+    ///
+    /// let builder = EnvFilter::builder().with_env_var("MY_APP_LOG");
+    /// assert_eq!(builder.env_var_name(), "MY_APP_LOG");
+    /// ```
+    ///
+    /// [`from_env`]: Self::from_env
+    /// [`from_env_lossy`]: Self::from_env_lossy
+    /// [`try_from_env`]: Self::try_from_env
+    /// [`with_env_var`]: Self::with_env_var
+    pub fn env_var_name(&self) -> &str {
         self.env.as_deref().unwrap_or(EnvFilter::DEFAULT_ENV)
     }
 }
