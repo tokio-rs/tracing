@@ -752,6 +752,20 @@ where
         }
     }
 
+    /// Sets whether or not the [tokio task ID] of the current tokio task is displayed
+    /// when formatting events.
+    ///
+    /// [tokio task ID]: tokio::task::Id
+    pub fn with_tokio_task_ids(
+        self,
+        display_tokio_task_id: bool,
+    ) -> SubscriberBuilder<N, format::Format<L, T>, F, W> {
+        SubscriberBuilder {
+            inner: self.inner.with_tokio_task_ids(display_tokio_task_id),
+            ..self
+        }
+    }
+
     /// Sets the subscriber being built to use a less verbose formatter.
     ///
     /// See [`format::Compact`].
