@@ -483,6 +483,8 @@ impl SpanMatcher {
 mod test {
     use super::*;
     use alloc::{format, string::ToString, vec};
+    use tracing_core::field::FieldSet;
+    use tracing_core::*;
 
     fn parse_directives(dirs: impl AsRef<str>) -> Vec<Directive> {
         dirs.as_ref()
@@ -886,5 +888,36 @@ mod test {
 
         let dirs = parse_directives(format!("target[{}]=info", invalid_span_name));
         assert_eq!(dirs.len(), 0, "\nparsed: {:#?}", dirs);
+    }
+
+    #[test]
+    fn target_matches_prefix() {
+        // A target directive matches any target that *starts with* the
+        // directive's target, not only targets that are equal to it. This is
+        // what allows a directive such as `tokio::net` to enable events whose
+        // target is `tokio::net::tcp::connect`.
+        let dirs = expect_parse("tokio::net=info");
+        let directive = &dirs[0];
+
+        static META: &Metadata<'static> = &Metadata::new(
+            "event",
+            "tokio::net::tcp::connect",
+            Level::INFO,
+            None,
+            None,
+            None,
+            FieldSet::new(&[], identify_callsite!(&Cs)),
+            Kind::EVENT,
+        );
+
+        assert!(directive.cares_about(META));
+    }
+
+    struct Cs;
+    impl tracing_core::callsite::Callsite for Cs {
+        fn set_interest(&self, _interest: tracing_core::Interest) {}
+        fn metadata(&self) -> &Metadata<'_> {
+            unimplemented!()
+        }
     }
 }

@@ -60,6 +60,13 @@ use tracing_core::{
 /// - `target` matches the event or span's target. In general, this is the module path and/or crate name.
 ///   Examples of targets `h2`, `tokio::net`, or `tide::server`. For more information on targets,
 ///   please refer to [`Metadata`]'s documentation.
+///
+///   A target matches if the event or span's target _starts with_ the target given in the
+///   directive; it does not have to be equal to it. This means a directive such as `tokio::net`
+///   also enables spans and events whose target is `tokio::net::tcp::connect`. Note that the
+///   comparison is a plain string prefix, not a path-segment prefix: `tide::server` matches the
+///   target `tide::serverless` as well as `tide::server::http`, and matches neither `tide` nor
+///   `tide::api::server`.
 /// - `span` matches on the span's name. If a `span` directive is provided alongside a `target`,
 ///   the `span` directive will match on spans _within_ the `target`.
 /// - `field` matches on [fields] within spans. Field names can also be supplied without a `value`
