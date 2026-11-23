@@ -541,6 +541,31 @@ impl Visit for MatchVisitor<'_> {
         }
     }
 
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        use std::convert::TryInto;
+
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::I64(ref e), ref matched)) if Ok(*e) == value.try_into() => {
+                matched.store(true, Release);
+            }
+            Some((ValueMatch::U64(ref e), ref matched)) if Ok(*e) == value.try_into() => {
+                matched.store(true, Release);
+            }
+            _ => {}
+        }
+    }
+
+    fn record_u128(&mut self, field: &Field, value: u128) {
+        use std::convert::TryInto;
+
+        match self.inner.fields.get(field) {
+            Some((ValueMatch::U64(ref e), ref matched)) if Ok(*e) == value.try_into() => {
+                matched.store(true, Release);
+            }
+            _ => {}
+        }
+    }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         match self.inner.fields.get(field) {
             Some((ValueMatch::Bool(ref e), ref matched)) if value == *e => {
