@@ -9,3 +9,15 @@ error: expected only a single `follows_from` argument
   |
 4 | #[tracing::instrument(follows_from = [tracing::Span::none()], follows_from = [tracing::Span::none()])]
   |                                                               ^^^^^^^^^^^^
+
+error: expected only a single `err` argument
+ --> tests/ui/fail/duplicate_args.rs:7:28
+  |
+7 | #[tracing::instrument(err, err)]
+  |                            ^^^
+
+error: expected only a single `ret` argument
+  --> tests/ui/fail/duplicate_args.rs:12:28
+   |
+12 | #[tracing::instrument(ret, ret)]
+   |                            ^^^

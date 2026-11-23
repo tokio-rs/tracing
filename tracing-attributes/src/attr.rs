@@ -141,10 +141,16 @@ impl Parse for InstrumentArgs {
                 }
                 args.fields = Some(input.parse()?);
             } else if lookahead.peek(kw::err) {
+                if args.err_args.is_some() {
+                    return Err(input.error("expected only a single `err` argument"));
+                }
                 let _ = input.parse::<kw::err>();
                 let err_args = EventArgs::parse(input)?;
                 args.err_args = Some(err_args);
             } else if lookahead.peek(kw::ret) {
+                if args.ret_args.is_some() {
+                    return Err(input.error("expected only a single `ret` argument"));
+                }
                 let _ = input.parse::<kw::ret>()?;
                 let ret_args = EventArgs::parse(input)?;
                 args.ret_args = Some(ret_args);
