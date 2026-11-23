@@ -394,6 +394,54 @@ fn more_specific_dynamic_filter_more_verbose() {
     finished.assert_finished();
 }
 
+#[test]
+fn dynamic_filter_matches_128_bit_integer_fields() {
+    let filter = EnvFilter::new("warn,[{hello=4}]=info,[{bye=-4}]=info");
+    let unsigned = expect::span().named("unsigned");
+    let signed = expect::span().named("signed");
+    let negative = expect::span().named("negative");
+    let wrong = expect::span().named("wrong value");
+    let too_big = expect::span().named("out of range");
+    let (subscriber, finished) = subscriber::mock()
+        .new_span(unsigned.clone())
+        .enter(unsigned.clone())
+        .event(expect::event().with_fields(expect::msg("in unsigned")))
+        .exit(unsigned)
+        .new_span(signed.clone())
+        .enter(signed.clone())
+        .event(expect::event().with_fields(expect::msg("in signed")))
+        .exit(signed)
+        .new_span(negative.clone())
+        .enter(negative.clone())
+        .event(expect::event().with_fields(expect::msg("in negative")))
+        .exit(negative)
+        .new_span(wrong.clone())
+        .enter(wrong.clone())
+        .exit(wrong)
+        .new_span(too_big.clone())
+        .enter(too_big.clone())
+        .exit(too_big)
+        .only()
+        .run_with_handle();
+    let layer = subscriber.with(filter);
+
+    with_default(layer, || {
+        let span = tracing::info_span!("unsigned", hello = 4_u128);
+        span.in_scope(|| tracing::info!("in unsigned"));
+        let span = tracing::info_span!("signed", hello = 4_i128);
+        span.in_scope(|| tracing::info!("in signed"));
+        let span = tracing::info_span!("negative", bye = -4_i128);
+        span.in_scope(|| tracing::info!("in negative"));
+
+        let span = tracing::info_span!("wrong value", hello = 5_u128);
+        span.in_scope(|| tracing::info!("in wrong value"));
+        let span = tracing::info_span!("out of range", hello = u128::MAX);
+        span.in_scope(|| tracing::info!("in out of range"));
+    });
+
+    finished.assert_finished();
+}
+
 /// This is a negative test. This functionality should work, but doesn't.
 ///
 /// If an improvement to `EnvFilter` fixes this test, then the `#[should_panic]`
