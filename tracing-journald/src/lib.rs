@@ -88,6 +88,7 @@ pub struct Layer {
     syslog_identifier: String,
     additional_fields: Vec<u8>,
     priority_mappings: PriorityMappings,
+    fields_in_message: bool,
 }
 
 #[cfg(unix)]
@@ -116,6 +117,7 @@ impl Layer {
                     .unwrap_or_default(),
                 additional_fields: Vec::new(),
                 priority_mappings: PriorityMappings::new(),
+                fields_in_message: false,
             };
             // Check that we can talk to journald, by sending empty payload which journald discards.
             // However if the socket didn't exist or if none listened we'd get an error here.
@@ -223,6 +225,30 @@ impl Layer {
                 buf.extend_from_slice(value.as_ref())
             })
         }
+        self
+    }
+
+    /// Sets whether an event's fields are also appended to its `MESSAGE`, as `name=value`
+    /// after the message. Defaults to `false`.
+    ///
+    /// journald keeps every field, but `journalctl`'s default output and syslog forwarding
+    /// (such as rsyslog's) show only `MESSAGE`. With this enabled,
+    /// `info!(user = "alice", count = 3, "Logged in")` reads `Logged in user=alice count=3`
+    /// there too. An event with no message gets just its fields.
+    ///
+    /// The fields are still sent as journal fields as well. A value that is empty or
+    /// contains whitespace, `=`, `"` or a control character is written as a JSON string,
+    /// e.g. `path="/tmp/a b"`, so that the text can be parsed back unambiguously. Span
+    /// fields aren't added, and neither are the `log.target`, `log.module_path`,
+    /// `log.file` and `log.line` fields that `tracing-log` gives events from the `log`
+    /// crate, which are the record's metadata.
+    ///
+    /// ```no_run
+    /// # use tracing_journald::Layer;
+    /// let layer = Layer::new().unwrap().with_fields_in_message(true);
+    /// ```
+    pub fn with_fields_in_message(mut self, fields_in_message: bool) -> Self {
+        self.fields_in_message = fields_in_message;
         self
     }
 
@@ -349,10 +375,13 @@ where
         });
         buf.extend_from_slice(&self.additional_fields);
 
-        event.record(&mut EventVisitor::new(
+        let mut visitor = EventVisitor::new(
             &mut buf,
             self.field_prefix.as_deref(),
-        ));
+            self.fields_in_message,
+        );
+        event.record(&mut visitor);
+        visitor.finish();
 
         // At this point we can't handle the error anymore so just ignore it.
         let _ = self.send_payload(&buf);
@@ -396,11 +425,19 @@ impl Visit for SpanVisitor<'_> {
 struct EventVisitor<'a> {
     buf: &'a mut Vec<u8>,
     prefix: Option<&'a str>,
+    /// With [`Layer::with_fields_in_message`], the `MESSAGE` to send once every field has
+    /// been recorded, instead of sending the `message` field as it comes.
+    message: Option<MessageWithFields>,
 }
 
 impl<'a> EventVisitor<'a> {
-    fn new(buf: &'a mut Vec<u8>, prefix: Option<&'a str>) -> Self {
-        Self { buf, prefix }
+    fn new(buf: &'a mut Vec<u8>, prefix: Option<&'a str>, fields_in_message: bool) -> Self {
+        let message = fields_in_message.then(MessageWithFields::default);
+        Self {
+            buf,
+            prefix,
+            message,
+        }
     }
 
     fn put_prefix(&mut self, field: &Field) {
@@ -412,10 +449,24 @@ impl<'a> EventVisitor<'a> {
             }
         }
     }
+
+    /// Sends the `MESSAGE` held back for [`Layer::with_fields_in_message`].
+    fn finish(self) {
+        if let Some(text) = self.message.and_then(MessageWithFields::text) {
+            put_field_length_encoded(self.buf, "MESSAGE", |buf| {
+                buf.extend_from_slice(text.as_bytes())
+            });
+        }
+    }
 }
 
 impl Visit for EventVisitor<'_> {
     fn record_str(&mut self, field: &Field, value: &str) {
+        if let Some(message) = &mut self.message {
+            if message.record(field, value) {
+                return;
+            }
+        }
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {
             buf.extend_from_slice(value.as_bytes())
@@ -423,11 +474,92 @@ impl Visit for EventVisitor<'_> {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if self.message.is_some() {
+            // Formatted once, for both the journal field and `MESSAGE`.
+            return self.record_str(field, &format!("{:?}", value));
+        }
         self.put_prefix(field);
         put_field_length_encoded(self.buf, field.name(), |buf| {
             write!(buf, "{:?}", value).unwrap()
         });
     }
+}
+
+/// The fields `tracing-log` gives an event made from a `log` record, for the record's
+/// metadata. They stay journal fields but aren't added to `MESSAGE`.
+const LOG_RECORD_METADATA: [&str; 4] = ["log.target", "log.module_path", "log.file", "log.line"];
+
+/// `MESSAGE` for [`Layer::with_fields_in_message`]: the event's message, then `name=value`
+/// for each other field, in the order they are recorded.
+#[derive(Default)]
+struct MessageWithFields {
+    message: Option<String>,
+    fields: String,
+}
+
+impl MessageWithFields {
+    /// Records a field, and returns whether it was the message, which goes in `MESSAGE`
+    /// instead of being sent as it comes.
+    fn record(&mut self, field: &Field, value: &str) -> bool {
+        let name = field.name();
+        if name == "message" {
+            self.message = Some(value.to_owned());
+            return true;
+        }
+        if !LOG_RECORD_METADATA.contains(&name) {
+            if !self.fields.is_empty() {
+                self.fields.push(' ');
+            }
+            self.fields.push_str(name);
+            self.fields.push('=');
+            put_message_value(&mut self.fields, value);
+        }
+        false
+    }
+
+    /// The text for `MESSAGE`, if the event has a message or any field to add.
+    fn text(self) -> Option<String> {
+        match (self.message, self.fields.is_empty()) {
+            (None, true) => None,
+            (None, false) => Some(self.fields),
+            (Some(message), true) => Some(message),
+            (Some(mut message), false) => {
+                if !message.is_empty() {
+                    message.push(' ');
+                }
+                message.push_str(&self.fields);
+                Some(message)
+            }
+        }
+    }
+}
+
+/// Appends a field's value to `MESSAGE` as it is, or as a JSON string when it's empty or
+/// contains whitespace, `=`, `"` or a control character, which could otherwise be
+/// mistaken for the end of the value or the start of another field. JSON's escapes also
+/// keep the value on one line.
+fn put_message_value(out: &mut String, value: &str) {
+    let needs_quotes = value.is_empty()
+        || value.contains(|c: char| c.is_whitespace() || c.is_control() || c == '"' || c == '=');
+    if !needs_quotes {
+        out.push_str(value);
+        return;
+    }
+    out.push('"');
+    for c in value.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            c if c < '\u{20}' => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
 }
 
 /// A priority (called "severity code" by syslog) is used to mark the
@@ -618,4 +750,79 @@ fn put_value(buf: &mut Vec<u8>, value: &[u8]) {
     buf.extend_from_slice(&(value.len() as u64).to_le_bytes());
     buf.extend_from_slice(value);
     buf.push(b'\n');
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn message_value(value: &str) -> String {
+        let mut out = String::new();
+        put_message_value(&mut out, value);
+        out
+    }
+
+    #[test]
+    fn message_values_are_quoted_only_when_needed() {
+        for (value, expected) in [
+            ("alice", "alice"),
+            ("42", "42"),
+            ("/tmp/a.txt", "/tmp/a.txt"),
+            ("Some(3)", "Some(3)"),
+            (r"C:\dir", r"C:\dir"),
+            ("", r#""""#),
+            ("a b", r#""a b""#),
+            ("a=b", r#""a=b""#),
+            (r#"Id("x")"#, r#""Id(\"x\")""#),
+            ("two\nlines", r#""two\nlines""#),
+            ("tab\there", r#""tab\there""#),
+            (r"C:\dir x", r#""C:\\dir x""#),
+            ("bell\u{7}", r#""bell\u0007""#),
+            ("\u{1b}[31m", r#""\u001b[31m""#),
+            ("é é", r#""é é""#),
+        ] {
+            assert_eq!(message_value(value), expected, "{:?}", value);
+        }
+    }
+
+    #[test]
+    fn quoted_message_values_parse_back_as_json() {
+        for value in [
+            "",
+            "a b",
+            "a=b",
+            "two\nlines",
+            "bell\u{7}\u{8}\u{c}",
+            r#"say "hi""#,
+            r"a\b c",
+        ] {
+            let quoted = message_value(value);
+            assert_eq!(
+                serde_json::from_str::<String>(&quoted).unwrap(),
+                value,
+                "{}",
+                quoted
+            );
+        }
+    }
+
+    #[test]
+    fn message_text_is_the_message_then_the_fields() {
+        let text = |message: Option<&str>, fields: &str| {
+            MessageWithFields {
+                message: message.map(str::to_owned),
+                fields: fields.to_owned(),
+            }
+            .text()
+        };
+        assert_eq!(text(None, ""), None);
+        assert_eq!(text(Some(""), "").as_deref(), Some(""));
+        assert_eq!(text(Some("Logged in"), "").as_deref(), Some("Logged in"));
+        assert_eq!(text(None, "count=3").as_deref(), Some("count=3"));
+        assert_eq!(text(Some(""), "count=3").as_deref(), Some("count=3"));
+        assert_eq!(
+            text(Some("Logged in"), "user=alice count=3").as_deref(),
+            Some("Logged in user=alice count=3")
+        );
+    }
 }

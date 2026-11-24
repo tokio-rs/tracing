@@ -375,3 +375,78 @@ fn spans_field_collision() {
         assert_eq!(message["SPAN_FIELD"], vec!["foo1", "foo2", "foo3"]);
     });
 }
+
+#[test]
+fn fields_in_message() {
+    let sub = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_fields_in_message(true);
+    with_journald_layer(sub, || {
+        let s1 = info_span!("span1", span_field = "foo");
+        let _g1 = s1.enter();
+        info!(
+            test.name = "fields_in_message",
+            user = "alice",
+            path = "/tmp/a b",
+            count = 3,
+            "Logged in"
+        );
+
+        let message = retry_read_one_line_from_journal("fields_in_message");
+        assert_eq!(
+            message["MESSAGE"],
+            r#"Logged in test.name=fields_in_message user=alice path="/tmp/a b" count=3"#
+        );
+        // The fields are still journal fields, and span fields stay out of MESSAGE.
+        assert_eq!(message["USER"], "alice");
+        assert_eq!(message["PATH"], "/tmp/a b");
+        assert_eq!(message["COUNT"], "3");
+        assert_eq!(message["SPAN_FIELD"], "foo");
+    });
+}
+
+#[test]
+fn fields_in_message_without_a_message() {
+    let sub = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_fields_in_message(true);
+    with_journald_layer(sub, || {
+        info!(test.name = "fields_in_message_without_a_message", count = 3);
+
+        let message = retry_read_one_line_from_journal("fields_in_message_without_a_message");
+        assert_eq!(
+            message["MESSAGE"],
+            "test.name=fields_in_message_without_a_message count=3"
+        );
+    });
+}
+
+#[test]
+fn fields_in_message_leaves_out_log_record_metadata() {
+    let sub = Layer::new()
+        .unwrap()
+        .with_field_prefix(None)
+        .with_fields_in_message(true);
+    with_journald_layer(sub, || {
+        // The fields tracing-log gives an event made from a `log` record.
+        info!(
+            test.name = "fields_in_message_leaves_out_log_record_metadata",
+            log.target = "my_crate",
+            log.module_path = "my_crate::module",
+            log.file = "src/module.rs",
+            log.line = 12,
+            "From log"
+        );
+
+        let message =
+            retry_read_one_line_from_journal("fields_in_message_leaves_out_log_record_metadata");
+        assert_eq!(
+            message["MESSAGE"],
+            "From log test.name=fields_in_message_leaves_out_log_record_metadata"
+        );
+        assert_eq!(message["LOG_TARGET"], "my_crate");
+        assert_eq!(message["LOG_LINE"], "12");
+    });
+}
