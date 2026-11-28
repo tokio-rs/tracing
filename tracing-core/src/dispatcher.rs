@@ -140,8 +140,9 @@ use core::{
 
 #[cfg(feature = "std")]
 use std::{
-    cell::{Cell, Ref, RefCell},
-    error,
+    cell::{Cell, RefCell},
+    error, mem,
+    rc::Rc,
 };
 
 /// `Dispatch` trace data to a [`Subscriber`].
@@ -185,6 +186,7 @@ std::thread_local! {
         State {
             default: RefCell::new(None),
             can_enter: Cell::new(true),
+            depth: Cell::new(0),
         }
     };
 }
@@ -210,8 +212,15 @@ static NO_SUBSCRIBER: NoSubscriber = NoSubscriber::new();
 /// The dispatch state of a thread.
 #[cfg(feature = "std")]
 struct State {
-    /// This thread's current default dispatcher.
-    default: RefCell<Option<Dispatch>>,
+    /// This thread's current default dispatcher. `None`, inside or outside
+    /// the `Rc`, means the global default.
+    ///
+    /// `get_default` clones the `Rc` and releases the borrow before calling
+    /// into the subscriber, so the subscriber can call `set_default` or drop
+    /// a `DefaultGuard` without hitting a `BorrowMutError`. The `Rc` is
+    /// unique outside of `get_default`, so swapping the dispatcher reuses
+    /// its allocation instead of allocating.
+    default: RefCell<Option<Rc<Option<Dispatch>>>>,
     /// Whether or not we can currently begin dispatching a trace event.
     ///
     /// This is set to `false` when functions such as `enter`, `exit`, `event`,
@@ -220,6 +229,10 @@ struct State {
     /// creating an infinite recursion. When we finish handling a dispatch, this
     /// is set back to `true`.
     can_enter: Cell<bool>,
+    /// How many `Entered` guards are live on this thread. A `DefaultGuard`
+    /// created inside a dispatch uses this to tell whether it is dropped in
+    /// that same dispatch, so it can turn the recursion guard back on.
+    depth: Cell<usize>,
 }
 
 /// While this guard is active, additional calls to subscriber functions on
@@ -233,7 +246,12 @@ struct Entered<'a>(&'a State);
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[derive(Debug)]
-pub struct DefaultGuard(Option<Dispatch>);
+pub struct DefaultGuard {
+    prior: Option<Dispatch>,
+    /// The `State::depth` this guard was created at, if it was created
+    /// while a dispatch was in progress.
+    entered_depth: Option<usize>,
+}
 
 /// Sets this dispatch as the default for the duration of a closure.
 ///
@@ -839,21 +857,44 @@ impl State {
     /// the previous value.
     #[inline]
     fn set_default(new_dispatch: Dispatch) -> DefaultGuard {
-        let prior = CURRENT_STATE
+        let (prior, entered_depth) = CURRENT_STATE
             .try_with(|state| {
-                state.can_enter.set(true);
-                state.default.replace(Some(new_dispatch))
+                let entered_depth = if state.can_enter.replace(true) {
+                    None
+                } else {
+                    Some(state.depth.get())
+                };
+                (state.swap_default(Some(new_dispatch)), entered_depth)
             })
-            .ok()
-            .flatten();
+            .unwrap_or((None, None));
         EXISTS.store(true, Ordering::Release);
         SCOPED_COUNT.fetch_add(1, Ordering::Release);
-        DefaultGuard(prior)
+        DefaultGuard {
+            prior,
+            entered_depth,
+        }
+    }
+
+    /// Replaces this thread's default dispatcher, returning the old one.
+    ///
+    /// The old dispatcher is returned rather than dropped here, so that the
+    /// caller can drop it outside of the thread local: dropping a subscriber
+    /// may itself touch this state.
+    fn swap_default(&self, new: Option<Dispatch>) -> Option<Dispatch> {
+        let mut default = self.default.borrow_mut();
+        if let Some(current) = default.as_mut().and_then(Rc::get_mut) {
+            return mem::replace(current, new);
+        }
+        // Either this is the first default on this thread, or a
+        // `get_default` further up the stack still holds the old dispatcher.
+        let old = default.replace(Rc::new(new))?;
+        Rc::try_unwrap(old).unwrap_or_else(|old| (*old).clone())
     }
 
     #[inline]
     fn enter(&self) -> Option<Entered<'_>> {
         if self.can_enter.replace(false) {
+            self.depth.set(self.depth.get() + 1);
             Some(Entered(self))
         } else {
             None
@@ -864,14 +905,27 @@ impl State {
 // ===== impl Entered =====
 
 #[cfg(feature = "std")]
-impl<'a> Entered<'a> {
+impl Entered<'_> {
     #[inline]
-    fn current(&self) -> Ref<'a, Dispatch> {
-        let default = self.0.default.borrow();
-        Ref::map(default, |default| match default {
-            Some(default) => default,
-            None => get_global(),
-        })
+    fn current(&self) -> Current {
+        Current(self.0.default.borrow().clone())
+    }
+}
+
+/// A handle on the dispatcher that was the default when a dispatch began.
+#[cfg(feature = "std")]
+struct Current(Option<Rc<Option<Dispatch>>>);
+
+#[cfg(feature = "std")]
+impl core::ops::Deref for Current {
+    type Target = Dispatch;
+
+    #[inline]
+    fn deref(&self) -> &Dispatch {
+        match self.0.as_deref() {
+            Some(Some(default)) => default,
+            _ => get_global(),
+        }
     }
 }
 
@@ -879,6 +933,7 @@ impl<'a> Entered<'a> {
 impl Drop for Entered<'_> {
     #[inline]
     fn drop(&mut self) {
+        self.0.depth.set(self.0.depth.get() - 1);
         self.0.can_enter.set(true);
     }
 }
@@ -894,7 +949,14 @@ impl Drop for DefaultGuard {
         // lead to the drop of a subscriber which, in the process,
         // could then also attempt to access the same thread local
         // state -- causing a clash.
-        let prev = CURRENT_STATE.try_with(|state| state.default.replace(self.0.take()));
+        let prev = CURRENT_STATE.try_with(|state| {
+            // Dropped inside the dispatch it was created in: the subscriber
+            // is still running, so stop new events from re-entering it.
+            if self.entered_depth == Some(state.depth.get()) {
+                state.can_enter.set(false);
+            }
+            state.swap_default(self.prior.take())
+        });
         SCOPED_COUNT.fetch_sub(1, Ordering::Release);
         drop(prev)
     }
@@ -1063,5 +1125,73 @@ mod test {
         drop(guard);
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
+    }
+
+    #[cfg(feature = "std")]
+    mod set_default_in_dispatch {
+        use super::*;
+
+        macro_rules! subscriber {
+            ($name:ident) => {
+                struct $name;
+                impl Subscriber for $name {
+                    fn enabled(&self, _: &Metadata<'_>) -> bool {
+                        true
+                    }
+                    fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                        span::Id::from_u64(1)
+                    }
+                    fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+                    fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+                    fn event(&self, _: &Event<'_>) {}
+                    fn enter(&self, _: &span::Id) {}
+                    fn exit(&self, _: &span::Id) {}
+                }
+            };
+        }
+        subscriber!(Outer);
+        subscriber!(Inner);
+
+        #[test]
+        fn set_default_inside_get_default() {
+            let _outer = set_default(&Dispatch::new(Outer));
+            get_default(|current| {
+                assert!(current.is::<Outer>());
+                get_default(|nested| assert!(nested.is::<NoSubscriber>()));
+                {
+                    let _inner = set_default(&Dispatch::new(Inner));
+                    get_default(|nested| assert!(nested.is::<Inner>()));
+                    assert!(current.is::<Outer>());
+                }
+                // Still inside the dispatch to `Outer`, so nested dispatches
+                // must not reach it again.
+                get_default(|nested| assert!(nested.is::<NoSubscriber>()));
+            });
+            get_default(|current| assert!(current.is::<Outer>()));
+        }
+
+        #[test]
+        fn guard_from_get_default_outlives_it() {
+            let _outer = set_default(&Dispatch::new(Outer));
+            let inner = get_default(|_| set_default(&Dispatch::new(Inner)));
+            get_default(|current| {
+                assert!(current.is::<Inner>());
+                get_default(|nested| assert!(nested.is::<NoSubscriber>()));
+            });
+            drop(inner);
+            get_default(|current| assert!(current.is::<Outer>()));
+        }
+
+        #[test]
+        fn drop_outer_guard_inside_get_default() {
+            let mut outer = Some(set_default(&Dispatch::new(Outer)));
+            get_default(|current| {
+                drop(outer.take());
+                // The dispatcher passed in stays alive until the closure
+                // returns, even though it is no longer the default.
+                assert!(current.is::<Outer>());
+            });
+            assert!(Dispatch::default().is::<NoSubscriber>());
+        }
     }
 }
