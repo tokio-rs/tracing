@@ -842,7 +842,11 @@ impl State {
         let prior = CURRENT_STATE
             .try_with(|state| {
                 state.can_enter.set(true);
-                state.default.replace(Some(new_dispatch))
+                let mut default = state.default.try_borrow_mut().expect(
+                    "cannot set the default dispatcher from inside `get_default`; \
+                     `set_default` was called while the current dispatcher was in use",
+                );
+                default.replace(new_dispatch)
             })
             .ok()
             .flatten();
@@ -1031,6 +1035,16 @@ mod test {
     fn default_no_subscriber() {
         let default_dispatcher = Dispatch::default();
         assert!(default_dispatcher.is::<NoSubscriber>());
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    #[should_panic(expected = "cannot set the default dispatcher from inside `get_default`")]
+    fn set_default_inside_get_default_panics_with_message() {
+        let _outer = set_default(&Dispatch::new(NoSubscriber::default()));
+        get_default(|_| {
+            let _inner = set_default(&Dispatch::new(NoSubscriber::default()));
+        });
     }
 
     #[cfg(feature = "std")]
